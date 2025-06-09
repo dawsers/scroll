@@ -55,3 +55,42 @@ Ejecute `man 5 sway` para obtener información sobre la configuración.
 
 Ejecute `sway` desde su consola. Algunos gestores de pantalla pueden funcionar sin estar 
 soportados por `sway` (sabemos que gdm funciona bastante bien).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll también está disponible en Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

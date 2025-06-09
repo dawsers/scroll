@@ -55,3 +55,42 @@ Wykonaj polecenie `man 5 sway` aby uzyskać informacje dotyczące konfiguracji.
 
 Wykonaj polecenie `sway` z poziomu TTY. Niektóre menedżery wyświetlania mogą umożliwiać rozruch z ich
 poziomu, ale nie jest to wspierane przez sway (w gdm podobno działa to całkiem nieźle).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll jest również dostępny na Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

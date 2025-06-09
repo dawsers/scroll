@@ -57,3 +57,40 @@ Execute `man 5 sway` para se informar sobre a configuração.
 
 Execute o comando `sway` de um TTY. Alguns gerenciadores de display (ou gerenciadores de login) podem funcionar mas alguns não são suportados
 pelo sway (o gdm é conhecido por funcionar bem).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll também está disponível no Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

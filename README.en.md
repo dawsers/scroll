@@ -92,3 +92,5 @@ sway (gdm is known to work fairly well).
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [swaybg]: https://github.com/swaywm/swaybg/
 [scdoc]: https://git.sr.ht/~sircmpwn/scdoc
+
+[Scroll is also available on the Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

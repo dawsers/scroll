@@ -41,3 +41,56 @@ Falls du von i3 migrierst, kannst du deine Konfigurationsdatei nach `~/.config/s
 ## Sway starten
 Sway kann einfach mit dem Befehl `sway` vom TTY gestartet werden.
 Display-Manager werden nicht offiziell unterstützt. Es gibt aber durchaus einige, die mit Sway funktionieren (z.B. gdm).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll ist auch auf Fedora Copr verfügbar](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

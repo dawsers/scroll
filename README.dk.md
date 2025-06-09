@@ -66,3 +66,31 @@ support til dem (gdm er kendt for at fungere temmelig godt).
 [Opsætning til udvikling]: https://github.com/swaywm/sway/wiki/Development-Setup
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [scdoc]: https://git.sr.ht/~sircmpwn/scdoc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll er også tilgængelig på Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

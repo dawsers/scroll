@@ -93,6 +93,8 @@ After installing either package, prepare a configuration file
 and you can start *scroll* from a tty. You can also start *scroll* from your
 display manager using the provided `/usr/share/wayland-sessions/scroll.desktop`.
 
+[Scroll is also available on the Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)
+
 
 ### Requirements
 
