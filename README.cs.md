@@ -90,3 +90,7 @@ podporovány sway (je známo, že gdm funguje docela dobře).
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [swaybg]: https://github.com/swaywm/swaybg/
 [scdoc]: https://git.sr.ht/~sircmpwn/scdoc
+
+
+
+[Scroll je také k dispozici na Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

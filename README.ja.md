@@ -54,3 +54,43 @@ _\*コンパイル時の依存_
 
 `sway`をTTYから実行してください。いくつかのディスプレイマネージャは動くかもしれませんが、Swayからサポートされていません(gdmは非常に良く動作することが知られています)。
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll は Fedora Copr でも利用可能です](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

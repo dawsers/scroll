@@ -48,3 +48,49 @@ _\*编译时依赖_
 
 从 TTY 中运行 `sway`。 某些显示管理器（Display Manager）也许可以工作但不被 sway 支持。
 (已知 gdm 工作得非常好)。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll 也可在 Fedora Copr 上获取](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

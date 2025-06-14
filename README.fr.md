@@ -75,3 +75,22 @@ bien fonctionner).
 [Configuration de développement]: https://github.com/swaywm/sway/wiki/Development-Setup
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [scdoc]: https://git.sr.ht/~sircmpwn/scdoc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll est aussi disponible sur Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

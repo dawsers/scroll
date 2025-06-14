@@ -66,3 +66,31 @@ sway (gdm работает довольно неплохо).
 [Development setup]: https://github.com/swaywm/sway/wiki/Development-Setup
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [scdoc]: https://git.sr.ht/~sircmpwn/scdoc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll также доступен в Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

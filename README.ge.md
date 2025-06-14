@@ -59,3 +59,38 @@ _\* Compile-time dep_
 [Development setup]: https://github.com/swaywm/sway/wiki/Development-Setup
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [scdoc]: https://git.sr.ht/~sircmpwn/scdoc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll ასევე ხელმისაწვდომია Fedora Copr-ზე](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

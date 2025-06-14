@@ -55,3 +55,42 @@ Voer `man 5 sway` uit voor informatie over het configureren van sway.
 
 Voer `sway` vanaf een TTY uit. Sommige display-managers kunnen werken, maar worden niet ondersteund door
 sway (van gdm is bekend dat het redelijk goed werkt).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll is ook beschikbaar op Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

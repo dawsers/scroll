@@ -53,3 +53,44 @@ _\*編譯時相依_
 ## 執行
 
 在 TTY 執行 `sway`。有些 display manager 可能可以運作但 sway 不提供支援 (已知 gdm 運作的很好)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll 也可以在 Fedora Copr 上取得](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

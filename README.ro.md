@@ -51,3 +51,46 @@ Folosiți comanda `man 5 sway` pentru informații despre configurare.
 ## Lansare
 
 Folosiți comanda `sway` într-un TTY. Managerii de display nu sunt suportați de către Sway, dar unii pot functiona (se știe că gdm functioneazâ destul de bine).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll este de asemenea disponibil pe Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)

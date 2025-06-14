@@ -60,3 +60,37 @@ TTY'den `sway` çalıştırın. Bazı  görüntü yöneticileriyle(display manag
 [Development setup]: https://github.com/swaywm/sway/wiki/Development-Setup
 [wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots
 [scdoc]: https://git.sr.ht/~sircmpwn/scdoc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Scroll, Fedora Copr üzerinde de mevcuttur](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/)
