@@ -1193,7 +1193,7 @@ The default colors are:
 	If set to _urgent_, the urgent state will be set for that window. If set to
 	_focus_, the window will become focused. If set to _smart_, the window will
 	become focused only if it is already visible, otherwise the urgent state
-	will be set. Default is _urgent_. See also *xdg_activation_force* to force
+	will be set. Default is _focus_. See also *xdg_activation_force* to force
 	activation when clients don't implement the full protocol.
 
 *focus_wrapping* yes|no|force|workspace
