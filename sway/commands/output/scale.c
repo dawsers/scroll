@@ -18,11 +18,16 @@ struct cmd_results *output_cmd_scale(int argc, char **argv) {
 
 	int nargs = 1;
 	if (argc > 1) {
-		if (strcasecmp(argv[1], "force") == 0) {
-			++nargs;
-			config->handler_context.output_config->scale_force = true;
-		} else {
-			return cmd_results_new(CMD_INVALID, "Invalid extra parameter: scale <number> [force].");
+		for (int i = nargs; i < argc; ++i) {
+			if (strcasecmp(argv[i], "force") == 0) {
+				++nargs;
+				config->handler_context.output_config->scale_force = true;
+			} else if (strcasecmp(argv[i], "exact") == 0) {
+				++nargs;
+				config->handler_context.output_config->scale_exact = true;
+			} else {
+				return cmd_results_new(CMD_INVALID, "Invalid extra parameter %s: scale <number> [force] [exact].", argv[i]);
+			}
 		}
 	}
 

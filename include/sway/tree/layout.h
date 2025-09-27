@@ -10,6 +10,7 @@ struct sway_scroller_output_options {
 	double default_height;
 	list_t *widths;
 	list_t *heights;
+	bool fractional_scaling_exact;
 };
 
 enum sway_layout_reorder {

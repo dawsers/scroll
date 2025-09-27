@@ -210,6 +210,43 @@ void view_get_constraints(struct sway_view *view, double *min_width,
 	}
 }
 
+static float fractional_scale(struct sway_view *view) {
+	float oscale = 1.0f;
+	if (view->container) {
+		struct sway_workspace *ws = view->container->pending.workspace ?
+			view->container->pending.workspace : view->container->current.workspace;
+		if (ws && ws->output) {
+			// Check config for this output
+			if (ws->output->scroller_options.fractional_scaling_exact) {
+				oscale = ws->output->wlr_output->scale;
+			}
+		}
+	}
+	return oscale;
+}
+
+// Compute a valid logical size according to the fractional scale used
+static void valid_size(struct sway_view *view, int width, int height,
+		int *new_width, int *new_height) {
+	float oscale = fractional_scale(view);
+	*new_width = width;
+	*new_height = height;
+	// From the value in logical space we need to find the
+	// closest (but smaller) buffer size that maps 1:1
+	for (int i = width; i >= 0; i--) {
+		if (i * oscale == floor(i * oscale)) {
+			*new_width = i;
+			break;
+		}
+	}
+	for (int i = height; i >= 0; i--) {
+		if (i * oscale == floor(i * oscale)) {
+			*new_height = i;
+			break;
+		}
+	}
+}
+
 uint32_t view_configure(struct sway_view *view, double lx, double ly, double width,
 		double height) {
 	if (view->impl->configure) {
@@ -217,7 +254,9 @@ uint32_t view_configure(struct sway_view *view, double lx, double ly, double wid
 		double cy = round(ly);
 		double ex = round(lx + width);
 		double ey = round(ly + height);
-		return view->impl->configure(view, cx, cy, ex - cx, ey - cy);
+		int w, h;
+		valid_size(view, ex - cx, ey - cy, &w, &h);
+		return view->impl->configure(view, cx, cy, w, h);
 	}
 	return 0;
 }

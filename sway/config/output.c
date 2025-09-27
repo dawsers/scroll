@@ -70,6 +70,7 @@ struct output_config *new_output_config(const char *name) {
 	oc->x = oc->y = INT_MAX;
 	oc->scale = -1;
 	oc->scale_force = false;
+	oc->scale_exact = false;
 	oc->scale_filter = SCALE_FILTER_DEFAULT;
 	oc->transform = -1;
 	oc->subpixel = WL_OUTPUT_SUBPIXEL_UNKNOWN;
@@ -111,6 +112,9 @@ static void supersede_output_config(struct output_config *dst, struct output_con
 	}
 	if (src->scale_force == true) {
 		dst->scale_force = false;
+	}
+	if (src->scale_exact == true) {
+		dst->scale_exact = false;
 	}
 	if (src->scale_filter != SCALE_FILTER_DEFAULT) {
 		dst->scale_filter = SCALE_FILTER_DEFAULT;
@@ -206,6 +210,9 @@ static void merge_output_config(struct output_config *dst, struct output_config 
 	}
 	if (src->scale_force) {
 		dst->scale_force = true;
+	}
+	if (src->scale_exact) {
+		dst->scale_exact = true;
 	}
 	if (src->scale_filter != SCALE_FILTER_DEFAULT) {
 		dst->scale_filter = src->scale_filter;
@@ -637,6 +644,7 @@ static bool finalize_output_config(struct output_config *oc, struct sway_output 
 	output->scroller_options.default_width = oc ? oc->layout_default_width : -1;
 	output->scroller_options.heights = oc && oc->layout_heights ? copy_double_list(oc->layout_heights) : NULL;
 	output->scroller_options.widths = oc && oc->layout_widths ? copy_double_list(oc->layout_widths) : NULL;
+	output->scroller_options.fractional_scaling_exact = oc ? oc->scale_exact : false;
 
 	if (!output->enabled) {
 		output_enable(output);

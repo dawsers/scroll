@@ -299,6 +299,7 @@ struct output_config {
 	int x, y;
 	float scale;
 	bool scale_force;
+	bool scale_exact;
 	enum scale_filter_mode scale_filter;
 	int32_t transform;
 	enum wl_output_subpixel subpixel;
