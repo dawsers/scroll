@@ -17,16 +17,15 @@ struct cmd_results *output_cmd_scale(int argc, char **argv) {
 	}
 
 	int nargs = 1;
+	int nargc = MIN(nargs + 2, argc);
 	if (argc > 1) {
-		for (int i = nargs; i < argc; ++i) {
+		for (int i = nargs; i < nargc; ++i) {
 			if (strcasecmp(argv[i], "force") == 0) {
 				++nargs;
 				config->handler_context.output_config->scale_force = true;
 			} else if (strcasecmp(argv[i], "exact") == 0) {
 				++nargs;
 				config->handler_context.output_config->scale_exact = true;
-			} else {
-				return cmd_results_new(CMD_INVALID, "Invalid extra parameter %s: scale <number> [force] [exact].", argv[i]);
 			}
 		}
 	}
