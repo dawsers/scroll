@@ -1201,6 +1201,9 @@ static void arrange_root(struct sway_root *root) {
 	if (fs) {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
+			if (!output->enabled || !output->wlr_output->enabled) {
+				continue;
+			}
 			struct sway_workspace *ws = output->current.active_workspace;
 
 			sway_scene_output_set_position(output->scene_output, output->lx, output->ly);
@@ -1222,6 +1225,9 @@ static void arrange_root(struct sway_root *root) {
 	} else {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
+			if (!output->enabled || !output->wlr_output->enabled) {
+				continue;
+			}
 
 			sway_scene_output_set_position(output->scene_output, output->lx, output->ly);
 
