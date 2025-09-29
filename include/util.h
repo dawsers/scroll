@@ -148,4 +148,10 @@ int min(int a, int b);
  */
 double linear_scale(double a, double b, double t);
 
+/*
+ * Compute the smaller or equal, closest valid logical size for 'size',
+ * according to the fractional scale oscale
+ */
+int valid_logical_size(float oscale, int size);
+
 #endif

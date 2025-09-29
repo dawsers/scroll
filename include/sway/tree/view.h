@@ -373,4 +373,6 @@ void view_get_animation_scales(struct sway_view *view, double *wscale, double *h
  */
 double view_get_total_scale(struct sway_view *view);
 
+struct sway_output *view_get_output(struct sway_view *view);
+
 #endif

@@ -311,3 +311,14 @@ int min(int a, int b) {
 double linear_scale(double a, double b, double t) {
 	return a + t * (b - a);
 }
+
+int valid_logical_size(float oscale, int size) {
+	// From the value in logical space we need to find the
+	// closest (but smaller) buffer size that maps 1:1
+	for (int i = size; i >= 0; i--) {
+		if (i * oscale == floor(i * oscale)) {
+			return i;
+		}
+	}
+	return size;
+}
