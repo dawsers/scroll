@@ -12,7 +12,6 @@ struct sway_xdg_output_v1 {
 
 	int32_t x, y;
 	int32_t width, height;
-	bool xwayland;
 
 	struct {
 		struct wl_listener destroy;

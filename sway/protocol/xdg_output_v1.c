@@ -25,8 +25,17 @@ static void output_handle_resource_destroy(struct wl_resource *resource) {
 
 static void output_send_details(struct sway_xdg_output_v1 *xdg_output,
 		struct wl_resource *resource) {
+	bool xserver = false;
+
+#if WLR_HAS_XWAYLAND
+	struct wlr_xwayland *xwayland = server.xwayland.wlr_xwayland;
+	if (xwayland && xwayland->server && resource->client == xwayland->server->client) {
+		xserver = true;
+	}
+#endif
+
 	int32_t x, y, width, height;
-	if (!xdg_output->xwayland) {
+	if (!xserver) {
 		x = xdg_output->x;
 		y = xdg_output->y;
 		width = xdg_output->width;
@@ -138,13 +147,6 @@ static void output_manager_handle_get_xdg_output(struct wl_client *client,
 	wl_list_insert(&xdg_output->resources,
 		wl_resource_get_link(xdg_output_resource));
 
-#if WLR_HAS_XWAYLAND
-	struct wlr_xwayland *xwayland = server.xwayland.wlr_xwayland;
-	if (xwayland && xwayland->server && client == xwayland->server->client) {
-		xdg_output->xwayland = true;
-	}
-#endif
-
 	// Name and description should only be sent once per output
 	uint32_t xdg_version = wl_resource_get_version(xdg_output_resource);
 	if (xdg_version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
@@ -215,7 +217,6 @@ static void add_output(struct sway_xdg_output_manager_v1 *manager,
 	if (output == NULL) {
 		return;
 	}
-	output->xwayland = false;
 	wl_list_init(&output->resources);
 	output->manager = manager;
 	output->layout_output = layout_output;
