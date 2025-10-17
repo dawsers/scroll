@@ -417,6 +417,9 @@ void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_la
 }
 
 enum sway_layout_reorder layout_modifiers_get_reorder(struct sway_workspace *workspace) {
+	if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		layout_modifiers_set_reorder(workspace, REORDER_AUTO);
+	}
 	return workspace->layout.modifiers.reorder;
 }
 
@@ -453,6 +456,9 @@ void layout_modifiers_set_center_horizontal(struct sway_workspace *workspace, bo
 }
 
 bool layout_modifiers_get_center_horizontal(struct sway_workspace *workspace) {
+	if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		return false;
+	}
 	return workspace->layout.modifiers.center_horizontal;
 }
 
@@ -462,6 +468,9 @@ void layout_modifiers_set_center_vertical(struct sway_workspace *workspace, bool
 }
 
 bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace) {
+	if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		return false;
+	}
 	return workspace->layout.modifiers.center_vertical;
 }
 
