@@ -56,7 +56,7 @@ static struct cmd_results *parse_animation_curve(int argc, char **argv, struct s
 	if (argc == 1) {
 		animation_path_destroy(*path);
 		*path = animation_path_create(enabled);
-		struct sway_animation_curve *curve = create_animation_curve(0, 0, NULL, 0.0, 0, NULL);
+		struct sway_animation_curve *curve = create_animation_curve(0, 0, NULL, false, 0.0, 0, NULL);
 		animation_path_add_curve(*path, curve);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
@@ -65,11 +65,18 @@ static struct cmd_results *parse_animation_curve(int argc, char **argv, struct s
 	uint32_t var_order = 0, off_order = 0;
 	list_t *var_list = NULL, *off_list = NULL;
 	double off_scale = 0.0;
+	bool var_simple = false;
 	bool error = false;
 	while (arg < argc) {
 		if (strcasecmp(argv[arg], "var") == 0) {
 			++arg;
-			var_order = strtol(argv[arg++], NULL, 10);
+			if (strcasecmp(argv[arg], "simple") == 0) {
+				var_simple = true;
+				var_order = 3;
+			} else {
+				var_order = strtol(argv[arg], NULL, 10);
+			}
+			++arg;
 			var_list = parse_double_array(argv[arg++]);
 			if (!var_list) {
 				error = true;
@@ -89,7 +96,7 @@ static struct cmd_results *parse_animation_curve(int argc, char **argv, struct s
 	if (var_list || off_list) {
 		animation_path_destroy(*path);
 		*path = animation_path_create(enabled);
-		struct sway_animation_curve *curve = create_animation_curve(duration, var_order, var_list, off_scale, off_order, off_list);
+		struct sway_animation_curve *curve = create_animation_curve(duration, var_order, var_list, var_simple, off_scale, off_order, off_list);
 		animation_path_add_curve(*path, curve);
 		if (var_list) {
 			list_free_items_and_destroy(var_list);
@@ -103,7 +110,7 @@ static struct cmd_results *parse_animation_curve(int argc, char **argv, struct s
 	} else {
 		animation_path_destroy(*path);
 		*path = animation_path_create(enabled);
-		struct sway_animation_curve *curve = create_animation_curve(duration, 0, NULL, 0.0, 0, NULL);
+		struct sway_animation_curve *curve = create_animation_curve(duration, 0, NULL, false, 0.0, 0, NULL);
 		animation_path_add_curve(*path, curve);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}

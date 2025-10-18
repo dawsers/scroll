@@ -126,6 +126,27 @@ The following commands may only be used in the configuration file.
 	points to be defined, but we set the first and last to _(0, 0)_ and _(1, 1)_.
 	We use 2D Bezier curves, so the array needs _2 x (order - 1)_ numbers in it.
 
+	*scroll* uses a different parametrization for its 2D Bezier curves than other
+	compositors that only support cubic Bezier curves with two user-defined
+	control points. This is because *scroll* supports Bezier curves of any _order_,
+	and this may produce curves with more than one y value per x value. So
+	*scroll* uses the fraction of the curve's length as parameter, to ensure
+	curve points can be defined in an unique way, while those other compositors
+	use the curve's x value because their curves cannot contain loops. For
+	compatibility with curves from other compositors and CSS, the _var_ animation
+	curve can have an optional argument, _simple_, that replaces _order_. This
+	creates a compatible cubic Bezier. For example:
+
+```
+    default yes 300 var simple [ 0.6 -0.28 0.735 0.045 ]
+```
+
+	instead of:
+
+```
+    default yes 300 var 3 [ 0.6 -0.28 0.735 0.045 ]
+```
+
 	_off_. Defines the animation curve for the variable that doesn't change in the
 	operation/command. The fields are _scale_ _order_ and _control_points_.
 	_scale_ is the fraction of the workspace size used to scale the curve. As

@@ -312,7 +312,7 @@ static void config_defaults(struct sway_config *config) {
 		*val = points[i];
 		list_add(default_points, val);
 	}
-	struct sway_animation_curve *curve = create_animation_curve(300, 3, default_points, 0.0, 0, NULL);
+	struct sway_animation_curve *curve = create_animation_curve(300, 3, default_points, false, 0.0, 0, NULL);
 	config->animations.anim_default = animation_path_create(true);
 	animation_set_default_callbacks();
 	animation_path_add_curve(config->animations.anim_default, curve);

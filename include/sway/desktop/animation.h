@@ -73,8 +73,8 @@ void animation_get_values(double *t, double *x, double *y,
 
 // Create a 3D animation curve
 struct sway_animation_curve *create_animation_curve(uint32_t duration_ms,
-		uint32_t var_order, list_t *var_points,	double offset_scale,
-		uint32_t off_order, list_t *off_points);
+		uint32_t var_order, list_t *var_points, bool var_simple,
+		double offset_scale, uint32_t off_order, list_t *off_points);
 void destroy_animation_curve(struct sway_animation_curve *curve);
 
 #endif

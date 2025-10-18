@@ -14,6 +14,8 @@ struct bezier_curve {
 	uint32_t n;
 	double *b[NDIM];
 	double u[NINTERVALS + 1];
+	 // if true, this is a cubic Bezier in compatibility mode for other compositors.
+	bool simple;
 };
 
 struct sway_animation_curve {
@@ -57,7 +59,26 @@ static void bezier(struct bezier_curve *curve, double t, double (*B)[NDIM]) {
 	}
 }
 
-static void create_lookup(struct bezier_curve *curve) {
+static void fill_lookup(struct bezier_curve *curve, double t0, double x0,
+		double t1, double x1) {
+	double t = 0.5 * (t0 + t1);
+	double B[NDIM];
+	bezier(curve, t, &B);
+	if (x0 * NINTERVALS <= floor(x1 * NINTERVALS)) {
+		if (x1 - x0 < 0.001) {
+			curve->u[(uint32_t)floor(x1 * NINTERVALS)] = B[1];
+			return;
+		}
+		fill_lookup(curve, t0, x0, t, B[0]);
+		fill_lookup(curve, t, B[0], t1, x1);
+	}
+}
+
+static void create_lookup_simple(struct bezier_curve *curve) {
+	fill_lookup(curve, 0.0, 0.0, 1.0, 1.0);
+}
+
+static void create_lookup_length(struct bezier_curve *curve) {
 	double B0[NDIM], length = 0.0;
 	for (int i = 0; i < NDIM; ++i) {
 		B0[i] = 0.0;
@@ -277,6 +298,10 @@ static void lookup_xy(struct bezier_curve *curve, double t, double *x, double *y
 	} else {
 		u = curve->u[(uint32_t) t0];
 	}
+	if (curve->simple) {
+		*x = t; *y = u;
+		return;
+	}
 	double B[NDIM];
 	// I could create another lookup table for B
 	bezier(curve, u, &B);
@@ -308,7 +333,7 @@ static void animation_curve_get_values(struct sway_animation_curve *curve, doubl
 		lookup_xy(&curve->off, t_off, x, y);
 		*scale = curve->offset_scale;
 	} else {
-		*x = t_off; *y = 0.0;
+		*x = *t; *y = 0.0;
 		*scale = 0.0;
 	}
 }
@@ -326,9 +351,10 @@ void animation_get_values(double *t, double *x, double *y,
 }
 
 static void create_bezier(struct bezier_curve *curve, uint32_t order, list_t *points,
-		double end[NDIM]) {
+		double end[NDIM], bool simple) {
 	if (points && points->length > 0) {
 		curve->n = order;
+		curve->simple = simple;
 
 		for (int d = 0; d < NDIM; ++d) {
 		    curve->b[d] = (double *) malloc(sizeof(double) * (curve->n + 1));
@@ -346,15 +372,20 @@ static void create_bezier(struct bezier_curve *curve, uint32_t order, list_t *po
 		for (int d = 0; d < NDIM; ++d) {
 			curve->b[d][curve->n] = end[d];
 		}
-		create_lookup(curve);
+		if (simple) {
+			create_lookup_simple(curve);
+		} else {
+			create_lookup_length(curve);
+		}
 	} else {
 		// Use linear parameter
 		curve->n = 0;
+		curve->simple = false;
 	}
 }
 
 struct sway_animation_curve *create_animation_curve(uint32_t duration_ms,
-		uint32_t var_order, list_t *var_points,	double offset_scale,
+		uint32_t var_order, list_t *var_points, bool var_simple, double offset_scale,
 		uint32_t off_order, list_t *off_points) {
 	if (var_points && (uint32_t) var_points->length != NDIM * (var_order - 1)) {
 		sway_log(SWAY_ERROR, "Animation curve mismatch: var curve provided %d points, need %d for curve of order %d",
@@ -366,14 +397,19 @@ struct sway_animation_curve *create_animation_curve(uint32_t duration_ms,
 			off_points->length, NDIM * (off_order - 1), off_order);
 		return NULL;
 	}
+	if (var_simple && var_order != 3) {
+		sway_log(SWAY_ERROR, "Animation curve mismatch: simple curves need to be cubic Beziers with two user-set control points");
+		return NULL;
+
+	}
 	struct sway_animation_curve *curve = (struct sway_animation_curve *) malloc(sizeof(struct sway_animation_curve));
 	curve->duration_ms = duration_ms;
 	curve->offset_scale = offset_scale;
 
 	double end_var[2] = { 1.0, 1.0 };
-	create_bezier(&curve->var, var_order, var_points, end_var);
+	create_bezier(&curve->var, var_order, var_points, end_var, var_simple);
 	double end_off[2] = { 1.0, 0.0 };
-	create_bezier(&curve->off, off_order, off_points, end_off);
+	create_bezier(&curve->off, off_order, off_points, end_off, false);
 
 	return curve;
 }
