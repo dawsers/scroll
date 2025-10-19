@@ -437,6 +437,8 @@ static void scene_damage_outputs(struct sway_scene *scene, pixman_region32_t *da
 	}
 }
 
+static struct wlr_output *scene_node_get_output(struct sway_scene_node *node);
+
 static void update_node_update_outputs(struct sway_scene_node *node,
 		struct wl_list *outputs, struct sway_scene_output *ignore,
 		struct sway_scene_output *force) {
@@ -445,6 +447,9 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 	}
 
 	struct sway_scene_buffer *scene_buffer = sway_scene_buffer_from_node(node);
+
+	// If tiled, we use the available information and skip all the checks
+	struct wlr_output *wlr_output = scene_node_get_output(node);
 
 	uint32_t largest_overlap = 0;
 	struct sway_scene_output *old_primary_output = scene_buffer->primary_output;
@@ -468,6 +473,17 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 		}
 
 		if (!scene_output->output->enabled) {
+			continue;
+		}
+
+		if (scene_output->output == wlr_output) {
+			active_outputs = 1ull << scene_output->index;
+			scene_buffer->primary_output = scene_output;
+			count = 1;
+			continue;
+		}
+
+		if (wlr_output) {
 			continue;
 		}
 
