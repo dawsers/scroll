@@ -527,7 +527,7 @@ void ipc_event_scroller(const char *change, struct sway_workspace *workspace) {
 	if (!ipc_has_event_listeners(IPC_EVENT_SCROLLER)) {
 		return;
 	}
-	sway_log(SWAY_DEBUG, "Sending scroller event");
+	sway_log(SWAY_DEBUG, "Sending scroller event %s", change);
 
 	json_object *json = json_object_new_object();
 	json_object_object_add(json, "change", json_object_new_string(change));
