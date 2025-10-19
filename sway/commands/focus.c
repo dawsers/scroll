@@ -480,25 +480,34 @@ struct cmd_results *cmd_focus(int argc, char **argv) {
 	}
 	if (next_focus) {
 		if (next_focus->type == N_CONTAINER) {
-			if (config->fullscreen_movefocus != FULLSCREEN_MOVEFOCUS_NONE &&
-				container->pending.workspace == next_focus->sway_container->pending.workspace) {
-				// Deal with full screen
-				enum sway_fullscreen_mode fullscreen_mode = container->pending.fullscreen_mode;
-				// Allow fullscreen_movefocus for WORKSPACE type full screen
-				if (fullscreen_mode == FULLSCREEN_WORKSPACE) {
-					if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
-						container_pass_fullscreen(container, next_focus->sway_container);
-					} else {
-						container_fullscreen_disable(container);
-						node_set_dirty(&container->node);
+			if (config->fullscreen_movefocus != FULLSCREEN_MOVEFOCUS_NONE) {
+				if (container->pending.workspace == next_focus->sway_container->pending.workspace) {
+					// Deal with full screen
+					enum sway_fullscreen_mode fullscreen_mode = container->pending.fullscreen_mode;
+					// Allow fullscreen_movefocus for WORKSPACE type full screen
+					if (fullscreen_mode == FULLSCREEN_WORKSPACE) {
+						if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
+							container_pass_fullscreen(container, next_focus->sway_container);
+						} else {
+							container_fullscreen_disable(container);
+							node_set_dirty(&container->node);
+						}
+					}
+					if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_NOFOLLOW) {
+						if (next_focus->sway_container->fullscreen) {
+							container_set_fullscreen(next_focus->sway_container, FULLSCREEN_WORKSPACE);
+							node_set_dirty(&next_focus->sway_container->node);
+						}
+						node_set_dirty(&container->pending.workspace->node);
 					}
 				}
-				if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_NOFOLLOW) {
+			} else {
+				if (container->pending.workspace == next_focus->sway_container->pending.workspace) {
 					if (next_focus->sway_container->fullscreen) {
 						container_set_fullscreen(next_focus->sway_container, FULLSCREEN_WORKSPACE);
 						node_set_dirty(&next_focus->sway_container->node);
+						node_set_dirty(&container->pending.workspace->node);
 					}
-					node_set_dirty(&container->pending.workspace->node);
 				}
 			}
 			arrange_workspace(next_focus->sway_container->pending.workspace);

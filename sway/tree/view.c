@@ -873,7 +873,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 			container->pending.workspace->fullscreen->view) {
 		struct sway_container *fs = container->pending.workspace->fullscreen;
 		if (view_is_transient_for(view, fs->view)) {
-			container_set_fullscreen(fs, false);
+			container_set_fullscreen(fs, FULLSCREEN_NONE);
 		}
 	}
 
@@ -881,7 +881,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	container_update_representation(container);
 
 	if (fullscreen) {
-		container_set_fullscreen(view->container, true);
+		container_set_fullscreen(view->container, FULLSCREEN_WORKSPACE);
 		arrange_workspace(view->container->pending.workspace);
 	} else {
 		if (container->pending.workspace) {
@@ -891,13 +891,12 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 
 	view_execute_criteria(view);
 
-	if (!fullscreen && ws && ws->fullscreen &&
-		config->fullscreen_movefocus != FULLSCREEN_MOVEFOCUS_NONE) {
-		if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_NOFOLLOW) {
+	if (!fullscreen && ws && ws->fullscreen) {
+		if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
+			container_pass_fullscreen(ws->fullscreen, view->container);
+		} else {
 			container_fullscreen_disable(ws->fullscreen);
 			arrange_workspace(ws);
-		} else {
-			container_pass_fullscreen(ws->fullscreen, view->container);
 		}
 	}
 

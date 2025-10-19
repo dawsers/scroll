@@ -218,20 +218,24 @@ void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_o
 		recreate_buffers(workspace);
 		struct sway_seat *seat = input_manager_current_seat();
 		struct sway_container * focus = seat_get_focused_container(seat);
-		if (workspace->layout.fullscreen) {
-			if (config->fullscreen_movefocus != FULLSCREEN_MOVEFOCUS_NOFOLLOW) {
-				if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW ||
-					workspace->layout.fullscreen == focus) {
-						container_set_fullscreen(focus, FULLSCREEN_WORKSPACE);
-						arrange_root();
-				}
-			}
-		}
-		if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_NOFOLLOW) {
-			if (focus && focus->fullscreen) {
+		bool ws_focused = focus && focus->pending.workspace == workspace;
+		bool fs_focused = ws_focused && focus->fullscreen;
+		bool fs = workspace->layout.fullscreen || fs_focused;
+		if (ws_focused && fs) {
+			if (fs_focused) {
 				container_set_fullscreen(focus, FULLSCREEN_WORKSPACE);
 				arrange_root();
+			} else if (workspace->layout.fullscreen) {
+				if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
+					container_set_fullscreen(focus, FULLSCREEN_WORKSPACE);
+				} else {
+					container_set_fullscreen(workspace->layout.fullscreen, FULLSCREEN_NONE);
+				}
+				arrange_root();
 			}
+		} else if (workspace->layout.fullscreen) {
+			container_set_fullscreen(workspace->layout.fullscreen, FULLSCREEN_WORKSPACE);
+			arrange_root();
 		}
 	} else {
 		workspace->layout.mem_scale = layout_scale_get(workspace);

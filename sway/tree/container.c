@@ -1403,28 +1403,33 @@ void container_set_fullscreen(struct sway_container *con,
 		return;
 	}
 
+	struct sway_workspace *workspace = con->pending.workspace;
 	switch (mode) {
 	case FULLSCREEN_NONE:
 		container_fullscreen_disable(con);
 		con->fullscreen = false;
 		break;
 	case FULLSCREEN_WORKSPACE:
-		if (root->fullscreen_global) {
-			container_fullscreen_disable(root->fullscreen_global);
+		if (workspace && layout_overview_mode(workspace) == OVERVIEW_DISABLED) {
+			if (root->fullscreen_global) {
+				container_fullscreen_disable(root->fullscreen_global);
+			}
+			if (con->pending.workspace && con->pending.workspace->fullscreen) {
+				container_fullscreen_disable(con->pending.workspace->fullscreen);
+			}
+			container_fullscreen_workspace(con);
 		}
-		if (con->pending.workspace && con->pending.workspace->fullscreen) {
-			container_fullscreen_disable(con->pending.workspace->fullscreen);
-		}
-		container_fullscreen_workspace(con);
 		break;
 	case FULLSCREEN_GLOBAL:
-		if (root->fullscreen_global) {
-			container_fullscreen_disable(root->fullscreen_global);
+		if (workspace && layout_overview_mode(workspace) == OVERVIEW_DISABLED) {
+			if (root->fullscreen_global) {
+				container_fullscreen_disable(root->fullscreen_global);
+			}
+			if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
+				container_fullscreen_disable(con);
+			}
+			container_fullscreen_global(con);
 		}
-		if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
-			container_fullscreen_disable(con);
-		}
-		container_fullscreen_global(con);
 		break;
 	}
 }
