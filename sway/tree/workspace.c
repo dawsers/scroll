@@ -628,14 +628,6 @@ static void workspace_switch_callback_end(void *callback_data) {
 	node_set_dirty(&data->from->node);
 	node_set_dirty(&data->to->node);
 
-	struct sway_workspace *workspace = data->to;
-	struct sway_seat *seat = input_manager_current_seat();
-	struct sway_node *next = seat_get_focus_inactive(seat, &workspace->node);
-	if (next == NULL) {
-		next = &workspace->node;
-	}
-	seat_set_focus(seat, next);
-
 	list_free_items_and_destroy(data->from_containers);
 	list_free_items_and_destroy(data->to_containers);
 	free(data);
@@ -810,16 +802,18 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	sway_log(SWAY_DEBUG, "Switching to workspace %p:%s",
 		workspace, workspace->name);
 	struct sway_workspace *old_ws = seat_get_focused_workspace(seat);
+
+	struct sway_node *next = seat_get_focus_inactive(seat, &workspace->node);
+	if (next == NULL) {
+		next = &workspace->node;
+	}
+	seat_set_focus(seat, next);
+
 	animation_set_path(config->animations.workspace_switch);
 	if (old_ws != workspace && old_ws->output == workspace->output &&
 		animation_enabled()) {
 		animate_workspace_switch(old_ws, workspace);
 	} else {
-		struct sway_node *next = seat_get_focus_inactive(seat, &workspace->node);
-		if (next == NULL) {
-			next = &workspace->node;
-		}
-		seat_set_focus(seat, next);
 		arrange_workspace(workspace);
 	}
 	return true;
