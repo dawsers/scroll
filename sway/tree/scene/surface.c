@@ -150,6 +150,10 @@ void sway_scene_surface_reconfigure(struct sway_scene_surface *scene_surface) {
 		src_box.y += (clip->y * src_box.height) / state->height;
 		src_box.width *= (double)width / state->width;
 		src_box.height *= (double)height / state->height;
+		src_box.x = round(src_box.x);
+		src_box.y = round(src_box.y);
+		src_box.width = round(src_box.width);
+		src_box.height = round(src_box.height);
 
 		wlr_fbox_transform(&src_box, &src_box, wlr_output_transform_invert(state->transform),
 			buffer_width, buffer_height);

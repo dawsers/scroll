@@ -1582,8 +1582,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 	struct wlr_box dst_box = {
 		.x = round(dst_fbox.x),
 		.y = round(dst_fbox.y),
-		.width = round(dst_fbox.x + dst_fbox.width) - round(dst_fbox.x),
-		.height = round(dst_fbox.y + dst_fbox.height) - round(dst_fbox.y)
+		.width = round(dst_fbox.width),
+		.height = round(dst_fbox.height)
 	};
 
 	switch (node->type) {
