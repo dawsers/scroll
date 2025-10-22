@@ -211,17 +211,6 @@ void view_get_constraints(struct sway_view *view, double *min_width,
 	}
 }
 
-struct sway_output *view_get_output(struct sway_view *view) {
-	if (view && view->container) {
-		struct sway_workspace *ws = view->container->pending.workspace ?
-			view->container->pending.workspace : view->container->current.workspace;
-		if (ws && ws->output) {
-			return ws->output;
-		}
-	}
-	return NULL;
-}
-
 uint32_t view_configure(struct sway_view *view, double lx, double ly, double width,
 		double height) {
 	if (view->impl->configure) {
@@ -229,14 +218,8 @@ uint32_t view_configure(struct sway_view *view, double lx, double ly, double wid
 		double cy = round(ly);
 		double ex = round(lx + width);
 		double ey = round(ly + height);
-		struct sway_output *output = view_get_output(view);
 		int w = ex - cx;
 		int h = ey - cy;
-		if (output && output->scroller_options.fractional_scaling_exact) {
-			float oscale = output->wlr_output->scale;
-			w = valid_logical_size(oscale, w);
-			h = valid_logical_size(oscale, h);
-		}
 		return view->impl->configure(view, cx, cy, w, h);
 	}
 	return 0;

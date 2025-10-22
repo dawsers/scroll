@@ -23,9 +23,6 @@ struct cmd_results *output_cmd_scale(int argc, char **argv) {
 			if (strcasecmp(argv[i], "force") == 0) {
 				++nargs;
 				config->handler_context.output_config->scale_force = true;
-			} else if (strcasecmp(argv[i], "exact") == 0) {
-				++nargs;
-				config->handler_context.output_config->scale_exact = true;
 			}
 		}
 	}

@@ -70,7 +70,7 @@ must be separated by one space. For example:
 	Note that the left x-pos of eDP1 is 1600 = 3200/2 and the bottom y-pos is
 	1020 + (1800 / 2) = 1920 = 0 + 1920
 
-*output* <name> scale <factor> [force] [exact]
+*output* <name> scale <factor> [force]
 	Scales the specified output by the specified scale _factor_. An integer is
 	recommended, but fractional values are also supported. You may be better
 	served by setting an integer scale factor and adjusting the font size of
@@ -83,18 +83,6 @@ must be separated by one space. For example:
 	specified, scroll will use _factor_ as scale, regardless of the consequences.
 	Do not use _force_ unless you know what you are doing, or for debugging
 	purposes; rendering quality will be worse.
-
-	If _exact_ is used, scroll, if needed, will reduce the buffer size of every
-	window on the output to provide a perfect match between the client's
-	provided buffer and the logical coordinates of the window in fractional
-	space. This improves the cripsness of the content, but may leave gaps
-	between the window's content and the border of the window. Use it if you care
-	about text fidelity and don't mind an offset of a few pixels between the
-	content and the window border. If you use _force_ and choose a random scale
-	_factor_, those few pixels of offset could become many, and you could even see
-	popups missing content. Try to use _exact_ with the recommended set of
-	scales for your output's resolution (i.e. do not use _force_ and _exact_ at
-	the same time).
 
 *output* <name> scale_filter linear|nearest|smart
 	Indicates how to scale application buffers that are rendered at a scale
