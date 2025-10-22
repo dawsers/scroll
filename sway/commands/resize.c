@@ -150,24 +150,25 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 		float pct = amount->amount / 100.0f;
 		if (horizontal) {
 			double new_width = current->width_fraction + pct;
+			new_width = MIN(MAX(new_width, 0.05), 1.0);
 			double width = workspace->width * new_width - gaps;
-			if (new_width <= 1.0 && new_width >= 0.05) {
-				if (width < min_width) {
-					if (pct > 0.0f) {
-						fail = false;
-					}
-					width = min_width;
-				} else if (width > max_width) {
-					if (pct < 0.0) {
-						fail = false;
-					}
-					width = max_width;
-				} else {
+			if (width < min_width) {
+				if (pct > 0.0f) {
 					fail = false;
 				}
-				current->width_fraction = new_width;
-				current->pending.width = width;
+				width = min_width;
+			} else if (width > max_width) {
+				if (pct < 0.0) {
+					fail = false;
+				}
+				width = max_width;
+			} else if (new_width == current->width_fraction) {
+				fail = true;
+			} else {
+				fail = false;
 			}
+			current->width_fraction = new_width;
+			current->pending.width = width;
 			if (layout == L_HORIZ) {
 				// If it has children, propagate its width_fraction, overwriting whatever they had
 				for (int i = 0; i < current->pending.children->length; ++i) {
@@ -178,24 +179,25 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 			}
 		} else {
 			double new_height = current->height_fraction + pct;
+			new_height = MIN(MAX(new_height, 0.05), 1.0);
 			double height = workspace->height * new_height - gaps;
-			if (new_height <= 1.0 && new_height >= 0.05) {
-				if (height < min_height) {
-					if (pct > 0.0f) {
-						fail = false;
-					}
-					height = min_height;
-				} else if (height > max_height) {
-					if (pct < 0.0) {
-						fail = false;
-					}
-					height = max_height;
-				} else {
+			if (height < min_height) {
+				if (pct > 0.0f) {
 					fail = false;
 				}
-				current->height_fraction = new_height;
-				current->pending.height = height;
+				height = min_height;
+			} else if (height > max_height) {
+				if (pct < 0.0) {
+					fail = false;
+				}
+				height = max_height;
+			} else if (new_height == current->height_fraction) {
+				fail = true;
+			} else {
+				fail = false;
 			}
+			current->height_fraction = new_height;
+			current->pending.height = height;
 			if (layout == L_VERT) {
 				// If it has children, propagate its height_fraction, overwriting whatever they had
 				for (int i = 0; i < current->pending.children->length; ++i) {
@@ -208,23 +210,24 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 	} else {
 		if (horizontal) {
 			double new_width = current->pending.width + amount->amount;
-			if (new_width <= workspace->width - gaps && new_width >= MIN_SANE_W + gaps) {
-				if (new_width < min_width) {
-					if (amount->amount >= 0) {
-						fail = false;
-					}
-					new_width = min_width;
-				} else if (new_width > max_width) {
-					if (amount->amount <= 0) {
-						fail = false;
-					}
-					new_width = max_width;
-				} else {
+			new_width = MIN(MAX(new_width, MIN_SANE_W + gaps), workspace->width - gaps);
+			if (new_width < min_width) {
+				if (amount->amount >= 0) {
 					fail = false;
 				}
-				current->pending.width = new_width;
-				current->width_fraction = (current->pending.width + gaps) / workspace->width;
+				new_width = min_width;
+			} else if (new_width > max_width) {
+				if (amount->amount <= 0) {
+					fail = false;
+				}
+				new_width = max_width;
+			} else if (round(new_width) == round(current->pending.width)) {
+				fail = true;
+			} else {
+				fail = false;
 			}
+			current->pending.width = new_width;
+			current->width_fraction = (current->pending.width + gaps) / workspace->width;
 			if (layout == L_HORIZ) {
 				// If it has children, propagate its width, overwriting whatever they had
 				for (int i = 0; i < current->pending.children->length; ++i) {
@@ -235,23 +238,24 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 			}
 		} else {
 			double new_height = current->pending.height + amount->amount;
-			if (new_height <= workspace->height - gaps && new_height >= MIN_SANE_H + gaps) {
-				if (new_height < min_height) {
-					if (amount->amount >= 0) {
-						fail = false;
-					}
-					new_height = min_height;
-				} else if (new_height > max_height) {
-					if (amount->amount <= 0) {
-						fail = false;
-					}
-					new_height = max_height;
-				} else {
+			new_height = MIN(MAX(new_height, MIN_SANE_H + gaps), workspace->height - gaps);
+			if (new_height < min_height) {
+				if (amount->amount >= 0) {
 					fail = false;
 				}
-				current->pending.height = new_height;
-				current->height_fraction = (current->pending.height + gaps) / workspace->height;
+				new_height = min_height;
+			} else if (new_height > max_height) {
+				if (amount->amount <= 0) {
+					fail = false;
+				}
+				new_height = max_height;
+			} else if (round(new_height) == round(current->pending.height)) {
+				fail = true;
+			} else {
+				fail = false;
 			}
+			current->pending.height = new_height;
+			current->height_fraction = (current->pending.height + gaps) / workspace->height;
 			if (layout == L_VERT) {
 				// If it has children, propagate its height_fraction, overwriting whatever they had
 				for (int i = 0; i < current->pending.children->length; ++i) {
