@@ -103,9 +103,14 @@ static void scratchpad_toggle_auto(void) {
 	ipc_event_window(con, "move");
 }
 
-static void scratchpad_hide_focused() {
+static void scratchpad_hide_focused(struct sway_container *con) {
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_container *focus = seat_get_focused_container(seat);
+
+	// Return if the focused container is the one we want to toggle
+	if (con == focus) {
+		return;
+	}
 
 	// Check if the currently focused window is a scratchpad window and should
 	// be hidden.
@@ -128,7 +133,7 @@ static void scratchpad_toggle_container(struct sway_container *con) {
 	if (!sway_assert(con->scratchpad, "Container isn't in the scratchpad")) {
 		return;
 	}
-	scratchpad_hide_focused();
+	scratchpad_hide_focused(con);
 
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_workspace *ws = seat_get_focused_workspace(seat);
