@@ -167,6 +167,12 @@ void free_config(struct sway_config *config) {
 		list_free(config->criteria);
 	}
 
+	if (config->animations.anim_disabled) {
+		if (animation_get_path() == config->animations.anim_disabled) {
+			animation_set_path(NULL);
+		}
+		animation_path_destroy(config->animations.anim_disabled);
+	}
 	if (config->animations.anim_default) {
 		if (animation_get_path() == config->animations.anim_default) {
 			animation_set_path(NULL);
@@ -305,6 +311,7 @@ static void config_defaults(struct sway_config *config) {
 	config->animations.frequency_ms = 16; // ~60 Hz
 	config->animations.enabled = true;
 	config->animations.style = ANIM_STYLE_CLIP;
+	config->animations.anim_disabled = animation_path_create(false);
 	double points[] = { 0.215, 0.61, 0.355, 1.0 };
 	list_t *default_points = create_list();
 	for (uint32_t i = 0; i < sizeof(points) / sizeof(double); ++i) {

@@ -270,7 +270,9 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 		return cmd_results_new(CMD_INVALID, "Cannot resize any further");
 	}
 
-	animation_set_path(config->animations.window_size);
+	// Use the dummy anim_disabled curve to prevent a user keeping the bound key
+	// pressed from spamming the animation system tens of times per second.
+	animation_set_path(config->animations.anim_disabled);
 
 	if (current->pending.parent) {
 		arrange_container(current->pending.parent);

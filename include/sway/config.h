@@ -126,6 +126,7 @@ struct sway_animations_config {
 	bool enabled;
 	uint32_t frequency_ms;
 	enum sway_animation_style style;
+	struct sway_animation_path *anim_disabled;
 	struct sway_animation_path *anim_default;
 	struct sway_animation_path *window_open;
 	struct sway_animation_path *window_size;
