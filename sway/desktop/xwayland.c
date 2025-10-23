@@ -35,24 +35,6 @@ static const char *atom_map[ATOM_LAST] = {
 	[NET_WM_STATE_MODAL] = "_NET_WM_STATE_MODAL",
 };
 
-static void unmanaged_handle_request_configure(struct wl_listener *listener,
-		void *data) {
-	struct sway_xwayland_unmanaged *surface =
-		wl_container_of(listener, surface, request_configure);
-	struct wlr_xwayland_surface *xsurface = surface->wlr_xwayland_surface;
-	struct wlr_xwayland_surface_configure_event *ev = data;
-	wlr_xwayland_surface_configure(xsurface, ev->x, ev->y,
-		ev->width, ev->height);
-}
-
-static void unmanaged_handle_set_geometry(struct wl_listener *listener, void *data) {
-	struct sway_xwayland_unmanaged *surface =
-		wl_container_of(listener, surface, set_geometry);
-	struct wlr_xwayland_surface *xsurface = surface->wlr_xwayland_surface;
-
-	sway_scene_node_set_position(&surface->surface_scene->buffer->node, xsurface->x, xsurface->y);
-}
-
 static bool find_container_by_pid(struct sway_container *con, void *data) {
 	if (con && con->view) {
 		pid_t *pid = data;
@@ -67,17 +49,6 @@ static bool find_container_by_pid(struct sway_container *con, void *data) {
 static void get_node_coords(struct wlr_xwayland_surface *xsurface, double *dx, double *dy) {
 	double x, y;
 	struct sway_view *view = view_from_wlr_xwayland_surface(xsurface);
-
-	if (!view || !view->container) {
-		// We could be here if an unmanaged surface (a tooltip for example) is
-		// created without a parent view. Try to find the "parent" by checking PIDs
-		pid_t pid = xsurface->pid;
-		struct sway_container *con = root_find_container(find_container_by_pid, &pid);
-		if (con && con->view) {
-			view = con->view;
-		}
-	}
-
 	if (view && view->container) {
 		struct sway_container *con = view->container;
 		struct sway_workspace *ws = con->pending.workspace;
@@ -119,6 +90,26 @@ static void get_node_coords(struct wlr_xwayland_surface *xsurface, double *dx, d
 	}
 	*dx = x;
 	*dy = y;
+}
+
+static void unmanaged_handle_request_configure(struct wl_listener *listener,
+		void *data) {
+	struct sway_xwayland_unmanaged *surface =
+		wl_container_of(listener, surface, request_configure);
+	struct wlr_xwayland_surface *xsurface = surface->wlr_xwayland_surface;
+	struct wlr_xwayland_surface_configure_event *ev = data;
+	wlr_xwayland_surface_configure(xsurface, ev->x, ev->y,
+		ev->width, ev->height);
+}
+
+static void unmanaged_handle_set_geometry(struct wl_listener *listener, void *data) {
+	struct sway_xwayland_unmanaged *surface =
+		wl_container_of(listener, surface, set_geometry);
+	struct wlr_xwayland_surface *xsurface = surface->wlr_xwayland_surface;
+
+	double x, y;
+	get_node_coords(xsurface, &x, &y);
+	sway_scene_node_set_position(&surface->surface_scene->buffer->node, x, y);
 }
 
 static void unmanaged_handle_map(struct wl_listener *listener, void *data) {
@@ -856,11 +847,21 @@ static void handle_dissociate(struct wl_listener *listener, void *data) {
 
 struct sway_view *view_from_wlr_xwayland_surface(
 		struct wlr_xwayland_surface *xsurface) {
-	while (xsurface) {
-		if (xsurface->data) {
-			return xsurface->data;
+	struct wlr_xwayland_surface *xs = xsurface;
+	while (xs) {
+		if (xs->data) {
+			return xs->data;
 		}
-		xsurface = xsurface->parent;
+		xs = xs->parent;
+	}
+	if (xsurface) {
+		// We could be here if an unmanaged surface (a tooltip for example) is
+		// created without a parent view. Try to find the "parent" by checking PIDs
+		pid_t pid = xsurface->pid;
+		struct sway_container *con = root_find_container(find_container_by_pid, &pid);
+		if (con && con->view) {
+			return con->view;
+		}
 	}
 	return NULL;
 }
