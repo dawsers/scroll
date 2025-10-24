@@ -328,11 +328,17 @@ static uint32_t get_int_prop(struct sway_view *view, enum sway_view_prop prop) {
 
 static uint32_t configure(struct sway_view *view, double lx, double ly, int width,
 		int height) {
+	if (view->destroying) {
+		return 0;
+	}
 	struct sway_xwayland_view *xwayland_view = xwayland_view_from_view(view);
 	if (xwayland_view == NULL) {
 		return 0;
 	}
 	struct wlr_xwayland_surface *xsurface = view->wlr_xwayland_surface;
+	if (xsurface == NULL) {
+		return 0;
+	}
 
 	wlr_xwayland_surface_configure(xsurface, lx, ly, width, height);
 
