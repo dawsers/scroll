@@ -3951,6 +3951,9 @@ void layout_toggle_size_change_focus(struct sway_node *last_focus, struct sway_n
 		new_container = new_focus->sway_container;
 		new_workspace = new_focus->sway_container->pending.workspace;
 	}
+	if (new_workspace == NULL) {
+		return;
+	}
 
 	struct sway_workspace *last_workspace = NULL;
 	struct sway_container *last_container = NULL;
