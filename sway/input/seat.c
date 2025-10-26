@@ -1159,7 +1159,9 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	}
 
 	struct sway_workspace *new_workspace = node->type == N_WORKSPACE ?
-		node->sway_workspace : node->sway_container->pending.workspace;
+		node->sway_workspace : (node->sway_container->pending.workspace ?
+								node->sway_container->pending.workspace :
+								node->sway_container->current.workspace);
 	struct sway_container *container = node->type == N_CONTAINER ?
 		node->sway_container : NULL;
 
@@ -1277,7 +1279,7 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 		layout_modifiers_set_reorder(last_workspace, REORDER_AUTO);
 	}
 
-	layout_toggle_size_change_focus(last_focus, node);
+	layout_toggle_size_change_focus(last_focus, container, new_workspace);
 }
 
 void seat_set_focus(struct sway_seat *seat, struct sway_node *node) {

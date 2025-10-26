@@ -3940,17 +3940,8 @@ void layout_maximize_if_single(struct sway_workspace *workspace) {
 	}
 }
 
-void layout_toggle_size_change_focus(struct sway_node *last_focus, struct sway_node *new_focus) {
-	struct sway_workspace *new_workspace;
-	struct sway_container *new_container;
-	if (new_focus->type == N_WORKSPACE) {
-		// If new_focus is a workspace, leave last_focus as it is
-		new_workspace = new_focus->sway_workspace;
-		return;
-	} else {
-		new_container = new_focus->sway_container;
-		new_workspace = new_focus->sway_container->pending.workspace;
-	}
+void layout_toggle_size_change_focus(struct sway_node *last_focus,
+		struct sway_container *new_container, struct sway_workspace *new_workspace) {
 	if (new_workspace == NULL) {
 		return;
 	}
@@ -3973,11 +3964,13 @@ void layout_toggle_size_change_focus(struct sway_node *last_focus, struct sway_n
 				layout_toggle_size_width_fraction(new_workspace),
 				layout_toggle_size_height_fraction(new_workspace), OPERATION_UNFOCUS);
 		}
-		apply_container_and_parent_sizes(new_container,
-			layout_toggle_size_width_fraction(new_workspace),
-			layout_toggle_size_height_fraction(new_workspace), OPERATION_FOCUS);
+		if (new_container) {
+			apply_container_and_parent_sizes(new_container,
+				layout_toggle_size_width_fraction(new_workspace),
+				layout_toggle_size_height_fraction(new_workspace), OPERATION_FOCUS);
+			node_set_dirty(&new_container->node);
+		}
 		new_workspace->layout.toggle_size.container = new_container;
-		node_set_dirty(&new_container->node);
 	} else {
 		if (new_container) {
 			struct sway_container *old_active = layout_toggle_size_get_container(new_workspace);

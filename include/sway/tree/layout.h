@@ -251,7 +251,8 @@ double layout_toggle_size_height_fraction(struct sway_workspace *workspace);
 void layout_toggle_size(struct sway_workspace *workspace, struct sway_container *container,
 	enum sway_toggle_size mode, double width_fraction, double height_fraction);
 // Called when changing focus to update toggle_size
-void layout_toggle_size_change_focus(struct sway_node *last_focus, struct sway_node *new_focus);
+void layout_toggle_size_change_focus(struct sway_node *last_focus,
+	struct sway_container *new_container, struct sway_workspace *new_workspace);
 
 // Maximize if single option
 void layout_maximize_if_single(struct sway_workspace *workspace);
