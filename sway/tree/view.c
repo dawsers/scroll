@@ -80,6 +80,9 @@ void view_destroy(struct sway_view *view) {
 		return;
 	}
 	wl_list_remove(&view->events.unmap.listener_list);
+	for (int i = 0; i < view->executed_criteria->length; ++i) {
+		criteria_destroy(view->executed_criteria->items[i]);
+	}
 	list_free(view->executed_criteria);
 
 	view_assign_ctx(view, NULL);
@@ -494,7 +497,7 @@ static bool view_has_executed_criteria(struct sway_view *view,
 		struct criteria *criteria) {
 	for (int i = 0; i < view->executed_criteria->length; ++i) {
 		struct criteria *item = view->executed_criteria->items[i];
-		if (item == criteria) {
+		if (criteria_is_equal(item, criteria)) {
 			return true;
 		}
 	}
@@ -512,7 +515,8 @@ void view_execute_criteria(struct sway_view *view) {
 		}
 		sway_log(SWAY_DEBUG, "for_window '%s' matches view %p, cmd: '%s'",
 				criteria->raw, view, criteria->cmdlist);
-		list_add(view->executed_criteria, criteria);
+		struct criteria *duplicate = criteria_duplicate(criteria);
+		list_add(view->executed_criteria, duplicate);
 		list_t *res_list = execute_command(criteria->cmdlist, NULL, view->container);
 		while (res_list->length) {
 			struct cmd_results *res = res_list->items[0];

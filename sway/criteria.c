@@ -90,6 +90,20 @@ static void pattern_destroy(struct pattern *pattern) {
 	}
 }
 
+static struct pattern *pattern_duplicate(struct pattern *pattern) {
+	if (!pattern) {
+		return NULL;
+	}
+	struct pattern *dup = calloc(1, sizeof(struct pattern));
+	if (!dup) {
+		sway_log(SWAY_ERROR, "Failed to allocate pattern");
+		return NULL;
+	}
+	dup->match_type = pattern->match_type;
+	dup->regex = pcre2_code_copy_with_tables(pattern->regex);
+	return dup;
+}
+
 void criteria_destroy(struct criteria *criteria) {
 	pattern_destroy(criteria->title);
 	pattern_destroy(criteria->shell);
@@ -872,4 +886,40 @@ bool criteria_already_exists(struct criteria *criteria) {
 		}
 	}
 	return false;
+}
+
+struct criteria *criteria_duplicate(struct criteria *criteria) {
+	struct criteria *dup = calloc(1, sizeof(struct criteria));
+	if (!dup) {
+		sway_log(SWAY_ERROR, "Failed to allocate criteria");
+		return NULL;
+	}
+	dup->type = criteria->type;
+	dup->raw = criteria->raw ? strdup(criteria->raw) : NULL;
+	dup->cmdlist = criteria->cmdlist ? strdup(criteria->cmdlist) : NULL;
+	dup->target = criteria->target ? strdup(criteria->target) : NULL;
+	dup->title = pattern_duplicate(criteria->title);
+	dup->shell = pattern_duplicate(criteria->shell);
+	dup->app_id = pattern_duplicate(criteria->app_id);
+	dup->con_mark = pattern_duplicate(criteria->con_mark);
+	dup->con_id = criteria->con_id;
+#if WLR_HAS_XWAYLAND
+	dup->class = pattern_duplicate(criteria->class);
+	dup->id = criteria->id;
+	dup->instance = pattern_duplicate(criteria->instance);
+	dup->window_role = pattern_duplicate(criteria->window_role);
+	dup->window_type = criteria->window_type;
+#endif
+	dup->all = criteria->all;
+	dup->floating = criteria->floating;
+	dup->tiling = criteria->tiling;
+	dup->urgent = criteria->urgent;
+	dup->workspace = pattern_duplicate(criteria->workspace);
+	dup->pid = criteria->pid;
+	dup->sandbox_engine = pattern_duplicate(criteria->sandbox_engine);
+	dup->sandbox_app_id = pattern_duplicate(criteria->sandbox_app_id);
+	dup->sandbox_instance_id = pattern_duplicate(criteria->sandbox_instance_id);
+	dup->tag = pattern_duplicate(criteria->tag);
+
+	return dup;
 }

@@ -87,4 +87,13 @@ list_t *criteria_for_view(struct sway_view *view, enum criteria_type types);
  */
 list_t *criteria_get_containers(struct criteria *criteria);
 
+/**
+ * Ducplicate criteria
+ *
+ * When the configuration gets reloaded, the executed criteria for a view point
+ * to invalid criteria pointers. If criteria are stored as full objects, we avoid
+ * this possibility.
+ */
+struct criteria *criteria_duplicate(struct criteria *criteria);
+
 #endif
