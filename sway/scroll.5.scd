@@ -78,7 +78,7 @@ The following commands may only be used in the configuration file.
 	unless you have a very high refresh rate monitor.
 
 	*style* <clip|scale>
-	Default is _clip_. _clip_ keeps the resolution of the client and clips the
+	Default is _scale_. _clip_ keeps the resolution of the client and clips the
 	container while animating. This leads to a part of the container showing the
 	background when resizing containers to a smaller size, but at the same time,
 	the content is always the same, making it easier to read. _scale_, instead,
