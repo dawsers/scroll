@@ -1,7 +1,7 @@
 project(
 	'scroll',
 	'c',
-	version: '1.11.6',
+	version: '1.11.8',
 	license: 'MIT',
 	meson_version: '>=1.3',
 	default_options: [
@@ -38,7 +38,7 @@ if is_freebsd
 endif
 
 # Execute the wlroots subproject, if any
-wlroots_version = ['>=0.19.1', '<0.20.0']
+wlroots_version = ['>=0.19.2', '<0.20.0']
 subproject(
 	'wlroots',
 	default_options: ['examples=false'],

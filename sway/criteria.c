@@ -919,7 +919,6 @@ struct criteria *criteria_duplicate(struct criteria *criteria) {
 	dup->sandbox_engine = pattern_duplicate(criteria->sandbox_engine);
 	dup->sandbox_app_id = pattern_duplicate(criteria->sandbox_app_id);
 	dup->sandbox_instance_id = pattern_duplicate(criteria->sandbox_instance_id);
-	dup->tag = pattern_duplicate(criteria->tag);
 
 	return dup;
 }
