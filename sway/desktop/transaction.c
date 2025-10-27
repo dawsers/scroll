@@ -845,6 +845,17 @@ static void default_arrange_children(struct sway_workspace *workspace,
 	}
 }
 
+static void map_to_configure(double content_x, double content_y, double content_width,
+		double content_height, int *cx, int *cy, int *cw, int *ch) {
+	// We need to match what we did in view_configure()
+	*cx = round(content_x);
+	*cy = round(content_y);
+	int ex = round(content_x + content_width);
+	int ey = round(content_y + content_height);
+	*cw = ex - *cx;
+	*ch = ey - *cy;
+}
+
 static void animation_arrange_children(struct sway_workspace *workspace,
 		enum sway_container_layout layout, list_t *children,
 		struct sway_scene_tree *content);
@@ -940,11 +951,16 @@ static void arrange_container(struct sway_container *con,
 			// Only update the view at the end of the animation to avoid stress
 			double t, x, y, off;
 			animation_get_values(&t, &x, &y, &off);
+			int pcx, pcy, pcw, pch;
+			map_to_configure(con->pending.content_x, con->pending.content_y,
+				con->pending.content_width, con->pending.content_height,
+				&pcx, &pcy, &pcw, &pch);
+			int ocx, ocy, ocw, och;
+			map_to_configure(con->old_content.x, con->old_content.y,
+				con->old_content.width, con->old_content.height,
+				&ocx, &ocy, &ocw, &och);
 			if (t >= 1.0 &&
-				(con->pending.content_x != con->current.content_x ||
-				con->pending.content_y != con->current.content_y ||
-				con->pending.content_width != con->current.content_width ||
-				con->pending.content_height != con->current.content_height)) {
+				(pcx != ocx || pcy != ocy || pcw != ocw || pch != och)) {
 				view_configure(con->view, con->pending.content_x, con->pending.content_y,
 					con->pending.content_width, con->pending.content_height);
 				con->current.content_x = con->pending.content_x;
@@ -1448,15 +1464,26 @@ static bool should_configure(struct sway_node *node,
 #if WLR_HAS_XWAYLAND
 	// Xwayland views are position-aware and need to be reconfigured
 	// when their position changes.
+	// For scroll, they all need to be reconfigured, not just the dirty ones,
+	// because focusing or moving may change their positions, so we do it in
+	// arrange_container(), which goes over every window. We only configure
+	// here those that come in the transaction.
 	if (node->sway_container->view->type == SWAY_VIEW_XWAYLAND) {
-		// Sway logical coordinates are doubles, but they get truncated to
-		// integers when sent to Xwayland through `xcb_configure_window`.
-		// X11 apps will not respond to duplicate configure requests (from their
-		// truncated point of view) and cause transactions to time out.
-		if ((int)cstate->content_x != (int)istate->content_x ||
-				(int)cstate->content_y != (int)istate->content_y) {
+		int cx, cy, cw, ch;
+		map_to_configure(cstate->content_x, cstate->content_y, cstate->content_width,
+			cstate->content_height, &cx, &cy, &cw, &ch);
+		int ix, iy, iw, ih;
+		map_to_configure(istate->content_x, istate->content_y, istate->content_width,
+			istate->content_height, &ix, &iy, &iw, &ih);
+		if (cx != ix || cy != iy || cw != iw || ch != ih) {
+			// Update old_content so we don't re-configure in arrange_container()
+			node->sway_container->old_content.x = istate->content_x;
+			node->sway_container->old_content.y = istate->content_y;
+			node->sway_container->old_content.width = istate->content_width;
+			node->sway_container->old_content.height = istate->content_height;
 			return true;
 		}
+		return false;
 	}
 #endif
 	if (cstate->content_width == istate->content_width &&
@@ -1576,11 +1603,13 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 		double x, double y, int width, int height) {
 	struct sway_transaction_instruction *instruction =
 		view->container->node.instruction;
+	int ccx, ccy, ccw, cch;
+	map_to_configure(instruction->container_state.content_x, instruction->container_state.content_y,
+		instruction->container_state.content_width, instruction->container_state.content_height,
+		&ccx, &ccy, &ccw, &cch);
 	if (instruction != NULL &&
-			(int)instruction->container_state.content_x == (int)x &&
-			(int)instruction->container_state.content_y == (int)y &&
-			instruction->container_state.content_width == width &&
-			instruction->container_state.content_height == height) {
+			ccx == (int)x && ccy == (int)y &&
+			ccw == width && cch == height) {
 		set_instruction_ready(instruction);
 		return true;
 	}
@@ -1599,6 +1628,12 @@ static void children_save_animation_variables(list_t *children) {
 		child->animation.h0 = child->current.height;
 		child->animation.w1 = child->pending.width;
 		child->animation.h1 = child->pending.height;
+		if (child->view && child->view->type == SWAY_VIEW_XWAYLAND) {
+			child->old_content.x = child->current.content_x;
+			child->old_content.y = child->current.content_y;
+			child->old_content.width = child->current.content_width;
+			child->old_content.height = child->current.content_height;
+		}
 		children_save_animation_variables(child->pending.children);
 	}
 }
@@ -1645,7 +1680,7 @@ static void _transaction_commit_dirty(bool server_request) {
 	}
 	server.dirty_nodes->length = 0;
 
-	// Save states to animation variables
+	// Save states to animation variables and old_content
 	save_animation_variables();
 
 	transaction_commit_pending();
