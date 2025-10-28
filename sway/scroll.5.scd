@@ -1467,6 +1467,10 @@ The default colors are:
 	can use it to open applications automatically when you create workspace
 	_name_.
 
+*workspace* swap <name>
+	Swaps the workspace with <name> and the currently focused one. They can be
+	on different outputs.
+
 *workspace_auto_back_and_forth* yes|no
 	When _yes_, repeating a workspace switch command will switch back to the
 	prior workspace. For example, if you are currently on workspace 1,

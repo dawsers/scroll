@@ -6,6 +6,8 @@
 #include "sway/config.h"
 #include "sway/input/seat.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/arrange.h"
+#include "sway/output.h"
 #include "list.h"
 #include "log.h"
 #include "stringop.h"
@@ -127,6 +129,47 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, "workspace", EXPECTED_AT_LEAST, 1))) {
 		return error;
+	}
+
+	if (strcasecmp(argv[0], "swap") == 0) {
+		struct sway_workspace *workspace = config->handler_context.workspace;
+		if (!workspace) {
+			return cmd_results_new(CMD_INVALID,
+					"This command only works when called from a workspace");
+		}
+		struct sway_workspace *swap_ws;
+		if (isdigit(argv[1][0])) {
+			if (!(swap_ws = workspace_by_number(argv[1]))) {
+				return cmd_results_new(CMD_INVALID,
+						"Invalid workspace number '%s'", argv[1]);
+			}
+		} else {
+			if (!(swap_ws = workspace_by_name(argv[1]))) {
+				return cmd_results_new(CMD_INVALID,
+						"Invalid workspace name '%s'", argv[1]);
+			}
+		}
+		char *name = workspace->name;
+		workspace->name = swap_ws->name;
+		swap_ws->name = name;
+		struct sway_output *output = workspace->output;
+		struct sway_output *swap_output = swap_ws->output;
+		if (output != swap_output) {
+			workspace_detach(workspace);
+			workspace_detach(swap_ws);
+			output_add_workspace(output, swap_ws);
+			output_add_workspace(swap_output, workspace);
+			output_sort_workspaces(output);
+			output_sort_workspaces(swap_output);
+			arrange_workspace(workspace);
+			arrange_workspace(swap_ws);
+		} else {
+			node_set_dirty(&swap_ws->node);
+			node_set_dirty(&workspace->node);
+			output_sort_workspaces(output);
+		}
+		workspace_switch(swap_ws);
+		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
 	int output_location = -1;
