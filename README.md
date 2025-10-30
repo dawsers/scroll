@@ -73,6 +73,9 @@ man scrollnag
 same and the executables are renamed to *scroll*, "scrollmsg", "scrollnag" and
 "scrollbar".
 
+*scroll* uses a modified version of [wlroots](https://gitlab.freedesktop.org/wlroots/wlroots)
+which is included in the source tree and linked statically.
+
 ### Arch Linux
 
 If you are using Arch Linux, there are two AUR package you can install:
@@ -89,8 +92,7 @@ paru -S sway-scroll-stable
 ```
 
 * Unstable, development version: `sway-scroll-git`. This has all the newest
-  changes and features, and it is compatible with `sway-git`. It normally uses
-  the development version of `wlroots`.
+  changes and features, and it is compatible with `sway-git`.
 
 ``` sh
 paru -S sway-scroll-git
@@ -116,7 +118,14 @@ display manager using the provided `/usr/share/wayland-sessions/scroll.desktop`.
 
 If you want to compile *scroll* yourself, [sway compiling instructions](https://github.com/swaywm/sway#compiling-from-source)
 apply to *scroll*. You will also need to install the lua package (version >= 5.4)
-to enable lua scripting.
+to enable lua scripting. `wlroots` is no longer a requirement, as the
+source is included in the scroll source tree.
+
+``` sh
+meson setup build/
+ninja -C build/
+sudo ninja -C build/ install
+```
 
 ## Configuration
 
