@@ -1362,28 +1362,30 @@ bool view_is_content_scaled(struct sway_view *view) {
 	return view->content_scale > 0.0f;
 }
 
-static void view_get_animation_sizes(struct sway_view *view, double *wt, double *ht,
-		double *w1, double *h1) {
-	struct sway_container *con = view->container;
-	const int thickness = con->pending.border_thickness;
-	const int border_horiz = con->pending.border_left * thickness
-		+ con->pending.border_right * thickness;
-	int border_vert = con->pending.border_bottom * thickness;
-	if (con->pending.border == B_NORMAL) {
-		border_vert += container_titlebar_height();
+static void container_get_borders(struct sway_container *container, int *border_horiz, int *border_vert) {
+	const int thickness = container->pending.border_thickness;
+	*border_horiz = container->pending.border_left * thickness
+		+ container->pending.border_right * thickness;
+	*border_vert = container->pending.border_bottom * thickness;
+	if (container->pending.border == B_NORMAL) {
+		*border_vert += container_titlebar_height();
 	} else {
-		border_vert += con->pending.border_top * thickness;
+		*border_vert += container->pending.border_top * thickness;
 	}
-	*w1 = con->animation.w1 - border_horiz;
-	*h1 = con->animation.h1 - border_vert;
+}
+
+static void view_get_animation_sizes(struct sway_view *view, double *wt, double *ht) {
+	struct sway_container *con = view->container;
+	int border_horiz, border_vert;
+	container_get_borders(con, &border_horiz, &border_vert);
 	if (animation_enabled() &&
 		view->container->pending.fullscreen_mode == FULLSCREEN_NONE &&
 		!container_is_floating(view->container)) {
-		*wt = con->animation.wt - border_horiz;
-		*ht = con->animation.ht - border_vert;
+		*wt = MAX(con->animation.wt - border_horiz, 0.0);
+		*ht = MAX(con->animation.ht - border_vert, 0.0);
 	} else {
-		*wt = *w1;
-		*ht = *h1;
+		*wt = MAX(con->animation.w1 - border_horiz, 0.0);
+		*ht = MAX(con->animation.h1 - border_vert, 0.0);
 	}
 }
 
@@ -1392,14 +1394,21 @@ void view_get_animation_scales(struct sway_view *view,
 	if (view && view->container && view->container->pending.fullscreen_mode == FULLSCREEN_NONE &&
 		config->animations.style == ANIM_STYLE_SCALE &&
 		!container_is_floating(view->container)) {
-		double wt, ht, w1, h1;
-		view_get_animation_sizes(view, &wt, &ht, &w1, &h1);
-		*wscale = wt / w1;
-		*hscale = ht / h1;
-	} else {
-		*wscale = 1.0;
-		*hscale = 1.0;
+		struct sway_container *con = view->container;
+		int border_horiz, border_vert;
+		container_get_borders(con, &border_horiz, &border_vert);
+		double w1 = con->animation.w1 - border_horiz;
+		double h1 = con->animation.h1 - border_vert;
+		double wt = con->animation.wt - border_horiz;
+		double ht = con->animation.ht - border_vert;
+		if (w1 > 0.0 && h1 > 0.0) {
+			*wscale = wt > 0.0 ? wt / w1 : 0.0;
+			*hscale = ht > 0.0 ? ht / h1 : 0.0;
+			return;
+		}
 	}
+	*wscale = 1.0;
+	*hscale = 1.0;
 }
 
 static void clip_view(struct sway_view *view) {
@@ -1412,8 +1421,8 @@ static void clip_view(struct sway_view *view) {
 	}
 
 	if (animation_enabled() && config->animations.style == ANIM_STYLE_CLIP) {
-		double wt, ht, w1, h1;
-		view_get_animation_sizes(view, &wt, &ht, &w1, &h1);
+		double wt, ht;
+		view_get_animation_sizes(view, &wt, &ht);
 		double content_scale = view_is_content_scaled(view) ?
 			view_get_content_scale(view) : 1.0;
 		struct wlr_box clip = {
