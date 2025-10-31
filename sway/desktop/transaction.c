@@ -1628,12 +1628,14 @@ static void children_save_animation_variables(list_t *children) {
 		child->animation.h0 = child->current.height;
 		child->animation.w1 = child->pending.width;
 		child->animation.h1 = child->pending.height;
+#if WLR_HAS_XWAYLAND
 		if (child->view && child->view->type == SWAY_VIEW_XWAYLAND) {
 			child->old_content.x = child->current.content_x;
 			child->old_content.y = child->current.content_y;
 			child->old_content.width = child->current.content_width;
 			child->old_content.height = child->current.content_height;
 		}
+#endif
 		children_save_animation_variables(child->pending.children);
 	}
 }
