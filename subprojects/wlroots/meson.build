@@ -152,7 +152,8 @@ lib_wlr = static_library(
 	versioned_name, wlr_files,
 	dependencies: wlr_deps,
 	include_directories: [wlr_inc],
-	install: true,
+	# install: true,
+	install: false,
 	link_args: symbols_flag,
 	link_depends: symbols_file,
 )
@@ -178,12 +179,12 @@ if get_option('examples')
 	subdir('tinywl')
 endif
 
-pkgconfig = import('pkgconfig')
-pkgconfig.generate(
-	lib_wlr,
-	name: versioned_name,
-	description: 'Wayland compositor library',
-	subdirs: versioned_name,
-	url: 'https://gitlab.freedesktop.org/wlroots/wlroots',
-	variables: wlr_vars,
-)
+# pkgconfig = import('pkgconfig')
+# pkgconfig.generate(
+# 	lib_wlr,
+# 	name: versioned_name,
+# 	description: 'Wayland compositor library',
+# 	subdirs: versioned_name,
+# 	url: 'https://gitlab.freedesktop.org/wlroots/wlroots',
+# 	variables: wlr_vars,
+# )

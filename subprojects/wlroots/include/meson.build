@@ -24,10 +24,10 @@ if not features.get('session')
 	exclude_files += 'backend/session.h'
 endif
 
-install_subdir('wlr',
-	install_dir: get_option('includedir') / versioned_name,
-	exclude_files: exclude_files,
-)
+# install_subdir('wlr',
+# 	install_dir: get_option('includedir') / versioned_name,
+# 	exclude_files: exclude_files,
+# )
 
 foreach name, have : internal_features
 	internal_config.set10('HAVE_' + name.underscorify().to_upper(), have)

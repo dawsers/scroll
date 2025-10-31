@@ -22,4 +22,4 @@ ver_h = configure_file(
 	configuration: version_data,
 )
 
-install_headers(conf_h, ver_h, subdir: versioned_name / 'wlr')
+# install_headers(conf_h, ver_h, subdir: versioned_name / 'wlr')
