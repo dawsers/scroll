@@ -100,7 +100,7 @@ paru -S sway-scroll-git
 
 ### Fedora Linux
 
-Thanks to @mecattaf, [scroll stable is also available on the Fedora Copr](https://copr.fedorainfracloud.org/coprs/mecattaf/duoRPM/).
+Thanks to @mecattaf, [scroll stable is also available on the Fedora Copr](https://copr.fedorainfracloud.org/coprs/scrollwm/packages/).
 
 ### Void Linux
 
