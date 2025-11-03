@@ -85,9 +85,6 @@ void view_destroy(struct sway_view *view) {
 		return;
 	}
 	wl_list_remove(&view->events.unmap.listener_list);
-	for (int i = 0; i < view->executed_criteria->length; ++i) {
-		criteria_destroy(view->executed_criteria->items[i]);
-	}
 	list_free(view->executed_criteria);
 
 	view_assign_ctx(view, NULL);
@@ -954,6 +951,9 @@ void view_unmap(struct sway_view *view) {
 
 	wl_signal_emit_mutable(&view->events.unmap, view);
 
+	for (int i = 0; i < view->executed_criteria->length; ++i) {
+		criteria_destroy(view->executed_criteria->items[i]);
+	}
 	view->executed_criteria->length = 0;
 
 	if (view->urgent_timer) {
