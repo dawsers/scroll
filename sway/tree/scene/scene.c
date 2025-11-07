@@ -755,7 +755,8 @@ static void scene_node_bounds(struct sway_scene_node *node,
 
 	double width, height;
 	scene_node_get_size(node, &width, &height);
-	pixman_region32_union_rect(visible, visible, x, y, round(width), round(height));
+	pixman_region32_union_rect(visible, visible, floor(x), floor(y),
+		ceil(x + width) - floor(x), ceil(y + height) - floor(y));
 }
 
 static void scene_update_region(struct sway_scene *scene,
