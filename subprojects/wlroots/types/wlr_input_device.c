@@ -7,7 +7,7 @@ void wlr_input_device_init(struct wlr_input_device *dev,
 		enum wlr_input_device_type type, const char *name) {
 	*dev = (struct wlr_input_device){
 		.type = type,
-		.name = strdup(name),
+		.name = name ? strdup(name) : NULL,
 	};
 
 	wl_signal_init(&dev->events.destroy);
