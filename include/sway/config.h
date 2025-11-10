@@ -547,7 +547,7 @@ struct sway_config {
 	int font_height;
 	int font_baseline;
 	bool pango_markup;
-	int titlebar_border_thickness;
+	int titlebar_border_radius;
 	int titlebar_h_padding;
 	int titlebar_v_padding;
 	size_t urgent_timeout;
@@ -633,6 +633,17 @@ struct sway_config {
 	bool gesture_scroll_enable;
 	uint32_t gesture_scroll_fingers;
 	float gesture_scroll_sentitivity;
+	struct {
+		int border_radius;
+		bool dim;
+		float dim_color[4];
+		bool shadow;
+		bool shadow_dynamic;
+		int shadow_size;
+		int shadow_blur;
+		int shadow_offset[2];
+		float shadow_color[4];
+	} decoration;
 
 	struct sway_animations_config animations;
 

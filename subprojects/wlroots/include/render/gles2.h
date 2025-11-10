@@ -35,6 +35,9 @@ struct wlr_gles2_tex_shader {
 	GLint tex;
 	GLint alpha;
 	GLint pos_attrib;
+	GLint box;
+	GLint radius_top;
+	GLint radius_bottom;
 };
 
 struct wlr_gles2_renderer {
@@ -80,6 +83,36 @@ struct wlr_gles2_renderer {
 			GLint color;
 			GLint pos_attrib;
 		} quad;
+		struct {
+			GLuint program;
+			GLint proj;
+			GLint border;
+			GLint title_bar;
+			GLint dim;
+			GLint border_width;
+			GLint border_radius;
+			GLint title_bar_height;
+			GLint title_bar_border_radius;
+			GLint box;
+			GLint border_top;
+			GLint border_bottom;
+			GLint border_left;
+			GLint border_right;
+			GLint title_bar_color;
+			GLint dim_color;
+			GLint pos_attrib;
+		} decoration;
+		struct {
+			GLuint program;
+			GLint proj;
+			GLint box;
+			GLint radius_top;
+			GLint radius_bottom;
+			GLint enabled;
+			GLint blur;
+			GLint color;
+			GLint pos_attrib;
+		} shadow;
 		struct wlr_gles2_tex_shader tex_rgba;
 		struct wlr_gles2_tex_shader tex_rgbx;
 		struct wlr_gles2_tex_shader tex_ext;
@@ -87,6 +120,7 @@ struct wlr_gles2_renderer {
 
 	struct wl_list buffers; // wlr_gles2_buffer.link
 	struct wl_list textures; // wlr_gles2_texture.link
+	struct wl_list objects; // wlr_gles2_object.link
 };
 
 struct wlr_gles2_render_timer {
@@ -131,6 +165,12 @@ struct wlr_gles2_texture {
 	struct wlr_gles2_buffer *buffer; // for DMA-BUF imports only
 };
 
+struct wlr_gles2_object {
+	struct wlr_object wlr_object;
+	struct wlr_gles2_renderer *renderer;
+	struct wl_list link; // wlr_gles2_renderer.objects
+};
+
 struct wlr_gles2_render_pass {
 	struct wlr_render_pass base;
 	struct wlr_gles2_buffer *buffer;
@@ -172,5 +212,10 @@ void pop_gles2_debug(struct wlr_gles2_renderer *renderer);
 struct wlr_gles2_render_pass *begin_gles2_buffer_pass(struct wlr_gles2_buffer *buffer,
 	struct wlr_egl_context *prev_ctx, struct wlr_gles2_render_timer *timer,
 	struct wlr_drm_syncobj_timeline *signal_timeline, uint64_t signal_point);
+
+void gles2_object_destroy(struct wlr_gles2_object *object);
+
+struct wlr_object *gles2_object_with_owner(struct wlr_renderer *wlr_renderer,
+		enum wlr_object_type type, const void *owner);
 
 #endif

@@ -4,7 +4,8 @@
 
 void wlr_render_pass_init(struct wlr_render_pass *render_pass,
 		const struct wlr_render_pass_impl *impl) {
-	assert(impl->submit && impl->add_texture && impl->add_rect);
+	assert(impl->submit && impl->add_texture && impl->add_rect &&
+		   impl->add_decoration && impl->add_shadow);
 	*render_pass = (struct wlr_render_pass){
 		.impl = impl,
 	};
@@ -32,6 +33,16 @@ void wlr_render_pass_add_rect(struct wlr_render_pass *render_pass,
 		const struct wlr_render_rect_options *options) {
 	assert(options->box.width >= 0 && options->box.height >= 0);
 	render_pass->impl->add_rect(render_pass, options);
+}
+
+void wlr_render_pass_add_decoration(struct wlr_render_pass *render_pass,
+		const struct wlr_render_decoration_options *options) {
+	render_pass->impl->add_decoration(render_pass, options);
+}
+
+void wlr_render_pass_add_shadow(struct wlr_render_pass *render_pass,
+		const struct wlr_render_shadow_options *options) {
+	render_pass->impl->add_shadow(render_pass, options);
 }
 
 void wlr_render_texture_options_get_src_box(const struct wlr_render_texture_options *options,

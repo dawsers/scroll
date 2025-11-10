@@ -56,6 +56,8 @@ enum sway_scene_node_type {
 	SWAY_SCENE_NODE_TREE,
 	SWAY_SCENE_NODE_RECT,
 	SWAY_SCENE_NODE_BUFFER,
+	SWAY_SCENE_NODE_DECORATION,
+	SWAY_SCENE_NODE_SHADOW,
 };
 
 struct sway_scene_node_info {
@@ -159,6 +161,36 @@ struct sway_scene_rect {
 	float color[4];
 };
 
+struct sway_scene_decoration {
+	struct sway_scene_node node;
+	struct sway_view *view;
+	struct wlr_object *wlr_object;
+	double width, height;
+	bool title_bar;
+	double title_bar_height;
+	double title_bar_border_radius;
+	float title_bar_color[4];
+	bool border;
+	double border_radius;
+	double border_width;
+	float border_top_color[4], border_bottom_color[4], border_left_color[4], border_right_color[4];
+	bool dim;
+	float dim_color[4];
+};
+
+struct sway_scene_shadow {
+	struct sway_scene_node node;
+	struct sway_scene_decoration *decoration;
+	struct wlr_object *wlr_object;
+	double width, height;
+	bool enabled;
+	bool dynamic;
+	double size;
+	double blur;
+	double offset[2];
+	float color[4];
+};
+
 struct sway_scene_outputs_update_event {
 	struct sway_scene_output **active;
 	size_t size;
@@ -229,6 +261,10 @@ struct sway_scene_buffer {
 		// as {R, G, B, A} where the max value of each component is UINT32_MAX
 		uint32_t single_pixel_buffer_color[4];
 	};
+
+	// Radii of the two top and two bottom corners
+	float radius_top;
+	float radius_bottom;
 };
 
 /** A viewport for an output in the scene-graph */
@@ -478,6 +514,69 @@ void sway_scene_rect_set_size(struct sway_scene_rect *rect, double width, double
 void sway_scene_rect_set_color(struct sway_scene_rect *rect, const float color[static 4]);
 
 /**
+ * Add a decoration node for a view to the scene-graph.
+ */
+struct sway_scene_decoration *sway_scene_decoration_create(struct sway_scene_tree *parent,
+		struct sway_view *view, double width, double height);
+
+/**
+ * Change the width and height of an existing decoration node.
+ */
+void sway_scene_decoration_set_size(struct sway_scene_decoration *deco, double width, double height);
+
+/**
+ * Add a border to an existing decoration node with the given colors.
+ *
+ * The color argument must be a premultiplied color value.
+ */
+void sway_scene_decoration_set_border_color(struct sway_scene_decoration *deco,
+	const float border_top[static 4], const float border_bottom[static 4],
+	const float border_left[static 4], const float border_right[static 4]);
+
+/**
+ * Change the radius of an existing decoration node.
+ */
+void sway_scene_decoration_set_border_radius(struct sway_scene_decoration *deco, double radius);
+
+/**
+ * Change the width of the border of an existing decoration node.
+ */
+void sway_scene_decoration_set_border_width(struct sway_scene_decoration *deco, double width);
+
+/**
+ * Add a title bar to an existing decoration node with the given height, border radius and text box.
+ */
+void sway_scene_decoration_set_title_bar(struct sway_scene_decoration *deco, double height,
+		double border_radius, struct wlr_fbox *text_box, struct wlr_fbox *marks_box);
+
+/**
+ * Set the color of the title bar of an existing decoration node.
+ * The color argument must be a premultiplied color value.
+ */
+void sway_scene_decoration_set_title_bar_color(struct sway_scene_decoration *deco,
+	const float color[static 4]);
+
+/**
+ * Dims the view for an existing decoration node.
+ * The color argument must be a premultiplied color value.
+ */
+void sway_scene_decoration_set_dimming(struct sway_scene_decoration *deco,
+	bool dim, const float color[static 4]);
+
+/**
+ * Add a shadow node for a view to the scene graph
+ */
+struct sway_scene_shadow *sway_scene_shadow_create(struct sway_scene_tree *parent,
+		struct sway_scene_decoration *decoration);
+
+/**
+ * Change the shadow properties for an existing shadow node.
+ */
+void sway_scene_shadow_set_properties(struct sway_scene_shadow *shadow,
+	double width, double height, bool enabled, bool dynamic,
+	double size, double blur, const double offset[static 2], float color[4]);
+
+/**
  * Add a node displaying a buffer to the scene-graph.
  *
  * If the buffer is NULL, this node will not be displayed.
@@ -549,6 +648,12 @@ void sway_scene_buffer_set_source_box(struct sway_scene_buffer *scene_buffer,
  */
 void sway_scene_buffer_set_dest_size(struct sway_scene_buffer *scene_buffer,
 	double width, double height);
+
+/**
+ * Sets the two top and two bottom radii for the buffer.
+ */
+void sway_scene_buffer_set_radius(struct sway_scene_buffer *scene_buffer,
+	float radius_top, float radius_bottom);
 
 /**
  * Set a transform which will be applied to the buffer.

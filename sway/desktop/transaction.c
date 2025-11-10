@@ -715,7 +715,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 				off = child->pending.y;
 			}
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
-			sway_scene_node_set_enabled(&child->border.tree->node, true);
+			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			double movement = fabs(off - child->animation.y0);
 			if (movement > 0.0) {
 				child->animation.yt = linear_scale(child->animation.y0, off, x);
@@ -757,7 +757,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 				child->current.x = workspace->x + scale * gaps;
 				child->pending.x = workspace->x + scale * gaps;
 			}
-			sway_scene_node_set_enabled(&child->border.tree->node, true);
+			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			double movement = fabs(off - child->animation.y0);
 			if (movement > 0.0) {
 				child->animation.yt = linear_scale(child->animation.y0, off, x);
@@ -788,7 +788,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			} else {
 				child->animation.xt = child->animation.x0;
 			}
-			sway_scene_node_set_enabled(&child->border.tree->node, true);
+			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
 			// Update child for next iteration. Transactions don't re-arrange
 			// the layout (arrange.c:apply_xxx()), so we need to set it here,
@@ -826,7 +826,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 				child->current.y = workspace->y + scale * gaps;
 				child->pending.y = workspace->y + scale * gaps;
 			}
-			sway_scene_node_set_enabled(&child->border.tree->node, true);
+			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			double movement = fabs(off - child->animation.x0);
 			if (movement > 0.0) {
 				child->animation.xt = linear_scale(child->animation.x0, off, x);
@@ -884,9 +884,6 @@ static void arrange_container(struct sway_container *con,
 
 		if (title_bar && con->current.border != B_NORMAL) {
 			sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
-			sway_scene_node_set_enabled(&con->border.top->node, true);
-		} else {
-			sway_scene_node_set_enabled(&con->border.top->node, false);
 		}
 
 		if (con->current.border == B_NORMAL) {
@@ -896,6 +893,7 @@ static void arrange_container(struct sway_container *con,
 				border_top = 0;
 				// should be handled by the parent container
 			}
+			border_top += border_width;
 		} else if (con->current.border == B_PIXEL) {
 			container_update(con);
 			border_top = title_bar && con->current.border_top ? border_width : 0;
@@ -906,35 +904,68 @@ static void arrange_container(struct sway_container *con,
 		} else if (con->current.border == B_CSD) {
 			border_top = 0;
 			border_width = 0;
+			con->decoration.full->title_bar = false;
 		} else {
 			sway_assert(false, "unreachable");
 		}
 
-		double border_bottom = con->current.border_bottom ? border_width : 0;
 		double border_left = con->current.border_left ? border_width : 0;
-		double border_right = con->current.border_right ? border_width : 0;
-		double vert_border_height = MAX(0, height - border_top - border_bottom);
+		sway_scene_decoration_set_size(con->decoration.full, width, height);
+		sway_scene_decoration_set_border_width(con->decoration.full, border_width);
+		sway_scene_decoration_set_border_radius(con->decoration.full, con->pending.decoration.border_radius * scale);
+		double shadow_offset[2] = {
+			con->pending.decoration.shadow_offset_x,
+			con->pending.decoration.shadow_offset_y
+		};
+		sway_scene_node_set_enabled(&con->shadow->node, false);
+		struct sway_scene_decoration * decoration = con->decoration.full;
+		struct sway_scene_shadow *shadow = con->shadow;
+		double sx, sy, sw, sh;
+		const double size = con->pending.decoration.shadow_size;
+		if (con->pending.decoration.shadow_dynamic) {
+			// For a height (or width) of 0.5 root->height, compute ratio d/D so 
+			// height projected is height + 2 * size
+			double w = 0.5 * root->width * scale;
+			double h = 0.5 * root->height * scale;
+			double ratio = root->width >= root->height ?
+				h / (h + 2 * size * scale) :
+				w / (w + 2 * size * scale);
+			// Coordinates relative to center
+			double x = 0.5 * root->width - con->pending.x;
+			double y = 0.5 * root->height - con->pending.y;
+			double proj_x = 0.5 * root->width - x / ratio;
+			double proj_y = 0.5 * root->height - y / ratio;
+			sx = decoration->node.x + proj_x - con->pending.x;
+			sy = decoration->node.y + proj_y - con->pending.y;
+			sw = width / ratio;
+			sh = height / ratio;
+		} else {
+			sx = decoration->node.x + (shadow_offset[0] - size) * scale;
+			sy = decoration->node.y + (shadow_offset[1] - size) * scale;
+			sw = width + 2.0 * scale * (size);
+			sh = height + 2.0 * scale * (size);
+		}
+		sway_scene_node_set_position(&shadow->node, sx, sy);
 
-		sway_scene_rect_set_size(con->border.top, width, border_top);
-		sway_scene_rect_set_size(con->border.bottom, width, border_bottom);
-		sway_scene_rect_set_size(con->border.left,
-			border_left, vert_border_height);
-		sway_scene_rect_set_size(con->border.right,
-			border_right, vert_border_height);
-
-		sway_scene_node_set_position(&con->border.top->node, 0, 0);
-		sway_scene_node_set_position(&con->border.bottom->node,
-			0, height - border_bottom);
-		sway_scene_node_set_position(&con->border.left->node,
-			0, border_top);
-		sway_scene_node_set_position(&con->border.right->node,
-			width - border_right, border_top);
+		float shadow_color[4] = {
+			con->pending.decoration.shadow_color_r,
+			con->pending.decoration.shadow_color_g,
+			con->pending.decoration.shadow_color_b,
+			con->pending.decoration.shadow_color_a,
+		};
+		sway_scene_shadow_set_properties(shadow, sw, sh,
+			con->pending.decoration.shadow, con->pending.decoration.shadow_dynamic,
+			con->pending.decoration.shadow_size,
+			con->pending.decoration.shadow_blur, shadow_offset, shadow_color);
+		sway_scene_node_set_enabled(&con->decoration.full->node, true);
 
 		// make sure to reparent, it's possible that the client just came out of
 		// fullscreen mode where the parent of the surface is not the container
 		sway_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
 		sway_scene_node_set_position(&con->view->scene_tree->node,
 			border_left, border_top);
+
+		sway_scene_node_set_enabled(&shadow->node, shadow->enabled);
 
 		// Update content geometry
 		view_autoconfigure(con->view);
@@ -1067,7 +1098,7 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 				floater->current.x, floater->current.y);
 		}
 		sway_scene_node_set_enabled(&floater->scene_tree->node, true);
-		sway_scene_node_set_enabled(&floater->border.tree->node, true);
+		sway_scene_node_set_enabled(&floater->decoration.tree->node, true);
 
 		arrange_container(floater, floater->current.width, floater->current.height,
 			true, ws->gaps_inner, ws);
@@ -1326,7 +1357,7 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			const double off = child->pending.y;
 			struct sway_container *parent = child->pending.parent;
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
-			sway_scene_node_set_enabled(&child->border.tree->node, true);
+			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			double movement = fabs(off - child->animation.y0);
 			if (movement > 0.0) {
 				child->animation.yt = linear_scale(child->animation.y0, off, x);
@@ -1360,7 +1391,7 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			} else {
 				child->animation.xt = child->animation.x0;
 			}
-			sway_scene_node_set_enabled(&child->border.tree->node, true);
+			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
 			// Update child for next iteration. Transactions don't re-arrange
 			// the layout (arrange.c:apply_xxx()), so we need to set it here,

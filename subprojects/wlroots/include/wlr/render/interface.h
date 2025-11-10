@@ -13,6 +13,7 @@
 #include <wayland-server-core.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/render/wlr_texture.h>
+#include <wlr/render/wlr_object.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/render/dmabuf.h>
 
@@ -31,6 +32,8 @@ struct wlr_renderer_impl {
 	struct wlr_render_pass *(*begin_buffer_pass)(struct wlr_renderer *renderer,
 		struct wlr_buffer *buffer, const struct wlr_buffer_pass_options *options);
 	struct wlr_render_timer *(*render_timer_create)(struct wlr_renderer *renderer);
+	struct wlr_object *(*object_with_owner)(struct wlr_renderer *renderer,
+		enum wlr_object_type type, const void *owner);
 };
 
 void wlr_renderer_init(struct wlr_renderer *renderer,
@@ -48,6 +51,13 @@ struct wlr_texture_impl {
 void wlr_texture_init(struct wlr_texture *texture, struct wlr_renderer *rendener,
 	const struct wlr_texture_impl *impl, uint32_t width, uint32_t height);
 
+struct wlr_object_impl {
+	void (*destroy)(struct wlr_object *object);
+};
+
+void wlr_object_init(struct wlr_object *object, struct wlr_renderer *renderer,
+	const struct wlr_object_impl *impl, enum wlr_object_type type, const void *owner);
+
 struct wlr_render_pass {
 	const struct wlr_render_pass_impl *impl;
 };
@@ -62,6 +72,10 @@ struct wlr_render_pass_impl {
 	/* Implementers are also guaranteed that options->box is nonempty */
 	void (*add_rect)(struct wlr_render_pass *pass,
 		const struct wlr_render_rect_options *options);
+	void (*add_decoration)(struct wlr_render_pass *pass,
+		const struct wlr_render_decoration_options *options);
+	void (*add_shadow)(struct wlr_render_pass *pass,
+		const struct wlr_render_shadow_options *options);
 };
 
 struct wlr_render_timer {

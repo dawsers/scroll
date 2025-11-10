@@ -15,6 +15,7 @@ wlr_files += files(
 	'swapchain.c',
 	'wlr_renderer.c',
 	'wlr_texture.c',
+	'wlr_object.c',
 )
 
 if cc.has_header('linux/dma-buf.h') and target_machine.system() == 'linux'

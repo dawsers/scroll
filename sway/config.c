@@ -375,7 +375,7 @@ static void config_defaults(struct sway_config *config) {
 	config->popup_during_fullscreen = POPUP_SMART;
 	config->xwayland = XWAYLAND_MODE_LAZY;
 
-	config->titlebar_border_thickness = 1;
+	config->titlebar_border_radius = 0;
 	config->titlebar_h_padding = 5;
 	config->titlebar_v_padding = 4;
 
@@ -421,6 +421,22 @@ static void config_defaults(struct sway_config *config) {
 	config->floating_border = B_NORMAL;
 	config->border_thickness = 2;
 	config->floating_border_thickness = 2;
+	config->decoration.border_radius = 0;
+	config->decoration.dim = false;
+	config->decoration.dim_color[0] = 0.0f;
+	config->decoration.dim_color[1] = 0.0f;
+	config->decoration.dim_color[2] = 0.0f;
+	config->decoration.dim_color[3] = 0.25f;
+	config->decoration.shadow = false;
+	config->decoration.shadow_dynamic = false;
+	config->decoration.shadow_size = 40;
+	config->decoration.shadow_blur = 30;
+	config->decoration.shadow_offset[0] = 40;
+	config->decoration.shadow_offset[1] = 40;
+	config->decoration.shadow_color[0] = 0.0f;
+	config->decoration.shadow_color[1] = 0.0f;
+	config->decoration.shadow_color[2] = 0.0f;
+	config->decoration.shadow_color[3] = 0.4375f;
 	config->hide_edge_borders = E_NONE;
 	config->hide_edge_borders_smart = ESMART_OFF;
 	config->hide_lone_tab = false;

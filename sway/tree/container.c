@@ -63,22 +63,24 @@ static bool handle_point_accepts_input(
 	return false;
 }
 
-static struct sway_scene_rect *alloc_rect_node(struct sway_scene_tree *parent,
-		bool *failed) {
+static struct sway_scene_decoration *alloc_decoration_node(struct sway_scene_tree *parent,
+		struct sway_view *view, bool *failed) {
 	if (*failed) {
 		return NULL;
 	}
 
 	// just pass in random values. These will be overwritten when
 	// they need to be used.
-	struct sway_scene_rect *rect = sway_scene_rect_create(
-		parent, 0, 0, (float[4]){0.f, 0.f, 0.f, 1.f});
-	if (!rect) {
-		sway_log(SWAY_ERROR, "Failed to allocate a sway_scene_rect");
+	struct sway_scene_decoration *decoration = sway_scene_decoration_create(parent, view, 0, 0);
+	if (!decoration) {
+		sway_log(SWAY_ERROR, "Failed to allocate a sway_scene_decoration");
 		*failed = true;
 	}
-
-	return rect;
+	if (!failed && !scene_descriptor_assign(&decoration->node,
+			SWAY_SCENE_DESC_NON_INTERACTIVE, (void *)1)) {
+		*failed = true;
+	}
+	return decoration;
 }
 
 struct sway_container *container_create(struct sway_view *view) {
@@ -91,39 +93,23 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	// Container tree structure
 	// - scene tree
-	//   - title bar
-	//     - border
-	//     - background
-	//     - title text
-	//     - marks text
-	//   - border
-	//     - border top/bottom/left/right
+	//   - decoration
+	//     - title bar
+	//       - title text
+	//       - marks text
+	//     - full
 	//     - content_tree (we put the content node here so when we disable the
-	//       border everything gets disabled. We only render the content iff there
-	//       is a border as well)
+	//       decoration everything gets disabled. We only render the content iff there
+	//       is a decoration as well)
 	//     - buffer used for output enter/leave events for foreign_toplevel
 	//   - jump
 	//     - text
 	bool failed = false;
 	c->scene_tree = alloc_scene_tree(root->staging, &failed);
 
-	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
-	c->title_bar.border = alloc_scene_tree(c->title_bar.tree, &failed);
-	c->title_bar.background = alloc_scene_tree(c->title_bar.tree, &failed);
-
-	// for opacity purposes we need to carfully create the scene such that
-	// none of our rect nodes as well as text buffers don't overlap. To do
-	// this we have to create rects such that they go around text buffers
-	for (int i = 0; i < 4; i++) {
-		alloc_rect_node(c->title_bar.border, &failed);
-	}
-
-	for (int i = 0; i < 5; i++) {
-		alloc_rect_node(c->title_bar.background, &failed);
-	}
-
-	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
-	c->content_tree = alloc_scene_tree(c->border.tree, &failed);
+	c->decoration.tree = alloc_scene_tree(c->scene_tree, &failed);
+	c->title_bar.tree = alloc_scene_tree(c->decoration.tree, &failed);
+	c->content_tree = alloc_scene_tree(c->decoration.tree, &failed);
 
 	c->jump.text = NULL;
 	c->jump.tree = alloc_scene_tree(c->scene_tree, &failed);
@@ -131,12 +117,13 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	if (view) {
 		// only containers with views can have borders
-		c->border.top = alloc_rect_node(c->border.tree, &failed);
-		c->border.bottom = alloc_rect_node(c->border.tree, &failed);
-		c->border.left = alloc_rect_node(c->border.tree, &failed);
-		c->border.right = alloc_rect_node(c->border.tree, &failed);
-
-		c->output_handler = sway_scene_buffer_create(c->border.tree, NULL);
+		c->decoration.full = alloc_decoration_node(c->decoration.tree, view, &failed);
+		c->shadow = sway_scene_shadow_create(c->decoration.tree, c->decoration.full);
+		sway_scene_node_set_enabled(&c->shadow->node, false);
+		// We set the title bar at the top and the shadow at the bottom
+		sway_scene_node_lower_to_bottom(&c->shadow->node);
+		sway_scene_node_raise_to_top(&c->title_bar.tree->node);
+		c->output_handler = sway_scene_buffer_create(c->decoration.tree, NULL);
 		if (!c->output_handler) {
 			sway_log(SWAY_ERROR, "Failed to allocate a scene node");
 			failed = true;
@@ -272,17 +259,36 @@ static bool container_is_current_floating(struct sway_container *container) {
 	return false;
 }
 
-// scene rect wants premultiplied colors
-static void scene_rect_set_color(struct sway_scene_rect *rect,
-		const float color[4], float opacity) {
-	const float premultiplied[] = {
-		color[0] * color[3] * opacity,
-		color[1] * color[3] * opacity,
-		color[2] * color[3] * opacity,
-		color[3] * opacity,
+// scene border wants premultiplied colors
+static void scene_border_set_colors(struct sway_scene_decoration *decoration,
+		const float top[4], const float bottom[4], const float left[4],
+		const float right[4], float opacity) {
+	const float pre_top[] = {
+		top[0] * top[3] * opacity,
+		top[1] * top[3] * opacity,
+		top[2] * top[3] * opacity,
+		top[3] * opacity,
+	};
+	const float pre_bottom[] = {
+		bottom[0] * bottom[3] * opacity,
+		bottom[1] * bottom[3] * opacity,
+		bottom[2] * bottom[3] * opacity,
+		bottom[3] * opacity,
+	};
+	const float pre_left[] = {
+		left[0] * left[3] * opacity,
+		left[1] * left[3] * opacity,
+		left[2] * left[3] * opacity,
+		left[3] * opacity,
+	};
+	const float pre_right[] = {
+		right[0] * right[3] * opacity,
+		right[1] * right[3] * opacity,
+		right[2] * right[3] * opacity,
+		right[3] * opacity,
 	};
 
-	sway_scene_rect_set_color(rect, premultiplied);
+	sway_scene_decoration_set_border_color(decoration, pre_top, pre_bottom, pre_left, pre_right);
 }
 
 void container_update(struct sway_container *con) {
@@ -324,22 +330,20 @@ void container_update(struct sway_container *con) {
 		}
 	}
 
-	struct sway_scene_node *node;
-	wl_list_for_each(node, &con->title_bar.border->children, link) {
-		struct sway_scene_rect *rect = sway_scene_rect_from_node(node);
-		scene_rect_set_color(rect, title_border, alpha);
-	}
-
-	wl_list_for_each(node, &con->title_bar.background->children, link) {
-		struct sway_scene_rect *rect = sway_scene_rect_from_node(node);
-		scene_rect_set_color(rect, colors->background, alpha);
-	}
-
 	if (con->view) {
-		scene_rect_set_color(con->border.top, top, alpha);
-		scene_rect_set_color(con->border.bottom, bottom, alpha);
-		scene_rect_set_color(con->border.left, left, alpha);
-		scene_rect_set_color(con->border.right, right, alpha);
+		scene_border_set_colors(con->decoration.full, top, bottom, left, right, alpha);
+		if (con->pending.decoration.dim && !(con->current.focused || container_is_current_parent_focused(con))) {
+			float color[4] = {
+				con->pending.decoration.dim_color_r,
+				con->pending.decoration.dim_color_g,
+				con->pending.decoration.dim_color_b,
+				con->pending.decoration.dim_color_a
+			};
+			sway_scene_decoration_set_dimming(con->decoration.full, con->pending.decoration.dim, color);
+		} else {
+			float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			sway_scene_decoration_set_dimming(con->decoration.full, false, color);
+		}
 	}
 
 	if (con->title_bar.title_text) {
@@ -351,6 +355,15 @@ void container_update(struct sway_container *con) {
 		sway_text_node_set_color(con->title_bar.marks_text, colors->text);
 		sway_text_node_set_background(con->title_bar.marks_text, colors->background);
 	}
+	if (con->decoration.full) {
+		const float premultiplied[] = {
+			colors->background[0] * colors->background[3] * alpha,
+			colors->background[1] * colors->background[3] * alpha,
+			colors->background[2] * colors->background[3] * alpha,
+			colors->background[3] * alpha,
+		};
+		sway_scene_decoration_set_title_bar_color(con->decoration.full, premultiplied);
+	}
 }
 
 void container_update_itself_and_parents(struct sway_container *con) {
@@ -361,37 +374,12 @@ void container_update_itself_and_parents(struct sway_container *con) {
 	}
 }
 
-static void update_rect_list(struct sway_scene_tree *tree, pixman_region64f_t *region) {
-	int len;
-	const pixman_box64f_t *rects = pixman_region64f_rectangles(region, &len);
-
-	sway_scene_node_set_enabled(&tree->node, len > 0);
-	if (len == 0) {
-		return;
-	}
-
-	int i = 0;
-	struct sway_scene_node *node;
-	wl_list_for_each(node, &tree->children, link) {
-		struct sway_scene_rect *rect = sway_scene_rect_from_node(node);
-		sway_scene_node_set_enabled(&rect->node, i < len);
-
-		if (i < len) {
-			const pixman_box64f_t *box = &rects[i++];
-			sway_scene_node_set_position(&rect->node, box->x1, box->y1);
-			sway_scene_rect_set_size(rect, box->x2 - box->x1, box->y2 - box->y1);
-		}
-	}
-}
-
 void container_arrange_title_bar(struct sway_container *con) {
 	enum alignment title_align = config->title_align;
 	int marks_buffer_width = 0;
 	double width = con->title_width;
 	int height = container_titlebar_height();
-
-	pixman_region64f_t text_area;
-	pixman_region64f_init(&text_area);
+	struct wlr_fbox text_box = {0}, marks_box = {0};
 
 	struct sway_workspace *workspace = con->pending.workspace;
 	double scale = workspace ? (layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0) : 1.0;
@@ -417,9 +405,12 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_scene_node_set_position(node->node,
 			scale * h_padding, scale * (height - node->height) * 0.5);
 		sway_text_node_scale(node, scale);
-
-		pixman_region64f_union_rectf(&text_area, &text_area,
-			node->node->x, node->node->y, round(scale * alloc_width), scale * node->height);
+		marks_box = (struct wlr_fbox) {
+			.x = ceil(node->node->x),
+			.y = ceil(node->node->y),
+			.width = round(scale * alloc_width) - 1.0,
+			.height = round(scale * node->height) - 2.0,
+		};
 	}
 
 	if (con->title_bar.title_text) {
@@ -444,34 +435,19 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_scene_node_set_position(node->node,
 			scale * h_padding, scale * (height - node->height) * 0.5);
 		sway_text_node_scale(node, scale);
-
-		pixman_region64f_union_rectf(&text_area, &text_area,
-			node->node->x, node->node->y, round(scale * alloc_width), scale * node->height);
+		text_box = (struct wlr_fbox) {
+			.x = ceil(node->node->x),
+			.y = ceil(node->node->y),
+			.width = round(scale * alloc_width) - 1.0,
+			.height = round(scale * node->height) - 2.0,
+		};
 	}
 
-	// silence pixman errors
 	if (width <= 0 || height <= 0) {
-		pixman_region64f_fini(&text_area);
 		return;
 	}
 
-	pixman_region64f_t background, border;
-
-	int thickness = max(1, round(scale * config->titlebar_border_thickness));
-	pixman_region64f_init_rectf(&background,
-		thickness, thickness,
-		scale * width - thickness * 2, scale * height - thickness * 2);
-	pixman_region64f_init_rectf(&border, 0, 0, scale * width, scale * height);
-	pixman_region64f_subtract(&border, &border, &background);
-
-	pixman_region64f_subtract(&background, &background, &text_area);
-	pixman_region64f_fini(&text_area);
-
-	update_rect_list(con->title_bar.background, &background);
-	pixman_region64f_fini(&background);
-
-	update_rect_list(con->title_bar.border, &border);
-	pixman_region64f_fini(&border);
+	sway_scene_decoration_set_title_bar(con->decoration.full, scale * height, scale * config->titlebar_border_radius, &text_box, &marks_box);
 
 	container_update(con);
 }

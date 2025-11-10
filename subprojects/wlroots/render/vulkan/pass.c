@@ -681,7 +681,7 @@ static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 			pass->render_setup,
 			&(struct wlr_vk_pipeline_key) {
 				.source = WLR_VK_SHADER_SOURCE_SINGLE_COLOR,
-				.layout = { .ycbcr_format = NULL },
+				.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD },
 			});
 		if (!pipe) {
 			pass->failed = true;
@@ -814,6 +814,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 			.layout = {
 				.ycbcr_format = texture->format->is_ycbcr ? texture->format : NULL,
 				.filter_mode = options->filter_mode,
+				.shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD,
 			},
 			.texture_transform = tex_transform,
 			.blend_mode = !texture->has_alpha && alpha == 1.0 ?
@@ -861,6 +862,11 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	struct wlr_vk_frag_texture_pcr_data frag_pcr_data = {
 		.alpha = alpha,
 		.luminance_multiplier = luminance_multiplier,
+		.radius_top = options->radius_top,
+		.radius_bottom = options->radius_bottom,
+		.box = {
+			options->dst_box.x, options->dst_box.y, options->dst_box.width, options->dst_box.height,
+		},
 	};
 	encode_color_matrix(color_matrix, frag_pcr_data.matrix);
 
@@ -926,10 +932,261 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	}
 }
 
+static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass,
+		const struct wlr_render_decoration_options *options) {
+	struct wlr_vk_render_pass *pass = get_render_pass(wlr_pass);
+	VkCommandBuffer cb = pass->command_buffer->vk;
+	pixman_region32_t clip;
+	get_clip_region(pass, options->clip, &clip);
+
+	int clip_rects_len;
+	const pixman_box32_t *clip_rects = pixman_region32_rectangles(&clip, &clip_rects_len);
+	// Record regions possibly updated for use in second subpass
+	for (int i = 0; i < clip_rects_len; i++) {
+		struct wlr_box clip_box = {
+			.x = clip_rects[i].x1,
+			.y = clip_rects[i].y1,
+			.width = clip_rects[i].x2 - clip_rects[i].x1,
+			.height = clip_rects[i].y2 - clip_rects[i].y1,
+		};
+		struct wlr_box intersection;
+		if (!wlr_box_intersection(&intersection, &options->box, &clip_box)) {
+			continue;
+		}
+		render_pass_mark_box_updated(pass, &intersection);
+	}
+
+	struct wlr_box box = options->box;
+
+	switch (options->blend_mode) {
+	case WLR_RENDER_BLEND_MODE_PREMULTIPLIED:;
+		float proj[9], matrix[9];
+		wlr_matrix_identity(proj);
+		wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, proj);
+		wlr_matrix_multiply(matrix, pass->projection, matrix);
+
+		struct wlr_vk_pipeline *pipe = setup_get_or_create_pipeline(
+			pass->render_setup,
+			&(struct wlr_vk_pipeline_key) {
+				.source = WLR_VK_SHADER_SOURCE_DECORATION,
+				.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_DECORATION },
+			});
+		if (!pipe) {
+			pass->failed = true;
+			break;
+		}
+
+		struct wlr_vk_vert_pcr_data vert_pcr_data = {
+			.uv_off = { 0, 0 },
+			.uv_size = { 1, 1 },
+		};
+		encode_proj_matrix(matrix, vert_pcr_data.mat4);
+
+		struct wlr_vk_frag_decoration_pcr_data frag_pcr_data = {
+			.border = options->border,
+			.title_bar = options->title_bar,
+			.dim = options->dim,
+			.border_width = options->border_width,
+			.border_radius = options->border_radius,
+			.title_bar_height = options->title_bar_height,
+			.title_bar_border_radius = options->title_bar_border_radius,
+			.box = {
+				options->box.x, options->box.y, options->box.width, options->box.height,
+			},
+			.border_top = {
+				color_to_linear_premult(options->border_top_color.r, options->border_top_color.a),
+				color_to_linear_premult(options->border_top_color.g, options->border_top_color.a),
+				color_to_linear_premult(options->border_top_color.b, options->border_top_color.a),
+				options->border_top_color.a,
+			},
+			.border_bottom = {
+				color_to_linear_premult(options->border_bottom_color.r, options->border_bottom_color.a),
+				color_to_linear_premult(options->border_bottom_color.g, options->border_bottom_color.a),
+				color_to_linear_premult(options->border_bottom_color.b, options->border_bottom_color.a),
+				options->border_bottom_color.a,
+			},
+			.border_left = {
+				color_to_linear_premult(options->border_left_color.r, options->border_left_color.a),
+				color_to_linear_premult(options->border_left_color.g, options->border_left_color.a),
+				color_to_linear_premult(options->border_left_color.b, options->border_left_color.a),
+				options->border_left_color.a,
+			},
+			.border_right = {
+				color_to_linear_premult(options->border_right_color.r, options->border_right_color.a),
+				color_to_linear_premult(options->border_right_color.g, options->border_right_color.a),
+				color_to_linear_premult(options->border_right_color.b, options->border_right_color.a),
+				options->border_right_color.a,
+			},
+			.title_bar_color = {
+				color_to_linear_premult(options->title_bar_color.r, options->title_bar_color.a),
+				color_to_linear_premult(options->title_bar_color.g, options->title_bar_color.a),
+				color_to_linear_premult(options->title_bar_color.b, options->title_bar_color.a),
+				options->title_bar_color.a,
+			},
+			.dim_color = {
+				color_to_linear_premult(options->dim_color.r, options->dim_color.a),
+				color_to_linear_premult(options->dim_color.g, options->dim_color.a),
+				color_to_linear_premult(options->dim_color.b, options->dim_color.a),
+				options->dim_color.a,
+			},
+		};
+
+		bind_pipeline(pass, pipe->vk);
+
+		struct wlr_vk_object *deco = vulkan_get_object(options->object);
+		struct wlr_vk_descriptor_set *ds = vulkan_object_get_ds(deco, pass->command_buffer);
+		deco->last_used_cb = pass->command_buffer;
+
+		vkCmdPushConstants(cb, pipe->layout->vk,
+			VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vert_pcr_data), &vert_pcr_data);
+
+		memcpy(deco->buffer->cpu_mapping, &frag_pcr_data, sizeof(struct wlr_vk_frag_decoration_pcr_data));
+		VkDescriptorBufferInfo binfo = {
+			.buffer = deco->buffer->buffer,
+			.offset = 0,
+			.range = sizeof(struct wlr_vk_frag_decoration_pcr_data),
+		};
+		VkWriteDescriptorSet write_ds = {
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = ds->ds,
+			.dstBinding = 0,
+			.dstArrayElement = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorCount = 1,
+			.pBufferInfo = &binfo,
+		};
+		vkUpdateDescriptorSets(pass->renderer->dev->dev, 1, &write_ds, 0, NULL);
+		vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipe->layout->vk, 0, 1, &ds->ds, 0, NULL);
+
+		for (int i = 0; i < clip_rects_len; i++) {
+			VkRect2D rect;
+			convert_pixman_box_to_vk_rect(&clip_rects[i], &rect);
+			vkCmdSetScissor(cb, 0, 1, &rect);
+			vkCmdDraw(cb, 4, 1, 0, 0);
+		}
+		break;
+	case WLR_RENDER_BLEND_MODE_NONE:;
+		break;
+	}
+
+	pixman_region32_fini(&clip);
+}
+
+static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass,
+		const struct wlr_render_shadow_options *options) {
+	struct wlr_vk_render_pass *pass = get_render_pass(wlr_pass);
+	VkCommandBuffer cb = pass->command_buffer->vk;
+	pixman_region32_t clip;
+	get_clip_region(pass, options->clip, &clip);
+
+	int clip_rects_len;
+	const pixman_box32_t *clip_rects = pixman_region32_rectangles(&clip, &clip_rects_len);
+	// Record regions possibly updated for use in second subpass
+	for (int i = 0; i < clip_rects_len; i++) {
+		struct wlr_box clip_box = {
+			.x = clip_rects[i].x1,
+			.y = clip_rects[i].y1,
+			.width = clip_rects[i].x2 - clip_rects[i].x1,
+			.height = clip_rects[i].y2 - clip_rects[i].y1,
+		};
+		struct wlr_box intersection;
+		if (!wlr_box_intersection(&intersection, &options->box, &clip_box)) {
+			continue;
+		}
+		render_pass_mark_box_updated(pass, &intersection);
+	}
+
+	struct wlr_box box = options->box;
+
+	switch (options->blend_mode) {
+	case WLR_RENDER_BLEND_MODE_PREMULTIPLIED:;
+		float proj[9], matrix[9];
+		wlr_matrix_identity(proj);
+		wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, proj);
+		wlr_matrix_multiply(matrix, pass->projection, matrix);
+
+		struct wlr_vk_pipeline *pipe = setup_get_or_create_pipeline(
+			pass->render_setup,
+			&(struct wlr_vk_pipeline_key) {
+				.source = WLR_VK_SHADER_SOURCE_SHADOW,
+				.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_SHADOW },
+			});
+		if (!pipe) {
+			pass->failed = true;
+			break;
+		}
+
+		struct wlr_vk_vert_pcr_data vert_pcr_data = {
+			.uv_off = { 0, 0 },
+			.uv_size = { 1, 1 },
+		};
+		encode_proj_matrix(matrix, vert_pcr_data.mat4);
+
+		struct wlr_vk_frag_shadow_pcr_data frag_pcr_data = {
+			.enabled = options->enabled,
+			.blur = options->blur,
+			.radius_top = options->radius_top,
+			.radius_bottom = options->radius_bottom,
+			.box = {
+				options->box.x, options->box.y, options->box.width, options->box.height,
+			},
+			.color = {
+				color_to_linear_premult(options->color.r, options->color.a),
+				color_to_linear_premult(options->color.g, options->color.a),
+				color_to_linear_premult(options->color.b, options->color.a),
+				options->color.a,
+			},
+		};
+
+		bind_pipeline(pass, pipe->vk);
+
+		struct wlr_vk_object *shadow = vulkan_get_object(options->object);
+		struct wlr_vk_descriptor_set *ds = vulkan_object_get_ds(shadow, pass->command_buffer);
+		shadow->last_used_cb = pass->command_buffer;
+
+		vkCmdPushConstants(cb, pipe->layout->vk,
+			VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vert_pcr_data), &vert_pcr_data);
+
+		memcpy(shadow->buffer->cpu_mapping, &frag_pcr_data, sizeof(struct wlr_vk_frag_shadow_pcr_data));
+		VkDescriptorBufferInfo binfo = {
+			.buffer = shadow->buffer->buffer,
+			.offset = 0,
+			.range = sizeof(struct wlr_vk_frag_shadow_pcr_data),
+		};
+		VkWriteDescriptorSet write_ds = {
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.dstSet = ds->ds,
+			.dstBinding = 0,
+			.dstArrayElement = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorCount = 1,
+			.pBufferInfo = &binfo,
+		};
+		vkUpdateDescriptorSets(pass->renderer->dev->dev, 1, &write_ds, 0, NULL);
+		vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipe->layout->vk, 0, 1, &ds->ds, 0, NULL);
+
+		for (int i = 0; i < clip_rects_len; i++) {
+			VkRect2D rect;
+			convert_pixman_box_to_vk_rect(&clip_rects[i], &rect);
+			vkCmdSetScissor(cb, 0, 1, &rect);
+			vkCmdDraw(cb, 4, 1, 0, 0);
+		}
+		break;
+	case WLR_RENDER_BLEND_MODE_NONE:;
+		break;
+	}
+
+	pixman_region32_fini(&clip);
+}
+
 static const struct wlr_render_pass_impl render_pass_impl = {
 	.submit = render_pass_submit,
 	.add_rect = render_pass_add_rect,
 	.add_texture = render_pass_add_texture,
+	.add_decoration = render_pass_add_decoration,
+	.add_shadow = render_pass_add_shadow,
 };
 
 

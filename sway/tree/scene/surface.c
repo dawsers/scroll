@@ -262,12 +262,19 @@ void sway_scene_surface_reconfigure(struct sway_scene_surface *scene_surface) {
 
 	double wscale, hscale, total_scale;
 	struct sway_view *view = view_from_wlr_surface(surface);
+	float radius_top = 0.0f, radius_bottom = 0.0f;
 	if (view) {
 		total_scale = view_get_total_scale(view);
 		if (total_scale < 0.0) {
 			total_scale = 1.0;
 		}
 		view_get_animation_scales(view, &wscale, &hscale);
+		if (view->container && !container_is_fullscreen_or_child(view->container)) {
+			if (!view->container->decoration.full->title_bar) {
+				radius_top = view->container->decoration.full->border_radius;
+			}
+			radius_bottom = view->container->decoration.full->border_radius;
+		}
 	} else {
 		wscale = hscale = total_scale = 1.0;
 	}
@@ -278,6 +285,7 @@ void sway_scene_surface_reconfigure(struct sway_scene_surface *scene_surface) {
 	sway_scene_buffer_set_source_box(scene_buffer, &src_box);
 	sway_scene_buffer_set_dest_size(scene_buffer, MAX(1, dst_width),
 		MAX(1, dst_height));
+	sway_scene_buffer_set_radius(scene_buffer, radius_top, radius_bottom);
 	sway_scene_buffer_set_transform(scene_buffer, state->transform);
 	sway_scene_buffer_set_opacity(scene_buffer, opacity);
 	sway_scene_buffer_set_transfer_function(scene_buffer, tf);

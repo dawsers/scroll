@@ -77,6 +77,17 @@ struct sway_container_state {
 	bool border_bottom;
 	bool border_left;
 	bool border_right;
+	struct {
+		int border_radius;
+		bool shadow;
+		bool shadow_dynamic;
+		double shadow_size;
+		double shadow_blur;
+		double shadow_offset_x, shadow_offset_y;
+		float shadow_color_r, shadow_color_g, shadow_color_b, shadow_color_a;
+		bool dim;
+		float dim_color_r, dim_color_g, dim_color_b, dim_color_a;
+	} decoration;
 
 	// These are in layout coordinates.
 	double content_x, content_y;
@@ -92,21 +103,16 @@ struct sway_container {
 	struct {
 		struct sway_scene_tree *tree;
 
-		struct sway_scene_tree *border;
-		struct sway_scene_tree *background;
-
 		struct sway_text_node *title_text;
 		struct sway_text_node *marks_text;
 	} title_bar;
 
 	struct {
 		struct sway_scene_tree *tree;
+		struct sway_scene_decoration *full;
+	} decoration;
 
-		struct sway_scene_rect *top;
-		struct sway_scene_rect *bottom;
-		struct sway_scene_rect *left;
-		struct sway_scene_rect *right;
-	} border;
+	struct sway_scene_shadow *shadow;
 
 	struct {
 		struct sway_scene_tree *tree;

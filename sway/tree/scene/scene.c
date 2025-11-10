@@ -5,6 +5,7 @@
 #include <wlr/render/swapchain.h>
 #include <wlr/render/drm_syncobj.h>
 #include <wlr/render/wlr_renderer.h>
+#include <wlr/render/wlr_object.h>
 #include <wlr/types/wlr_color_management_v1.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_damage_ring.h>
@@ -50,6 +51,18 @@ struct sway_scene_buffer *sway_scene_buffer_from_node(
 	assert(node->type == SWAY_SCENE_NODE_BUFFER);
 	struct sway_scene_buffer *buffer = wl_container_of(node, buffer, node);
 	return buffer;
+}
+
+struct sway_scene_decoration *sway_scene_decoration_from_node(struct sway_scene_node *node) {
+	assert(node->type == SWAY_SCENE_NODE_DECORATION);
+	struct sway_scene_decoration *decoration = wl_container_of(node, decoration, node);
+	return decoration;
+}
+
+struct sway_scene_shadow *sway_scene_shadow_from_node(struct sway_scene_node *node) {
+	assert(node->type == SWAY_SCENE_NODE_SHADOW);
+	struct sway_scene_shadow *shadow = wl_container_of(node, shadow, node);
+	return shadow;
 }
 
 struct sway_scene *scene_node_get_root(struct sway_scene_node *node) {
@@ -164,6 +177,12 @@ void sway_scene_node_destroy(struct sway_scene_node *node) {
 				&scene_tree->children, link) {
 			sway_scene_node_destroy(child);
 		}
+	} else if (node->type == SWAY_SCENE_NODE_DECORATION) {
+		struct sway_scene_decoration *decoration = sway_scene_decoration_from_node(node);
+		wlr_object_destroy(decoration->wlr_object);
+	} else if (node->type == SWAY_SCENE_NODE_SHADOW) {
+		struct sway_scene_shadow *shadow = sway_scene_shadow_from_node(node);
+		wlr_object_destroy(shadow->wlr_object);
 	}
 
 	assert(wl_list_empty(&node->events.destroy.listener_list));
@@ -240,7 +259,9 @@ static bool _scene_nodes_in_box(struct sway_scene_node *node, struct wlr_box *bo
 		}
 		break;
 	case SWAY_SCENE_NODE_RECT:
-	case SWAY_SCENE_NODE_BUFFER:;
+	case SWAY_SCENE_NODE_BUFFER:
+	case SWAY_SCENE_NODE_DECORATION:
+	case SWAY_SCENE_NODE_SHADOW:;
 		double width, height;
 		scene_node_get_size(node, &width, &height);
 		struct wlr_box node_box = {
@@ -289,12 +310,18 @@ static void scene_node_opaque_region(struct sway_scene_node *node, int x, int y,
 			return;
 		}
 
+		if (scene_buffer->radius_top > 0.0f || scene_buffer->radius_bottom > 0.0f) {
+			return;
+		}
+
 		if (!scene_buffer->buffer_is_opaque) {
 			pixman_region32_copy(opaque, &scene_buffer->opaque_region);
 			pixman_region32_intersect_rect(opaque, opaque, 0, 0, round(width), round(height));
 			pixman_region32_translate(opaque, x, y);
 			return;
 		}
+	} else if (node->type == SWAY_SCENE_NODE_DECORATION || node->type == SWAY_SCENE_NODE_SHADOW) {
+		return;
 	}
 
 	pixman_region32_fini(opaque);
@@ -864,6 +891,191 @@ void sway_scene_rect_set_color(struct sway_scene_rect *rect, const float color[s
 	scene_node_update(&rect->node, NULL);
 }
 
+static struct wlr_object *scene_decoration_get_object(
+		struct sway_scene_decoration *scene_decoration, struct wlr_renderer *renderer) {
+	if (scene_decoration->wlr_object != NULL) {
+		return scene_decoration->wlr_object;
+	}
+
+	struct wlr_object *object = wlr_object_with_owner(renderer, WLR_OBJECT_DECORATION,
+		scene_decoration);
+	scene_decoration->wlr_object = object;
+	return object;
+}
+
+struct sway_scene_decoration *sway_scene_decoration_create(struct sway_scene_tree *parent,
+		struct sway_view *view, double width, double height) {
+	assert(parent);
+	assert(view);
+	assert(width >= 0 && height >= 0);
+
+	struct sway_scene_decoration *decoration = calloc(1, sizeof(*decoration));
+	if (decoration == NULL) {
+		return NULL;
+	}
+	scene_node_init(&decoration->node, SWAY_SCENE_NODE_DECORATION, parent);
+
+	decoration->view = view;
+	decoration->width = width;
+	decoration->height = height;
+
+	scene_node_update(&decoration->node, NULL);
+
+	return decoration;
+}
+
+void sway_scene_decoration_set_size(struct sway_scene_decoration *decoration, double width, double height) {
+	if (decoration->width == width && decoration->height == height) {
+		return;
+	}
+
+	assert(width >= 0 && height >= 0);
+
+	decoration->width = width;
+	decoration->height = height;
+	scene_node_update(&decoration->node, NULL);
+}
+
+void sway_scene_decoration_set_border_color(struct sway_scene_decoration *decoration, const float top[static 4],
+		const float bottom[static 4], const float left[static 4], const float right[static 4]) {
+	decoration->border = true;
+	if (memcmp(decoration->border_top_color, top, sizeof(decoration->border_top_color)) == 0 &&
+		memcmp(decoration->border_bottom_color, bottom, sizeof(decoration->border_bottom_color)) == 0 &&
+		memcmp(decoration->border_left_color, left, sizeof(decoration->border_left_color)) == 0 &&
+		memcmp(decoration->border_right_color, right, sizeof(decoration->border_right_color)) == 0) {
+		return;
+	}
+
+	memcpy(decoration->border_top_color, top, sizeof(decoration->border_top_color));
+	memcpy(decoration->border_bottom_color, bottom, sizeof(decoration->border_bottom_color));
+	memcpy(decoration->border_left_color, left, sizeof(decoration->border_left_color));
+	memcpy(decoration->border_right_color, right, sizeof(decoration->border_right_color));
+	scene_node_update(&decoration->node, NULL);
+}
+
+void sway_scene_decoration_set_border_radius(struct sway_scene_decoration *decoration, double radius) {
+	if (decoration->border_radius == radius) {
+		return;
+	}
+	decoration->border_radius = radius;
+	scene_node_update(&decoration->node, NULL);
+}
+
+void sway_scene_decoration_set_border_width(struct sway_scene_decoration *decoration, double width) {
+	if (!decoration->border) {
+		return;
+	}
+	if (decoration->border_width == width) {
+		return;
+	}
+	decoration->border_width = width;
+	scene_node_update(&decoration->node, NULL);
+}
+
+void sway_scene_decoration_set_title_bar(struct sway_scene_decoration *decoration, double height,
+		double border_radius, struct wlr_fbox *text_box, struct wlr_fbox *marks_box) {
+	if (decoration->title_bar == true &&
+		decoration->title_bar_height == height &&
+		decoration->title_bar_border_radius == border_radius) {
+		return;
+	}
+	decoration->title_bar = true;
+	decoration->title_bar_height = height;
+	decoration->title_bar_border_radius = border_radius;
+	scene_node_update(&decoration->node, NULL);
+}
+
+void sway_scene_decoration_set_title_bar_color(struct sway_scene_decoration *decoration,
+	const float color[static 4]) {
+	if (memcmp(decoration->title_bar_color, color, sizeof(decoration->title_bar_color)) == 0) {
+		return;
+	}
+	memcpy(decoration->title_bar_color, color, sizeof(decoration->title_bar_color));
+	scene_node_update(&decoration->node, NULL);
+}
+
+void sway_scene_decoration_set_dimming(struct sway_scene_decoration *decoration,
+		bool dim, const float color[static 4]) {
+	if (decoration->dim) {
+		if (dim) {
+			if (memcmp(decoration->dim_color, color, sizeof(decoration->dim_color)) == 0) {
+				return;
+			}
+			memcpy(decoration->dim_color, color, sizeof(decoration->dim_color));
+		} else {
+			decoration->dim = dim;
+		}
+	} else {
+		if (dim) {
+			decoration->dim = dim;
+			memcpy(decoration->dim_color, color, sizeof(decoration->dim_color));
+		} else {
+			return;
+		}
+	}
+	scene_node_update(&decoration->node, NULL);
+}
+
+static struct wlr_object *scene_shadow_get_object(
+		struct sway_scene_shadow *scene_shadow, struct wlr_renderer *renderer) {
+	if (scene_shadow->wlr_object != NULL) {
+		return scene_shadow->wlr_object;
+	}
+
+	struct wlr_object *object = wlr_object_with_owner(renderer, WLR_OBJECT_SHADOW,
+		scene_shadow);
+	scene_shadow->wlr_object = object;
+	return object;
+}
+
+struct sway_scene_shadow *sway_scene_shadow_create(struct sway_scene_tree *parent,
+		struct sway_scene_decoration *decoration) {
+	assert(parent);
+	assert(decoration);
+	assert(decoration->view);
+
+	struct sway_scene_shadow *shadow = calloc(1, sizeof(*shadow));
+	if (shadow == NULL) {
+		return NULL;
+	}
+	scene_node_init(&shadow->node, SWAY_SCENE_NODE_SHADOW, parent);
+
+	shadow->decoration = decoration;
+
+	scene_node_update(&shadow->node, NULL);
+
+	return shadow;
+}
+
+void sway_scene_shadow_set_properties(struct sway_scene_shadow *shadow,
+		double parent_width, double parent_height, bool enabled, bool dynamic,
+		double size, double blur, const double offset[static 2], float color[4]) {
+	if (shadow->enabled) {
+		if (enabled) {
+			if (shadow->width == parent_width && shadow->height == parent_height &&
+				shadow->dynamic == dynamic && shadow->size == size &&
+				shadow->blur == blur &&
+				memcmp(shadow->offset, offset, sizeof(shadow->offset)) == 0 &&
+				memcmp(shadow->color, color, sizeof(shadow->color)) == 0) {
+				return;
+			}
+		}
+	} else {
+		if (!enabled) {
+			return;
+		}
+	}
+	shadow->enabled = enabled;
+	shadow->width = parent_width;
+	shadow->height = parent_height;
+	shadow->dynamic = dynamic;
+	shadow->size = size;
+	shadow->blur = blur;
+	memcpy(shadow->offset, offset, sizeof(shadow->offset));
+	memcpy(shadow->color, color, sizeof(shadow->color));
+	scene_node_update(&shadow->node, NULL);
+}
+
 static void scene_buffer_handle_buffer_release(struct wl_listener *listener,
 		void *data) {
 	struct sway_scene_buffer *scene_buffer =
@@ -1172,6 +1384,18 @@ void sway_scene_buffer_set_dest_size(struct sway_scene_buffer *scene_buffer,
 	scene_node_update(&scene_buffer->node, NULL);
 }
 
+void sway_scene_buffer_set_radius(struct sway_scene_buffer *scene_buffer,
+	float radius_top, float radius_bottom) {
+	if (scene_buffer->radius_top == radius_top && scene_buffer->radius_bottom == radius_bottom) {
+		return;
+	}
+
+	assert(radius_top >= 0 && radius_bottom >= 0);
+	scene_buffer->radius_top = radius_top;
+	scene_buffer->radius_bottom = radius_bottom;
+	scene_node_update(&scene_buffer->node, NULL);
+}
+
 void sway_scene_buffer_set_transform(struct sway_scene_buffer *scene_buffer,
 		enum wl_output_transform transform) {
 	if (scene_buffer->transform == transform) {
@@ -1277,6 +1501,16 @@ void scene_node_get_size(struct sway_scene_node *node,
 			*width = w;
 			*height = h;
 		}
+		break;
+	case SWAY_SCENE_NODE_DECORATION:;
+		struct sway_scene_decoration *scene_decoration = sway_scene_decoration_from_node(node);
+		*width = scene_decoration->width;
+		*height = scene_decoration->height;
+		break;
+	case SWAY_SCENE_NODE_SHADOW:;
+		struct sway_scene_shadow *scene_shadow = sway_scene_shadow_from_node(node);
+		*width = scene_shadow->width;
+		*height = scene_shadow->height;
 		break;
 	}
 }
@@ -1488,7 +1722,22 @@ static bool scene_node_at_iterator(struct sway_scene_node *node,
 				!scene_buffer->point_accepts_input(scene_buffer, &rx, &ry)) {
 			return false;
 		}
+	} else if (node->type == SWAY_SCENE_NODE_DECORATION) {
+		struct sway_scene_decoration *scene_decoration = sway_scene_decoration_from_node(node);
+		struct sway_view *view = scene_decoration->view;
+		struct sway_container *con = view->container;
+		if (con) {
+			struct sway_workspace *workspace = con->pending.workspace;
+			double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+			const double cx = rx / scale + con->pending.x - con->pending.content_x;
+			const double cy = ry / scale + con->pending.y - con->pending.content_y;
+			if (cx > 0.0 && cx < con->pending.content_width &&
+				cy > 0.0 && cy < con->pending.content_height) {
+				return false;
+			}
+		}
 	}
+	// Rectangles and shadows are not interactive, so we don't need to consider them here.
 
 	at_data->rx = rx;
 	at_data->ry = ry;
@@ -1644,6 +1893,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 		}
 
 		wlr_render_pass_add_texture(data->render_pass, &(struct wlr_render_texture_options) {
+			.radius_top = round(scene_buffer->radius_top * data->scale),
+			.radius_bottom = round(scene_buffer->radius_bottom * data->scale),
 			.texture = texture,
 			.src_box = scene_buffer->src_box,
 			.dst_box = dst_box,
@@ -1675,6 +1926,81 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 		}
 
 		break;
+	case SWAY_SCENE_NODE_DECORATION: {
+		struct sway_scene_decoration *scene_decoration = sway_scene_decoration_from_node(node);
+		struct wlr_object *object = scene_decoration_get_object(scene_decoration,
+			data->output->output->renderer);
+		wlr_render_pass_add_decoration(data->render_pass, &(struct wlr_render_decoration_options){
+			.box = dst_box,
+			.clip = &render_region,
+			.object = object,
+			.border = scene_decoration->border,
+			.border_radius = round(scene_decoration->border_radius * data->scale),
+			.border_width = round(scene_decoration->border_width * data->scale),
+			.border_top_color = {
+				.r = scene_decoration->border_top_color[0],
+				.g = scene_decoration->border_top_color[1],
+				.b = scene_decoration->border_top_color[2],
+				.a = scene_decoration->border_top_color[3],
+			},
+			.border_bottom_color = {
+				.r = scene_decoration->border_bottom_color[0],
+				.g = scene_decoration->border_bottom_color[1],
+				.b = scene_decoration->border_bottom_color[2],
+				.a = scene_decoration->border_bottom_color[3],
+			},
+			.border_left_color = {
+				.r = scene_decoration->border_left_color[0],
+				.g = scene_decoration->border_left_color[1],
+				.b = scene_decoration->border_left_color[2],
+				.a = scene_decoration->border_left_color[3],
+			},
+			.border_right_color = {
+				.r = scene_decoration->border_right_color[0],
+				.g = scene_decoration->border_right_color[1],
+				.b = scene_decoration->border_right_color[2],
+				.a = scene_decoration->border_right_color[3],
+			},
+			.title_bar = scene_decoration->title_bar,
+			.title_bar_height = scene_decoration->title_bar_height * data->scale,
+			.title_bar_border_radius = scene_decoration->title_bar_border_radius * data->scale,
+			.title_bar_color = {
+				.r = scene_decoration->title_bar_color[0],
+				.g = scene_decoration->title_bar_color[1],
+				.b = scene_decoration->title_bar_color[2],
+				.a = scene_decoration->title_bar_color[3],
+			},
+			.dim = scene_decoration->dim,
+			.dim_color = {
+				.r = scene_decoration->dim_color[0],
+				.g = scene_decoration->dim_color[1],
+				.b = scene_decoration->dim_color[2],
+				.a = scene_decoration->dim_color[3],
+			},
+		});
+		break;
+	}
+	case SWAY_SCENE_NODE_SHADOW: {
+		struct sway_scene_shadow *scene_shadow = sway_scene_shadow_from_node(node);
+		struct wlr_object *object = scene_shadow_get_object(scene_shadow,
+			data->output->output->renderer);
+		wlr_render_pass_add_shadow(data->render_pass, &(struct wlr_render_shadow_options){
+			.box = dst_box,
+			.clip = &render_region,
+			.object = object,
+			.radius_top = scene_shadow->decoration->title_bar_border_radius * data->scale,
+			.radius_bottom = round(scene_shadow->decoration->border_radius * data->scale),
+			.enabled = scene_shadow->enabled,
+			.blur = scene_shadow->blur,
+			.color = {
+				.r = scene_shadow->color[0],
+				.g = scene_shadow->color[1],
+				.b = scene_shadow->color[2],
+				.a = scene_shadow->color[3],
+			},
+		});
+		break;
+	}
 	}
 
 	pixman_region32_fini(&opaque);
@@ -1994,6 +2320,29 @@ static bool scene_node_invisible(struct sway_scene_node *node) {
 		struct sway_scene_buffer *buffer = sway_scene_buffer_from_node(node);
 
 		return buffer->buffer == NULL && buffer->texture == NULL;
+	} else if (node->type == SWAY_SCENE_NODE_DECORATION) {
+		struct sway_scene_decoration *decoration = sway_scene_decoration_from_node(node);
+		bool title_visible = decoration->title_bar && decoration->title_bar_color[3] != 0.f;
+		bool border_visible;
+		if (decoration->border) {
+			if (decoration->border_width <= 0.0 ||
+				(decoration->border_top_color[3] == 0.f && decoration->border_bottom_color[3] == 0.f &&
+				 decoration->border_left_color[3] == 0.f && decoration->border_right_color[3] == 0.f)) {
+				border_visible = false;
+			} else {
+				border_visible = true;
+			}
+		} else {
+			border_visible = false;
+		}
+		if (!title_visible && !border_visible) {
+			return true;
+		}
+	} else if (node->type == SWAY_SCENE_NODE_SHADOW) {
+		struct sway_scene_shadow *shadow = sway_scene_shadow_from_node(node);
+		if (shadow->color[3] == 0.f || !shadow->enabled) {
+			return true;
+		}
 	}
 
 	return false;

@@ -225,10 +225,20 @@ static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 	pixman_image_unref(fill);
 }
 
+static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass,
+		const struct wlr_render_decoration_options *options) {
+}
+
+static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass,
+		const struct wlr_render_shadow_options *options) {
+}
+
 static const struct wlr_render_pass_impl render_pass_impl = {
 	.submit = render_pass_submit,
 	.add_texture = render_pass_add_texture,
 	.add_rect = render_pass_add_rect,
+	.add_decoration = render_pass_add_decoration,
+	.add_shadow = render_pass_add_shadow,
 };
 
 struct wlr_pixman_render_pass *begin_pixman_render_pass(

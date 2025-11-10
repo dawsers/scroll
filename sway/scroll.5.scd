@@ -314,6 +314,22 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 	available size to the first one when incrementing, and from the first to the
 	last one when decrementing.
 
+*decoration* [border_radius <n>] [shadow true|false] [shadow_dynamic true|false] \
+[shadow_size <n>] [shadow_blur <n>] [shadow_offset x y] [shadow_color #RRGGBBAA] \
+[dim true|false] [dim_color #RRGGBBAA]
+	Sets the focused window's decoration parameters
+
+	_border radius_: Radius of the border, in pixels.
+	_shadow_: Turns on/off shadow casting for the window.
+	_shadow_dynamic_: Turns of/off dynamic shadows. Dynamic shadows make the
+		shadow offset variable depending on the location of the window.
+	_shadow_size_: size in pixels of the shadow.
+	_shadow_blur_: Value of the blur radius in pixels, where 0 means sharp shadows.
+	_shadow_offset_: Shadow's offset from the window.
+	_shadow_color_: Color of the shadow.
+	_dim_: Turns on/off dimming of the content when the window is not in focus.
+	_dim_color_: Color used to dim the content when the window is not in focus.
+
 *exit*
 	Exit scroll and end your Wayland session.
 
@@ -1177,6 +1193,27 @@ The default colors are:
 	Set default border style for new tiled windows. Config reload won't affect
 	existing windows, only newly created ones after the reload.
 
+*default_decoration* [border_radius <n>] [shadow true|false] \
+[shadow_dynamic true|false]	[shadow_size <n>] [shadow_blur <n>] \
+[shadow_offset x y]	[shadow_color #RRGGBBAA] [dim true|false] \
+[dim_color #RRGGBBAA]
+	Sets the default values for window decorations.
+
+	_border radius_: Radius of the border, in pixels. Default is 0.
+	_shadow_: Turns on/off shadow casting for the window. Default is off.
+	_shadow_dynamic_: Turns of/off dynamic shadows. Dynamic shadows make the
+		shadow offset variable depending on the location of the window. Default
+		is off.
+	_shadow_size_: size in pixels of the shadow. Default is 40
+	_shadow_blur_: Value of the blur radius in pixelz, where 0 means sharp
+		shadows. Default is	30.
+	_shadow_offset_: Shadow's offset from the window. Default is 40 40
+	_shadow_color_: Color of the shadow. Default is #00000070.
+	_dim_: Turns on/off dimming of the content when the window is not in focus.
+		Default is off.
+	_dim_color_: Color used to dim the content when the window is not in focus.
+		Default is #00000040.
+
 *default_floating_border* normal|none|pixel [<n>]
 	Set default border style for new floating windows. This only applies to
 	windows that are spawned in floating mode, not windows that become floating
@@ -1244,8 +1281,8 @@ The default colors are:
 	may make it unnecessarily hard to tell which window originally raised the
 	event. This option allows one to set a _timeout_ in ms to delay the urgency hint reset.
 
-*titlebar_border_thickness* <thickness>
-	Thickness of the titlebar border in pixels
+*titlebar_border_radius* <radius>
+	Radii of the top titlebar borders in pixels. Default is 0.
 
 *titlebar_padding* <horizontal> [<vertical>]
 	Padding of the text in the titlebar. _horizontal_ value affects horizontal

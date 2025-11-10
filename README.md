@@ -14,6 +14,9 @@ supports some added features:
 
 * Animations: *scroll* supports very customizable animations.
 
+* *scroll* supports rounded borders and title bars, dimming of inactive
+  windows, and dynamic shadows with blur.
+
 * Content scaling: The content of individual windows can be scaled
   independently of the general output scale.
 
@@ -74,7 +77,9 @@ same and the executables are renamed to *scroll*, "scrollmsg", "scrollnag" and
 "scrollbar".
 
 *scroll* uses a modified version of [wlroots](https://gitlab.freedesktop.org/wlroots/wlroots)
-which is included in the source tree and linked statically.
+which is included in the source tree and linked statically. So if you want
+to build *scroll*, you will need to install its dependencies plus wlroots's
+dependencies.
 
 ### Arch Linux
 
@@ -119,7 +124,8 @@ display manager using the provided `/usr/share/wayland-sessions/scroll.desktop`.
 If you want to compile *scroll* yourself, [sway compiling instructions](https://github.com/swaywm/sway#compiling-from-source)
 apply to *scroll*. You will also need to install the lua package (version >= 5.4)
 to enable lua scripting. `wlroots` is no longer a requirement, as the
-source is included in the scroll source tree.
+source is included in the scroll source tree, but you will need its
+dependencies to be able to build *scroll*.
 
 ``` sh
 meson setup build/

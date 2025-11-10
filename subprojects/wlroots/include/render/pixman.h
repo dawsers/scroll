@@ -19,6 +19,7 @@ struct wlr_pixman_renderer {
 
 	struct wl_list buffers; // wlr_pixman_buffer.link
 	struct wl_list textures; // wlr_pixman_texture.link
+	struct wl_list objects; // wlr_pixman_object.link
 
 	struct wlr_drm_format_set drm_formats;
 };
@@ -44,6 +45,12 @@ struct wlr_pixman_texture {
 
 	void *data; // if created via texture_from_pixels
 	struct wlr_buffer *buffer; // if created via texture_from_buffer
+};
+
+struct wlr_pixman_object {
+	struct wlr_object wlr_object;
+	struct wlr_pixman_renderer *renderer;
+	struct wl_list link; // wlr_pixman_renderer.objects
 };
 
 struct wlr_pixman_render_pass {

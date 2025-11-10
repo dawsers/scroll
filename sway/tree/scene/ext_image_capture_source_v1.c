@@ -44,7 +44,9 @@ static void _get_scene_node_extents(struct sway_scene_node *node, struct wlr_box
 		}
 		break;
 	case SWAY_SCENE_NODE_RECT:
-	case SWAY_SCENE_NODE_BUFFER:;
+	case SWAY_SCENE_NODE_BUFFER:
+	case SWAY_SCENE_NODE_DECORATION:
+	case SWAY_SCENE_NODE_SHADOW:;
 		double width, height;
 		scene_node_get_size(node, &width, &height);
 		struct wlr_box node_box = {

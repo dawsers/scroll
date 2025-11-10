@@ -22,6 +22,8 @@
 
 #include "common_vert_src.h"
 #include "quad_frag_src.h"
+#include "decoration_frag_src.h"
+#include "shadow_frag_src.h"
 #include "tex_rgba_frag_src.h"
 #include "tex_rgbx_frag_src.h"
 #include "tex_external_frag_src.h"
@@ -214,6 +216,11 @@ static void gles2_destroy(struct wlr_renderer *wlr_renderer) {
 		destroy_buffer(buffer);
 	}
 
+	struct wlr_gles2_object *object, *object_tmp;
+	wl_list_for_each_safe(object, object_tmp, &renderer->objects, link) {
+		gles2_object_destroy(object);
+	}
+
 	push_gles2_debug(renderer);
 	glDeleteProgram(renderer->shaders.quad.program);
 	glDeleteProgram(renderer->shaders.tex_rgba.program);
@@ -360,6 +367,7 @@ static const struct wlr_renderer_impl renderer_impl = {
 	.texture_from_buffer = gles2_texture_from_buffer,
 	.begin_buffer_pass = gles2_begin_buffer_pass,
 	.render_timer_create = gles2_render_timer_create,
+	.object_with_owner = gles2_object_with_owner,
 };
 
 static const struct wlr_render_timer_impl render_timer_impl = {
@@ -530,6 +538,7 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 
 	wl_list_init(&renderer->buffers);
 	wl_list_init(&renderer->textures);
+	wl_list_init(&renderer->objects);
 
 	renderer->egl = egl;
 	renderer->exts_str = exts_str;
@@ -642,6 +651,42 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.quad.color = glGetUniformLocation(prog, "color");
 	renderer->shaders.quad.pos_attrib = glGetAttribLocation(prog, "pos");
 
+	renderer->shaders.decoration.program = prog =
+		link_program(renderer, common_vert_src, decoration_frag_src);
+	if (!renderer->shaders.decoration.program) {
+		goto error;
+	}
+	renderer->shaders.decoration.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.decoration.border = glGetUniformLocation(prog, "border");
+	renderer->shaders.decoration.title_bar = glGetUniformLocation(prog, "title_bar");
+	renderer->shaders.decoration.dim = glGetUniformLocation(prog, "dim");
+	renderer->shaders.decoration.border_width = glGetUniformLocation(prog, "border_width");
+	renderer->shaders.decoration.border_radius = glGetUniformLocation(prog, "border_radius");
+	renderer->shaders.decoration.title_bar_height = glGetUniformLocation(prog, "title_bar_height");
+	renderer->shaders.decoration.title_bar_border_radius = glGetUniformLocation(prog, "title_bar_border_radius");
+	renderer->shaders.decoration.box = glGetUniformLocation(prog, "box");
+	renderer->shaders.decoration.border_top = glGetUniformLocation(prog, "border_top");
+	renderer->shaders.decoration.border_bottom = glGetUniformLocation(prog, "border_bottom");
+	renderer->shaders.decoration.border_left = glGetUniformLocation(prog, "border_left");
+	renderer->shaders.decoration.border_right = glGetUniformLocation(prog, "border_right");
+	renderer->shaders.decoration.title_bar_color = glGetUniformLocation(prog, "title_bar_color");
+	renderer->shaders.decoration.dim_color = glGetUniformLocation(prog, "dim_color");
+	renderer->shaders.decoration.pos_attrib = glGetAttribLocation(prog, "pos");
+
+	renderer->shaders.shadow.program = prog =
+		link_program(renderer, common_vert_src, shadow_frag_src);
+	if (!renderer->shaders.shadow.program) {
+		goto error;
+	}
+	renderer->shaders.shadow.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.shadow.enabled = glGetUniformLocation(prog, "enabled");
+	renderer->shaders.shadow.radius_top = glGetUniformLocation(prog, "radius_top");
+	renderer->shaders.shadow.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
+	renderer->shaders.shadow.box = glGetUniformLocation(prog, "box");
+	renderer->shaders.shadow.color = glGetUniformLocation(prog, "color");
+	renderer->shaders.shadow.blur = glGetUniformLocation(prog, "blur");
+	renderer->shaders.shadow.pos_attrib = glGetAttribLocation(prog, "pos");
+
 	renderer->shaders.tex_rgba.program = prog =
 		link_program(renderer, common_vert_src, tex_rgba_frag_src);
 	if (!renderer->shaders.tex_rgba.program) {
@@ -651,6 +696,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgba.tex_proj = glGetUniformLocation(prog, "tex_proj");
 	renderer->shaders.tex_rgba.tex = glGetUniformLocation(prog, "tex");
 	renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
+	renderer->shaders.tex_rgba.box = glGetUniformLocation(prog, "box");
+	renderer->shaders.tex_rgba.radius_top = glGetUniformLocation(prog, "radius_top");
+	renderer->shaders.tex_rgba.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
 	renderer->shaders.tex_rgba.pos_attrib = glGetAttribLocation(prog, "pos");
 
 	renderer->shaders.tex_rgbx.program = prog =
@@ -662,6 +710,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgbx.tex_proj = glGetUniformLocation(prog, "tex_proj");
 	renderer->shaders.tex_rgbx.tex = glGetUniformLocation(prog, "tex");
 	renderer->shaders.tex_rgbx.alpha = glGetUniformLocation(prog, "alpha");
+	renderer->shaders.tex_rgbx.box = glGetUniformLocation(prog, "box");
+	renderer->shaders.tex_rgbx.radius_top = glGetUniformLocation(prog, "radius_top");
+	renderer->shaders.tex_rgbx.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
 	renderer->shaders.tex_rgbx.pos_attrib = glGetAttribLocation(prog, "pos");
 
 	if (renderer->exts.OES_egl_image_external) {
@@ -674,6 +725,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 		renderer->shaders.tex_ext.tex_proj = glGetUniformLocation(prog, "tex_proj");
 		renderer->shaders.tex_ext.tex = glGetUniformLocation(prog, "tex");
 		renderer->shaders.tex_ext.alpha = glGetUniformLocation(prog, "alpha");
+		renderer->shaders.tex_ext.box = glGetUniformLocation(prog, "box");
+		renderer->shaders.tex_ext.radius_top = glGetUniformLocation(prog, "radius_top");
+		renderer->shaders.tex_ext.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
 		renderer->shaders.tex_ext.pos_attrib = glGetAttribLocation(prog, "pos");
 	}
 
@@ -694,6 +748,7 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 
 error:
 	glDeleteProgram(renderer->shaders.quad.program);
+	glDeleteProgram(renderer->shaders.decoration.program);
 	glDeleteProgram(renderer->shaders.tex_rgba.program);
 	glDeleteProgram(renderer->shaders.tex_rgbx.program);
 	glDeleteProgram(renderer->shaders.tex_ext.program);

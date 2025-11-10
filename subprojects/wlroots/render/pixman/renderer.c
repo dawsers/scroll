@@ -23,6 +23,56 @@ static struct wlr_pixman_renderer *get_renderer(
 	return renderer;
 }
 
+static const struct wlr_object_impl object_impl;
+
+static bool wlr_object_is_pixman(struct wlr_object *wlr_object) {
+	return wlr_object->impl == &object_impl;
+}
+
+static struct wlr_pixman_object *pixman_get_object(
+		struct wlr_object *wlr_object) {
+	assert(wlr_object_is_pixman(wlr_object));
+	struct wlr_pixman_object *object = wl_container_of(wlr_object, object, wlr_object);
+	return object;
+}
+
+static void pixman_object_destroy(struct wlr_pixman_object *object) {
+	wl_list_remove(&object->link);
+	free(object);
+}
+
+static void handle_pixman_object_destroy(struct wlr_object *object) {
+	pixman_object_destroy(pixman_get_object(object));
+}
+
+static const struct wlr_object_impl object_impl = {
+	.destroy = handle_pixman_object_destroy,
+};
+
+static struct wlr_pixman_object *pixman_object_create(struct wlr_pixman_renderer *renderer,
+		enum wlr_object_type type, const void *owner) {
+	struct wlr_pixman_object *object = calloc(1, sizeof(*object));
+	if (object == NULL) {
+		wlr_log_errno(WLR_ERROR, "Allocation failed");
+		return NULL;
+	}
+	wlr_object_init(&object->wlr_object, &renderer->wlr_renderer,
+		&object_impl, type, owner);
+	object->renderer = renderer;
+	wl_list_insert(&renderer->objects, &object->link);
+	return object;
+}
+
+static struct wlr_object *pixman_object_with_owner(struct wlr_renderer *wlr_renderer,
+		enum wlr_object_type type, const void *owner) {
+	struct wlr_pixman_renderer *renderer = get_renderer(wlr_renderer);
+	struct wlr_pixman_object *object = pixman_object_create(renderer, type, owner);
+	if (object == NULL) {
+		return NULL;
+	}
+	return &object->wlr_object;
+}
+
 bool begin_pixman_data_ptr_access(struct wlr_buffer *wlr_buffer, pixman_image_t **image_ptr,
 		uint32_t flags) {
 	pixman_image_t *image = *image_ptr;
@@ -317,6 +367,7 @@ static const struct wlr_renderer_impl renderer_impl = {
 	.texture_from_buffer = pixman_texture_from_buffer,
 	.destroy = pixman_destroy,
 	.begin_buffer_pass = pixman_begin_buffer_pass,
+	.object_with_owner = pixman_object_with_owner,
 };
 
 struct wlr_renderer *wlr_pixman_renderer_create(void) {
@@ -326,10 +377,12 @@ struct wlr_renderer *wlr_pixman_renderer_create(void) {
 	}
 
 	wlr_log(WLR_INFO, "Creating pixman renderer");
+	wlr_log(WLR_INFO, "The pixman renderer is severely limited and doesn't support any kind of decorations");
 	wlr_renderer_init(&renderer->wlr_renderer, &renderer_impl, WLR_BUFFER_CAP_DATA_PTR);
 	renderer->wlr_renderer.features.output_color_transform = false;
 	wl_list_init(&renderer->buffers);
 	wl_list_init(&renderer->textures);
+	wl_list_init(&renderer->objects);
 
 	size_t len = 0;
 	const uint32_t *formats = get_pixman_drm_formats(&len);

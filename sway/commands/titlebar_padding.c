@@ -13,7 +13,7 @@ struct cmd_results *cmd_titlebar_padding(int argc, char **argv) {
 
 	char *inv;
 	int h_value = strtol(argv[0], &inv, 10);
-	if (*inv != '\0' || h_value < 0 || h_value < config->titlebar_border_thickness) {
+	if (*inv != '\0' || h_value < 0 || h_value < config->titlebar_border_radius) {
 		return cmd_results_new(CMD_FAILURE, "Invalid size specified");
 	}
 
@@ -22,7 +22,7 @@ struct cmd_results *cmd_titlebar_padding(int argc, char **argv) {
 		v_value = h_value;
 	} else {
 		v_value = strtol(argv[1], &inv, 10);
-		if (*inv != '\0' || v_value < 0 || v_value < config->titlebar_border_thickness) {
+		if (*inv != '\0' || v_value < 0 || v_value < config->titlebar_border_radius) {
 			return cmd_results_new(CMD_FAILURE, "Invalid size specified");
 		}
 	}

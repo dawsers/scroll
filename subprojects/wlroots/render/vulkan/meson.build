@@ -43,6 +43,7 @@ wlr_files += files(
 	'vulkan.c',
 	'util.c',
 	'pixel_format.c',
+	'object.c',
 )
 
 wlr_deps += dep_vulkan

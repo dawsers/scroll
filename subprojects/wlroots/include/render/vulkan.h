@@ -126,9 +126,16 @@ const struct wlr_vk_format_modifier_props *vulkan_format_props_find_modifier(
 	const struct wlr_vk_format_props *props, uint64_t mod, bool render);
 void vulkan_format_props_finish(struct wlr_vk_format_props *props);
 
+enum wlr_vk_shader_layout {
+	WLR_VK_SHADER_LAYOUT_STANDARD,
+	WLR_VK_SHADER_LAYOUT_DECORATION,
+	WLR_VK_SHADER_LAYOUT_SHADOW,
+};
+
 struct wlr_vk_pipeline_layout_key {
 	const struct wlr_vk_format *ycbcr_format;
 	enum wlr_scale_filter_mode filter_mode;
+	enum wlr_vk_shader_layout shader_layout;
 };
 
 struct wlr_vk_pipeline_layout {
@@ -160,6 +167,8 @@ enum wlr_vk_texture_transform {
 enum wlr_vk_shader_source {
 	WLR_VK_SHADER_SOURCE_TEXTURE,
 	WLR_VK_SHADER_SOURCE_SINGLE_COLOR,
+	WLR_VK_SHADER_SOURCE_DECORATION,
+	WLR_VK_SHADER_SOURCE_SHADOW,
 };
 
 // Constants used to pick the color transform for the blend-to-output
@@ -274,6 +283,8 @@ struct wlr_vk_command_buffer {
 	struct wl_list stage_buffers; // wlr_vk_shared_buffer.link
 	// Color transform to unref after the command buffer completes
 	struct wlr_color_transform *color_transform;
+	// Objects that need resources released after the command buffer completes
+	struct wl_list destroy_objects;
 
 	// For DMA-BUF implicit sync interop, may be NULL
 	VkSemaphore binary_semaphore;
@@ -294,6 +305,8 @@ struct wlr_vk_renderer {
 	VkShaderModule vert_module;
 	VkShaderModule tex_frag_module;
 	VkShaderModule quad_frag_module;
+	VkShaderModule deco_frag_module;
+	VkShaderModule shadow_frag_module;
 	VkShaderModule output_module;
 
 	struct wl_list pipeline_layouts; // struct wlr_vk_pipeline_layout.link
@@ -348,6 +361,13 @@ struct wlr_vk_renderer {
 		VkImage dst_image;
 		VkDeviceMemory dst_img_memory;
 	} read_pixels_cache;
+
+	size_t last_ubo_pool_size;
+	struct wl_list ubo_descriptor_pools; // wlr_vk_descriptor_pool.link
+	VkDescriptorSetLayout deco_ds_layout;
+	VkDescriptorSetLayout shadow_ds_layout;
+
+	struct wl_list objects;
 };
 
 // vertex shader push constant range data
@@ -361,6 +381,37 @@ struct wlr_vk_frag_texture_pcr_data {
 	float matrix[4][4]; // only a 3x3 subset is used
 	float alpha;
 	float luminance_multiplier;
+	float radius_top;
+	float radius_bottom;
+	float box[4];
+};
+
+struct wlr_vk_frag_decoration_pcr_data {
+	int border;
+	int title_bar;
+	int dim;
+	float border_width;
+	float border_radius;
+	float title_bar_height;
+	float title_bar_border_radius;
+	float padding;
+	float box[4];
+	float border_top[4];
+	float border_bottom[4];
+	float border_left[4];
+	float border_right[4];
+	float title_bar_color[4];
+	float dim_color[4];
+	float vpadding[4];
+};
+
+struct wlr_vk_frag_shadow_pcr_data {
+	int enabled;
+	float blur;
+	float radius_top;
+	float radius_bottom;
+	float box[4];
+	float color[4];
 };
 
 struct wlr_vk_frag_output_pcr_data {
@@ -454,6 +505,18 @@ struct wlr_vk_descriptor_pool *vulkan_alloc_texture_ds(
 // (for freeing it later).
 struct wlr_vk_descriptor_pool *vulkan_alloc_blend_ds(
 	struct wlr_vk_renderer *renderer, VkDescriptorSet *ds);
+
+// Tries to allocate a decoration descriptor set. Will additionally
+// return the pool it was allocated from when successful (for freeing it later).
+struct wlr_vk_descriptor_pool *vulkan_alloc_decoration_ds(
+	struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
+	VkDescriptorSet *ds);
+
+// Tries to allocate a shadow descriptor set. Will additionally
+// return the pool it was allocated from when successful (for freeing it later).
+struct wlr_vk_descriptor_pool *vulkan_alloc_shadow_ds(
+	struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
+	VkDescriptorSet *ds);
 
 // Frees the given descriptor set from the pool its pool.
 void vulkan_free_ds(struct wlr_vk_renderer *renderer,
@@ -579,5 +642,46 @@ void vulkan_change_layout(VkCommandBuffer cb, VkImage img,
 	vulkan_strerror(res), res, ##__VA_ARGS__)
 
 #endif
+
+struct wlr_vk_uniform_buffer {
+	VkBuffer buffer;
+	VkDeviceMemory memory;
+	VkDeviceSize buf_size;
+	void *cpu_mapping;
+};
+
+struct wlr_vk_descriptor_set {
+	VkDescriptorSet ds;
+	struct wlr_vk_descriptor_pool *ds_pool;
+	struct wlr_vk_command_buffer *cb;
+	struct wl_list link; // wlr_vk_object.dss
+};
+
+struct wlr_vk_object {
+	struct wlr_object wlr_object;
+	struct wlr_vk_renderer *renderer;
+	struct wl_list link; // wlr_vk_renderer.objects
+	struct wlr_vk_command_buffer *last_used_cb;  // to track when it can be destroyed
+	struct wl_list destroy_link; // wlr_vk_command_buffer.destroy_objects
+
+	struct wl_list dss;
+	struct wlr_vk_uniform_buffer *buffer;
+};
+
+struct wlr_vk_uniform_buffer *vulkan_create_mapped_uniform_buffer(
+		struct wlr_vk_renderer *renderer, VkDeviceSize size);
+
+void vulkan_destroy_mapped_uniform_buffer(struct wlr_vk_renderer *r,
+		struct wlr_vk_uniform_buffer *buffer);
+
+struct wlr_vk_object *vulkan_get_object(struct wlr_object *wlr_object);
+
+void vulkan_object_destroy(struct wlr_vk_object *object);
+
+struct wlr_object *vulkan_object_with_owner(struct wlr_renderer *wlr_renderer,
+		enum wlr_object_type type, const void *owner);
+
+struct wlr_vk_descriptor_set *vulkan_object_get_ds(struct wlr_vk_object *object,
+		struct wlr_vk_command_buffer *cb);
 
 #endif // RENDER_VULKAN_H

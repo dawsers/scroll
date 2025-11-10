@@ -244,6 +244,9 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 
 	glUniform1i(shader->tex, 0);
 	glUniform1f(shader->alpha, alpha);
+	glUniform4f(shader->box, options->dst_box.x, options->dst_box.y, options->dst_box.width, options->dst_box.height);
+	glUniform1f(shader->radius_top, options->radius_top);
+	glUniform1f(shader->radius_bottom, options->radius_bottom);
 	set_proj_matrix(shader->proj, pass->projection_matrix, &dst_box);
 	set_tex_matrix(shader->tex_proj, options->transform, &src_fbox);
 
@@ -275,10 +278,71 @@ static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 	pop_gles2_debug(renderer);
 }
 
+static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass, const struct wlr_render_decoration_options *options) {
+	struct wlr_gles2_render_pass *pass = get_render_pass(wlr_pass);
+	struct wlr_gles2_renderer *renderer = pass->buffer->renderer;
+
+	struct wlr_box box = options->box;
+	push_gles2_debug(renderer);
+	setup_blending(options->blend_mode);
+
+	glUseProgram(renderer->shaders.decoration.program);
+
+	set_proj_matrix(renderer->shaders.decoration.proj, pass->projection_matrix, &box);
+	glUniform4f(renderer->shaders.decoration.box, box.x, box.y, box.width, box.height);
+	glUniform1i(renderer->shaders.decoration.border, options->border ? 1 : 0);
+	glUniform1f(renderer->shaders.decoration.border_radius, options->border_radius);
+	glUniform1f(renderer->shaders.decoration.border_width, options->border_width);
+	glUniform4f(renderer->shaders.decoration.border_top, options->border_top_color.r,
+		options->border_top_color.g, options->border_top_color.b, options->border_top_color.a);
+	glUniform4f(renderer->shaders.decoration.border_bottom, options->border_bottom_color.r,
+		options->border_bottom_color.g, options->border_bottom_color.b, options->border_bottom_color.a);
+	glUniform4f(renderer->shaders.decoration.border_left, options->border_left_color.r,
+		options->border_left_color.g, options->border_left_color.b, options->border_left_color.a);
+	glUniform4f(renderer->shaders.decoration.border_right, options->border_right_color.r,
+		options->border_right_color.g, options->border_right_color.b, options->border_right_color.a);
+	glUniform1i(renderer->shaders.decoration.title_bar, options->title_bar ? 1 : 0);
+	glUniform1f(renderer->shaders.decoration.title_bar_height, options->title_bar_height);
+	glUniform1f(renderer->shaders.decoration.title_bar_border_radius, options->title_bar_border_radius);
+	glUniform4f(renderer->shaders.decoration.title_bar_color, options->title_bar_color.r,
+		options->title_bar_color.g, options->title_bar_color.b, options->title_bar_color.a);
+	glUniform1i(renderer->shaders.decoration.dim, options->dim ? 1 : 0);
+	glUniform4f(renderer->shaders.decoration.dim_color, options->dim_color.r,
+		options->dim_color.g, options->dim_color.b, options->dim_color.a);
+
+	render(&box, options->clip, renderer->shaders.decoration.pos_attrib);
+	pop_gles2_debug(renderer);
+}
+
+static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass, const struct wlr_render_shadow_options *options) {
+	struct wlr_gles2_render_pass *pass = get_render_pass(wlr_pass);
+	struct wlr_gles2_renderer *renderer = pass->buffer->renderer;
+
+	struct wlr_box box = options->box;
+	push_gles2_debug(renderer);
+	setup_blending(options->blend_mode);
+
+	glUseProgram(renderer->shaders.shadow.program);
+
+	set_proj_matrix(renderer->shaders.shadow.proj, pass->projection_matrix, &box);
+	glUniform4f(renderer->shaders.shadow.box, box.x, box.y, box.width, box.height);
+	glUniform1f(renderer->shaders.shadow.radius_top, options->radius_top);
+	glUniform1f(renderer->shaders.shadow.radius_bottom, options->radius_bottom);
+	glUniform1i(renderer->shaders.shadow.enabled, options->enabled ? 1 : 0);
+	glUniform1f(renderer->shaders.shadow.blur, options->blur);
+	glUniform4f(renderer->shaders.shadow.color, options->color.r,
+		options->color.g, options->color.b, options->color.a);
+
+	render(&box, options->clip, renderer->shaders.shadow.pos_attrib);
+	pop_gles2_debug(renderer);
+}
+
 static const struct wlr_render_pass_impl render_pass_impl = {
 	.submit = render_pass_submit,
 	.add_texture = render_pass_add_texture,
 	.add_rect = render_pass_add_rect,
+	.add_decoration = render_pass_add_decoration,
+	.add_shadow = render_pass_add_shadow,
 };
 
 static const char *reset_status_str(GLenum status) {

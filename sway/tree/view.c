@@ -855,6 +855,22 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		view_update_csd_from_client(view, decoration);
 	}
 
+	view->container->pending.decoration.border_radius = config->decoration.border_radius;
+	view->container->pending.decoration.dim = config->decoration.dim;
+	view->container->pending.decoration.dim_color_r = config->decoration.dim_color[0];
+	view->container->pending.decoration.dim_color_g = config->decoration.dim_color[1];
+	view->container->pending.decoration.dim_color_b = config->decoration.dim_color[2];
+	view->container->pending.decoration.dim_color_a = config->decoration.dim_color[3];
+	view->container->pending.decoration.shadow = config->decoration.shadow;
+	view->container->pending.decoration.shadow_dynamic = config->decoration.shadow_dynamic;
+	view->container->pending.decoration.shadow_size = config->decoration.shadow_size;
+	view->container->pending.decoration.shadow_blur = config->decoration.shadow_blur;
+	view->container->pending.decoration.shadow_offset_x = config->decoration.shadow_offset[0];
+	view->container->pending.decoration.shadow_offset_y = config->decoration.shadow_offset[1];
+	view->container->pending.decoration.shadow_color_r = config->decoration.shadow_color[0];
+	view->container->pending.decoration.shadow_color_g = config->decoration.shadow_color[1];
+	view->container->pending.decoration.shadow_color_b = config->decoration.shadow_color[2];
+	view->container->pending.decoration.shadow_color_a = config->decoration.shadow_color[3];
 	if (view->impl->wants_floating && view->impl->wants_floating(view)) {
 		view->container->pending.border = config->floating_border;
 		view->container->pending.border_thickness = config->floating_border_thickness;
@@ -1233,6 +1249,7 @@ static void view_save_buffer_iterator(struct sway_scene_buffer *buffer,
 
 	sway_scene_buffer_set_dest_size(sbuf,
 		buffer->dst_width, buffer->dst_height);
+	sway_scene_buffer_set_radius(sbuf, buffer->radius_top, buffer->radius_bottom);
 	sway_scene_buffer_set_opaque_region(sbuf, &buffer->opaque_region);
 	sway_scene_buffer_set_opacity(sbuf, buffer->opacity);
 	sway_scene_buffer_set_filter_mode(sbuf, buffer->filter_mode);

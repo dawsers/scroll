@@ -87,6 +87,9 @@ enum wlr_scale_filter_mode {
 };
 
 struct wlr_render_texture_options {
+	/* Radii for the top and bottom edge of the texture */
+	float radius_top;
+	float radius_bottom;
 	/* Source texture */
 	struct wlr_texture *texture;
 	/* Source coordinates, leave empty to render the whole texture */
@@ -152,5 +155,54 @@ struct wlr_render_rect_options {
  */
 void wlr_render_pass_add_rect(struct wlr_render_pass *render_pass,
 	const struct wlr_render_rect_options *options);
+
+struct wlr_render_decoration_options {
+	/* Rectangle coordinates */
+	struct wlr_box box;
+	/* Clip region, leave NULL to disable clipping */
+	const pixman_region32_t *clip;
+	/* Blend mode */
+	enum wlr_render_blend_mode blend_mode;
+	struct wlr_object *object;
+
+	bool border;
+	double border_radius;
+	double border_width;
+	struct wlr_render_color border_top_color, border_bottom_color, border_left_color, border_right_color;
+	bool title_bar;
+	double title_bar_height;
+	double title_bar_border_radius;
+	struct wlr_render_color title_bar_color;
+	bool dim;
+	struct wlr_render_color dim_color;
+};
+
+/**
+ * Render a view decoration.
+ */
+void wlr_render_pass_add_decoration(struct wlr_render_pass *render_pass,
+	const struct wlr_render_decoration_options *options);
+
+struct wlr_render_shadow_options {
+	/* Rectangle coordinates */
+	struct wlr_box box;
+	/* Clip region, leave NULL to disable clipping */
+	const pixman_region32_t *clip;
+	/* Blend mode */
+	enum wlr_render_blend_mode blend_mode;
+	struct wlr_object *object;
+
+	bool enabled;
+	double radius_top;
+	double radius_bottom;
+	double blur;
+	struct wlr_render_color color;
+};
+
+/**
+ * Render a view shadow.
+ */
+void wlr_render_pass_add_shadow(struct wlr_render_pass *render_pass,
+	const struct wlr_render_shadow_options *options);
 
 #endif

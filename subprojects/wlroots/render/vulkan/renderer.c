@@ -25,6 +25,8 @@
 #include "render/vulkan/shaders/common.vert.h"
 #include "render/vulkan/shaders/texture.frag.h"
 #include "render/vulkan/shaders/quad.frag.h"
+#include "render/vulkan/shaders/decoration.frag.h"
+#include "render/vulkan/shaders/shadow.frag.h"
 #include "render/vulkan/shaders/output.frag.h"
 #include "types/wlr_buffer.h"
 #include "util/time.h"
@@ -157,6 +159,22 @@ struct wlr_vk_descriptor_pool *vulkan_alloc_blend_ds(
 		&renderer->last_output_pool_size);
 }
 
+struct wlr_vk_descriptor_pool *vulkan_alloc_decoration_ds(
+		struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
+		VkDescriptorSet *ds) {
+	return alloc_ds(renderer, ds, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		&ds_layout, &renderer->ubo_descriptor_pools,
+		&renderer->last_ubo_pool_size);
+}
+
+struct wlr_vk_descriptor_pool *vulkan_alloc_shadow_ds(
+		struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
+		VkDescriptorSet *ds) {
+	return alloc_ds(renderer, ds, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		&ds_layout, &renderer->ubo_descriptor_pools,
+		&renderer->last_ubo_pool_size);
+}
+
 void vulkan_free_ds(struct wlr_vk_renderer *renderer,
 		struct wlr_vk_descriptor_pool *pool, VkDescriptorSet ds) {
 	vkFreeDescriptorSets(renderer->dev->dev, pool->pool, 1, &ds);
@@ -185,6 +203,26 @@ static void destroy_render_format_setup(struct wlr_vk_renderer *renderer,
 	}
 
 	free(setup);
+}
+
+void vulkan_destroy_mapped_uniform_buffer(struct wlr_vk_renderer *r,
+		struct wlr_vk_uniform_buffer *buffer) {
+	if (!buffer) {
+		return;
+	}
+
+	if (buffer->cpu_mapping) {
+		vkUnmapMemory(r->dev->dev, buffer->memory);
+		buffer->cpu_mapping = NULL;
+	}
+	if (buffer->buffer) {
+		vkDestroyBuffer(r->dev->dev, buffer->buffer, NULL);
+	}
+	if (buffer->memory) {
+		vkFreeMemory(r->dev->dev, buffer->memory, NULL);
+	}
+
+	free(buffer);
 }
 
 static void shared_buffer_destroy(struct wlr_vk_renderer *r,
@@ -449,6 +487,7 @@ static bool init_command_buffer(struct wlr_vk_command_buffer *cb,
 	};
 	wl_list_init(&cb->destroy_textures);
 	wl_list_init(&cb->stage_buffers);
+	wl_list_init(&cb->destroy_objects);
 	return true;
 }
 
@@ -489,6 +528,13 @@ static void release_command_buffer_resources(struct wlr_vk_command_buffer *cb,
 
 		wl_list_remove(&buf->link);
 		wl_list_insert(&renderer->stage.buffers, &buf->link);
+	}
+
+	struct wlr_vk_object *object, *object_tmp;
+	wl_list_for_each_safe(object, object_tmp, &cb->destroy_objects, destroy_link) {
+		wl_list_remove(&object->destroy_link);
+		object->last_used_cb = NULL;
+		vulkan_object_destroy(object);
 	}
 
 	if (cb->color_transform) {
@@ -1114,6 +1160,13 @@ static void vulkan_destroy(struct wlr_renderer *wlr_renderer) {
 		wl_array_release(&cb->wait_semaphores);
 	}
 
+	struct wlr_vk_object *obj, *tmp_obj;
+	wl_list_for_each_safe(obj, tmp_obj, &renderer->objects, link) {
+		vulkan_object_destroy(obj);
+	}
+	vkDestroyDescriptorSetLayout(renderer->dev->dev, renderer->deco_ds_layout, NULL);
+	vkDestroyDescriptorSetLayout(renderer->dev->dev, renderer->shadow_ds_layout, NULL);
+
 	// stage.cb automatically freed with command pool
 	struct wlr_vk_shared_buffer *buf, *tmp_buf;
 	wl_list_for_each_safe(buf, tmp_buf, &renderer->stage.buffers, link) {
@@ -1152,10 +1205,15 @@ static void vulkan_destroy(struct wlr_renderer *wlr_renderer) {
 		vkDestroyDescriptorPool(dev->dev, pool->pool, NULL);
 		free(pool);
 	}
+	wl_list_for_each_safe(pool, tmp_pool, &renderer->ubo_descriptor_pools, link) {
+		vkDestroyDescriptorPool(dev->dev, pool->pool, NULL);
+		free(pool);
+	}
 
 	vkDestroyShaderModule(dev->dev, renderer->vert_module, NULL);
 	vkDestroyShaderModule(dev->dev, renderer->tex_frag_module, NULL);
 	vkDestroyShaderModule(dev->dev, renderer->quad_frag_module, NULL);
+	vkDestroyShaderModule(dev->dev, renderer->deco_frag_module, NULL);
 	vkDestroyShaderModule(dev->dev, renderer->output_module, NULL);
 
 	struct wlr_vk_pipeline_layout *pipeline_layout, *pipeline_layout_tmp;
@@ -1468,11 +1526,13 @@ static const struct wlr_renderer_impl renderer_impl = {
 	.get_drm_fd = vulkan_get_drm_fd,
 	.texture_from_buffer = vulkan_texture_from_buffer,
 	.begin_buffer_pass = vulkan_begin_buffer_pass,
+	.object_with_owner = vulkan_object_with_owner,
 };
 
 // Initializes the VkDescriptorSetLayout and VkPipelineLayout needed
 // for the texture rendering pipeline using the given VkSampler.
 static bool init_tex_layouts(struct wlr_vk_renderer *renderer,
+		const struct wlr_vk_pipeline_layout_key *key,
 		VkSampler tex_sampler, VkDescriptorSetLayout *out_ds_layout,
 		VkPipelineLayout *out_pipe_layout) {
 	VkResult res;
@@ -1498,6 +1558,18 @@ static bool init_tex_layouts(struct wlr_vk_renderer *renderer,
 		return false;
 	}
 
+	uint32_t pc_size;
+	switch (key->shader_layout) {
+	case WLR_VK_SHADER_LAYOUT_STANDARD:
+		pc_size = sizeof(struct wlr_vk_frag_texture_pcr_data);
+		break;
+	case WLR_VK_SHADER_LAYOUT_DECORATION:
+		pc_size = sizeof(struct wlr_vk_frag_decoration_pcr_data);
+		break;
+	case WLR_VK_SHADER_LAYOUT_SHADOW:
+		pc_size = sizeof(struct wlr_vk_frag_shadow_pcr_data);
+		break;
+	}
 	VkPushConstantRange pc_ranges[] = {
 		{
 			.size = sizeof(struct wlr_vk_vert_pcr_data),
@@ -1505,7 +1577,7 @@ static bool init_tex_layouts(struct wlr_vk_renderer *renderer,
 		},
 		{
 			.offset = pc_ranges[0].size,
-			.size = sizeof(struct wlr_vk_frag_texture_pcr_data),
+			.size = pc_size,
 			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
 		},
 	};
@@ -1627,11 +1699,85 @@ static bool init_blend_to_output_layouts(struct wlr_vk_renderer *renderer) {
 	return true;
 }
 
+// Initializes the VkDescriptorSetLayout and VkPipelineLayout needed
+// for the decoration rendering pipeline.
+static bool init_deco_layouts(struct wlr_vk_renderer *renderer,
+		const struct wlr_vk_pipeline_layout_key *key,
+		VkDescriptorSetLayout *out_ds_layout,
+		VkPipelineLayout *out_pipe_layout) {
+	VkResult res;
+	VkDevice dev = renderer->dev->dev;
+
+	*out_ds_layout = renderer->deco_ds_layout;
+
+	VkPushConstantRange pc_ranges[] = {
+		{
+			.size = sizeof(struct wlr_vk_vert_pcr_data),
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		},
+	};
+
+	VkPipelineLayoutCreateInfo pl_info = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.setLayoutCount = 1,
+		.pSetLayouts = out_ds_layout,
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = pc_ranges,
+	};
+
+	res = vkCreatePipelineLayout(dev, &pl_info, NULL, out_pipe_layout);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkCreatePipelineLayout", res);
+		return false;
+	}
+
+	return true;
+}
+
+// Initializes the VkDescriptorSetLayout and VkPipelineLayout needed
+// for the shadow rendering pipeline.
+static bool init_shadow_layouts(struct wlr_vk_renderer *renderer,
+		const struct wlr_vk_pipeline_layout_key *key,
+		VkDescriptorSetLayout *out_ds_layout,
+		VkPipelineLayout *out_pipe_layout) {
+	VkResult res;
+	VkDevice dev = renderer->dev->dev;
+
+	*out_ds_layout = renderer->shadow_ds_layout;
+
+	VkPushConstantRange pc_ranges[] = {
+		{
+			.size = sizeof(struct wlr_vk_vert_pcr_data),
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		},
+	};
+
+	VkPipelineLayoutCreateInfo pl_info = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.setLayoutCount = 1,
+		.pSetLayouts = out_ds_layout,
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = pc_ranges,
+	};
+
+	res = vkCreatePipelineLayout(dev, &pl_info, NULL, out_pipe_layout);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkCreatePipelineLayout", res);
+		return false;
+	}
+
+	return true;
+}
+
 static bool pipeline_layout_key_equals(
 		const struct wlr_vk_pipeline_layout_key *a,
 		const struct wlr_vk_pipeline_layout_key *b) {
 	assert(!a->ycbcr_format || a->ycbcr_format->is_ycbcr);
 	assert(!b->ycbcr_format || b->ycbcr_format->is_ycbcr);
+
+	if (a->shader_layout != b->shader_layout) {
+		return false;
+	}
 
 	if (a->filter_mode != b->filter_mode) {
 		return false;
@@ -1737,6 +1883,22 @@ struct wlr_vk_pipeline *setup_get_or_create_pipeline(
 			.module = renderer->tex_frag_module,
 			.pName = "main",
 			.pSpecializationInfo = &specialization,
+		};
+		break;
+	case WLR_VK_SHADER_SOURCE_DECORATION:
+		stages[1] = (VkPipelineShaderStageCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.module = renderer->deco_frag_module,
+			.pName = "main",
+		};
+		break;
+	case WLR_VK_SHADER_SOURCE_SHADOW:
+		stages[1] = (VkPipelineShaderStageCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.module = renderer->shadow_frag_module,
+			.pName = "main",
 		};
 		break;
 	}
@@ -1962,6 +2124,22 @@ struct wlr_vk_pipeline_layout *get_or_create_pipeline_layout(
 
 	pipeline_layout->key = *key;
 
+	if (key->shader_layout == WLR_VK_SHADER_LAYOUT_DECORATION) {
+		if (!init_deco_layouts(renderer, key, &pipeline_layout->ds, &pipeline_layout->vk)) {
+			free(pipeline_layout);
+			return NULL;
+		}
+		wl_list_insert(&renderer->pipeline_layouts, &pipeline_layout->link);
+		return pipeline_layout;
+	} else if (key->shader_layout == WLR_VK_SHADER_LAYOUT_SHADOW) {
+		if (!init_shadow_layouts(renderer, key, &pipeline_layout->ds, &pipeline_layout->vk)) {
+			free(pipeline_layout);
+			return NULL;
+		}
+		wl_list_insert(&renderer->pipeline_layouts, &pipeline_layout->link);
+		return pipeline_layout;
+	}
+
 	VkResult res;
 	VkFilter filter = VK_FILTER_LINEAR;
 	switch (key->filter_mode) {
@@ -2018,7 +2196,7 @@ struct wlr_vk_pipeline_layout *get_or_create_pipeline_layout(
 		return NULL;
 	}
 
-	if (!init_tex_layouts(renderer, pipeline_layout->sampler, &pipeline_layout->ds, &pipeline_layout->vk)) {
+	if (!init_tex_layouts(renderer, key, pipeline_layout->sampler, &pipeline_layout->ds, &pipeline_layout->vk)) {
 		free(pipeline_layout);
 		return NULL;
 	}
@@ -2127,6 +2305,58 @@ static bool init_dummy_images(struct wlr_vk_renderer *renderer) {
 	return true;
 }
 
+static bool init_decoration_descriptor_set_layout(struct wlr_vk_renderer *renderer) {
+	VkResult res;
+	VkDevice dev = renderer->dev->dev;
+
+	VkDescriptorSetLayoutBinding ds_binding = {
+		.binding = 0,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	};
+
+	VkDescriptorSetLayoutCreateInfo ds_info = {
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.bindingCount = 1,
+		.pBindings = &ds_binding,
+	};
+
+	res = vkCreateDescriptorSetLayout(dev, &ds_info, NULL, &renderer->deco_ds_layout);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkCreateDescriptorSetLayout", res);
+		return false;
+	}
+
+	return true;
+}
+
+static bool init_shadow_descriptor_set_layout(struct wlr_vk_renderer *renderer) {
+	VkResult res;
+	VkDevice dev = renderer->dev->dev;
+
+	VkDescriptorSetLayoutBinding ds_binding = {
+		.binding = 0,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	};
+
+	VkDescriptorSetLayoutCreateInfo ds_info = {
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.bindingCount = 1,
+		.pBindings = &ds_binding,
+	};
+
+	res = vkCreateDescriptorSetLayout(dev, &ds_info, NULL, &renderer->shadow_ds_layout);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkCreateDescriptorSetLayout", res);
+		return false;
+	}
+
+	return true;
+}
+
 // Creates static render data, such as sampler, layouts and shader modules
 // for the given renderer.
 // Cleanup is done by destroying the renderer.
@@ -2139,6 +2369,14 @@ static bool init_static_render_data(struct wlr_vk_renderer *renderer) {
 	}
 
 	if (!init_dummy_images(renderer)) {
+		return false;
+	}
+
+	if (!init_decoration_descriptor_set_layout(renderer)) {
+		return false;
+	}
+
+	if (!init_shadow_descriptor_set_layout(renderer)) {
 		return false;
 	}
 
@@ -2174,6 +2412,28 @@ static bool init_static_render_data(struct wlr_vk_renderer *renderer) {
 	res = vkCreateShaderModule(dev, &sinfo, NULL, &renderer->quad_frag_module);
 	if (res != VK_SUCCESS) {
 		wlr_vk_error("Failed to create quad fragment shader module", res);
+		return false;
+	}
+
+	sinfo = (VkShaderModuleCreateInfo){
+		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		.codeSize = sizeof(decoration_frag_data),
+		.pCode = decoration_frag_data,
+	};
+	res = vkCreateShaderModule(dev, &sinfo, NULL, &renderer->deco_frag_module);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("Failed to create decoration fragment shader module", res);
+		return false;
+	}
+
+	sinfo = (VkShaderModuleCreateInfo){
+		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		.codeSize = sizeof(shadow_frag_data),
+		.pCode = shadow_frag_data,
+	};
+	res = vkCreateShaderModule(dev, &sinfo, NULL, &renderer->shadow_frag_module);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("Failed to create shadow fragment shader module", res);
 		return false;
 	}
 
@@ -2429,7 +2689,7 @@ static struct wlr_vk_render_format_setup *find_or_create_render_setup(
 
 	if (!setup_get_or_create_pipeline(setup, &(struct wlr_vk_pipeline_key){
 		.source = WLR_VK_SHADER_SOURCE_SINGLE_COLOR,
-		.layout = { .ycbcr_format = NULL },
+		.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD },
 	})) {
 		goto error;
 	}
@@ -2437,7 +2697,7 @@ static struct wlr_vk_render_format_setup *find_or_create_render_setup(
 	if (!setup_get_or_create_pipeline(setup, &(struct wlr_vk_pipeline_key){
 		.source = WLR_VK_SHADER_SOURCE_TEXTURE,
 		.texture_transform = WLR_VK_TEXTURE_TRANSFORM_IDENTITY,
-		.layout = {.ycbcr_format = NULL },
+		.layout = {.ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD },
 	})) {
 		goto error;
 	}
@@ -2445,7 +2705,21 @@ static struct wlr_vk_render_format_setup *find_or_create_render_setup(
 	if (!setup_get_or_create_pipeline(setup, &(struct wlr_vk_pipeline_key){
 		.source = WLR_VK_SHADER_SOURCE_TEXTURE,
 		.texture_transform = WLR_VK_TEXTURE_TRANSFORM_SRGB,
-		.layout = {.ycbcr_format = NULL },
+		.layout = {.ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD },
+	})) {
+		goto error;
+	}
+
+	if (!setup_get_or_create_pipeline(setup, &(struct wlr_vk_pipeline_key){
+		.source = WLR_VK_SHADER_SOURCE_DECORATION,
+		.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_DECORATION },
+	})) {
+		goto error;
+	}
+
+	if (!setup_get_or_create_pipeline(setup, &(struct wlr_vk_pipeline_key){
+		.source = WLR_VK_SHADER_SOURCE_SHADOW,
+		.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_SHADOW },
 	})) {
 		goto error;
 	}
@@ -2454,6 +2728,7 @@ static struct wlr_vk_render_format_setup *find_or_create_render_setup(
 		const struct wlr_vk_format *format = &renderer->dev->format_props[i].format;
 		const struct wlr_vk_pipeline_layout_key layout = {
 			.ycbcr_format = format,
+			.shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD
 		};
 
 		if (format->is_ycbcr) {
@@ -2486,11 +2761,13 @@ struct wlr_renderer *vulkan_renderer_create_for_device(struct wlr_vk_device *dev
 	wlr_renderer_init(&renderer->wlr_renderer, &renderer_impl, WLR_BUFFER_CAP_DMABUF);
 	renderer->wlr_renderer.features.input_color_transform = true;
 	renderer->wlr_renderer.features.output_color_transform = true;
+	wl_list_init(&renderer->objects);
 	wl_list_init(&renderer->stage.buffers);
 	wl_list_init(&renderer->foreign_textures);
 	wl_list_init(&renderer->textures);
 	wl_list_init(&renderer->descriptor_pools);
 	wl_list_init(&renderer->output_descriptor_pools);
+	wl_list_init(&renderer->ubo_descriptor_pools);
 	wl_list_init(&renderer->render_format_setups);
 	wl_list_init(&renderer->render_buffers);
 	wl_list_init(&renderer->color_transforms);
@@ -2594,4 +2871,67 @@ VkDevice wlr_vk_renderer_get_device(struct wlr_renderer *renderer) {
 uint32_t wlr_vk_renderer_get_queue_family(struct wlr_renderer *renderer) {
 	struct wlr_vk_renderer *vk_renderer = vulkan_get_renderer(renderer);
 	return vk_renderer->dev->queue_family;
+}
+
+struct wlr_vk_uniform_buffer *vulkan_create_mapped_uniform_buffer(
+		struct wlr_vk_renderer *renderer, VkDeviceSize size) {
+	struct wlr_vk_uniform_buffer *buf = calloc(1, sizeof(struct wlr_vk_uniform_buffer));
+	if (!buf) {
+		wlr_log_errno(WLR_ERROR, "Allocation failed");
+		return NULL;
+	}
+
+	VkResult res;
+	VkBufferCreateInfo buf_info = {
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.size = size,
+		.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	};
+	res = vkCreateBuffer(renderer->dev->dev, &buf_info, NULL, &buf->buffer);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkCreateBuffer", res);
+		goto error;
+	}
+
+	VkMemoryRequirements mem_reqs;
+	vkGetBufferMemoryRequirements(renderer->dev->dev, buf->buffer, &mem_reqs);
+
+	int mem_type_index = vulkan_find_mem_type(renderer->dev,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mem_reqs.memoryTypeBits);
+	if (mem_type_index < 0) {
+		wlr_log(WLR_ERROR, "Failed to find memory type");
+		goto error;
+	}
+
+	VkMemoryAllocateInfo mem_info = {
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.allocationSize = mem_reqs.size,
+		.memoryTypeIndex = (uint32_t)mem_type_index,
+	};
+	res = vkAllocateMemory(renderer->dev->dev, &mem_info, NULL, &buf->memory);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkAllocatorMemory", res);
+		goto error;
+	}
+
+	res = vkBindBufferMemory(renderer->dev->dev, buf->buffer, buf->memory, 0);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkBindBufferMemory", res);
+		goto error;
+	}
+
+	res = vkMapMemory(renderer->dev->dev, buf->memory, 0, VK_WHOLE_SIZE, 0, &buf->cpu_mapping);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkMapMemory", res);
+		goto error;
+	}
+
+	buf->buf_size = size;
+	return buf;
+
+error:
+	vulkan_destroy_mapped_uniform_buffer(renderer, buf);
+	return NULL;
 }
