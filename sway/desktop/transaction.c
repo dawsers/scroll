@@ -1038,17 +1038,19 @@ static void arrange_fullscreen(struct sway_scene_tree *tree,
 		arrange_container(fs, width, height, true, container_get_gaps(fs), fs->current.workspace);
 	}
 
-	// When we change focus in full screen mode, we avoid disabling and enabling
-	// full screen mode by calling container_pass_fullscreen(). This only calls
-	// transaction_commit_dirty() at the end, so the old node may be in the
-	// list of full screen nodes when we insert the new one. Remove any old
-	// nodes before adding the new one (there should be just one).
-	struct sway_scene_node *node, *tmp;
-	wl_list_for_each_safe(node, tmp, &tree->children, link) {
-		sway_scene_node_reparent(node, node->old_parent);
-	}
+	if (ws) {
+		// When we change focus in workspace full screen mode, we avoid disabling and enabling
+		// full screen mode by calling container_pass_fullscreen(). This only calls
+		// transaction_commit_dirty() at the end, so the old node may be in the
+		// list of full screen nodes when we insert the new one. Remove any old
+		// nodes before adding the new one (there should be just one).
+		struct sway_scene_node *node, *tmp;
+		wl_list_for_each_safe(node, tmp, &tree->children, link) {
+			sway_scene_node_reparent(node, node->old_parent);
+		}
 
-	fs_node->old_parent = fs_node->parent;
+		fs_node->old_parent = fs_node->parent;
+	}
 	sway_scene_node_reparent(fs_node, tree);
 	sway_scene_node_lower_to_bottom(fs_node);
 	sway_scene_node_set_position(fs_node, 0, 0);
