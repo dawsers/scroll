@@ -544,10 +544,10 @@ void sway_scene_decoration_set_border_radius(struct sway_scene_decoration *deco,
 void sway_scene_decoration_set_border_width(struct sway_scene_decoration *deco, double width);
 
 /**
- * Add a title bar to an existing decoration node with the given height, border radius and text box.
+ * Add a title bar to an existing decoration node with the given height and border radius.
  */
 void sway_scene_decoration_set_title_bar(struct sway_scene_decoration *deco, double height,
-		double border_radius, struct wlr_fbox *text_box, struct wlr_fbox *marks_box);
+		double border_radius);
 
 /**
  * Set the color of the title bar of an existing decoration node.

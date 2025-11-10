@@ -973,7 +973,7 @@ void sway_scene_decoration_set_border_width(struct sway_scene_decoration *decora
 }
 
 void sway_scene_decoration_set_title_bar(struct sway_scene_decoration *decoration, double height,
-		double border_radius, struct wlr_fbox *text_box, struct wlr_fbox *marks_box) {
+		double border_radius) {
 	if (decoration->title_bar == true &&
 		decoration->title_bar_height == height &&
 		decoration->title_bar_border_radius == border_radius) {

@@ -379,7 +379,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 	int marks_buffer_width = 0;
 	double width = con->title_width;
 	int height = container_titlebar_height();
-	struct wlr_fbox text_box = {0}, marks_box = {0};
 
 	struct sway_workspace *workspace = con->pending.workspace;
 	double scale = workspace ? (layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0) : 1.0;
@@ -405,12 +404,6 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_scene_node_set_position(node->node,
 			scale * h_padding, scale * (height - node->height) * 0.5);
 		sway_text_node_scale(node, scale);
-		marks_box = (struct wlr_fbox) {
-			.x = ceil(node->node->x),
-			.y = ceil(node->node->y),
-			.width = round(scale * alloc_width) - 1.0,
-			.height = round(scale * node->height) - 2.0,
-		};
 	}
 
 	if (con->title_bar.title_text) {
@@ -435,19 +428,13 @@ void container_arrange_title_bar(struct sway_container *con) {
 		sway_scene_node_set_position(node->node,
 			scale * h_padding, scale * (height - node->height) * 0.5);
 		sway_text_node_scale(node, scale);
-		text_box = (struct wlr_fbox) {
-			.x = ceil(node->node->x),
-			.y = ceil(node->node->y),
-			.width = round(scale * alloc_width) - 1.0,
-			.height = round(scale * node->height) - 2.0,
-		};
 	}
 
 	if (width <= 0 || height <= 0) {
 		return;
 	}
 
-	sway_scene_decoration_set_title_bar(con->decoration.full, scale * height, scale * config->titlebar_border_radius, &text_box, &marks_box);
+	sway_scene_decoration_set_title_bar(con->decoration.full, scale * height, scale * config->titlebar_border_radius);
 
 	container_update(con);
 }
