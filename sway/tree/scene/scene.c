@@ -1892,11 +1892,27 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			sway_color_primaries_from_named(&primaries, scene_buffer->primaries);
 		}
 
+		struct wlr_fbox clamped_src_box = scene_buffer->src_box;
+		if (!wlr_fbox_empty(&clamped_src_box)) {
+			if (clamped_src_box.x < 0) clamped_src_box.x = 0;
+			if (clamped_src_box.y < 0) clamped_src_box.y = 0;
+
+			// Clamp width and height to not exceed texture boundaries
+			double max_width = (double)texture->width - clamped_src_box.x;
+			double max_height = (double)texture->height - clamped_src_box.y;
+			if (clamped_src_box.width > max_width) {
+				clamped_src_box.width = max_width;
+			}
+			if (clamped_src_box.height > max_height) {
+				clamped_src_box.height = max_height;
+			}
+		}
+
 		wlr_render_pass_add_texture(data->render_pass, &(struct wlr_render_texture_options) {
 			.radius_top = round(scene_buffer->radius_top * data->scale),
 			.radius_bottom = round(scene_buffer->radius_bottom * data->scale),
 			.texture = texture,
-			.src_box = scene_buffer->src_box,
+			.src_box = clamped_src_box,
 			.dst_box = dst_box,
 			.transform = transform,
 			.clip = &render_region,
