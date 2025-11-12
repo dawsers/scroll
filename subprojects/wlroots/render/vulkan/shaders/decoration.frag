@@ -9,7 +9,11 @@ layout(binding = 0) uniform UBO {
 	float border_radius;
 	float title_bar_height;
 	float title_bar_border_radius;
-	float padding;
+	bool swap_xy;
+	bool flip_x;
+	bool flip_y;
+	float pad1;
+	float pad2;
 	vec4 box;
 	vec4 border_top;
 	vec4 border_bottom;
@@ -17,7 +21,7 @@ layout(binding = 0) uniform UBO {
 	vec4 border_right;
 	vec4 title_bar_color;
 	vec4 dim_color;
-	vec4 vpadding;
+	vec4 pad3;
 } data;
 
 vec4 antialias(float x, float x0, float x1, float fw, vec4 color) {
@@ -49,15 +53,29 @@ void main() {
     vec2 pos = vec2(gl_FragCoord);
     float title_height;
     float r0, r1;
+    vec2 rel = pos.xy - data.box.xy;
+	float width, height;
+	if (data.flip_x) {
+		rel.x = data.box.z - rel.x;
+	}
+	if (data.flip_y) {
+		rel.y = data.box.w - rel.y;
+	}
+	if (data.swap_xy) {
+		rel = rel.yx;
+		width = data.box.w;
+		height = data.box.z;
+	} else {
+		width = data.box.z;
+		height = data.box.w;
+	}
     if (data.title_bar) {
         title_height = data.title_bar_height;
         r0 = 0.0;
-        vec2 rel = pos.xy - data.box.xy;
         if (rel.y <= data.title_bar_height) {
             // Here, account for radius
             if (data.title_bar_border_radius > 0.0) {
                 vec2 p;
-                float width = data.box.z;
                 if (rel.x < data.title_bar_border_radius + 0.5) {
                     if (rel.y < data.title_bar_border_radius + 0.5) {
                         p = rel - vec2(data.title_bar_border_radius);
@@ -86,9 +104,8 @@ void main() {
         r0 = data.border_radius;
     }
     if (data.border) {
-        vec2 rel = pos.xy - data.box.xy - vec2(0.0, title_height);
-        float width = data.box.z;
-        float height = data.box.w - title_height;
+		height = height - title_height;
+		rel.y = rel.y - title_height;
         float bw = data.border_width + 0.5;
         if (data.border_radius > 0.0) {
             float r1 = data.border_radius;

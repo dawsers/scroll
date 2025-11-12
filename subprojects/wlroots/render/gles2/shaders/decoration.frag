@@ -7,6 +7,9 @@ uniform float border_width;
 uniform float border_radius;
 uniform float title_bar_height;
 uniform float title_bar_border_radius;
+uniform bool swap_xy;
+uniform bool flip_x;
+uniform bool flip_y;
 uniform vec4 box;
 uniform vec4 border_top;
 uniform vec4 border_bottom;
@@ -44,15 +47,29 @@ void main() {
     vec2 pos = vec2(gl_FragCoord);
     float title_height;
     float r0, r1;
+    vec2 rel = pos.xy - box.xy;
+	float width, height;
+	if (flip_x) {
+		rel.x = box.z - rel.x;
+	}
+	if (flip_y) {
+		rel.y = box.w - rel.y;
+	}
+	if (swap_xy) {
+		rel = rel.yx;
+		width = box.w;
+		height = box.z;
+	} else {
+		width = box.z;
+		height = box.w;
+	}
     if (title_bar) {
         title_height = title_bar_height;
         r0 = 0.0;
-        vec2 rel = pos.xy - box.xy;
         if (rel.y <= title_bar_height) {
             // Here, account for radius
             if (title_bar_border_radius > 0.0) {
                 vec2 p;
-                float width = box.z;
                 if (rel.x < title_bar_border_radius + 0.5) {
                     if (rel.y < title_bar_border_radius + 0.5) {
                         p = rel - vec2(title_bar_border_radius);
@@ -81,9 +98,8 @@ void main() {
         r0 = border_radius;
     }
     if (border) {
-        vec2 rel = pos.xy - box.xy - vec2(0.0, title_height);
-        float width = box.z;
-        float height = box.w - title_height;
+		height = height - title_height;
+		rel.y = rel.y - title_height;
         float bw = border_width + 0.5;
         if (border_radius > 0.0) {
             float r1 = border_radius;

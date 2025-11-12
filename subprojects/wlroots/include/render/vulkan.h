@@ -381,8 +381,12 @@ struct wlr_vk_frag_texture_pcr_data {
 	float matrix[4][4]; // only a 3x3 subset is used
 	float alpha;
 	float luminance_multiplier;
+	int swap_xy;
+	int flip_x;
+	int flip_y;
 	float radius_top;
 	float radius_bottom;
+	float pad;
 	float box[4];
 };
 
@@ -394,7 +398,9 @@ struct wlr_vk_frag_decoration_pcr_data {
 	float border_radius;
 	float title_bar_height;
 	float title_bar_border_radius;
-	float padding;
+	int swap_xy;
+	int flip_x, flip_y;
+	float pad1, pad2;
 	float box[4];
 	float border_top[4];
 	float border_bottom[4];
@@ -402,7 +408,7 @@ struct wlr_vk_frag_decoration_pcr_data {
 	float border_right[4];
 	float title_bar_color[4];
 	float dim_color[4];
-	float vpadding[4];
+	float pad3[4];
 };
 
 struct wlr_vk_frag_shadow_pcr_data {
@@ -410,6 +416,10 @@ struct wlr_vk_frag_shadow_pcr_data {
 	float blur;
 	float radius_top;
 	float radius_bottom;
+	int swap_xy;
+	int flip_x;
+	int flip_y;
+	float pad;
 	float box[4];
 	float color[4];
 };

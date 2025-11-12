@@ -36,6 +36,9 @@ struct wlr_gles2_tex_shader {
 	GLint alpha;
 	GLint pos_attrib;
 	GLint box;
+	GLint swap_xy;
+	GLint flip_x;
+	GLint flip_y;
 	GLint radius_top;
 	GLint radius_bottom;
 };
@@ -86,6 +89,9 @@ struct wlr_gles2_renderer {
 		struct {
 			GLuint program;
 			GLint proj;
+			GLint swap_xy;
+			GLint flip_x;
+			GLint flip_y;
 			GLint border;
 			GLint title_bar;
 			GLint dim;
@@ -105,6 +111,9 @@ struct wlr_gles2_renderer {
 		struct {
 			GLuint program;
 			GLint proj;
+			GLint swap_xy;
+			GLint flip_x;
+			GLint flip_y;
 			GLint box;
 			GLint radius_top;
 			GLint radius_bottom;

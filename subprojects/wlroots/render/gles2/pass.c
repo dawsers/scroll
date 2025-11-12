@@ -245,6 +245,9 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	glUniform1i(shader->tex, 0);
 	glUniform1f(shader->alpha, alpha);
 	glUniform4f(shader->box, options->dst_box.x, options->dst_box.y, options->dst_box.width, options->dst_box.height);
+	glUniform1i(shader->swap_xy, options->swap_xy ? 1 : 0);
+	glUniform1i(shader->flip_x, options->flip_x ? 1 : 0);
+	glUniform1i(shader->flip_y, options->flip_y ? 1 : 0);
 	glUniform1f(shader->radius_top, options->radius_top);
 	glUniform1f(shader->radius_bottom, options->radius_bottom);
 	set_proj_matrix(shader->proj, pass->projection_matrix, &dst_box);
@@ -290,6 +293,9 @@ static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass, const s
 
 	set_proj_matrix(renderer->shaders.decoration.proj, pass->projection_matrix, &box);
 	glUniform4f(renderer->shaders.decoration.box, box.x, box.y, box.width, box.height);
+	glUniform1i(renderer->shaders.decoration.swap_xy, options->swap_xy ? 1 : 0);
+	glUniform1i(renderer->shaders.decoration.flip_x, options->flip_x ? 1 : 0);
+	glUniform1i(renderer->shaders.decoration.flip_y, options->flip_y ? 1 : 0);
 	glUniform1i(renderer->shaders.decoration.border, options->border ? 1 : 0);
 	glUniform1f(renderer->shaders.decoration.border_radius, options->border_radius);
 	glUniform1f(renderer->shaders.decoration.border_width, options->border_width);
@@ -325,6 +331,9 @@ static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass, const struc
 	glUseProgram(renderer->shaders.shadow.program);
 
 	set_proj_matrix(renderer->shaders.shadow.proj, pass->projection_matrix, &box);
+	glUniform1i(renderer->shaders.shadow.swap_xy, options->swap_xy ? 1 : 0);
+	glUniform1i(renderer->shaders.shadow.flip_x, options->flip_x ? 1 : 0);
+	glUniform1i(renderer->shaders.shadow.flip_y, options->flip_y ? 1 : 0);
 	glUniform4f(renderer->shaders.shadow.box, box.x, box.y, box.width, box.height);
 	glUniform1f(renderer->shaders.shadow.radius_top, options->radius_top);
 	glUniform1f(renderer->shaders.shadow.radius_bottom, options->radius_bottom);

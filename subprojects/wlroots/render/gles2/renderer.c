@@ -657,6 +657,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 		goto error;
 	}
 	renderer->shaders.decoration.proj = glGetUniformLocation(prog, "proj");
+	renderer->shaders.decoration.swap_xy = glGetUniformLocation(prog, "swap_xy");
+	renderer->shaders.decoration.flip_x = glGetUniformLocation(prog, "flip_x");
+	renderer->shaders.decoration.flip_y = glGetUniformLocation(prog, "flip_y");
 	renderer->shaders.decoration.border = glGetUniformLocation(prog, "border");
 	renderer->shaders.decoration.title_bar = glGetUniformLocation(prog, "title_bar");
 	renderer->shaders.decoration.dim = glGetUniformLocation(prog, "dim");
@@ -682,6 +685,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.shadow.enabled = glGetUniformLocation(prog, "enabled");
 	renderer->shaders.shadow.radius_top = glGetUniformLocation(prog, "radius_top");
 	renderer->shaders.shadow.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
+	renderer->shaders.shadow.swap_xy = glGetUniformLocation(prog, "swap_xy");
+	renderer->shaders.shadow.flip_x = glGetUniformLocation(prog, "flip_x");
+	renderer->shaders.shadow.flip_y = glGetUniformLocation(prog, "flip_y");
 	renderer->shaders.shadow.box = glGetUniformLocation(prog, "box");
 	renderer->shaders.shadow.color = glGetUniformLocation(prog, "color");
 	renderer->shaders.shadow.blur = glGetUniformLocation(prog, "blur");
@@ -697,6 +703,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgba.tex = glGetUniformLocation(prog, "tex");
 	renderer->shaders.tex_rgba.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgba.box = glGetUniformLocation(prog, "box");
+	renderer->shaders.tex_rgba.swap_xy = glGetUniformLocation(prog, "swap_xy");
+	renderer->shaders.tex_rgba.flip_x = glGetUniformLocation(prog, "flip_x");
+	renderer->shaders.tex_rgba.flip_y = glGetUniformLocation(prog, "flip_y");
 	renderer->shaders.tex_rgba.radius_top = glGetUniformLocation(prog, "radius_top");
 	renderer->shaders.tex_rgba.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
 	renderer->shaders.tex_rgba.pos_attrib = glGetAttribLocation(prog, "pos");
@@ -711,6 +720,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 	renderer->shaders.tex_rgbx.tex = glGetUniformLocation(prog, "tex");
 	renderer->shaders.tex_rgbx.alpha = glGetUniformLocation(prog, "alpha");
 	renderer->shaders.tex_rgbx.box = glGetUniformLocation(prog, "box");
+	renderer->shaders.tex_rgbx.swap_xy = glGetUniformLocation(prog, "swap_xy");
+	renderer->shaders.tex_rgbx.flip_x = glGetUniformLocation(prog, "flip_x");
+	renderer->shaders.tex_rgbx.flip_y = glGetUniformLocation(prog, "flip_y");
 	renderer->shaders.tex_rgbx.radius_top = glGetUniformLocation(prog, "radius_top");
 	renderer->shaders.tex_rgbx.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
 	renderer->shaders.tex_rgbx.pos_attrib = glGetAttribLocation(prog, "pos");
@@ -726,6 +738,9 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 		renderer->shaders.tex_ext.tex = glGetUniformLocation(prog, "tex");
 		renderer->shaders.tex_ext.alpha = glGetUniformLocation(prog, "alpha");
 		renderer->shaders.tex_ext.box = glGetUniformLocation(prog, "box");
+		renderer->shaders.tex_ext.swap_xy = glGetUniformLocation(prog, "swap_xy");
+		renderer->shaders.tex_ext.flip_x = glGetUniformLocation(prog, "flip_x");
+		renderer->shaders.tex_ext.flip_y = glGetUniformLocation(prog, "flip_y");
 		renderer->shaders.tex_ext.radius_top = glGetUniformLocation(prog, "radius_top");
 		renderer->shaders.tex_ext.radius_bottom = glGetUniformLocation(prog, "radius_bottom");
 		renderer->shaders.tex_ext.pos_attrib = glGetAttribLocation(prog, "pos");

@@ -1772,6 +1772,52 @@ struct sway_scene_node *sway_scene_node_at(struct sway_scene_node *node,
 	return NULL;
 }
 
+static void query_transform(enum wl_output_transform transform, bool *swap_xy,
+		bool *flip_x, bool *flip_y) {
+	switch (transform) {
+	case WL_OUTPUT_TRANSFORM_NORMAL:
+		*swap_xy = false;
+		*flip_x = false;
+		*flip_y = false;
+		break;
+	case WL_OUTPUT_TRANSFORM_90:
+		*swap_xy = true;
+		*flip_x = false;
+		*flip_y = true;
+		break;
+	case WL_OUTPUT_TRANSFORM_180:
+		*swap_xy = false;
+		*flip_x = true;
+		*flip_y = true;
+		break;
+	case WL_OUTPUT_TRANSFORM_270:
+		*swap_xy = true;
+		*flip_x = true;
+		*flip_y = false;
+		break;
+	case WL_OUTPUT_TRANSFORM_FLIPPED:
+		*swap_xy = false;
+		*flip_x = true;
+		*flip_y = false;
+		break;
+	case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+		*swap_xy = true;
+		*flip_x = false;
+		*flip_y = false;
+		break;
+	case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+		*swap_xy = false;
+		*flip_x = false;
+		*flip_y = true;
+		break;
+	case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+		*swap_xy = true;
+		*flip_x = true;
+		*flip_y = true;
+		break;
+	}
+}
+
 struct render_list_entry {
 	struct sway_scene_node *node;
 	bool highlight_transparent_region;
@@ -1892,7 +1938,12 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			sway_color_primaries_from_named(&primaries, scene_buffer->primaries);
 		}
 
+		bool swap_xy, flip_x, flip_y;
+		query_transform(data->transform, &swap_xy, &flip_x, &flip_y);
 		wlr_render_pass_add_texture(data->render_pass, &(struct wlr_render_texture_options) {
+			.swap_xy = swap_xy,
+			.flip_x = flip_x,
+			.flip_y = flip_y,
 			.radius_top = round(scene_buffer->radius_top * data->scale),
 			.radius_bottom = round(scene_buffer->radius_bottom * data->scale),
 			.texture = texture,
@@ -1930,9 +1981,14 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 		struct sway_scene_decoration *scene_decoration = sway_scene_decoration_from_node(node);
 		struct wlr_object *object = scene_decoration_get_object(scene_decoration,
 			data->output->output->renderer);
+		bool swap_xy, flip_x, flip_y;
+		query_transform(data->transform, &swap_xy, &flip_x, &flip_y);
 		wlr_render_pass_add_decoration(data->render_pass, &(struct wlr_render_decoration_options){
 			.box = dst_box,
 			.clip = &render_region,
+			.swap_xy = swap_xy,
+			.flip_x = flip_x,
+			.flip_y = flip_y,
 			.object = object,
 			.border = scene_decoration->border,
 			.border_radius = round(scene_decoration->border_radius * data->scale),
@@ -1984,11 +2040,16 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 		struct sway_scene_shadow *scene_shadow = sway_scene_shadow_from_node(node);
 		struct wlr_object *object = scene_shadow_get_object(scene_shadow,
 			data->output->output->renderer);
+		bool swap_xy, flip_x, flip_y;
+		query_transform(data->transform, &swap_xy, &flip_x, &flip_y);
 		wlr_render_pass_add_shadow(data->render_pass, &(struct wlr_render_shadow_options){
 			.box = dst_box,
 			.clip = &render_region,
 			.object = object,
-			.radius_top = scene_shadow->decoration->title_bar_border_radius * data->scale,
+			.swap_xy = swap_xy,
+			.flip_x = flip_x,
+			.flip_y = flip_y,
+			.radius_top = round(scene_shadow->decoration->title_bar_border_radius * data->scale),
 			.radius_bottom = round(scene_shadow->decoration->border_radius * data->scale),
 			.enabled = scene_shadow->enabled,
 			.blur = scene_shadow->blur,

@@ -87,6 +87,9 @@ enum wlr_scale_filter_mode {
 };
 
 struct wlr_render_texture_options {
+	/* Output transformation */
+	bool swap_xy;
+	bool flip_x, flip_y;
 	/* Radii for the top and bottom edge of the texture */
 	float radius_top;
 	float radius_bottom;
@@ -161,6 +164,9 @@ struct wlr_render_decoration_options {
 	struct wlr_box box;
 	/* Clip region, leave NULL to disable clipping */
 	const pixman_region32_t *clip;
+	/* Output transformation */
+	bool swap_xy;
+	bool flip_x, flip_y;
 	/* Blend mode */
 	enum wlr_render_blend_mode blend_mode;
 	struct wlr_object *object;
@@ -188,6 +194,9 @@ struct wlr_render_shadow_options {
 	struct wlr_box box;
 	/* Clip region, leave NULL to disable clipping */
 	const pixman_region32_t *clip;
+	/* Output transformation */
+	bool swap_xy;
+	bool flip_x, flip_y;
 	/* Blend mode */
 	enum wlr_render_blend_mode blend_mode;
 	struct wlr_object *object;

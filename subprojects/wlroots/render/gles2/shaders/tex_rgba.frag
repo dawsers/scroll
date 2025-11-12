@@ -4,6 +4,9 @@ varying vec2 v_texcoord;
 uniform sampler2D tex;
 uniform float alpha;
 uniform vec4 box;
+uniform bool swap_xy;
+uniform bool flip_x;
+uniform bool flip_y;
 uniform float radius_top;
 uniform float radius_bottom;
 
@@ -24,10 +27,24 @@ float fw2(float r, vec2 p) {
 }
 
 void main() {
+    vec2 pos = vec2(gl_FragCoord);
+    vec2 rel = pos.xy - box.xy;
+	float width, height;
+	if (flip_x) {
+		rel.x = box.z - rel.x;
+	}
+	if (flip_y) {
+		rel.y = box.w - rel.y;
+	}
+	if (swap_xy) {
+		rel = rel.yx;
+		width = box.w;
+		height = box.z;
+	} else {
+		width = box.z;
+		height = box.w;
+	}
     if (radius_top > 0.0) {
-        vec2 pos = vec2(gl_FragCoord);
-        vec2 rel = pos.xy - box.xy;
-        float width = box.z;
         if (rel.x < radius_top + 0.5) {
             if (rel.y < radius_top + 0.5) {
                 vec2 p = rel - vec2(radius_top);
@@ -51,10 +68,6 @@ void main() {
         }
     }
     if (radius_bottom > 0.0) {
-        vec2 pos = vec2(gl_FragCoord);
-        vec2 rel = pos.xy - box.xy;
-        float width = box.z;
-        float height = box.w;
         if (rel.x < radius_bottom + 0.5) {
             if (rel.y > height - (radius_bottom + 0.5)) {
                 vec2 p = rel - vec2(radius_bottom, height - radius_bottom);

@@ -10,8 +10,12 @@ layout(push_constant, row_major) uniform UBO {
 	layout(offset = 80) mat4 matrix;
 	float alpha;
 	float luminance_multiplier;
+	bool swap_xy;
+	bool flip_x;
+	bool flip_y;
 	float radius_top;
 	float radius_bottom;
+	float pad;
 	vec4 box;
 } data;
 
@@ -105,10 +109,24 @@ void main() {
 	// Back to pre-multiplied alpha
 	out_color = vec4(rgb * alpha, alpha);
 
+    vec2 pos = vec2(gl_FragCoord);
+    vec2 rel = pos.xy - data.box.xy;
+	float width, height;
+	if (data.flip_x) {
+		rel.x = data.box.z - rel.x;
+	}
+	if (data.flip_y) {
+		rel.y = data.box.w - rel.y;
+	}
+	if (data.swap_xy) {
+		rel = rel.yx;
+		width = data.box.w;
+		height = data.box.z;
+	} else {
+		width = data.box.z;
+		height = data.box.w;
+	}
     if (data.radius_top > 0.0) {
-        vec2 pos = vec2(gl_FragCoord);
-        vec2 rel = pos.xy - data.box.xy;
-        float width = data.box.z;
         if (rel.x < data.radius_top + 0.5) {
             if (rel.y < data.radius_top + 0.5) {
                 vec2 p = rel - vec2(data.radius_top);
@@ -132,10 +150,6 @@ void main() {
         }
     }
     if (data.radius_bottom > 0.0) {
-        vec2 pos = vec2(gl_FragCoord);
-        vec2 rel = pos.xy - data.box.xy;
-        float width = data.box.z;
-        float height = data.box.w;
         if (rel.x < data.radius_bottom + 0.5) {
             if (rel.y > height - (data.radius_bottom + 0.5)) {
                 vec2 p = rel - vec2(data.radius_bottom, height - data.radius_bottom);

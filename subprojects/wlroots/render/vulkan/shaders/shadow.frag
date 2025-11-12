@@ -6,6 +6,10 @@ layout(binding = 0) uniform UBO {
 	float blur;
 	float radius_top;
 	float radius_bottom;
+	bool swap_xy;
+	bool flip_x;
+	bool flip_y;
+	float pad;
 	vec4 box;
 	vec4 color;
 } data;
@@ -54,8 +58,8 @@ float ellipse_x(vec2 ellipse, float y) {
   return ellipse.x * sqrt(1.0 - y_scaled * y_scaled);
 }
 
-float blur_rect(vec4 r, vec2 pos, float sigma) {
-  return erf_range(vec2(r.x - pos.x, r.x + r.z - pos.x), sigma) * erf_range(vec2(r.y - pos.y, r.y + r.w - pos.y), sigma);
+float blur_rect(vec2 rel, vec2 siz, float sigma) {
+  return erf_range(vec2(-rel.x, siz.x - rel.x), sigma) * erf_range(vec2(-rel.y, siz.y - rel.y), sigma);
 }
 
 float blur_corner(vec2 p, vec2 r, float sigma) {
@@ -83,11 +87,23 @@ float blur_corner(vec2 p, vec2 r, float sigma) {
 }
 
 float blur_rounded_rect (vec4 r, vec2 p, float sigma) {
-  float result = blur_rect(r, p, sigma);
-  result -= blur_corner(p - r.xy, vec2(data.radius_top, data.radius_top), sigma);
-  result -= blur_corner(vec2(r.x + r.z - p.x, p.y - r.y), vec2(data.radius_top, data.radius_top), sigma);
-  result -= blur_corner(vec2(r.x + r.z, r.y + r.w) - p, vec2(data.radius_bottom, data.radius_bottom), sigma);
-  result -= blur_corner(vec2(p.x - r.x, r.y + r.w - p.y), vec2(data.radius_bottom, data.radius_bottom), sigma);
+	vec2 rel = p.xy - r.xy;
+	vec2 siz = r.zw;
+	if (data.flip_x) {
+		rel.x = r.z - rel.x;
+	}
+	if (data.flip_y) {
+		rel.y = r.w - rel.y;
+	}
+	if (data.swap_xy) {
+		rel = rel.yx;
+		siz = siz.yx;
+	}
+  float result = blur_rect(rel, siz, sigma);
+  result -= blur_corner(rel, vec2(data.radius_top, data.radius_top), sigma);
+  result -= blur_corner(vec2(siz.x - rel.x, rel.y), vec2(data.radius_top, data.radius_top), sigma);
+  result -= blur_corner(siz - rel, vec2(data.radius_bottom, data.radius_bottom), sigma);
+  result -= blur_corner(vec2(rel.x, siz.y - rel.y), vec2(data.radius_bottom, data.radius_bottom), sigma);
 
   return result;
 }
@@ -96,10 +112,24 @@ void main() {
 	if (!data.enabled) {
 		discard;
 	}
+    vec2 pos = vec2(gl_FragCoord);
+    vec2 rel = pos.xy - data.box.xy;
+	float width, height;
+	if (data.flip_x) {
+		rel.x = data.box.z - rel.x;
+	}
+	if (data.flip_y) {
+		rel.y = data.box.w - rel.y;
+	}
+	if (data.swap_xy) {
+		rel = rel.yx;
+		width = data.box.w;
+		height = data.box.z;
+	} else {
+		width = data.box.z;
+		height = data.box.w;
+	}
     if (data.radius_top > 0.0) {
-        vec2 pos = vec2(gl_FragCoord);
-        vec2 rel = pos.xy - data.box.xy;
-        float width = data.box.z;
         if (rel.x < data.radius_top + 0.5) {
             if (rel.y < data.radius_top + 0.5) {
                 vec2 p = rel - vec2(data.radius_top);
@@ -137,10 +167,6 @@ void main() {
         }
     }
     if (data.radius_bottom > 0.0) {
-        vec2 pos = vec2(gl_FragCoord);
-        vec2 rel = pos.xy - data.box.xy;
-        float width = data.box.z;
-        float height = data.box.w;
         if (rel.x < data.radius_bottom + 0.5) {
             if (rel.y > height - (data.radius_bottom + 0.5)) {
                 vec2 p = rel - vec2(data.radius_bottom, height - data.radius_bottom);
@@ -180,9 +206,9 @@ void main() {
 	if (data.blur > 0.0) {
 		vec4 b = vec4(data.box.x + data.blur, data.box.y + data.blur, data.box.z - 2.0 * data.blur,
 				data.box.w - 2.0 * data.blur);
-		float opacity = blur_rounded_rect(b, vec2(gl_FragCoord), data.blur);
+		float opacity = blur_rounded_rect(b, pos, data.blur);
 		out_color = data.color * opacity;
 	} else {
-		out_color = data. color;
+		out_color = data.color;
 	}
 }
