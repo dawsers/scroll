@@ -134,8 +134,11 @@ static void virtual_pointer_axis_source(struct wl_client *client,
 	if (pointer == NULL) {
 		return;
 	}
-	pointer->axis_event[pointer->axis].pointer = &pointer->pointer;
-	pointer->axis_event[pointer->axis].source = source;
+	int n_axis = sizeof(pointer->axis_event) / sizeof(pointer->axis_event[0]);
+	for (int i = 0; i < n_axis; i++) {
+		pointer->axis_event[i].pointer = &pointer->pointer;
+		pointer->axis_event[i].source = source;
+	}
 }
 
 static void virtual_pointer_axis_stop(struct wl_client *client,
