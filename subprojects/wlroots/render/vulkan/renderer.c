@@ -1569,6 +1569,9 @@ static bool init_tex_layouts(struct wlr_vk_renderer *renderer,
 	case WLR_VK_SHADER_LAYOUT_SHADOW:
 		pc_size = sizeof(struct wlr_vk_frag_shadow_pcr_data);
 		break;
+	default:
+		wlr_log(WLR_ERROR, "init_tex_layouts(): unknown shader layout %d", key->shader_layout);
+		return false;
 	}
 	VkPushConstantRange pc_ranges[] = {
 		{

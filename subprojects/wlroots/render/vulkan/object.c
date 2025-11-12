@@ -83,6 +83,10 @@ static struct wlr_vk_object *vk_object_create(struct wlr_vk_renderer *renderer,
 	case WLR_OBJECT_SHADOW:
 		size = sizeof(struct wlr_vk_frag_shadow_pcr_data);
 		break;
+	default:
+		wlr_log(WLR_ERROR, "vk_object_create(): unknown object type %d", type);
+		free(object);
+		return NULL;
 	}
 
 	object->buffer = vulkan_create_mapped_uniform_buffer(renderer, size);

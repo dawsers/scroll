@@ -1815,6 +1815,12 @@ static void query_transform(enum wl_output_transform transform, bool *swap_xy,
 		*flip_x = true;
 		*flip_y = true;
 		break;
+	default:
+		sway_log(SWAY_ERROR, "query_transform(): Unknown transform type %d", transform);
+		*swap_xy = false;
+		*flip_x = false;
+		*flip_y = false;
+		break;
 	}
 }
 
