@@ -640,7 +640,7 @@ static void output_cursor_output_handle_output_commit(
 	const struct wlr_output_event_commit *event = data;
 
 	if (event->state->committed & (WLR_OUTPUT_STATE_SCALE | WLR_OUTPUT_STATE_TRANSFORM
-				| WLR_OUTPUT_STATE_ENABLED)) {
+			| WLR_OUTPUT_STATE_ENABLED | WLR_OUTPUT_STATE_IMAGE_DESCRIPTION)) {
 		cursor_output_cursor_update(output_cursor);
 	}
 

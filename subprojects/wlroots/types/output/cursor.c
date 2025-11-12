@@ -10,6 +10,7 @@
 #include <wlr/util/log.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
+#include "render/color.h"
 #include "types/wlr_buffer.h"
 #include "types/wlr_output.h"
 
@@ -255,7 +256,17 @@ static struct wlr_buffer *render_cursor_buffer(struct wlr_output_cursor *cursor)
 	wlr_box_transform(&dst_box, &dst_box, wlr_output_transform_invert(output->transform),
 		buffer->width, buffer->height);
 
-	struct wlr_render_pass *pass = wlr_renderer_begin_buffer_pass(renderer, buffer, NULL);
+	struct wlr_buffer_pass_options options = {0};
+	struct wlr_color_primaries primaries_value;
+	if (output->image_description != NULL) {
+		options.color_transform = wlr_color_transform_init_linear_to_inverse_eotf(
+			output->image_description->transfer_function);
+		wlr_color_primaries_from_named(&primaries_value,
+			output->image_description->primaries);
+		options.primaries = &primaries_value;
+	}
+	struct wlr_render_pass *pass = wlr_renderer_begin_buffer_pass(renderer, buffer, &options);
+	wlr_color_transform_unref(options.color_transform);
 	if (pass == NULL) {
 		wlr_buffer_unlock(buffer);
 		return NULL;
