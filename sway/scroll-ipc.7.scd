@@ -407,6 +407,9 @@ node and will have the following properties:
 |- visible
 :  boolean
 :  (Only windows) Whether the node is visible
+|- fully_visible
+:  boolean
+:  (Only windows) Whether the node is fully visible
 |- shell
 :  string
 :  (Only windows) The shell of the window, such as _xdg\_shell_ or _xwayland_

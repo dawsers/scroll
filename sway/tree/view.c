@@ -1188,6 +1188,54 @@ bool view_is_visible(struct sway_view *view) {
 	return true;
 }
 
+bool view_is_fully_visible(struct sway_view *view) {
+	if (!view_is_visible(view)) {
+		return false;
+	}
+	struct sway_workspace *workspace = view->container->pending.workspace;
+	// Check view isn't hidden by another fullscreen view
+	struct sway_container *fs = root->fullscreen_global ?
+		root->fullscreen_global : workspace ? workspace->fullscreen : NULL;
+	if (fs && (container_is_fullscreen_or_child(view->container) ||
+			container_is_transient_for(view->container, fs))) {
+		return true;
+	}
+	if (!workspace) {
+		return false;
+	}
+	struct wlr_box box_c, box_o;
+	container_get_box(view->container, &box_c);
+	bool floating = container_is_floating(view->container);
+	if (floating) {
+		root_get_box(root, &box_o);
+	} else {
+		output_get_box(workspace->output, &box_o);
+	}
+	if (!wlr_box_contains_box(&box_o, &box_c)) {
+		return false;
+	}
+	// Now verify there is no other floating window above it
+	int idx = list_find(workspace->floating, view->container);
+	for (int i = 0; i < workspace->floating->length; ++ i) {
+		struct sway_container *con = workspace->floating->items[i];
+		if (i > idx) {
+			struct wlr_box box, intersection;
+			container_get_box(con, &box);
+			if (wlr_box_intersection(&intersection, &box_c, &box)) {
+				return false;
+			}
+		}
+	}
+	// This is missing the case where a floating window is in more than
+	// one output. In that case, we only check if there are no other windows
+	// above it in the current workspace. We would also need to check all the
+	// other possible outputs to see if any other floating window overlaps
+	// with the one we are testing, but we don't know the position of the
+	// window relative to the others, because the window is not in the other
+	// workspace's floating window list.
+	return true;
+}
+
 void view_set_urgent(struct sway_view *view, bool enable) {
 	if (view_is_urgent(view) == enable) {
 		return;

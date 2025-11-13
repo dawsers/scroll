@@ -570,6 +570,9 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 	bool visible = view_is_visible(c->view);
 	json_object_object_add(object, "visible", json_object_new_boolean(visible));
 
+	bool fully_visible = view_is_fully_visible(c->view);
+	json_object_object_add(object, "fully_visible", json_object_new_boolean(fully_visible));
+
 	bool has_titlebar = c->title_bar.tree->node.enabled;
 	struct wlr_box window_box = {
 		c->pending.content_x - c->pending.x,
