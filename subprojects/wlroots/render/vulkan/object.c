@@ -125,6 +125,7 @@ struct wlr_vk_descriptor_set *vulkan_object_get_ds(struct wlr_vk_object *object,
 		return 0;
 	}
 
+	ds->cb = cb;
 	switch (object->wlr_object.type) {
 	case WLR_OBJECT_DECORATION:
 		ds->ds_pool = vulkan_alloc_decoration_ds(renderer, renderer->deco_ds_layout, &ds->ds);
