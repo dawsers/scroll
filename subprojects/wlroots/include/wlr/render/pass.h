@@ -113,6 +113,10 @@ struct wlr_render_texture_options {
 	enum wlr_color_transfer_function transfer_function;
 	/* Primaries describing the color volume of the source texture */
 	const struct wlr_color_primaries *primaries;
+	/* Color encoding of the source texture for YCbCr conversion to RGB */
+	enum wlr_color_encoding color_encoding;
+	/* Color range of the source texture */
+	enum wlr_color_range color_range;
 
 	/* Wait for a timeline synchronization point before texturing.
 	 *
