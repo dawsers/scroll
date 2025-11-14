@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_alpha_modifier_v1.h>
 #include <wlr/types/wlr_color_management_v1.h>
+#include <wlr/types/wlr_color_representation_v1.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
@@ -259,6 +260,19 @@ static void surface_reconfigure(struct wlr_scene_surface *scene_surface) {
 		primaries = wlr_color_manager_v1_primaries_to_wlr(img_desc->primaries_named);
 	}
 
+	enum wlr_color_encoding color_encoding = WLR_COLOR_ENCODING_NONE;
+	enum wlr_color_range color_range = WLR_COLOR_RANGE_NONE;
+	const struct wlr_color_representation_v1_surface_state *color_repr =
+		wlr_color_representation_v1_get_surface_state(surface);
+	if (color_repr != NULL) {
+		if (color_repr->coefficients != 0) {
+			color_encoding = wlr_color_representation_v1_color_encoding_to_wlr(color_repr->coefficients);
+		}
+		if (color_repr->range != 0) {
+			color_range = wlr_color_representation_v1_color_range_to_wlr(color_repr->range);
+		}
+	}
+
 	wlr_scene_buffer_set_opaque_region(scene_buffer, &opaque);
 	wlr_scene_buffer_set_source_box(scene_buffer, &src_box);
 	wlr_scene_buffer_set_dest_size(scene_buffer, width, height);
@@ -266,6 +280,8 @@ static void surface_reconfigure(struct wlr_scene_surface *scene_surface) {
 	wlr_scene_buffer_set_opacity(scene_buffer, opacity);
 	wlr_scene_buffer_set_transfer_function(scene_buffer, tf);
 	wlr_scene_buffer_set_primaries(scene_buffer, primaries);
+	wlr_scene_buffer_set_color_encoding(scene_buffer, color_encoding);
+	wlr_scene_buffer_set_color_range(scene_buffer, color_range);
 
 	scene_buffer_unmark_client_buffer(scene_buffer);
 
