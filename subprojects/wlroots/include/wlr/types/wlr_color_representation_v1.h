@@ -44,12 +44,10 @@ struct wlr_color_representation_manager_v1 {
 
 // Options used when initialising a wlr_color_representation_manager_v1
 struct wlr_color_representation_v1_options {
-	enum wp_color_representation_surface_v1_alpha_mode
-		*supported_alpha_modes;
+	const enum wp_color_representation_surface_v1_alpha_mode *supported_alpha_modes;
 	size_t supported_alpha_modes_len;
 
-	const struct wlr_color_representation_v1_coeffs_and_range
-		*supported_coeffs_and_ranges;
+	const struct wlr_color_representation_v1_coeffs_and_range *supported_coeffs_and_ranges;
 	size_t supported_coeffs_and_ranges_len;
 };
 
