@@ -159,15 +159,7 @@ struct wlr_vk_descriptor_pool *vulkan_alloc_blend_ds(
 		&renderer->last_output_pool_size);
 }
 
-struct wlr_vk_descriptor_pool *vulkan_alloc_decoration_ds(
-		struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
-		VkDescriptorSet *ds) {
-	return alloc_ds(renderer, ds, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		&ds_layout, &renderer->ubo_descriptor_pools,
-		&renderer->last_ubo_pool_size);
-}
-
-struct wlr_vk_descriptor_pool *vulkan_alloc_shadow_ds(
+struct wlr_vk_descriptor_pool *vulkan_alloc_object_ds(
 		struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
 		VkDescriptorSet *ds) {
 	return alloc_ds(renderer, ds, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -530,7 +522,19 @@ static void release_command_buffer_resources(struct wlr_vk_command_buffer *cb,
 		wl_list_insert(&renderer->stage.buffers, &buf->link);
 	}
 
+	// Reset every instance used by this cb
 	struct wlr_vk_object *object, *object_tmp;
+	wl_list_for_each(object, &renderer->objects, link) {
+		struct wlr_vk_object_instance *instance;
+		wl_list_for_each(instance, &object->instances, link) {
+			if (instance->cb == cb) {
+				instance->cb = NULL;
+			}
+		}
+	}
+
+	// Now that the cb has finished and we are sure there are no instances
+	// still being used, we can destroy the object.
 	wl_list_for_each_safe(object, object_tmp, &cb->destroy_objects, destroy_link) {
 		wl_list_remove(&object->destroy_link);
 		object->last_used_cb = NULL;

@@ -1040,21 +1040,21 @@ static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass,
 		bind_pipeline(pass, pipe->vk);
 
 		struct wlr_vk_object *deco = vulkan_get_object(options->object);
-		struct wlr_vk_descriptor_set *ds = vulkan_object_get_ds(deco, pass->command_buffer);
+		struct wlr_vk_object_instance *instance = vulkan_object_get_instance(deco, pass->command_buffer);
 		deco->last_used_cb = pass->command_buffer;
 
 		vkCmdPushConstants(cb, pipe->layout->vk,
 			VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vert_pcr_data), &vert_pcr_data);
 
-		memcpy(deco->buffer->cpu_mapping, &frag_pcr_data, sizeof(struct wlr_vk_frag_decoration_pcr_data));
+		memcpy(instance->buffer->cpu_mapping, &frag_pcr_data, sizeof(struct wlr_vk_frag_decoration_pcr_data));
 		VkDescriptorBufferInfo binfo = {
-			.buffer = deco->buffer->buffer,
+			.buffer = instance->buffer->buffer,
 			.offset = 0,
 			.range = sizeof(struct wlr_vk_frag_decoration_pcr_data),
 		};
 		VkWriteDescriptorSet write_ds = {
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.dstSet = ds->ds,
+			.dstSet = instance->ds.ds,
 			.dstBinding = 0,
 			.dstArrayElement = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -1063,7 +1063,7 @@ static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass,
 		};
 		vkUpdateDescriptorSets(pass->renderer->dev->dev, 1, &write_ds, 0, NULL);
 		vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			pipe->layout->vk, 0, 1, &ds->ds, 0, NULL);
+			pipe->layout->vk, 0, 1, &instance->ds.ds, 0, NULL);
 
 		for (int i = 0; i < clip_rects_len; i++) {
 			VkRect2D rect;
@@ -1151,21 +1151,21 @@ static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass,
 		bind_pipeline(pass, pipe->vk);
 
 		struct wlr_vk_object *shadow = vulkan_get_object(options->object);
-		struct wlr_vk_descriptor_set *ds = vulkan_object_get_ds(shadow, pass->command_buffer);
+		struct wlr_vk_object_instance *instance = vulkan_object_get_instance(shadow, pass->command_buffer);
 		shadow->last_used_cb = pass->command_buffer;
 
 		vkCmdPushConstants(cb, pipe->layout->vk,
 			VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(vert_pcr_data), &vert_pcr_data);
 
-		memcpy(shadow->buffer->cpu_mapping, &frag_pcr_data, sizeof(struct wlr_vk_frag_shadow_pcr_data));
+		memcpy(instance->buffer->cpu_mapping, &frag_pcr_data, sizeof(struct wlr_vk_frag_shadow_pcr_data));
 		VkDescriptorBufferInfo binfo = {
-			.buffer = shadow->buffer->buffer,
+			.buffer = instance->buffer->buffer,
 			.offset = 0,
 			.range = sizeof(struct wlr_vk_frag_shadow_pcr_data),
 		};
 		VkWriteDescriptorSet write_ds = {
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.dstSet = ds->ds,
+			.dstSet = instance->ds.ds,
 			.dstBinding = 0,
 			.dstArrayElement = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -1174,7 +1174,7 @@ static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass,
 		};
 		vkUpdateDescriptorSets(pass->renderer->dev->dev, 1, &write_ds, 0, NULL);
 		vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			pipe->layout->vk, 0, 1, &ds->ds, 0, NULL);
+			pipe->layout->vk, 0, 1, &instance->ds.ds, 0, NULL);
 
 		for (int i = 0; i < clip_rects_len; i++) {
 			VkRect2D rect;

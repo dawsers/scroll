@@ -516,15 +516,9 @@ struct wlr_vk_descriptor_pool *vulkan_alloc_texture_ds(
 struct wlr_vk_descriptor_pool *vulkan_alloc_blend_ds(
 	struct wlr_vk_renderer *renderer, VkDescriptorSet *ds);
 
-// Tries to allocate a decoration descriptor set. Will additionally
+// Tries to allocate an object descriptor set. Will additionally
 // return the pool it was allocated from when successful (for freeing it later).
-struct wlr_vk_descriptor_pool *vulkan_alloc_decoration_ds(
-	struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
-	VkDescriptorSet *ds);
-
-// Tries to allocate a shadow descriptor set. Will additionally
-// return the pool it was allocated from when successful (for freeing it later).
-struct wlr_vk_descriptor_pool *vulkan_alloc_shadow_ds(
+struct wlr_vk_descriptor_pool *vulkan_alloc_object_ds(
 	struct wlr_vk_renderer *renderer, VkDescriptorSetLayout ds_layout,
 	VkDescriptorSet *ds);
 
@@ -663,8 +657,13 @@ struct wlr_vk_uniform_buffer {
 struct wlr_vk_descriptor_set {
 	VkDescriptorSet ds;
 	struct wlr_vk_descriptor_pool *ds_pool;
+};
+
+struct wlr_vk_object_instance {
+	struct wlr_vk_descriptor_set ds;
+	struct wlr_vk_uniform_buffer *buffer;
 	struct wlr_vk_command_buffer *cb;
-	struct wl_list link; // wlr_vk_object.dss
+	struct wl_list link; // wlr_vk_object.instances
 };
 
 struct wlr_vk_object {
@@ -674,8 +673,7 @@ struct wlr_vk_object {
 	struct wlr_vk_command_buffer *last_used_cb;  // to track when it can be destroyed
 	struct wl_list destroy_link; // wlr_vk_command_buffer.destroy_objects
 
-	struct wl_list dss;
-	struct wlr_vk_uniform_buffer *buffer;
+	struct wl_list instances;
 };
 
 struct wlr_vk_uniform_buffer *vulkan_create_mapped_uniform_buffer(
@@ -691,7 +689,7 @@ void vulkan_object_destroy(struct wlr_vk_object *object);
 struct wlr_object *vulkan_object_with_owner(struct wlr_renderer *wlr_renderer,
 		enum wlr_object_type type, const void *owner);
 
-struct wlr_vk_descriptor_set *vulkan_object_get_ds(struct wlr_vk_object *object,
+struct wlr_vk_object_instance *vulkan_object_get_instance(struct wlr_vk_object *object,
 		struct wlr_vk_command_buffer *cb);
 
 #endif // RENDER_VULKAN_H
