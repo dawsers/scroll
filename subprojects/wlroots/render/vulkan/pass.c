@@ -681,7 +681,7 @@ static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 			pass->render_setup,
 			&(struct wlr_vk_pipeline_key) {
 				.source = WLR_VK_SHADER_SOURCE_SINGLE_COLOR,
-				.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD },
+				.layout = { .ycbcr = {0}, .shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD },
 			});
 		if (!pipe) {
 			pass->failed = true;
@@ -807,12 +807,26 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 		break;
 	}
 
+	enum wlr_color_encoding color_encoding = options->color_encoding;
+	if (texture->format->is_ycbcr && color_encoding == WLR_COLOR_ENCODING_NONE) {
+		color_encoding = WLR_COLOR_ENCODING_BT601;
+	}
+
+	enum wlr_color_range color_range = options->color_range;
+	if (texture->format->is_ycbcr && color_range == WLR_COLOR_RANGE_NONE) {
+		color_range = WLR_COLOR_RANGE_LIMITED;
+	}
+
 	struct wlr_vk_pipeline *pipe = setup_get_or_create_pipeline(
 		pass->render_setup,
 		&(struct wlr_vk_pipeline_key) {
 			.source = WLR_VK_SHADER_SOURCE_TEXTURE,
 			.layout = {
-				.ycbcr_format = texture->format->is_ycbcr ? texture->format : NULL,
+				.ycbcr = {
+					.format = texture->format->is_ycbcr ? texture->format : NULL,
+					.encoding = color_encoding,
+					.range = color_range,
+				},
 				.filter_mode = options->filter_mode,
 				.shader_layout = WLR_VK_SHADER_LAYOUT_STANDARD,
 			},
@@ -972,7 +986,7 @@ static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass,
 			pass->render_setup,
 			&(struct wlr_vk_pipeline_key) {
 				.source = WLR_VK_SHADER_SOURCE_DECORATION,
-				.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_DECORATION },
+				.layout = { .ycbcr = {0}, .shader_layout = WLR_VK_SHADER_LAYOUT_DECORATION },
 			});
 		if (!pipe) {
 			pass->failed = true;
@@ -1116,7 +1130,7 @@ static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass,
 			pass->render_setup,
 			&(struct wlr_vk_pipeline_key) {
 				.source = WLR_VK_SHADER_SOURCE_SHADOW,
-				.layout = { .ycbcr_format = NULL, .shader_layout = WLR_VK_SHADER_LAYOUT_SHADOW },
+				.layout = { .ycbcr = {0}, .shader_layout = WLR_VK_SHADER_LAYOUT_SHADOW },
 			});
 		if (!pipe) {
 			pass->failed = true;

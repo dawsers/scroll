@@ -133,8 +133,15 @@ enum wlr_vk_shader_layout {
 };
 
 struct wlr_vk_pipeline_layout_key {
-	const struct wlr_vk_format *ycbcr_format;
 	enum wlr_scale_filter_mode filter_mode;
+
+	// for YCbCr pipelines only
+	struct {
+		const struct wlr_vk_format *format;
+		enum wlr_color_encoding encoding;
+		enum wlr_color_range range;
+	} ycbcr;
+
 	enum wlr_vk_shader_layout shader_layout;
 };
 
