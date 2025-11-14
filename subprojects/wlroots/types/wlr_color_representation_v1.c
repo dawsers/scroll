@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_color_representation_v1.h>
 #include <wlr/util/addon.h>
@@ -398,6 +399,58 @@ err_options:
 	free(manager->supported_coeffs_and_ranges);
 	free(manager);
 	return NULL;
+}
+
+static const enum wp_color_representation_surface_v1_coefficients coefficients[] = {
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_IDENTITY,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_BT709,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_FCC,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_BT601,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_SMPTE240,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_BT2020,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_BT2020_CL,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_ICTCP,
+};
+
+#define COEFFICIENTS_LEN (sizeof(coefficients) / sizeof(coefficients[0]))
+
+static const enum wp_color_representation_surface_v1_range ranges[] = {
+	WP_COLOR_REPRESENTATION_SURFACE_V1_RANGE_LIMITED,
+	WP_COLOR_REPRESENTATION_SURFACE_V1_RANGE_FULL,
+};
+
+#define RANGES_LEN (sizeof(ranges) / sizeof(ranges[0]))
+
+struct wlr_color_representation_manager_v1 *wlr_color_representation_manager_v1_create_with_renderer(
+		struct wl_display *display, uint32_t version, struct wlr_renderer *renderer) {
+	const enum wp_color_representation_surface_v1_alpha_mode alpha_modes[] = {
+		WP_COLOR_REPRESENTATION_SURFACE_V1_ALPHA_MODE_PREMULTIPLIED_ELECTRICAL,
+	};
+
+	struct wlr_color_representation_v1_coeffs_and_range coeffs_and_ranges[COEFFICIENTS_LEN * RANGES_LEN];
+	size_t coeffs_and_ranges_len = 0;
+	for (size_t i = 0; i < COEFFICIENTS_LEN; i++) {
+		enum wp_color_representation_surface_v1_coefficients coeffs = coefficients[i];
+		enum wlr_color_encoding enc = wlr_color_representation_v1_color_encoding_to_wlr(coeffs);
+		if (!(renderer->color_encodings & enc)) {
+			continue;
+		}
+		for (size_t j = 0; j < RANGES_LEN; j++) {
+			coeffs_and_ranges[coeffs_and_ranges_len] = (struct wlr_color_representation_v1_coeffs_and_range){
+				.coeffs = coeffs,
+				.range = ranges[j],
+			};
+			coeffs_and_ranges_len++;
+		}
+	}
+
+	const struct wlr_color_representation_v1_options options = {
+		.supported_alpha_modes = alpha_modes,
+		.supported_alpha_modes_len = sizeof(alpha_modes) / sizeof(alpha_modes[0]),
+		.supported_coeffs_and_ranges = coeffs_and_ranges,
+		.supported_coeffs_and_ranges_len = coeffs_and_ranges_len,
+	};
+	return wlr_color_representation_manager_v1_create(display, version, &options);
 }
 
 const struct wlr_color_representation_v1_surface_state *wlr_color_representation_v1_get_surface_state(
