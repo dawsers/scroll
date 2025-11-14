@@ -1121,6 +1121,26 @@ void wlr_scene_buffer_set_primaries(struct wlr_scene_buffer *scene_buffer,
 	scene_node_update(&scene_buffer->node, NULL);
 }
 
+void wlr_scene_buffer_set_color_encoding(struct wlr_scene_buffer *scene_buffer,
+		enum wlr_color_encoding color_encoding) {
+	if (scene_buffer->color_encoding == color_encoding) {
+		return;
+	}
+
+	scene_buffer->color_encoding = color_encoding;
+	scene_node_update(&scene_buffer->node, NULL);
+}
+
+void wlr_scene_buffer_set_color_range(struct wlr_scene_buffer *scene_buffer,
+		enum wlr_color_range color_range) {
+	if (scene_buffer->color_range == color_range) {
+		return;
+	}
+
+	scene_buffer->color_range = color_range;
+	scene_node_update(&scene_buffer->node, NULL);
+}
+
 static struct wlr_texture *scene_buffer_get_texture(
 		struct wlr_scene_buffer *scene_buffer, struct wlr_renderer *renderer) {
 	if (scene_buffer->buffer == NULL || scene_buffer->texture != NULL) {
@@ -1475,6 +1495,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 				WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
 			.transfer_function = scene_buffer->transfer_function,
 			.primaries = scene_buffer->primaries != 0 ? &primaries : NULL,
+			.color_encoding = scene_buffer->color_encoding,
+			.color_range = scene_buffer->color_range,
 			.wait_timeline = scene_buffer->wait_timeline,
 			.wait_point = scene_buffer->wait_point,
 		});
@@ -2012,6 +2034,11 @@ static enum scene_direct_scanout_result scene_entry_try_direct_scanout(
 
 	const struct wlr_output_image_description *img_desc = output_pending_image_description(scene_output->output, state);
 	if (!color_management_is_scanout_allowed(img_desc, buffer)) {
+		return SCANOUT_INELIGIBLE;
+	}
+
+	if (buffer->color_encoding != WLR_COLOR_ENCODING_NONE ||
+			buffer->color_range != WLR_COLOR_RANGE_NONE) {
 		return SCANOUT_INELIGIBLE;
 	}
 
