@@ -19,6 +19,7 @@ void wlr_output_state_finish(struct wlr_output_state *state) {
 	pixman_region32_fini(&state->damage);
 	wlr_drm_syncobj_timeline_unref(state->wait_timeline);
 	wlr_drm_syncobj_timeline_unref(state->signal_timeline);
+	wlr_color_transform_unref(state->color_transform);
 	free(state->image_description);
 }
 
