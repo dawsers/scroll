@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <signal.h>
 #include <libinput.h>
 #include <limits.h>
 #include <dirent.h>
@@ -22,13 +21,9 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/criteria.h"
-#include "sway/desktop/transaction.h"
 #include "sway/server.h"
 #include "sway/swaynag.h"
 #include "sway/tree/arrange.h"
-#include "sway/tree/root.h"
-#include "sway/tree/workspace.h"
-#include "cairo_util.h"
 #include "pango.h"
 #include "stringop.h"
 #include "list.h"
@@ -167,43 +162,6 @@ void free_config(struct sway_config *config) {
 		list_free(config->criteria);
 	}
 
-	if (config->animations.anim_disabled) {
-		if (animation_get_path() == config->animations.anim_disabled) {
-			animation_set_path(NULL);
-		}
-		animation_path_destroy(config->animations.anim_disabled);
-	}
-	if (config->animations.anim_default) {
-		if (animation_get_path() == config->animations.anim_default) {
-			animation_set_path(NULL);
-		}
-		animation_path_destroy(config->animations.anim_default);
-	}
-	if (config->animations.window_open) {
-		if (animation_get_path() == config->animations.window_open) {
-			animation_set_path(NULL);
-		}
-		animation_path_destroy(config->animations.window_open);
-	}
-	if (config->animations.window_move) {
-		if (animation_get_path() == config->animations.window_move) {
-			animation_set_path(NULL);
-		}
-		animation_path_destroy(config->animations.window_move);
-	}
-	if (config->animations.window_size) {
-		if (animation_get_path() == config->animations.window_size) {
-			animation_set_path(NULL);
-		}
-		animation_path_destroy(config->animations.window_size);
-	}
-	if (config->animations.workspace_switch) {
-		if (animation_get_path() == config->animations.workspace_switch) {
-			animation_set_path(NULL);
-		}
-		animation_path_destroy(config->animations.workspace_switch);
-	}
-
 	list_free_items_and_destroy(config->lua.cbs_view_map);
 	list_free_items_and_destroy(config->lua.cbs_view_unmap);
 	list_free_items_and_destroy(config->lua.cbs_view_urgent);
@@ -307,28 +265,6 @@ static void config_defaults(struct sway_config *config) {
 	config->gesture_scroll_enable = true;
 	config->gesture_scroll_fingers = 3;
 	config->gesture_scroll_sentitivity = 1.0f;
-
-	config->animations.frequency_ms = 16; // ~60 Hz
-	config->animations.enabled = true;
-	config->animations.style = ANIM_STYLE_SCALE;
-	config->animations.anim_disabled = animation_path_create(false);
-	double points[] = { 0.215, 0.61, 0.355, 1.0 };
-	list_t *default_points = create_list();
-	for (uint32_t i = 0; i < sizeof(points) / sizeof(double); ++i) {
-		double *val = malloc(sizeof(double));
-		*val = points[i];
-		list_add(default_points, val);
-	}
-	struct sway_animation_curve *curve = create_animation_curve(300, 3, default_points, false, 0.0, 0, NULL);
-	config->animations.anim_default = animation_path_create(true);
-	animation_set_default_callbacks();
-	animation_path_add_curve(config->animations.anim_default, curve);
-	animation_set_path(config->animations.anim_default);
-	list_free_items_and_destroy(default_points);
-	config->animations.window_open = NULL;
-	config->animations.window_move = NULL;
-	config->animations.window_size = NULL;
-	config->animations.workspace_switch = NULL;
 
 	if (!(config->lua.state = luaL_newstate())) goto cleanup;
 	if (!(config->lua.scripts = create_list())) goto cleanup;

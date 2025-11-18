@@ -37,8 +37,7 @@
 #include "sway/tree/scene.h"
 #include "sway/config.h"
 #include "sway/xdg_decoration.h"
-#include "stringop.h"
-#include "util.h"
+#include "sway/desktop/animation.h"
 
 bool view_init(struct sway_view *view, enum sway_view_type type,
 		const struct sway_view_impl *impl) {
@@ -952,7 +951,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		lua_call(config->lua.state, 2, 0);
 	}
 
-	animation_set_path(config->animations.window_open);
+	animation_set_type(ANIMATION_WINDOW_OPEN);
 }
 
 void view_unmap(struct sway_view *view) {
@@ -1457,7 +1456,7 @@ static void view_get_animation_sizes(struct sway_view *view, double *wt, double 
 void view_get_animation_scales(struct sway_view *view,
 		double *wscale, double *hscale) {
 	if (view && view->container && view->container->pending.fullscreen_mode == FULLSCREEN_NONE &&
-		config->animations.style == ANIM_STYLE_SCALE &&
+		animation_get_config()->style == ANIM_STYLE_SCALE &&
 		!container_is_floating(view->container)) {
 		struct sway_container *con = view->container;
 		int border_horiz, border_vert;
@@ -1485,7 +1484,7 @@ static void clip_view(struct sway_view *view) {
 		return;
 	}
 
-	if (animation_enabled() && config->animations.style == ANIM_STYLE_CLIP) {
+	if (animation_enabled() && animation_get_config()->style == ANIM_STYLE_CLIP) {
 		double wt, ht;
 		view_get_animation_sizes(view, &wt, &ht);
 		double content_scale = view_is_content_scaled(view) ?

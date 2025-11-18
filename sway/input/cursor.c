@@ -33,7 +33,6 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
-#include "sway/render.h"
 #include "sway/desktop/transaction.h"
 
 /**

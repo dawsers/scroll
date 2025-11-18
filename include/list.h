@@ -9,6 +9,8 @@ typedef struct {
 
 list_t *create_list(void);
 void list_free(list_t *list);
+// Sets the list size to zero without freeing any items
+void list_reset(list_t *list);
 void list_add(list_t *list, void *item);
 void list_insert(list_t *list, int index, void *item);
 void list_del(list_t *list, int index);

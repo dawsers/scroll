@@ -20,7 +20,6 @@
 #include "sway/tree/root.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 #include <pango/pangocairo.h>
-#include "sway/desktop/animation.h"
 #include "sway/lua.h"
 
 // TODO: Refactor this shit
@@ -117,21 +116,6 @@ struct sway_mode {
 	list_t *switch_bindings;
 	list_t *gesture_bindings;
 	bool pango;
-};
-
-/**
- * Configuration for animations
- */
-struct sway_animations_config {
-	bool enabled;
-	uint32_t frequency_ms;
-	enum sway_animation_style style;
-	struct sway_animation_path *anim_disabled;
-	struct sway_animation_path *anim_default;
-	struct sway_animation_path *window_open;
-	struct sway_animation_path *window_size;
-	struct sway_animation_path *window_move;
-	struct sway_animation_path *workspace_switch;
 };
 
 struct input_config_mapped_from_region {
@@ -644,8 +628,6 @@ struct sway_config {
 		int shadow_offset[2];
 		float shadow_color[4];
 	} decoration;
-
-	struct sway_animations_config animations;
 
 	struct sway_lua lua;
 

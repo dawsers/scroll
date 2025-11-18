@@ -53,7 +53,6 @@
 #include "sway/protocol/xdg_output_v1.h"
 #include <wlr/types/wlr_xdg_toplevel_tag_v1.h>
 #include <xf86drm.h>
-#include "config.h"
 #include "list.h"
 #include "log.h"
 #include "sway/config.h"
@@ -64,6 +63,7 @@
 #include "sway/input/cursor.h"
 #include "sway/tree/root.h"
 #include "sway/ext_image_capture_source_v1.h"
+#include "sway/desktop/animation.h"
 
 #if WLR_HAS_XWAYLAND
 #include <wlr/xwayland/shell.h>
@@ -261,6 +261,7 @@ bool server_init(struct sway_server *server) {
 	wl_display_set_default_max_buffer_size(server->wl_display, 1024 * 1024);
 
 	wlr_fixes_create(server->wl_display, 1);
+	animation_create();
 	root = root_create(server->wl_display);
 
 	server->backend = wlr_backend_autocreate(server->wl_event_loop, &server->session);

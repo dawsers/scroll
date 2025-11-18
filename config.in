@@ -104,6 +104,7 @@ animations {
     window_open yes 300 var 3 [ 0 0 1 1 ]
     window_move yes 300 var 3 [ 0.215 0.61 0.355 1 ] off 0.05 6 [0 0.6 0.4 0 1 0 0.4 -0.6 1 -0.6]
     window_size yes 300 var 3 [ -0.35 0 0 0.5 ]
+    window_update yes 300 var 3 [ 0 0 1 1 ]
 }
 
 ### Key bindings

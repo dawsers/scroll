@@ -14,17 +14,16 @@
 #include <unistd.h>
 #include <wlr/util/log.h>
 #include <wlr/version.h>
-#include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/server.h"
 #include "sway/swaynag.h"
 #include "sway/desktop/transaction.h"
+#include "sway/desktop/animation.h"
 #include "sway/tree/root.h"
 #include "sway/ipc-server.h"
 #include "ipc-client.h"
 #include "log.h"
 #include "stringop.h"
-#include "util.h"
 
 static bool terminate_request = false;
 static int exit_value = 0;
@@ -381,6 +380,7 @@ shutdown:
 	server_fini(&server);
 	root_destroy(root);
 	root = NULL;
+	animation_destroy();
 
 	free(config_path);
 	free_config(config);

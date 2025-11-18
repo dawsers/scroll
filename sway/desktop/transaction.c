@@ -715,14 +715,17 @@ static void default_arrange_children(struct sway_workspace *workspace,
 				off = child->pending.y;
 			}
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
+			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			double movement = fabs(off - child->animation.y0);
 			if (movement > 0.0) {
 				child->animation.yt = linear_scale(child->animation.y0, off, x);
+				animation_set_animation_enabled(true);
 			} else if (fabs(child->pending.x - child->animation.x0) > 0.0) {
 				child->animation.yt = child->animation.y0 + y * anim_scale * workspace->height;
 			} else {
 				child->animation.yt = child->animation.y0;
+				animation_set_animation_enabled(false);
 			}
 			sway_scene_node_set_position(&child->scene_tree->node, 0, child->animation.yt - workspace->y);
 			child->current.y = off;
@@ -736,6 +739,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			}
 			sway_scene_node_reparent(&child->scene_tree->node, content);
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
+			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
 			off += scale * (child->pending.height + 2 * gaps);
 		}
@@ -744,6 +748,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			struct sway_container *child = children->items[i];
 			struct sway_container *parent = child->pending.parent;
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
+			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			off -= scale * (child->pending.height + 2 * gaps);
 			if (parent && parent->jump.jumping) {
 				off = child->pending.y;
@@ -761,14 +766,17 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			double movement = fabs(off - child->animation.y0);
 			if (movement > 0.0) {
 				child->animation.yt = linear_scale(child->animation.y0, off, x);
+				animation_set_animation_enabled(true);
 			} else if (fabs(child->pending.x - child->animation.x0) > 0.0) {
 				child->animation.yt = child->animation.y0 + y * anim_scale * workspace->height;
 			} else {
 				child->animation.yt = child->animation.y0;
+				animation_set_animation_enabled(false);
 			}
 			sway_scene_node_set_position(&child->scene_tree->node, 0, child->animation.yt - workspace->y);
 			sway_scene_node_reparent(&child->scene_tree->node, content);
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
+			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
 		}
 	} else if (layout == L_HORIZ) {
@@ -780,13 +788,16 @@ static void default_arrange_children(struct sway_workspace *workspace,
 				off = child->pending.x;
 			}
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
+			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			double movement = fabs(off - child->animation.x0);
 			if (movement > 0.0) {
 				child->animation.xt = linear_scale(child->animation.x0, off, x);
+				animation_set_animation_enabled(true);
 			} else if (fabs(child->pending.y - child->animation.y0) > 0.0) {
 				child->animation.xt = child->animation.x0 + y * anim_scale * workspace->width;
 			} else {
 				child->animation.xt = child->animation.x0;
+				animation_set_animation_enabled(false);
 			}
 			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
@@ -805,6 +816,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			}
 			sway_scene_node_reparent(&child->scene_tree->node, content);
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
+			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
 			off += scale * (child->pending.width + 2 * gaps);
 		}
@@ -813,6 +825,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			struct sway_container *child = children->items[i];
 			struct sway_container *parent = child->pending.parent;
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
+			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			off -= scale * (child->pending.width + 2 * gaps);
 			if (parent && parent->jump.jumping) {
 				off = child->pending.x;
@@ -830,14 +843,17 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			double movement = fabs(off - child->animation.x0);
 			if (movement > 0.0) {
 				child->animation.xt = linear_scale(child->animation.x0, off, x);
+				animation_set_animation_enabled(true);
 			} else if (fabs(child->pending.y - child->animation.y0) > 0.0) {
 				child->animation.xt = child->animation.x0 + y * anim_scale * workspace->width;
 			} else {
 				child->animation.xt = child->animation.x0;
+				animation_set_animation_enabled(false);
 			}
 			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
 			sway_scene_node_reparent(&child->scene_tree->node, content);
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
+			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
 		}
 	} else {
@@ -1250,7 +1266,8 @@ static void arrange_root(struct sway_root *root) {
 	if (fs) {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
-			if (!output->enabled || !output->wlr_output->enabled) {
+			bool activated = root->filters.output_filter(output, root->filters.output_filter_data);
+			if (!output->enabled || !output->wlr_output->enabled || !activated) {
 				continue;
 			}
 			struct sway_workspace *ws = output->current.active_workspace;
@@ -1274,7 +1291,8 @@ static void arrange_root(struct sway_root *root) {
 	} else {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
-			if (!output->enabled || !output->wlr_output->enabled) {
+			bool activated = root->filters.output_filter(output, root->filters.output_filter_data);
+			if (!output->enabled || !output->wlr_output->enabled || !activated) {
 				continue;
 			}
 
@@ -1301,6 +1319,42 @@ static void arrange_root(struct sway_root *root) {
 	}
 
 	arrange_popups(root->layers.popup);
+}
+
+static void set_animation_data(struct sway_transaction *transaction) {
+	animation_reset_outputs();
+	for (int i = 0; i < transaction->instructions->length; ++i) {
+		struct sway_transaction_instruction *instruction =
+			transaction->instructions->items[i];
+		struct sway_node *node = instruction->node;
+
+		switch (node->type) {
+		case N_ROOT:
+			break;
+		case N_OUTPUT:
+			animation_add_output(node->sway_output->wlr_output);
+			break;
+		case N_WORKSPACE: {
+			struct sway_workspace *workspace = node->sway_workspace;
+			if (workspace->output) {
+				animation_add_output(workspace->output->wlr_output);
+			}
+			break;
+			}
+		case N_CONTAINER: {
+			struct sway_container *container = node->sway_container;
+			struct sway_workspace *current = container->current.workspace;
+			if (current && current->output) {
+				animation_add_output(current->output->wlr_output);
+			}
+			struct sway_workspace *pending = container->pending.workspace;
+			if (pending && pending->output) {
+				animation_add_output(pending->output->wlr_output);
+			}
+			break;
+			}
+		}
+	}
 }
 
 /**
@@ -1359,14 +1413,17 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			const double off = child->pending.y;
 			struct sway_container *parent = child->pending.parent;
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
+			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			double movement = fabs(off - child->animation.y0);
 			if (movement > 0.0) {
 				child->animation.yt = linear_scale(child->animation.y0, off, x);
+				animation_set_animation_enabled(true);
 			} else if (fabs(child->pending.x - child->animation.x0) > 0.0) {
 				child->animation.yt = child->animation.y0 + y * anim_scale * workspace->height;
 			} else {
 				child->animation.yt = child->animation.y0;
+				animation_set_animation_enabled(false);
 			}
 			sway_scene_node_set_position(&child->scene_tree->node, 0, child->animation.yt - workspace->y);
 			child->current.y = off;
@@ -1377,6 +1434,7 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			}
 			sway_scene_node_reparent(&child->scene_tree->node, content);
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
+			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			arrange_container(child, child->animation.wt, child->animation.ht, true, 0, workspace);
 		}
 	} else if (layout == L_HORIZ) {
@@ -1384,14 +1442,17 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			struct sway_container *child = children->items[i];
 			const double off = child->pending.x;
 			struct sway_container *parent = child->pending.parent;
+			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
 			double movement = fabs(off - child->animation.x0);
 			if (movement > 0.0) {
 				child->animation.xt = linear_scale(child->animation.x0, off, x);
+				animation_set_animation_enabled(true);
 			} else if (fabs(child->pending.y - child->animation.y0) > 0.0) {
 				child->animation.xt = child->animation.x0 + y * anim_scale * workspace->width;
 			} else {
 				child->animation.xt = child->animation.x0;
+				animation_set_animation_enabled(false);
 			}
 			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
@@ -1406,6 +1467,7 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 				child->pending.y = parent->pending.y;
 			}
 			sway_scene_node_reparent(&child->scene_tree->node, content);
+			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
 			arrange_container(child, child->animation.wt, child->animation.ht, true, 0, workspace);
 		}
@@ -1422,7 +1484,7 @@ static void animation_callback_end(void *data) {
 	cursor_rebase_all();
 }
 
-void animation_set_default_callbacks() {
+void config_default_animation_callbacks() {
 	struct sway_animation_callbacks callbacks;
 	callbacks.callback_begin = NULL;
 	callbacks.callback_begin_data = NULL;
@@ -1430,7 +1492,7 @@ void animation_set_default_callbacks() {
 	callbacks.callback_step_data = NULL;
 	callbacks.callback_end = animation_callback_end;
 	callbacks.callback_end_data = NULL;
-	animation_set_callbacks(&callbacks);
+	animation_set_default_callbacks(&callbacks);
 }
 
 static void transaction_commit_pending(void);
@@ -1442,8 +1504,10 @@ static void transaction_progress(void) {
 	if (server.queued_transaction->num_waiting > 0) {
 		return;
 	}
+//	animation_end();
+	set_animation_data(server.queued_transaction);
 	transaction_apply(server.queued_transaction);
-	animation_next_key();
+	animation_begin();
 	cursor_rebase_all();
 	transaction_destroy(server.queued_transaction);
 	server.queued_transaction = NULL;
@@ -1618,6 +1682,7 @@ static void set_instruction_ready(
 	}
 
 	instruction->node->instruction = NULL;
+	animation_set_type(ANIMATION_WINDOW_UPDATE);
 	transaction_progress();
 }
 
