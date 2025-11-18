@@ -30,6 +30,12 @@ void list_free(list_t *list) {
 	free(list);
 }
 
+void list_reset(list_t *list) {
+	if (list) {
+		list->length = 0;
+	}
+}
+
 void list_add(list_t *list, void *item) {
 	list_resize(list);
 	list->items[list->length++] = item;

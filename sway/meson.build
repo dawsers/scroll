@@ -20,7 +20,6 @@ sway_sources = files(
 	'desktop/idle_inhibit_v1.c',
 	'desktop/layer_shell.c',
 	'desktop/output.c',
-	'desktop/render.c',
 	'desktop/tearing.c',
 	'desktop/transaction.c',
 	'desktop/xdg_shell.c',

@@ -12,6 +12,9 @@
 
 extern struct sway_root *root;
 
+typedef bool (*sway_root_output_filter_func_t)(
+	struct sway_output *output, void *data);
+
 typedef bool (*sway_root_workspace_filter_func_t)(
 	struct sway_workspace *workspace, void *data);
 
@@ -84,7 +87,10 @@ struct sway_root {
 		// Function to trigger free animation instead of the default
 		sway_root_workspace_filter_func_t free_animation_activation_filter;
 		void *free_animation_activation_filter_data;
-		// Decide whether to add this workspace to the scene graph (SG)
+		// Decide whether to add this output to the scene graph (SG)
+		sway_root_output_filter_func_t output_filter;
+		void *output_filter_data;
+		// Decide whether to add this workspace to the SG
 		sway_root_workspace_filter_func_t workspace_filter;
 		void *workspace_filter_data;
 		// Decide whether to add floating containers of this workspace to the SG

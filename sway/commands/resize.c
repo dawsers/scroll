@@ -272,7 +272,7 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 
 	// Use the dummy anim_disabled curve to prevent a user keeping the bound key
 	// pressed from spamming the animation system tens of times per second.
-	animation_set_path(config->animations.anim_disabled);
+	animation_set_type(ANIMATION_DISABLED);
 
 	if (current->pending.parent) {
 		arrange_container(current->pending.parent);
@@ -376,7 +376,7 @@ static struct cmd_results *resize_set_tiled(struct sway_container *container,
 		return cmd_results_new(CMD_INVALID, "Invalid size");
 	}
 
-	animation_set_path(config->animations.window_size);
+	animation_set_type(ANIMATION_WINDOW_SIZE);
 
 	if (container->pending.parent) {
 		arrange_container(container->pending.parent);

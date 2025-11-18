@@ -24,6 +24,7 @@
 #include "sway/output.h"
 #include "output.h"
 #include "color.h"
+#include "sway/desktop/animation.h"
 
 #include <wlr/config.h>
 
@@ -2814,6 +2815,10 @@ bool sway_scene_output_build_state(struct sway_scene_output *scene_output,
 	if ((state->committed & WLR_OUTPUT_STATE_ENABLED) && !state->enabled) {
 		// if the state is being disabled, do nothing.
 		return true;
+	}
+
+	if (animation_animating(scene_output->output)) {
+		animation_animate(scene_output->output);
 	}
 
 	struct wlr_output *output = scene_output->output;

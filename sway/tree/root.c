@@ -343,6 +343,10 @@ static bool default_free_animation_activation_filter(struct sway_workspace *work
 	return false;
 }
 
+static bool default_output_filter(struct sway_output *output, void *data) {
+	return true;
+}
+
 static bool default_workspace_filter(struct sway_workspace *workspace, void *data) {
 	struct sway_output *output = workspace->output;
 	bool activated = output->wlr_output->enabled;
@@ -376,6 +380,8 @@ static bool default_container_filter(struct sway_workspace *workspace,
 void root_set_default_filters(struct sway_root *root) {
 	root->filters.free_animation_activation_filter = default_free_animation_activation_filter;
 	root->filters.free_animation_activation_filter_data = NULL;
+	root->filters.output_filter = default_output_filter;
+	root->filters.output_filter_data = NULL;
 	root->filters.workspace_filter = default_workspace_filter;
 	root->filters.workspace_filter_data = NULL;
 	root->filters.workspace_tiling_filter = default_workspace_tiling_filter;

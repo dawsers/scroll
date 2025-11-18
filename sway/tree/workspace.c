@@ -17,6 +17,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/desktop/transaction.h"
+#include "sway/desktop/animation.h"
 #include "list.h"
 #include "log.h"
 #include "util.h"
@@ -632,7 +633,6 @@ static void workspace_switch_callback_end(void *callback_data) {
 	list_free_items_and_destroy(data->to_containers);
 	free(data);
 	root_set_default_filters(root);
-	animation_set_default_callbacks();
 
 	transaction_commit_dirty();
 }
@@ -809,7 +809,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	}
 	seat_set_focus(seat, next);
 
-	animation_set_path(config->animations.workspace_switch);
+	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	if (old_ws != workspace && old_ws->output == workspace->output &&
 		animation_enabled()) {
 		animate_workspace_switch(old_ws, workspace);

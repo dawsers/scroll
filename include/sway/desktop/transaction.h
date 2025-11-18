@@ -64,6 +64,6 @@ void arrange_popups(struct sway_scene_tree *popups);
 /**
  * Sets the default animation callbacks
  **/
-void animation_set_default_callbacks();
+void config_default_animation_callbacks();
 
 #endif

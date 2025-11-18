@@ -1,5 +1,5 @@
-#include <string.h>
 #include <strings.h>
+#include "sway/desktop/animation.h"
 #include "sway/commands.h"
 #include "util.h"
 #include "log.h"
@@ -13,6 +13,7 @@ static const struct cmd_handler animations_config_handlers[] = {
 	{ "window_move", animations_cmd_window_move },
 	{ "window_open", animations_cmd_window_open },
 	{ "window_size", animations_cmd_window_size },
+	{ "window_update", animations_cmd_window_update },
 	{ "workspace_switch", animations_cmd_workspace_switch },
 };
 
@@ -21,7 +22,8 @@ struct cmd_results *animations_cmd_enabled(int argc, char **argv) {
 	if ((error = checkarg(argc, "enabled", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	config->animations.enabled = parse_boolean(argv[0], config->animations.enabled);
+	struct sway_animation_config *config = animation_get_config();
+	config->enabled = parse_boolean(argv[0], config->enabled);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
@@ -31,10 +33,11 @@ struct cmd_results *animations_cmd_style(int argc, char **argv) {
 		return error;
 	}
 
+	struct sway_animation_config *config = animation_get_config();
 	if (strcasecmp(argv[0], "clip") == 0) {
-		config->animations.style = ANIM_STYLE_CLIP;
+		config->style = ANIM_STYLE_CLIP;
 	} else if (strcasecmp(argv[0], "scale") == 0) {
-		config->animations.style = ANIM_STYLE_SCALE;
+		config->style = ANIM_STYLE_SCALE;
 	} else {
 		return cmd_results_new(CMD_INVALID, "Expected 'animations style <clip|scale>' ");
 	}
@@ -47,7 +50,8 @@ struct cmd_results *animations_cmd_frequency(int argc, char **argv) {
 		return error;
 	}
 
-	config->animations.frequency_ms = strtol(argv[0], NULL, 10);
+	struct sway_animation_config *config = animation_get_config();
+	config->frequency_ms = strtol(argv[0], NULL, 10);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
@@ -121,8 +125,9 @@ struct cmd_results *animations_cmd_default(int argc, char **argv) {
 	if ((error = checkarg(argc, "default", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	error = parse_animation_curve(argc, argv, &config->animations.anim_default);
-	animation_set_path(config->animations.anim_default);
+	struct sway_animation_config *config = animation_get_config();
+	error = parse_animation_curve(argc, argv, &config->anim_default);
+	animation_set_type(ANIMATION_DEFAULT);
 	return error;
 }
 
@@ -131,7 +136,8 @@ struct cmd_results *animations_cmd_window_open(int argc, char **argv) {
 	if ((error = checkarg(argc, "window_open", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	return parse_animation_curve(argc, argv, &config->animations.window_open);
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->window_open);
 }
 
 struct cmd_results *animations_cmd_window_move(int argc, char **argv) {
@@ -139,7 +145,8 @@ struct cmd_results *animations_cmd_window_move(int argc, char **argv) {
 	if ((error = checkarg(argc, "window_move", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	return parse_animation_curve(argc, argv, &config->animations.window_move);
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->window_move);
 }
 
 struct cmd_results *animations_cmd_window_size(int argc, char **argv) {
@@ -147,7 +154,17 @@ struct cmd_results *animations_cmd_window_size(int argc, char **argv) {
 	if ((error = checkarg(argc, "window_size", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	return parse_animation_curve(argc, argv, &config->animations.window_size);
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->window_size);
+}
+
+struct cmd_results *animations_cmd_window_update(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "window_update", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->window_update);
 }
 
 struct cmd_results *animations_cmd_workspace_switch(int argc, char **argv) {
@@ -155,7 +172,8 @@ struct cmd_results *animations_cmd_workspace_switch(int argc, char **argv) {
 	if ((error = checkarg(argc, "workspace_switch", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	return parse_animation_curve(argc, argv, &config->animations.workspace_switch);
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->workspace_switch);
 }
 
 struct cmd_results *cmd_animations(int argc, char **argv) {

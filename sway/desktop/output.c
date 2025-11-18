@@ -3,7 +3,6 @@
 #include <strings.h>
 #include <time.h>
 #include <wayland-server-core.h>
-#include "sway/render.h"
 #include <wlr/config.h>
 #include <wlr/backend/headless.h>
 #include <wlr/render/swapchain.h>
@@ -19,7 +18,6 @@
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
-#include "config.h"
 #include "log.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
@@ -306,7 +304,7 @@ static int output_repaint_timer_handler(void *data) {
 	struct wlr_output_state pending;
 	wlr_output_state_init(&pending);
 
-	bool ret = render_workspace_build_state(output, &pending, &opts);
+	bool ret = sway_scene_output_build_state(output->scene_output, &pending, &opts);
 	if (!ret) {
 		wlr_output_state_finish(&pending);
 		return 0;

@@ -1,9 +1,9 @@
 #include "sway/desktop/animation.h"
 #include "sway/server.h"
 #include "log.h"
-#include "util.h"
 #include <wayland-server-core.h>
-
+#include "sway/output.h"
+#include "sway/desktop/transaction.h"
 
 #define NDIM 2
 
@@ -127,19 +127,111 @@ struct sway_animation_path {
 	list_t *curves;	// struct sway_animation_curve
 };
 
+enum sway_animation_enabled {
+	ANIMATION_ENABLED_UNKNOWN,
+	ANIMATION_ENABLED_YES,
+	ANIMATION_ENABLED_NO,
+};
+
 struct sway_animation {
-	uint32_t nsteps;
-	uint32_t step;
+	bool animating;
+	struct timespec start;
+	double time;
 	struct wl_event_source *timer;
 
-	struct sway_animation_path *path;
-	struct sway_animation_callbacks callbacks;
+	list_t *outputs;
+	enum sway_animation_enabled enabled;
+	struct {
+		struct sway_animation_path *path;
+		struct sway_animation_callbacks callbacks;
+	} current;
+	struct {
+		struct sway_animation_path *path;
+		struct sway_animation_callbacks callbacks;
+	} pending;
+
+	struct sway_animation_callbacks default_callbacks;
+
+	struct sway_animation_config config;
 };
 
-static struct sway_animation animation = {
-	.timer = NULL,
-	.path = NULL,
-};
+static struct sway_animation *animation = NULL;
+
+void animation_create() {
+	if (animation) {
+		animation_destroy();
+	}
+	animation = calloc(1, sizeof(struct sway_animation));
+
+	animation->config.frequency_ms = 16; // ~60 Hz
+	animation->config.enabled = true;
+	animation->config.style = ANIM_STYLE_SCALE;
+	animation->config.anim_disabled = animation_path_create(false);
+	double points[] = { 0.215, 0.61, 0.355, 1.0 };
+	list_t *default_points = create_list();
+	for (uint32_t i = 0; i < sizeof(points) / sizeof(double); ++i) {
+		double *val = malloc(sizeof(double));
+		*val = points[i];
+		list_add(default_points, val);
+	}
+	struct sway_animation_curve *curve = create_animation_curve(300, 3, default_points, false, 0.0, 0, NULL);
+	animation->config.anim_default = animation_path_create(true);
+	animation_path_add_curve(animation->config.anim_default, curve);
+	animation_set_type(ANIMATION_DEFAULT);
+	list_free_items_and_destroy(default_points);
+	animation->config.window_open = NULL;
+	animation->config.window_move = NULL;
+	animation->config.window_size = NULL;
+	animation->config.window_update = NULL;
+	animation->config.workspace_switch = NULL;
+
+	config_default_animation_callbacks();
+	animation->current.callbacks = animation->default_callbacks;
+	animation->pending.callbacks = animation->default_callbacks;
+	animation->outputs = create_list();
+}
+
+void animation_destroy() {
+	if (animation) {
+		if (animation->timer) {
+			wl_event_source_remove(animation->timer);
+		}
+		if (animation->outputs) {
+			list_free(animation->outputs);
+		}
+		if (animation->config.workspace_switch) {
+			animation_path_destroy(animation->config.workspace_switch);
+		}
+		if (animation->config.window_update) {
+			animation_path_destroy(animation->config.window_update);
+		}
+		if (animation->config.window_size) {
+			animation_path_destroy(animation->config.window_size);
+		}
+		if (animation->config.window_move) {
+			animation_path_destroy(animation->config.window_move);
+		}
+		if (animation->config.window_open) {
+			animation_path_destroy(animation->config.window_open);
+		}
+		if (animation->config.anim_default) {
+			animation_path_destroy(animation->config.anim_default);
+		}
+		if (animation->config.anim_disabled) {
+			animation_path_destroy(animation->config.anim_disabled);
+		}
+		free(animation);
+		animation = NULL;
+	}
+}
+
+struct sway_animation_config *animation_get_config() {
+	return &animation->config;
+}
+
+static int get_animating_index(struct wlr_output *output) {
+	return list_find(animation->outputs, output);
+}
 
 struct sway_animation_path *animation_path_create(bool enabled) {
 	struct sway_animation_path *path = malloc(sizeof(struct sway_animation_path));
@@ -165,38 +257,66 @@ void animation_path_add_curve(struct sway_animation_path *path,
 	list_add(path->curves, curve);
 }
 
-// Set the callbacks for the current animation
+// Set the callbacks for the pending animation
+void animation_set_default_callbacks(struct sway_animation_callbacks *callbacks) {
+	animation->default_callbacks.callback_begin = callbacks->callback_begin;
+	animation->default_callbacks.callback_begin_data = callbacks->callback_begin_data;
+	animation->default_callbacks.callback_step = callbacks->callback_step;
+	animation->default_callbacks.callback_step_data = callbacks->callback_step_data;
+	animation->default_callbacks.callback_end = callbacks->callback_end;
+	animation->default_callbacks.callback_end_data = callbacks->callback_end_data;
+}
+
 void animation_set_callbacks(struct sway_animation_callbacks *callbacks) {
-	animation.callbacks.callback_begin = callbacks->callback_begin;
-	animation.callbacks.callback_begin_data = callbacks->callback_begin_data;
-	animation.callbacks.callback_step = callbacks->callback_step;
-	animation.callbacks.callback_step_data = callbacks->callback_step_data;
-	animation.callbacks.callback_end = callbacks->callback_end;
-	animation.callbacks.callback_end_data = callbacks->callback_end_data;
+	animation->pending.callbacks.callback_begin = callbacks->callback_begin;
+	animation->pending.callbacks.callback_begin_data = callbacks->callback_begin_data;
+	animation->pending.callbacks.callback_step = callbacks->callback_step;
+	animation->pending.callbacks.callback_step_data = callbacks->callback_step_data;
+	animation->pending.callbacks.callback_end = callbacks->callback_end;
+	animation->pending.callbacks.callback_end_data = callbacks->callback_end_data;
 }
 
 struct sway_animation_callbacks *animation_get_callbacks() {
-	return &animation.callbacks;
+	return &animation->pending.callbacks;
 }
 
-// Set the active path for the animation
-void animation_set_path(struct sway_animation_path *path) {
-	animation.path = path;
-}
-
-struct sway_animation_path *animation_get_path() {
-	return animation.path;
+// Set the type of the pending animation
+void animation_set_type(enum sway_animation_type anim) {
+	switch (anim) {
+	case ANIMATION_DISABLED:
+		animation->pending.path = animation->config.anim_disabled;
+		break;
+	case ANIMATION_DEFAULT:
+	default:
+		animation->pending.path = animation->config.anim_default;
+		break;
+	case ANIMATION_WINDOW_OPEN:
+		animation->pending.path = animation->config.window_open;
+		break;
+	case ANIMATION_WINDOW_SIZE:
+		animation->pending.path = animation->config.window_size;
+		break;
+	case ANIMATION_WINDOW_MOVE:
+		animation->pending.path = animation->config.window_move;
+		break;
+	case ANIMATION_WINDOW_UPDATE:
+		animation->pending.path = animation->config.window_update;
+		break;
+	case ANIMATION_WORKSPACE_SWITCH:
+		animation->pending.path = animation->config.workspace_switch;
+		break;
+	}
 }
 
 static struct sway_animation_path *get_path() {
-	if (!config->animations.enabled || config->reloading) {
+	if (!animation->config.enabled || config->reloading) {
 		return NULL;
 	}
 	struct sway_animation_path *path;
-	if (!animation.path) {
-		path = config->animations.anim_default;
+	if (!animation->current.path) {
+		path = animation->config.anim_default;
 	} else {
-		path = animation.path;
+		path = animation->current.path;
 	}
 	if (path->enabled) {
 		return path;
@@ -213,27 +333,54 @@ static struct sway_animation_curve *get_curve() {
 	return NULL;
 }
 
+static void animation_reset_path(struct sway_animation_path *path) {
+	path->idx = 0;
+}
+
+static uint32_t difftime_ms(struct timespec *t0, struct timespec *t1) {
+	struct timespec diff = {
+		.tv_sec = t1->tv_sec - t0->tv_sec,
+		.tv_nsec = t1->tv_nsec - t0->tv_nsec
+	};
+	if (diff.tv_nsec < 0) {
+		diff.tv_nsec += 1000000000; // nsec/sec
+		diff.tv_sec--;
+	}
+	return diff.tv_sec * 1000 + diff.tv_nsec / 1000000;
+}
+
+static void addtime_ms(struct timespec *time, uint32_t ms) {
+	struct timespec added = {
+		.tv_sec = time->tv_sec + ms / 1000,
+		.tv_nsec = time->tv_nsec + (ms % 1000) * 1000000,
+	};
+	added.tv_sec += added.tv_nsec / 1000000000;
+	added.tv_nsec = added.tv_nsec % 1000000000;
+	*time = added;
+}
+
+static void schedule_frames() {
+	for (int i = 0; i < root->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		int idx = get_animating_index(output->wlr_output);
+		if (idx >= 0) {
+			wlr_output_schedule_frame(output->wlr_output);
+		}
+	}
+}
+
+static bool is_animating() {
+	if (animation->enabled == ANIMATION_ENABLED_NO || animation->outputs->length == 0) {
+		return false;
+	}
+	return true;
+}
+
 static int timer_callback(void *data) {
 	struct sway_animation *animation = data;
-	++animation->step;
-	if (animation->step <= animation->nsteps) {
-		if (animation->callbacks.callback_step) {
-			animation->callbacks.callback_step(animation->callbacks.callback_step_data);
-		}
-		wl_event_source_timer_update(animation->timer, config->animations.frequency_ms);
-	} else {
-		// This is where we set the one in config if disabled or if not, default
-		struct sway_animation_path *path = get_path();
-		if (path) {
-			path->idx++;
-			if (path->idx >= path->curves->length) {
-				path->idx = 0;
-			}
-		}
-		animation->path = config->animations.anim_default;
-		if (animation->callbacks.callback_end) {
-			animation->callbacks.callback_end(animation->callbacks.callback_end_data);
-		}
+	if (animation->animating) {
+		schedule_frames();
+		wl_event_source_timer_update(animation->timer, animation->config.frequency_ms);
 	}
 	return 0;
 }
@@ -248,41 +395,150 @@ bool animation_enabled() {
 	}
 }
 
-static uint32_t animation_get_duration_ms() {
-	struct sway_animation_curve *curve = get_curve();
-	if (!curve) {
-		return 0;
-	} else {
-		return curve->duration_ms;
+bool animation_animating(struct wlr_output *output) {
+	if (animation->enabled == ANIMATION_ENABLED_NO) {
+		return false;
+	}
+	int idx = get_animating_index(output);
+	return idx >= 0;
+}
+
+void animation_add_output(struct wlr_output *output) {
+	int idx = get_animating_index(output);
+	if (idx < 0) {
+		list_add(animation->outputs, output);
 	}
 }
 
-// Select the next key
-void animation_next_key() {
-	struct sway_animation_path *path = get_path();
-	if (path) {
-		animation.nsteps = max(1, animation_get_duration_ms() / config->animations.frequency_ms);
-		if (animation.nsteps > 0) {
-			animation.step = 1;
-			if (animation.callbacks.callback_begin) {
-				animation.callbacks.callback_begin(animation.callbacks.callback_begin_data);
-			}
-			animation.callbacks.callback_step(animation.callbacks.callback_step_data);
-			if (animation.timer) {
-				wl_event_source_remove(animation.timer);
-				path->idx = 0;
-			}
-			animation.timer = wl_event_loop_add_timer(server.wl_event_loop,
-				timer_callback, &animation);
-			if (animation.timer) {
-				wl_event_source_timer_update(animation.timer, config->animations.frequency_ms);
-			} else {
-				sway_log_errno(SWAY_ERROR, "Unable to create animation timer");
-			}
-			return;
+void animation_reset_outputs() {
+	if (animation->outputs) {
+		list_reset(animation->outputs);
+	}
+}
+
+void animation_set_animation_enabled(bool enable) {
+	switch (animation->enabled) {
+	case ANIMATION_ENABLED_UNKNOWN:
+		animation->enabled = enable ? ANIMATION_ENABLED_YES : ANIMATION_ENABLED_NO;
+		break;
+	case ANIMATION_ENABLED_YES:
+		break;
+	case ANIMATION_ENABLED_NO:
+		if (enable) {
+			animation->enabled = ANIMATION_ENABLED_YES;
+		}
+		break;
+	}
+}
+
+static void stop_animation() {
+	if (animation->animating) {
+		animation->animating = false;
+		if (animation->timer) {
+			wl_event_source_remove(animation->timer);
+			animation->timer = NULL;
+		}
+		if (animation->current.callbacks.callback_end) {
+			animation->current.callbacks.callback_end(animation->current.callbacks.callback_end_data);
 		}
 	}
-	animation.callbacks.callback_step(animation.callbacks.callback_step_data);
+}
+
+// Begin the pending animation
+void animation_begin() {
+	stop_animation();
+	animation->current.path = animation->pending.path;
+	animation->current.callbacks = animation->pending.callbacks;
+	animation->pending.path = animation->config.anim_default;
+	animation->pending.callbacks = animation->default_callbacks;
+	struct sway_animation_path *path = get_path();
+	if (path) {
+		animation_reset_path(path);
+		animation->animating = true;
+		animation->enabled = ANIMATION_ENABLED_UNKNOWN;
+		clock_gettime(CLOCK_MONOTONIC, &animation->start);
+		if (animation->current.callbacks.callback_begin) {
+			animation->current.callbacks.callback_begin(animation->current.callbacks.callback_begin_data);
+		}
+		schedule_frames();
+		if (animation->timer) {
+			wl_event_source_remove(animation->timer);
+		}
+		animation->timer = wl_event_loop_add_timer(server.wl_event_loop,
+			timer_callback, animation);
+		if (animation->timer) {
+			wl_event_source_timer_update(animation->timer, animation->config.frequency_ms);
+		} else {
+			sway_log_errno(SWAY_ERROR, "Unable to create animation timer");
+		}
+		return;
+	}
+	animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
+}
+
+static bool animation_output_filter(struct sway_output *output, void *data) {
+	return list_find(animation->outputs, output->wlr_output) >= 0;
+}
+
+// Returns true if the animation path ended
+static bool animation_set_time(struct timespec *time) {
+	struct sway_animation_path *path = get_path();
+	if (!path) {
+		goto last;
+	}
+	while (true) {
+		struct sway_animation_curve *curve = path->curves->items[path->idx];
+		if (!curve) {
+			goto last;
+		}
+		uint32_t diff = difftime_ms(&animation->start, time);
+		uint32_t duration = curve->duration_ms;
+		animation->time = (double) diff / duration;
+		if (animation->time <= 1.0) {
+			break;
+		}
+		++path->idx;
+		if (path->idx >= path->curves->length) {
+			path->idx = path->curves->length - 1;
+			goto last;
+		} else {
+			addtime_ms(&animation->start, duration);
+		}
+	}
+	return false;
+
+last:
+	animation->time = 1.0;
+	return true;
+}
+
+void animation_animate(struct wlr_output *output) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	bool ended = animation_set_time(&now);
+
+	// Save old filters and push new
+	sway_root_output_filter_func_t old_filter = root->filters.output_filter;
+	void *old_filter_data = root->filters.output_filter_data;
+	root->filters.output_filter = animation_output_filter;
+	root->filters.output_filter_data = NULL;
+
+	animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
+
+	// Restore old filters
+	root->filters.output_filter = old_filter;
+	root->filters.output_filter_data = old_filter_data;
+
+	if (ended) {
+		int idx = get_animating_index(output);
+		if (idx >= 0) {
+			list_del(animation->outputs, idx);
+		}
+	}
+
+	if (!is_animating()) {
+		stop_animation();
+	}
 }
 
 static void lookup_xy(struct bezier_curve *curve, double t, double *x, double *y) {
@@ -346,7 +602,7 @@ void animation_get_values(double *t, double *x, double *y,
 		*t = 1.0; *x = 1.0, *y = 0.0, *offset_scale = 0.0;
 		return;
 	}
-	double u = animation.step / (double)animation.nsteps;
+	double u = animation->time;
 	animation_curve_get_values(curve, u, t, x, y, offset_scale);
 }
 

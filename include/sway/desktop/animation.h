@@ -8,9 +8,37 @@
  * Animations.
  */
 
+struct wlr_output;
+
 enum sway_animation_style {
 	ANIM_STYLE_CLIP,
 	ANIM_STYLE_SCALE
+};
+
+enum sway_animation_type {
+	ANIMATION_DISABLED,
+	ANIMATION_DEFAULT,
+	ANIMATION_WINDOW_OPEN,
+	ANIMATION_WINDOW_SIZE,
+	ANIMATION_WINDOW_MOVE,
+	ANIMATION_WINDOW_UPDATE,
+	ANIMATION_WORKSPACE_SWITCH,
+};
+
+/**
+ * Configuration for animations
+ */
+struct sway_animation_config {
+	bool enabled;
+	uint32_t frequency_ms;
+	enum sway_animation_style style;
+	struct sway_animation_path *anim_disabled;
+	struct sway_animation_path *anim_default;
+	struct sway_animation_path *window_open;
+	struct sway_animation_path *window_size;
+	struct sway_animation_path *window_move;
+	struct sway_animation_path *window_update;
+	struct sway_animation_path *workspace_switch;
 };
 
 // Animation callback
@@ -49,22 +77,44 @@ void animation_path_destroy(struct sway_animation_path *path);
 void animation_path_add_curve(struct sway_animation_path *path,
 	struct sway_animation_curve *curve);
 
-// Animation
-// Set the callbacks for the current animation
+// Animation System create/destroy
+void animation_create();
+void animation_destroy();
+
+// Set the default callbacks
+void animation_set_default_callbacks(struct sway_animation_callbacks *callbacks);
+
+// Set/Get the callbacks for the pending animation
 void animation_set_callbacks(struct sway_animation_callbacks *callbacks);
 struct sway_animation_callbacks *animation_get_callbacks();
 
-// Set the active path for the animation
-void animation_set_path(struct sway_animation_path *path);
+// Get a pointer to the animation system configuration
+struct sway_animation_config *animation_get_config();
 
-// Get the current active path for the animation
-struct sway_animation_path *animation_get_path();
+// Set the pending animation
+void animation_set_type(enum sway_animation_type anim);
 
-// Starts animating using the next key (next curve in the animation path)
-void animation_next_key();
+// Starts the pending animation
+void animation_begin();
+
+// Ends the current animation
+//void animation_end();
+
+// Animates one frame for output
+void animation_animate(struct wlr_output *output);
 
 // Is an animation enabled?
 bool animation_enabled();
+
+// Reset the list of outputs for the animation
+void animation_reset_outputs();
+// Adds the output to the current animation
+void animation_add_output(struct wlr_output *output);
+// Hints the animation system about a possible early cancel of a running animation
+void animation_set_animation_enabled(bool enable);
+
+// Are we in the middle of an animation?
+bool animation_animating(struct wlr_output *output);
 
 // Get the current parameters for the active animation
 void animation_get_values(double *t, double *x, double *y,

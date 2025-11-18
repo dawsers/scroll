@@ -57,7 +57,7 @@ static struct cmd_results *set_size_tiled(uint32_t axis, double fraction) {
 		}
 	}
 
-	animation_set_path(config->animations.window_size);
+	animation_set_type(ANIMATION_WINDOW_SIZE);
 	if (current->pending.parent) {
 		arrange_container(current->pending.parent);
 	} else {
