@@ -1504,7 +1504,6 @@ static void transaction_progress(void) {
 	if (server.queued_transaction->num_waiting > 0) {
 		return;
 	}
-//	animation_end();
 	set_animation_data(server.queued_transaction);
 	transaction_apply(server.queued_transaction);
 	animation_begin();
