@@ -112,6 +112,11 @@ Thanks to @mecattaf, [scroll stable is also available on the Fedora Copr](https:
 Thanks to @brihadeesh for setting up a Void linux template for the stable version of
 scroll on his repo, [here](https://git.sr.ht/~peregrinator/scroll-void-template).
 
+### NixOS
+
+Thanks to @AsahiRocks for creating a nix flake of scroll stable in his repository,
+[here](https://codeberg.org/asahirocks/scroll-flake)
+
 ### Post-Installation
 
 After installing either package, prepare a configuration file
