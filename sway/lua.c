@@ -610,22 +610,41 @@ static int scroll_container_get_fullscreen_mode(lua_State *L) {
 static int scroll_container_get_fullscreen_app_mode(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc == 0) {
-		lua_pushstring(L, "default");
+		lua_pushstring(L, "disabled");
 		return 1;
 	}
 	struct sway_container *container = lua_touserdata(L, -1);
 	if (!container || container->node.type != N_CONTAINER) {
-		lua_pushstring(L, "default");
+		lua_pushstring(L, "disabled");
 		return 1;
 	}
 	switch (container->pending.fullscreen_application) {
-	case FULLSCREEN_APP_DEFAULT:
-		lua_pushstring(L, "default");
-		break;
-	case FULLSCREEN_APP_DISABLED:
+	case FULLSCREEN_DISABLED:
 		lua_pushstring(L, "disabled");
 		break;
-	case FULLSCREEN_APP_ENABLED:
+	case FULLSCREEN_ENABLED:
+		lua_pushstring(L, "enabled");
+		break;
+	}
+	return 1;
+}
+
+static int scroll_container_get_fullscreen_view_mode(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushstring(L, "disabled");
+		return 1;
+	}
+	struct sway_container *container = lua_touserdata(L, -1);
+	if (!container || container->node.type != N_CONTAINER) {
+		lua_pushstring(L, "disabled");
+		return 1;
+	}
+	switch (container->pending.fullscreen_container) {
+	case FULLSCREEN_DISABLED:
+		lua_pushstring(L, "disabled");
+		break;
+	case FULLSCREEN_ENABLED:
 		lua_pushstring(L, "enabled");
 		break;
 	}
@@ -1179,6 +1198,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "container_get_height", scroll_container_get_height },
 	{ "container_get_fullscreen_mode", scroll_container_get_fullscreen_mode },
 	{ "container_get_fullscreen_app_mode", scroll_container_get_fullscreen_app_mode },
+	{ "container_get_fullscreen_view_mode", scroll_container_get_fullscreen_view_mode },
 	{ "container_get_parent", scroll_container_get_parent },
 	{ "container_get_children", scroll_container_get_children },
 	{ "container_get_views", scroll_container_get_views },

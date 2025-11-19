@@ -394,18 +394,15 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 	is now. If no argument is given, it does the same as _toggle_. If _global_
 	is specified, the window will be fullscreen across all outputs.
 
-*fullscreen_application* [enable|disable|toggle|reset]
+*fullscreen_application* [enable|disable|toggle]
 	Makes the focused window's application work in fullscreen UI mode, while
 	still fitting its container. If no argument is given, it does the same as
-	_toggle_. _reset_ resets the stored _fullscreen_application_ mode for the
-	window and from then on, it takes the one set by _fullscreen_ until modified
-	again with this command.
+	_toggle_.
 
 	_fullscreen_application_ basically decouples the synchronization between the
 	application's UI full screen mode and the container's. With different
 	combinations of _fullscreen_ and _fullscreen_application_ you can have
-	several "fake" full screen modes. You can always return to the usual
-	behavior by calling _fullscreen_application_ _reset_.
+	several "fake" full screen modes.
 
 *gaps* inner|outer|horizontal|vertical|top|right|bottom|left all|current
 set|plus|minus|toggle <amount>
@@ -1815,8 +1812,16 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 *container_get_fullscreen_app_mode(container)*
 	Returns a string with the _fullscreen_application_ state for _container_.
-	Values can be "default", "disabled" or "enabled". See the
+	Values can be "disabled" or "enabled". See the
 	*fullscreen_application* command for details.
+
+*container_get_fullscreen_view_mode(container)*
+	Returns a string with the _fullscreen_view_ state for _container_.
+	Values can be "disabled" or "enabled". This is the internal state of the
+	container. A container can be displayed in full screen mode because an
+	application requested it, but this state can still be "disabled", so the
+	compositor knows the container should become non-full screen when the
+	request ends.
 
 *container_get_parent(container)*
 	Returns the container parent of _container_ or nil if it is a top level

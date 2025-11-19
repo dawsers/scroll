@@ -75,12 +75,13 @@ struct cmd_results *cmd_fullscreen(int argc, char **argv) {
 	}
 
 	container_set_fullscreen(container, mode);
+	container_set_fullscreen_container(container, mode != FULLSCREEN_NONE);
 	arrange_root();
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
-// fullscreen_application [enable|disable|toggle|reset]
+// fullscreen_application [enable|disable|toggle]
 struct cmd_results *cmd_fullscreen_application(int argc, char **argv) {
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, "fullscreen_application", EXPECTED_AT_MOST, 1))) {
@@ -102,23 +103,19 @@ struct cmd_results *cmd_fullscreen_application(int argc, char **argv) {
 		}
 	}
 
-	enum sway_fullscreen_app_mode mode = container->pending.fullscreen_application;
-
-	bool is_fullscreen = false;
-	if (mode == FULLSCREEN_APP_ENABLED ||
-		(mode == FULLSCREEN_APP_DEFAULT && container->pending.fullscreen_mode != FULLSCREEN_NONE)) {
+	bool is_fullscreen;
+	enum sway_fullscreen_state mode = container->pending.fullscreen_application;
+	if (mode == FULLSCREEN_ENABLED) {
 		is_fullscreen = true;
+		mode = FULLSCREEN_DISABLED;
+	} else {
+		is_fullscreen = false;
+		mode = FULLSCREEN_ENABLED;
 	}
-	bool enable = !is_fullscreen;
-	mode = enable ? FULLSCREEN_APP_ENABLED : FULLSCREEN_APP_DISABLED;
 
 	if (argc >= 1) {
-		if (strcasecmp(argv[0], "reset") == 0) {
-			mode = FULLSCREEN_APP_DEFAULT;
-		} else {
-			enable = parse_boolean(argv[0], is_fullscreen);
-			mode = enable ? FULLSCREEN_APP_ENABLED : FULLSCREEN_APP_DISABLED;
-		}
+		bool enable = parse_boolean(argv[0], is_fullscreen);
+		mode = enable ? FULLSCREEN_ENABLED : FULLSCREEN_DISABLED;
 	}
 
 	container_set_fullscreen_application(container, mode);

@@ -29,10 +29,9 @@ enum sway_fullscreen_mode {
 	FULLSCREEN_GLOBAL,
 };
 
-enum sway_fullscreen_app_mode {
-	FULLSCREEN_APP_DEFAULT,
-	FULLSCREEN_APP_DISABLED,
-	FULLSCREEN_APP_ENABLED,
+enum sway_fullscreen_state {
+	FULLSCREEN_DISABLED,
+	FULLSCREEN_ENABLED,
 };
 
 enum sway_fullscreen_movefocus {
@@ -62,7 +61,8 @@ struct sway_container_state {
 	double width, height;
 
 	enum sway_fullscreen_mode fullscreen_mode;
-	enum sway_fullscreen_app_mode fullscreen_application;
+	enum sway_fullscreen_state fullscreen_container;
+	enum sway_fullscreen_state fullscreen_application;
 
 	struct sway_workspace *workspace; // NULL when hidden in the scratchpad
 	struct sway_container *parent;    // NULL if container in root of workspace
@@ -233,8 +233,6 @@ bool container_has_ancestor(struct sway_container *container,
 
 void container_reap_empty(struct sway_container *con);
 
-struct sway_container *container_flatten(struct sway_container *container);
-
 void container_update_title_bar(struct sway_container *container);
 
 void container_update_marks(struct sway_container *container);
@@ -313,8 +311,11 @@ void container_end_mouse_operation(struct sway_container *container);
 void container_set_fullscreen(struct sway_container *con,
 		enum sway_fullscreen_mode mode);
 
+void container_set_fullscreen_container(struct sway_container *con,
+		enum sway_fullscreen_state mode);
+
 void container_set_fullscreen_application(struct sway_container *con,
-		enum sway_fullscreen_app_mode mode);
+		enum sway_fullscreen_state mode);
 
 void container_handle_fullscreen_request(struct sway_container *con, bool enable);
 
