@@ -29,6 +29,11 @@ enum sway_fullscreen_mode {
 	FULLSCREEN_GLOBAL,
 };
 
+enum sway_fullscreen_request_mode {
+	FULLSCREEN_REQUEST_DEFAULT,
+	FULLSCREEN_REQUEST_LAYOUT,
+};
+
 enum sway_fullscreen_state {
 	FULLSCREEN_DISABLED,
 	FULLSCREEN_ENABLED,

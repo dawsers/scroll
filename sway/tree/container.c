@@ -1469,20 +1469,41 @@ void container_set_fullscreen_layout(struct sway_container *con,
 }
 
 void container_handle_fullscreen_request(struct sway_container *con, bool enable) {
+	enum sway_fullscreen_request_mode mode = config->fullscreen_on_request;
+	// Override the request mode if the container is already in some FS mode
+	if (con->pending.fullscreen_mode != FULLSCREEN_NONE ||
+		container_is_floating(con)) {
+		mode = FULLSCREEN_REQUEST_DEFAULT;
+	} else if (con->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+		mode = FULLSCREEN_REQUEST_LAYOUT;
+	}
 	if (enable) {
-		// Enable app FS
-		set_fullscreen(con, true);
-		con->pending.fullscreen_application = FULLSCREEN_ENABLED;
-		if (con->pending.fullscreen_mode == FULLSCREEN_NONE) {
-			container_set_fullscreen(con, enable);
+		switch (mode) {
+		case FULLSCREEN_REQUEST_DEFAULT:
+		default:
+			// Enable app FS
+			container_set_fullscreen_application(con, FULLSCREEN_ENABLED);
+			if (con->pending.fullscreen_mode == FULLSCREEN_NONE) {
+				container_set_fullscreen(con, enable);
+			}
+			break;
+		case FULLSCREEN_REQUEST_LAYOUT:
+			container_set_fullscreen_layout(con, FULLSCREEN_ENABLED);
+			break;
 		}
 	} else {
-		// Disable app FS
-		set_fullscreen(con, false);
-		con->pending.fullscreen_application = FULLSCREEN_DISABLED;
-		if (con->pending.fullscreen_container != FULLSCREEN_ENABLED &&
-			con->pending.fullscreen_layout != FULLSCREEN_ENABLED) {
-			container_set_fullscreen(con, enable);
+		switch (mode) {
+		case FULLSCREEN_REQUEST_DEFAULT:
+		default:
+			// Disable app FS
+			container_set_fullscreen_application(con, FULLSCREEN_DISABLED);
+			if (con->pending.fullscreen_container != FULLSCREEN_ENABLED) {
+				container_set_fullscreen(con, enable);
+			}
+			break;
+		case FULLSCREEN_REQUEST_LAYOUT:
+			container_set_fullscreen_layout(con, FULLSCREEN_DISABLED);
+			break;
 		}
 	}
 }

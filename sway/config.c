@@ -255,6 +255,7 @@ static void config_defaults(struct sway_config *config) {
 	config->jump_labels_scale = 0.5;
 	config->jump_labels_keys = strdup("1234");
 	config->fullscreen_movefocus = FULLSCREEN_MOVEFOCUS_NOFOLLOW;
+	config->fullscreen_on_request = FULLSCREEN_REQUEST_DEFAULT;
 	config->align_reset_auto = true;
 	config->cycle_size_wrap = false;
 	config->maximize_if_single = false;

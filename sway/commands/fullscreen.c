@@ -6,6 +6,22 @@
 #include "sway/tree/view.h"
 #include "util.h"
 
+struct cmd_results *cmd_fullscreen_on_request(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "fullscreen_on_request", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	if (strcasecmp(argv[0], "default") == 0) {
+		config->fullscreen_on_request = FULLSCREEN_REQUEST_DEFAULT;
+	} else if (strcasecmp(argv[0], "layout") == 0) {
+		config->fullscreen_on_request = FULLSCREEN_REQUEST_LAYOUT;
+	} else {
+		return cmd_results_new(CMD_INVALID,
+			"Expected fullscreen_on_request default|layout.");
+	}
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
 struct cmd_results *cmd_fullscreen_movefocus(int argc, char **argv) {
 	struct cmd_results *error;
 	if ((error = checkarg(argc, "fullscreen_movefocus", EXPECTED_AT_LEAST, 1))) {

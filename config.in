@@ -90,6 +90,7 @@ layout_heights [0.33333333 0.5 0.666666667 1.0]
 # cursor_shake_magnify false
 # cycle_size_wrap false
 # fullscreen_movefocus true nofollow
+# fullscreen_on_request default
 # maximize_if_single false
 # workspace_next_on_output_create_empty true
 # xwayland_output_scale true

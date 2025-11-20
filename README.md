@@ -874,6 +874,17 @@ select a new window, and full screen state will follow.
 However, those in full screen mode will recover that mode when focusing on them
 again.
 
+`fullscreen_on_request default|layout`: Default is `default`.
+This command/option controls what scroll does when an application requests
+full screen mode for a container.
+* `default`	uses `fullscreen workspace`, which is the best mode for performance.
+*scroll* only has to display one buffer peroutput, so this is probably the
+option to choose for applications that require the best performance and are
+GPU bound, like games.
+* `layout` fulfills the request using `fullscreen layout`, creating a full
+screen window in the tiling layout that scrolls with the rest. See the
+`fullscreen` command for more details.
+
 `maximize_if_single <true|false>`: Default value is `false`. If `true`,
 whenever there is a single tiling window in the workspace, it will be
 maximized, unless you explicitly resize	it.

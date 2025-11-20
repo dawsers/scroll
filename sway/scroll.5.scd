@@ -1276,6 +1276,16 @@ The default colors are:
 	information on pango font descriptions, see
 	https://docs.gtk.org/Pango/type_func.FontDescription.from_string.html#description
 
+*fullscreen_on_request* default|layout
+	This command/option controls what scroll does when an application requests
+	full screen mode for a container. _default_ is the default value, and
+	uses _fullscreen workspace_, which is the best mode for performance. scroll
+	only has to display one buffer per output, so this is probably the option
+	to choose for applications that require the best performance and are GPU
+	bound, like games. _layout_ fulfills the request using _fullscreen layout_,
+	creating a full screen window in the tiling layout that scrolls with the
+	rest. See the _fullscreen_ command for more details.
+
 *force_display_urgency_hint* <timeout> [ms]
 	If an application on another workspace sets an urgency hint, switching to this
 	workspace may lead to immediate focus of the application, which also means the
@@ -1814,7 +1824,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 *container_get_fullscreen_app_mode(container)*
 	Returns a string with the _fullscreen_application_ state for _container_.
 	Values can be "disabled" or "enabled". See the
-	*fullscreen_application* command for details.
+	*fullscreen application* command for details.
 
 *container_get_fullscreen_view_mode(container)*
 	Returns a string with the _fullscreen_view_ state for _container_.
@@ -1823,6 +1833,11 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	application requested it, but this state can still be "disabled", so the
 	compositor knows the container should become non-full screen when the
 	request ends.
+
+*container_get_fullscreen_layout_mode(container)*
+	Returns a string with the _fullscreen_layout_ state for _container_.
+	Values can be "disabled" or "enabled". See the
+	*fullscreen layout* command for details.
 
 *container_get_parent(container)*
 	Returns the container parent of _container_ or nil if it is a top level
