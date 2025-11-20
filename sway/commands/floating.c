@@ -32,6 +32,11 @@ struct cmd_results *cmd_floating(int argc, char **argv) {
 		seat_set_focus_container(config->handler_context.seat, container);
 	}
 
+	if (container->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't float a fullscreen layout container");
+	}
+
 	if (container_is_scratchpad_hidden(container)) {
 		return cmd_results_new(CMD_INVALID,
 				"Can't change floating on hidden scratchpad container");

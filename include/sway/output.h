@@ -14,6 +14,15 @@
 struct sway_server;
 struct sway_container;
 
+enum sway_layer_shell_type {
+	LAYER_SHELL_NONE = 0,
+	LAYER_SHELL_TOP = 1,
+	LAYER_SHELL_BOTTOM = 1 << 1,
+	LAYER_SHELL_OVERLAY = 1 << 2,
+	LAYER_SHELL_BACKGROUND = 1 << 3,
+	LAYER_SHELL_ALL = 0xFFFFFFFF,
+};
+
 struct sway_output_state {
 	list_t *workspaces;
 	struct sway_workspace *active_workspace;
@@ -31,6 +40,8 @@ struct sway_output {
 		struct sway_scene_tree *shell_overlay;
 		struct sway_scene_tree *session_lock;
 	} layers;
+
+	uint32_t layer_shell_mask;	// enabled/disabled layer shell layers
 
 	// when a container is fullscreen, in case the fullscreen surface is
 	// translucent (can see behind) we must make sure that the background is a
@@ -153,5 +164,8 @@ struct sway_output_non_desktop *output_non_desktop_create(struct wlr_output *wlr
 void update_output_manager_config(struct sway_server *server);
 
 struct sway_output *output_for_coords(double lx, double ly);
+
+// Enable/disable each layer shell layer for output, according to mask (enum sway_layer_shell_type)
+void output_layer_shell_enable(struct sway_output *output, uint32_t mask);
 
 #endif

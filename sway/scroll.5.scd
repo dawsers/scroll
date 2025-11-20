@@ -389,20 +389,21 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 *focus* mode_toggle
 	Moves focus between the floating and tiled layers.
 
-*fullscreen* [enable|disable|toggle] [global]
+*fullscreen* [enable|disable|toggle] [global|application|layout]
 	Makes the focused window fullscreen, non-fullscreen, or the opposite of what it
-	is now. If no argument is given, it does the same as _toggle_. If _global_
-	is specified, the window will be fullscreen across all outputs.
+	is now. If no argument is given, it does the same as _toggle_.
 
-*fullscreen_application* [enable|disable|toggle]
-	Makes the focused window's application work in fullscreen UI mode, while
-	still fitting its container. If no argument is given, it does the same as
-	_toggle_.
+	_global_: the window will be fullscreen across all outputs.
 
-	_fullscreen_application_ basically decouples the synchronization between the
-	application's UI full screen mode and the container's. With different
-	combinations of _fullscreen_ and _fullscreen_application_ you can have
-	several "fake" full screen modes.
+	_application_: the window will be in fullscreen UI mode, while still fitting
+	its container. Decouples the application's UI full screen mode with the
+	compositor's full screen container mode. With different combinations of
+	_fullscreen workspace_ and _fullscreen application_ you can have several
+	"fake" full screen modes.
+
+	_layout_: applies only to tiled windows. The focused window will be in full
+	screen mode, but as part of the tiling layout. If you scroll away from it,
+	it will still keep full screen resolution.
 
 *gaps* inner|outer|horizontal|vertical|top|right|bottom|left all|current
 set|plus|minus|toggle <amount>

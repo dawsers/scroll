@@ -692,15 +692,19 @@ static void default_arrange_children(struct sway_workspace *workspace,
 	if (workspace->gesture.scrolling || layout_modifiers_get_reorder(workspace) == REORDER_LAZY) {
 		offset = layout == L_HORIZ ? active->pending.x : active->pending.y;
 	} else {
-		offset = compute_active_offset(workspace, layout, children, active_idx,
-			workspace->width, workspace->height, gaps, pin);
-		if (pin) {
-			// active may have moved because of pin, recompute
-			active_idx = list_find(children, active);
-			if (active_idx == -1) {
-				active_idx = 0;
+		if (active->pending.fullscreen_layout == FULLSCREEN_ENABLED && !layout_scale_enabled(workspace)) {
+			offset = layout == L_HORIZ ? workspace->output->lx : workspace->output->ly;
+		} else {
+			offset = compute_active_offset(workspace, layout, children, active_idx,
+				workspace->width, workspace->height, gaps, pin);
+			if (pin) {
+				// active may have moved because of pin, recompute
+				active_idx = list_find(children, active);
+				if (active_idx == -1) {
+					active_idx = 0;
+				}
+				active = children->items[active_idx];
 			}
-			active = children->items[active_idx];
 		}
 	}
 
@@ -892,6 +896,12 @@ static void arrange_container(struct sway_container *con,
 	}
 
 	if (con->view) {
+		if (con->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+			sway_scene_node_set_position(&con->view->scene_tree->node, 0, 0);
+			sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
+			sway_scene_node_set_enabled(&con->decoration.full->node, false);
+			return;
+		}
 		double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
 		double border_top = container_titlebar_height() * scale;
 		double border_width = MAX(1, con->current.border_thickness * scale);
@@ -1313,6 +1323,11 @@ static void arrange_root(struct sway_root *root) {
 			sway_scene_node_set_position(&output->layers.shell_top->node, output->lx, output->ly);
 			sway_scene_node_set_position(&output->layers.shell_overlay->node, output->lx, output->ly);
 			sway_scene_node_set_position(&output->layers.session_lock->node, output->lx, output->ly);
+
+			sway_scene_node_set_enabled(&output->layers.shell_background->node, output->layer_shell_mask & LAYER_SHELL_BACKGROUND);
+			sway_scene_node_set_enabled(&output->layers.shell_bottom->node, output->layer_shell_mask & LAYER_SHELL_BOTTOM);
+			sway_scene_node_set_enabled(&output->layers.shell_top->node, output->layer_shell_mask & LAYER_SHELL_TOP);
+			sway_scene_node_set_enabled(&output->layers.shell_overlay->node, output->layer_shell_mask & LAYER_SHELL_OVERLAY);
 
 			arrange_output(output, output->width, output->height);
 		}

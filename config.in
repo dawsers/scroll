@@ -248,8 +248,9 @@ animations {
 #
     # Make the current focus fullscreen
     bindsym $mod+f fullscreen
-    bindsym $mod+Ctrl+f fullscreen global
-    bindsym $mod+Alt+f fullscreen_application toggle
+    bindsym $mod+Ctrl+f fullscreen layout
+    bindsym $mod+Alt+f fullscreen application
+    bindsym $mod+Ctrl+Alt+f fullscreen global
 
     # Toggle the current focus between tiling and floating mode
     bindsym $mod+y focus mode_toggle

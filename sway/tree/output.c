@@ -115,6 +115,8 @@ struct sway_output *output_create(struct wlr_output *wlr_output) {
 	output->layers.shell_overlay = alloc_scene_tree(root->staging, &failed);
 	output->layers.session_lock = alloc_scene_tree(root->staging, &failed);
 
+	output->layer_shell_mask = LAYER_SHELL_ALL;
+
 	if (!failed) {
 		output->fullscreen_background = sway_scene_rect_create(
 			output->layers.fullscreen, 0, 0, (float[4]){0.f, 0.f, 0.f, 1.f});

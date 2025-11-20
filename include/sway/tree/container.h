@@ -63,6 +63,7 @@ struct sway_container_state {
 	enum sway_fullscreen_mode fullscreen_mode;
 	enum sway_fullscreen_state fullscreen_container;
 	enum sway_fullscreen_state fullscreen_application;
+	enum sway_fullscreen_state fullscreen_layout;
 
 	struct sway_workspace *workspace; // NULL when hidden in the scratchpad
 	struct sway_container *parent;    // NULL if container in root of workspace
@@ -317,6 +318,9 @@ void container_set_fullscreen_container(struct sway_container *con,
 void container_set_fullscreen_application(struct sway_container *con,
 		enum sway_fullscreen_state mode);
 
+void container_set_fullscreen_layout(struct sway_container *con,
+		enum sway_fullscreen_state mode);
+
 void container_handle_fullscreen_request(struct sway_container *con, bool enable);
 
 /**
@@ -412,23 +416,20 @@ bool container_is_sticky(struct sway_container *con);
 
 bool container_is_sticky_or_child(struct sway_container *con);
 
-/**
- * This will destroy pairs of redundant H/V splits
- * e.g. H[V[H[app app]] app] -> H[app app app]
- * The middle "V[H[" are eliminated by a call to container_squash
- * on the V[ con. It's grandchildren are added to its parent.
- *
- * This function is roughly equivalent to i3's tree_flatten here:
- * https://github.com/i3/i3/blob/1f0c628cde40cf87371481041b7197344e0417c6/src/tree.c#L651
- *
- * Returns the number of new containers added to the parent
- */
-int container_squash(struct sway_container *con);
-
 void container_arrange_title_bar(struct sway_container *con);
 
 void container_update(struct sway_container *con);
 
 void container_update_itself_and_parents(struct sway_container *con);
+
+/**
+ * Helper functions to update a parent when a container in fullscreen layout mode
+ * gets detached or inserted from/to another container
+ */
+void container_insert_update_parent_fullscreen_layout(struct sway_container *parent,
+		struct sway_container *child);
+
+void container_detach_update_parent_fullscreen_layout(struct sway_container *parent,
+		struct sway_container *child);
 
 #endif

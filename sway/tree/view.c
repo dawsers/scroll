@@ -306,7 +306,8 @@ void view_autoconfigure(struct sway_view *view) {
 	}
 	struct sway_output *output = ws ? ws->output : NULL;
 
-	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
+	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE ||
+		con->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
 		con->pending.content_x = output->lx;
 		con->pending.content_y = output->ly;
 		con->pending.content_width = output->width;
@@ -1006,7 +1007,12 @@ void view_unmap(struct sway_view *view) {
 		workspace_detect_urgent(ws);
 	}
 
-	struct sway_seat *seat;
+	struct sway_seat *seat = input_manager_get_default_seat();
+	struct sway_node *node = seat_get_focus(seat);
+	if (node->type == N_WORKSPACE) {
+		output_layer_shell_enable(node->sway_workspace->output, LAYER_SHELL_ALL);
+	}
+
 	wl_list_for_each(seat, &server.input->seats, link) {
 		seat->cursor->image_surface = NULL;
 		if (seat->cursor->active_constraint) {

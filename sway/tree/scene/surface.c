@@ -282,7 +282,8 @@ void sway_scene_surface_reconfigure(struct sway_scene_surface *scene_surface) {
 			total_scale = 1.0;
 		}
 		view_get_animation_scales(view, &wscale, &hscale);
-		if (view->container && !container_is_fullscreen_or_child(view->container)) {
+		if (view->container && !container_is_fullscreen_or_child(view->container) &&
+			view->container->pending.fullscreen_layout == FULLSCREEN_DISABLED) {
 			if (!view->container->decoration.full->title_bar) {
 				radius_top = view->container->decoration.full->border_radius;
 			}

@@ -444,14 +444,18 @@ position to a different application.
 
 [Full Screen](https://github.com/user-attachments/assets/fed977a0-8e87-4f94-bd68-7159578499ba)
 
-You can also use `fullscreen_application` to toggle a full screen UI for any
+You can also use `fullscreen application` to toggle a full screen UI for any
 application, while still having its content fit in the assigned container.
 
 With different combinations of `fullscreen` and `fullscreen_application` you
 can have several "fake" full screen modes, like full screen YouTube videos
 within a container, full screen UI within a container, or a regular UI in a
-full screen container. You can always return to the usual behavior by calling
-`fullscreen_application reset`.
+full screen container.
+
+`fullscreen layout` applies a special full screen mode to the active tiled
+window. The window becomes full screen but it is still part of the tiling
+layout, so you can scroll it like the rest. You can have as many of these
+full screen windows as you want at the same time.
 
 *scroll* also supports a *maximize* mode, through the `toggle_size` command.
 This command lets you toggle back and forth any size for the *active* window in
@@ -459,9 +463,9 @@ the current workspace, or *all* of them. See the manual for details.
 
 ``` config
     bindsym $mod+f fullscreen
-    bindsym $mod+Ctrl+f fullscreen global
-    bindsym $mod+Alt+f fullscreen_application toggle
-    bindsym $mod+Ctrl+Alt+f fullscreen_application reset
+    bindsym $mod+Ctrl+f fullscreen layout
+    bindsym $mod+Alt+f fullscreen application
+    bindsym $mod+Ctrl+Alt+f fullscreen global
 
     # Toggle Size (and maximize)
     bindsym $mod+t toggle_size this 1.0 1.0

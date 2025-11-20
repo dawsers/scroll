@@ -742,3 +742,9 @@ void handle_output_power_manager_set_mode(struct wl_listener *listener,
 	store_output_config(oc);
 	request_modeset();
 }
+
+void output_layer_shell_enable(struct sway_output *output, uint32_t mask) {
+	if (output) {
+		output->layer_shell_mask = mask;
+	}
+}

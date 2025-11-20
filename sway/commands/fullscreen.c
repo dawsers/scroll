@@ -31,7 +31,7 @@ struct cmd_results *cmd_fullscreen_movefocus(int argc, char **argv) {
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
-// fullscreen [enable|disable|toggle] [global]
+// fullscreen [enable|disable|toggle] [global|application|layout]
 struct cmd_results *cmd_fullscreen(int argc, char **argv) {
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, "fullscreen", EXPECTED_AT_MOST, 2))) {
@@ -53,20 +53,54 @@ struct cmd_results *cmd_fullscreen(int argc, char **argv) {
 		}
 	}
 
-	bool is_fullscreen = container->pending.fullscreen_mode != FULLSCREEN_NONE;
 	bool global = false;
-	bool enable = !is_fullscreen;
+	bool layout = false;
+	bool application = false;
+	bool enable = container->pending.fullscreen_mode == FULLSCREEN_NONE;
+	bool enable_application = container->pending.fullscreen_application == FULLSCREEN_DISABLED;
+	bool enable_layout = container->pending.fullscreen_layout == FULLSCREEN_DISABLED;
 
 	if (argc >= 1) {
 		if (strcasecmp(argv[0], "global") == 0) {
 			global = true;
+		} else if (strcasecmp(argv[0], "application") == 0) {
+			application = true;
+		} else if (strcasecmp(argv[0], "layout") == 0) {
+			layout = true;
 		} else {
-			enable = parse_boolean(argv[0], is_fullscreen);
+			enable = parse_boolean(argv[0], !enable);
+			enable_application = parse_boolean(argv[0], !enable_application);
+			enable_layout = parse_boolean(argv[0], !enable_layout);
 		}
 	}
 
 	if (argc >= 2) {
-		global = strcasecmp(argv[1], "global") == 0;
+		if (strcasecmp(argv[1], "global") == 0) {
+			global = true;
+		} else if (strcasecmp(argv[1], "application") == 0) {
+			application = true;
+		} else if (strcasecmp(argv[1], "layout") == 0) {
+			layout = true;
+		}
+	}
+
+	if (layout) {
+		if (container_is_floating(container) || container->pending.fullscreen_mode != FULLSCREEN_NONE) {
+			return cmd_results_new(CMD_INVALID,
+				"Can't call fullscreen layout on a floating or fullscreen container.");
+		}
+		container_set_fullscreen_layout(container, enable_layout ? FULLSCREEN_ENABLED : FULLSCREEN_DISABLED);
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
+
+	if (container->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+		return cmd_results_new(CMD_INVALID,
+			"Can't call fullscreen on a fullscreen layout container.");
+	}
+
+	if (application) {
+		container_set_fullscreen_application(container, enable_application ? FULLSCREEN_ENABLED : FULLSCREEN_DISABLED);
+		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
 	enum sway_fullscreen_mode mode = FULLSCREEN_NONE;
@@ -80,46 +114,3 @@ struct cmd_results *cmd_fullscreen(int argc, char **argv) {
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
-
-// fullscreen_application [enable|disable|toggle]
-struct cmd_results *cmd_fullscreen_application(int argc, char **argv) {
-	struct cmd_results *error = NULL;
-	if ((error = checkarg(argc, "fullscreen_application", EXPECTED_AT_MOST, 1))) {
-		return error;
-	}
-	if (!root->outputs->length) {
-		return cmd_results_new(CMD_FAILURE,
-				"Can't run this command while there are no outputs connected.");
-	}
-	struct sway_container *container = config->handler_context.container;
-
-	if (!container) {
-		// If the focus is not a container, do nothing successfully
-		return cmd_results_new(CMD_SUCCESS, NULL);
-	} else if (!container->pending.workspace) {
-		// If in the scratchpad, operate on the highest container
-		while (container->pending.parent) {
-			container = container->pending.parent;
-		}
-	}
-
-	bool is_fullscreen;
-	enum sway_fullscreen_state mode = container->pending.fullscreen_application;
-	if (mode == FULLSCREEN_ENABLED) {
-		is_fullscreen = true;
-		mode = FULLSCREEN_DISABLED;
-	} else {
-		is_fullscreen = false;
-		mode = FULLSCREEN_ENABLED;
-	}
-
-	if (argc >= 1) {
-		bool enable = parse_boolean(argv[0], is_fullscreen);
-		mode = enable ? FULLSCREEN_ENABLED : FULLSCREEN_DISABLED;
-	}
-
-	container_set_fullscreen_application(container, mode);
-
-	return cmd_results_new(CMD_SUCCESS, NULL);
-}
-

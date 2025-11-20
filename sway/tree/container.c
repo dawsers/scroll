@@ -1447,6 +1447,27 @@ void container_set_fullscreen_application(struct sway_container *con,
 	}
 }
 
+void container_set_fullscreen_layout(struct sway_container *con,
+		enum sway_fullscreen_state mode) {
+	struct sway_workspace *workspace = con->pending.workspace;
+	if (!workspace) {
+		return;
+	}
+	if (layout_scale_enabled(workspace)) {
+		return;
+	}
+	container_set_fullscreen_application(con, mode);
+	con->pending.fullscreen_layout = mode;
+	if (con->pending.parent) {
+		con = con->pending.parent;
+	}
+	con->pending.fullscreen_layout = mode;
+	output_layer_shell_enable(workspace->output, LAYER_SHELL_OVERLAY);
+	arrange_workspace(workspace);
+	node_set_dirty(&workspace->node);
+	node_set_dirty(&con->node);
+}
+
 void container_handle_fullscreen_request(struct sway_container *con, bool enable) {
 	if (enable) {
 		// Enable app FS
@@ -1459,7 +1480,8 @@ void container_handle_fullscreen_request(struct sway_container *con, bool enable
 		// Disable app FS
 		set_fullscreen(con, false);
 		con->pending.fullscreen_application = FULLSCREEN_DISABLED;
-		if (con->pending.fullscreen_container != FULLSCREEN_ENABLED) {
+		if (con->pending.fullscreen_container != FULLSCREEN_ENABLED &&
+			con->pending.fullscreen_layout != FULLSCREEN_ENABLED) {
 			container_set_fullscreen(con, enable);
 		}
 	}
@@ -1533,12 +1555,35 @@ static void set_workspace(struct sway_container *container, void *data) {
 	container->pending.workspace = container->pending.parent->pending.workspace;
 }
 
+void container_insert_update_parent_fullscreen_layout(struct sway_container *parent,
+		struct sway_container *child) {
+	if (child->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+		parent->pending.fullscreen_layout = FULLSCREEN_ENABLED;
+	}
+}
+
+void container_detach_update_parent_fullscreen_layout(struct sway_container *parent,
+		struct sway_container *child) {
+	if (child->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+		parent->pending.fullscreen_layout = FULLSCREEN_DISABLED;
+		list_t *siblings = parent->pending.children;
+		for (int i = 0; i < siblings->length; ++i) {
+			struct sway_container *sibling = siblings->items[i];
+			if (sibling->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+				parent->pending.fullscreen_layout = FULLSCREEN_ENABLED;
+				return;
+			}
+		}
+	}
+}
+
 void container_insert_child(struct sway_container *parent,
 		struct sway_container *child, int i) {
 	if (child->pending.workspace) {
 		container_detach(child);
 	}
 	list_insert(parent->pending.children, i, child);
+	container_insert_update_parent_fullscreen_layout(parent, child);
 	child->pending.parent = parent;
 	child->pending.workspace = parent->pending.workspace;
 	container_for_each_child(child, set_workspace, NULL);
@@ -1556,6 +1601,10 @@ void container_add_sibling(struct sway_container *fixed,
 	list_insert(siblings, index + after, active);
 	active->pending.parent = fixed->pending.parent;
 	active->pending.workspace = fixed->pending.workspace;
+	if (active->pending.parent) {
+		container_insert_update_parent_fullscreen_layout(active->pending.parent,
+			active);
+	}
 	container_for_each_child(active, set_workspace, NULL);
 	container_handle_fullscreen_reparent(active);
 	container_update_representation(active);
@@ -1567,6 +1616,7 @@ void container_add_child(struct sway_container *parent,
 		container_detach(child);
 	}
 	list_add(parent->pending.children, child);
+	container_insert_update_parent_fullscreen_layout(parent, child);
 	child->pending.parent = parent;
 	child->pending.workspace = parent->pending.workspace;
 	container_for_each_child(child, set_workspace, NULL);
@@ -1598,6 +1648,7 @@ void container_detach(struct sway_container *child) {
 	container_for_each_child(child, set_workspace, NULL);
 
 	if (old_parent) {
+		container_detach_update_parent_fullscreen_layout(old_parent, child);
 		container_update_representation(old_parent);
 		node_set_dirty(&old_parent->node);
 	} else if (old_workspace) {
@@ -1791,66 +1842,6 @@ bool container_is_sticky(struct sway_container *con) {
 
 bool container_is_sticky_or_child(struct sway_container *con) {
 	return container_is_sticky(container_toplevel_ancestor(con));
-}
-
-static bool is_parallel(enum sway_container_layout first,
-		enum sway_container_layout second) {
-	switch (first) {
-	case L_HORIZ:
-		return second == L_HORIZ;
-	case L_VERT:
-		return second == L_VERT;
-	default:
-		return false;
-	}
-}
-
-static bool container_is_squashable(struct sway_container *con,
-		struct sway_container *child) {
-	enum sway_container_layout gp_layout = container_parent_layout(con);
-	return (con->pending.layout == L_HORIZ || con->pending.layout == L_VERT) &&
-		(child->pending.layout == L_HORIZ || child->pending.layout == L_VERT) &&
-		!is_parallel(con->pending.layout, child->pending.layout) &&
-		is_parallel(gp_layout, child->pending.layout);
-}
-
-static void container_squash_children(struct sway_container *con) {
-	for (int i = 0; i < con->pending.children->length; i++) {
-		struct sway_container *child = con->pending.children->items[i];
-		i += container_squash(child);
-	}
-}
-
-int container_squash(struct sway_container *con) {
-	if (!con->pending.children) {
-		return 0;
-	}
-	if (con->pending.children->length != 1) {
-		container_squash_children(con);
-		return 0;
-	}
-	struct sway_container *child = con->pending.children->items[0];
-	int idx = container_sibling_index(con);
-	int change = 0;
-	if (container_is_squashable(con, child)) {
-		// con and child are a redundant H/V pair. Destroy them.
-		while (child->pending.children->length) {
-			struct sway_container *current = child->pending.children->items[0];
-			container_detach(current);
-			if (con->pending.parent) {
-				container_insert_child(con->pending.parent, current, idx);
-			} else {
-				workspace_insert_tiling_direct(con->pending.workspace, current, idx);
-			}
-			change++;
-		}
-		// This will also destroy con because child was its only child
-		container_reap_empty(child);
-		change--;
-	} else {
-		container_squash_children(con);
-	}
-	return change;
 }
 
 static void swap_places(struct sway_container *con1,

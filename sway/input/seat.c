@@ -1165,6 +1165,15 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	struct sway_container *container = node->type == N_CONTAINER ?
 		node->sway_container : NULL;
 
+	if (container && container->pending.workspace) {
+		if (container->pending.fullscreen_layout == FULLSCREEN_ENABLED &&
+			!layout_scale_enabled(container->pending.workspace)) {
+			output_layer_shell_enable(container->pending.workspace->output, LAYER_SHELL_OVERLAY);
+		} else {
+			output_layer_shell_enable(container->pending.workspace->output, LAYER_SHELL_ALL);
+		}
+	}
+
 	// Deny setting focus to a view which is hidden by a fullscreen container or global
 	if (container && container_obstructing_fullscreen_container(container)) {
 		return;

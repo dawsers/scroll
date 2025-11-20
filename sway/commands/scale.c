@@ -19,6 +19,11 @@ struct cmd_results *cmd_scale_content(int argc, char **argv) {
 		return cmd_results_new(CMD_INVALID, "Need a window to run scale_content");
 	}
 
+	if (container->pending.fullscreen_mode != FULLSCREEN_NONE ||
+		container->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+		return cmd_results_new(CMD_INVALID, "Can't run scale_content on fullscreen containers");
+	}
+
 	struct cmd_results *error;
 	if ((error = checkarg(argc, "scale_content", EXPECTED_AT_LEAST, 1))) {
 		return error;

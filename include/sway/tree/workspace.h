@@ -151,12 +151,4 @@ size_t workspace_num_tiling_views(struct sway_workspace *ws);
 
 size_t workspace_num_sticky_containers(struct sway_workspace *ws);
 
-/**
- * workspace_squash is container_flatten in the reverse
- * direction. Instead of eliminating redundant splits that are
- * parents of the target container, it eliminates pairs of
- * redundant H/V splits that are children of the workspace.
- */
-void workspace_squash(struct sway_workspace *workspace);
-
 #endif
