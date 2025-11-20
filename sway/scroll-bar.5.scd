@@ -66,10 +66,12 @@ runtime.
 	hidden_state hide|show <bar-id2>_ will result in an error due to
 	conflicting bar ids.
 
-*mode* dock|hide|invisible|overlay [<bar-id>]
+*mode* dock|top|hide|invisible|overlay [<bar-id>]
 	Specifies the visibility of the bar. In _dock_ mode, it is permanently
-	visible at one edge of the screen. In _hide_ mode, it is hidden unless the
-	modifier key is pressed, though this behaviour depends on the hidden state.
+	visible at one edge of the screen, but under windows that overlap it.
+	_top_ mode is like _dock_, but the bar is over any other windows.
+	In _hide_ mode, it is hidden unless the	modifier key is pressed, though
+	this behaviour depends on the hidden state.
 	In _invisible_ mode, it is permanently hidden. In _overlay_ mode, it is
 	permanently visible on top of other windows. (In _overlay_ mode the bar is
 	transparent to input events.) Default is _dock_.

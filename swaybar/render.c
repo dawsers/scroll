@@ -947,7 +947,8 @@ void render_frame(struct swaybar_output *output) {
 				output->bar->config->gaps.right,
 				output->bar->config->gaps.bottom,
 				output->bar->config->gaps.left);
-		if (strcmp(output->bar->config->mode, "dock") == 0) {
+		if (strcmp(output->bar->config->mode, "dock") == 0 ||
+			strcmp(output->bar->config->mode, "top") == 0) {
 			zwlr_layer_surface_v1_set_exclusive_zone(output->layer_surface, height);
 		}
 		// TODO: this could infinite loop if the compositor assigns us a

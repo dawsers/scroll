@@ -99,10 +99,12 @@ static void add_layer_surface(struct swaybar_output *output) {
 	struct swaybar_config *config = bar->config;
 	bool hidden = strcmp(config->mode, "hide") == 0;
 	bool overlay = !hidden && strcmp(config->mode, "overlay") == 0;
+	enum zwlr_layer_shell_v1_layer mode = strcmp(config->mode, "top") == 0 ?
+		ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
 	output->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
 			bar->layer_shell, output->surface, output->output,
-			hidden || overlay ? ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY :
-			ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM, "panel");
+			hidden || overlay ? ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY :	mode,
+			"panel");
 	assert(output->layer_surface);
 	zwlr_layer_surface_v1_add_listener(output->layer_surface,
 			&layer_surface_listener, output);

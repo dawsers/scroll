@@ -15,6 +15,8 @@ static struct cmd_results *bar_set_mode(struct bar_config *bar, const char *mode
 		}
 	} else if (strcasecmp("dock", mode) == 0) {
 		bar->mode = strdup("dock");
+	} else if (strcasecmp("top", mode) == 0) {
+		bar->mode = strdup("top");
 	} else if (strcasecmp("hide", mode) == 0) {
 		bar->mode = strdup("hide");
 	} else if (strcasecmp("invisible", mode) == 0) {
