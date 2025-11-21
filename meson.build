@@ -1,7 +1,7 @@
 project(
 	'scroll',
 	'c',
-	version: '1.12-dev',
+	version: '1.12',
 	license: 'MIT',
 	meson_version: '>=1.3',
 	default_options: [
