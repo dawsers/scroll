@@ -92,19 +92,18 @@ dependencies.
 
 If you are using Arch Linux, there are two AUR package you can install:
 
-* Stable version: `sway-scroll-stable`. This package follows *sway's*
-  versioning, and there is one version per stable *sway* version, currently at
-  1.11. You should be able to have both `sway` and `scroll` installed on the
-  same system and start any of them without problems, as their dependencies
-  are the same, but the executable and file names are not (*scroll* vs
-  *sway*).
+* Stable version: `sway-scroll`. Currently at 1.12. It corresponds to the
+  development version of sway. You should be able to have any version of `sway`
+  and `scroll` installed on the same system and start any of them without problems,
+  as `scroll` doesn't need any version of `wlroots` installed on the system,
+  and its executable and file names are different (*scroll* vs *sway*).
 
 ``` sh
-paru -S sway-scroll-stable
+paru -S sway-scroll
 ```
 
 * Unstable, development version: `sway-scroll-git`. This has all the newest
-  changes and features, and it is compatible with `sway-git`.
+  changes and features.
 
 ``` sh
 paru -S sway-scroll-git
