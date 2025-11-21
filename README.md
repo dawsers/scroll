@@ -30,6 +30,8 @@ supports some added features:
 
 * Lua scripting: scroll provides a lua API to script the window manager.
 
+* Several full screen modes: `workspace`, `global`, `aplication` and `layout`.
+
 * Trackpad/Mouse scrolling: You can use the trackpad or mouse dragging to
   navigate/scroll the workspace windows.
 
@@ -69,6 +71,11 @@ man scroll-output
 man scroll-bar
 man scrollnag
 ```
+
+The [example configuration](https://github.com/dawsers/scroll/blob/master/config.in)
+includes key bindings for most commands, so it is a good source of documentation
+to see what *scroll* can do. If you have time, read it carefully with the manual
+side by side (`man 5 scroll`), and experiment while customizing it.
 
 ## Building and Installing
 
@@ -507,6 +514,25 @@ always start at (0, 0) and end at (1, 1). You only define the points in-between.
 (0, 0) is `time = 0` and initial `x` position. (1, 1) is `time = 1` (end of
 animation) and `x` at the final animation position.
 
+*scroll* uses a different parametrization for its 2D Bezier curves than other
+compositors that only support cubic Bezier curves with two user-defined control
+points. This is because *scroll* supports Bezier curves of any order, and this
+may produce curves with more than one y value per x value. So *scroll* uses the
+fraction of the curve's length as parameter, to ensure curve points can be
+defined in an unique way, while those other compositors use the curve's x value
+because their curves cannot contain loops. For compatibility with curves from
+other compositors and CSS, the var animation curve can have an optional argument,
+`simple`, that replaces order. This creates a compatible cubic Bezier.
+For example:
+
+``` config
+default yes 300 var simple [ 0.6 -0.28 0.735 0.045 ]
+
+# instead of:
+
+default yes 300 var 3 [ 0.6 -0.28 0.735 0.045 ]
+```
+
 - `off` defines the positional offset for the variable that is static (for
 example, if moving on the x direction, `var` defines the timing of the x
 coordinate and `off` the offset for y). This curve starts at (0, 0) (initial
@@ -535,6 +561,8 @@ animations {
     window_size yes 300 var 3 [ -0.35 0 0 0.5 ]
 }
 ```
+
+
 
 ### Spaces
 
@@ -1091,6 +1119,37 @@ These are just a few examples. Read the manual to know more about the
 API, or check [this](https://github.com/dawsers/scroll/issues/35) issue
 for more examples and API requests.
 
+## Screenshots and Video Recording/Streaming
+
+*scroll* is compatible with the latest development version of *sway*, so all
+the tools you could use with *sway* are available to *scroll*.
+
+For screenshots, you can use `grim` and `slurp`. `swappy` or `satty` can add
+a UI to the screenshot capture. For example:
+
+``` config
+#set $satty satty -f - --initial-tool=crop --copy-command=wl-copy --actions-on-escape="save-to-clipboard,exit" --brush-smooth-history-size=5 --disable-notifications
+set $satty swappy -f -
+set $printscreen_mode 'printscreen (r:region f:full o:output w:window)'
+mode $printscreen_mode {
+    bindsym r exec grim -g "$(slurp -d)" - | $satty; mode default
+    bindsym f exec grim - | $satty; mode default
+    bindsym o exec grim -o "$(scrollmsg -t get_outputs | jq -r '.[] | select(.focused) | .name')" - | $satty; mode default
+    bindsym w exec scrollmsg -t get_tree | jq -r '.. | select(.focused?) | .rect | "\(.x),\(.y) \(.width)x\(.height)"' | grim -g - - | $satty; mode default
+    # The image is scaled like using fractional scaling
+    #bindsym w exec grim -T "$(scrollmsg -t get_tree | jq -j '.. | select(.type?) | select(.focused).foreign_toplevel_identifier')" - | $satty; mode default
+
+    bindsym Escape mode "default"
+}
+bindsym $mod+Print mode $printscreen_mode
+```
+
+For video recording/streaming, you should install [xdg-desktop-portal-wlr](https://github.com/emersion/xdg-desktop-portal-wlr).
+and `pipewire`. With those two dependencies, [OBS Studio](https://obsproject.com/)
+works out of the box.
+
+For application compatibility read [this](https://github.com/emersion/xdg-desktop-portal-wlr/wiki/Screencast-Compatibility)
+and the [FAQ](https://github.com/emersion/xdg-desktop-portal-wlr/wiki/FAQ).
 
 ## IPC
 
