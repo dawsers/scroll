@@ -30,7 +30,7 @@ supports some added features:
 
 * Lua scripting: scroll provides a lua API to script the window manager.
 
-* Several full screen modes: `workspace`, `global`, `aplication` and `layout`.
+* Several full screen modes: `workspace`, `global`, `application` and `layout`.
 
 * Trackpad/Mouse scrolling: You can use the trackpad or mouse dragging to
   navigate/scroll the workspace windows.
@@ -125,7 +125,7 @@ scroll on his repo, [here](https://git.sr.ht/~peregrinator/scroll-void-template)
 ### NixOS
 
 Thanks to @AsahiRocks for creating a nix flake of scroll stable in his repository,
-[here](https://codeberg.org/asahirocks/scroll-flake)
+[here](https://github.com/AsahiRocks/scroll-flake)
 
 ### Post-Installation
 
