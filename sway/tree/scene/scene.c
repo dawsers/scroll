@@ -1757,8 +1757,9 @@ static bool scene_node_at_iterator(struct sway_scene_node *node,
 				return false;
 			}
 		}
+	} else if (node->type == SWAY_SCENE_NODE_SHADOW) {
+		return false;
 	}
-	// Rectangles and shadows are not interactive, so we don't need to consider them here.
 
 	at_data->rx = rx;
 	at_data->ry = ry;
