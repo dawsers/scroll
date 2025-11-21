@@ -109,6 +109,10 @@ paru -S sway-scroll
 paru -S sway-scroll-git
 ```
 
+**NOTE**: The package `sway-scroll-stable` has been discontinued and renamed
+`sway-scroll`. Please uninstall it and install `sway-scroll` if you want the
+stable version.
+
 ### Fedora Linux
 
 Thanks to @mecattaf, [scroll stable is also available on the Fedora Copr](https://copr.fedorainfracloud.org/coprs/scrollwm/packages/).
