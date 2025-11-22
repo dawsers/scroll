@@ -935,6 +935,10 @@ static void arrange_container(struct sway_container *con,
 			sway_assert(false, "unreachable");
 		}
 
+		if (con->current.border != B_NORMAL || !title_bar) {
+			sway_scene_decoration_set_title_bar(con->decoration.full, false, 0, 0);
+		}
+
 		double border_left = con->current.border_left ? border_width : 0;
 		sway_scene_decoration_set_size(con->decoration.full, width, height);
 		sway_scene_decoration_set_border_width(con->decoration.full, border_width);

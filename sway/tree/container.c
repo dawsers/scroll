@@ -375,6 +375,10 @@ void container_update_itself_and_parents(struct sway_container *con) {
 }
 
 void container_arrange_title_bar(struct sway_container *con) {
+	if (con->pending.border != B_NORMAL) {
+		return;
+	}
+
 	enum alignment title_align = config->title_align;
 	int marks_buffer_width = 0;
 	double width = con->title_width;
@@ -434,7 +438,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 		return;
 	}
 
-	sway_scene_decoration_set_title_bar(con->decoration.full, scale * height, scale * config->titlebar_border_radius);
+	sway_scene_decoration_set_title_bar(con->decoration.full, true, scale * height, scale * config->titlebar_border_radius);
 
 	container_update(con);
 }
