@@ -306,8 +306,8 @@ void view_autoconfigure(struct sway_view *view) {
 	}
 	struct sway_output *output = ws ? ws->output : NULL;
 
-	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE ||
-		con->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+	if (output && (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE ||
+		con->pending.fullscreen_layout == FULLSCREEN_ENABLED)) {
 		con->pending.content_x = output->lx;
 		con->pending.content_y = output->ly;
 		con->pending.content_width = output->width;
