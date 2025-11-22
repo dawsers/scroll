@@ -1077,6 +1077,15 @@ void container_set_floating(struct sway_container *container, bool enable) {
 	container_end_mouse_operation(container);
 
 	ipc_event_window(container, "floating");
+
+	// Lua callbacks
+	for (int i = 0; i < config->lua.cbs_view_float->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_view_float->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, container->view);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
 }
 
 void container_set_geometry_from_content(struct sway_container *con) {

@@ -1933,8 +1933,9 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 	_event_ can be "view_map" (application's window creation), "view_unmap"
 	(application's window destruction), "view_urgent" (a window gets the
-	urgent attribute set), "view_focus" (a window gets focus), or
-	"workspace_create" (called when a workspace is created).
+	urgent attribute set), "view_focus" (a window gets focus), "view_float"
+	(a window becomes floating or goes back to tiled), or "workspace_create"
+	(called when a workspace is created).
 
 	_cb_func_ is a Lua function with two parameters, _view_ (the view triggering
 	the event) and _data_, the _cb_data_ value passed when creating the
