@@ -447,7 +447,7 @@ position to a different application.
 You can also use `fullscreen application` to toggle a full screen UI for any
 application, while still having its content fit in the assigned container.
 
-With different combinations of `fullscreen` and `fullscreen_application` you
+With different combinations of `fullscreen` and `fullscreen application` you
 can have several "fake" full screen modes, like full screen YouTube videos
 within a container, full screen UI within a container, or a regular UI in a
 full screen container.
