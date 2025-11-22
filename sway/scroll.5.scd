@@ -1909,6 +1909,9 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 *workspace_get_height(workspace)*
 	Returns an integer number with the _workspace_'s height in pixels.
 
+*workspace_get_output(workspace)*
+	Returns the _workspace's_ output pointer, or NULL if none.
+
 *output_get_enabled(output)*
 	Returns _true_ if the output (display) is enabled, or _false_ otherwise.
 

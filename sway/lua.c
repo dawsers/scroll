@@ -1015,6 +1015,21 @@ static int scroll_workspace_get_height(lua_State *L) {
 	return 1;
 }
 
+static int scroll_workspace_get_output(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	struct sway_workspace *workspace = lua_touserdata(L, -1);
+	if (!workspace || workspace->node.type != N_WORKSPACE) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushlightuserdata(L, workspace->output);
+	return 1;
+}
+
 static int scroll_scratchpad_get_containers(lua_State *L) {
 	lua_checkstack(L, root->scratchpad->length + STACK_MIN);
 	lua_createtable(L, root->scratchpad->length, 0);
@@ -1246,6 +1261,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "workspace_set_layout_type", scroll_workspace_set_layout_type },
 	{ "workspace_get_width", scroll_workspace_get_width },
 	{ "workspace_get_height", scroll_workspace_get_height },
+	{ "workspace_get_output", scroll_workspace_get_output },
 	{ "output_get_enabled", scroll_output_get_enabled },
 	{ "output_get_name", scroll_output_get_name },
 	{ "output_get_active_workspace", scroll_output_get_active_workspace },
