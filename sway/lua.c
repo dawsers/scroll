@@ -265,7 +265,11 @@ static int scroll_view_get_container(lua_State *L) {
 		return 1;
 	}
 	struct sway_view *view = lua_touserdata(L, -1);
-	lua_pushlightuserdata(L, view ? view->container : NULL);
+	if (view && view->container) {
+		lua_pushlightuserdata(L,view->container);
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 
@@ -452,7 +456,11 @@ static int scroll_container_get_workspace(lua_State *L) {
 		lua_pushnil(L);
 		return 1;
 	}
-	lua_pushlightuserdata(L, container->pending.workspace);
+	if (container->pending.workspace) {
+		lua_pushlightuserdata(L, container->pending.workspace);
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 
@@ -668,6 +676,33 @@ static int scroll_container_get_fullscreen_layout_mode(lua_State *L) {
 		break;
 	case FULLSCREEN_ENABLED:
 		lua_pushstring(L, "enabled");
+		break;
+	}
+	return 1;
+}
+
+static int scroll_container_get_pin_mode(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushstring(L, "none");
+		return 1;
+	}
+	struct sway_container *container = lua_touserdata(L, -1);
+	if (!container || container->node.type != N_CONTAINER || !container->pending.workspace) {
+		lua_pushstring(L, "none");
+		return 1;
+	}
+	struct sway_workspace *workspace = container->pending.workspace;
+	if (workspace->layout.pin.container != container) {
+		lua_pushstring(L, "none");
+		return 1;
+	}
+	switch (workspace->layout.pin.pos) {
+	case PIN_BEGINNING:
+		lua_pushstring(L, "beginning");
+		break;
+	case PIN_END:
+		lua_pushstring(L, "end");
 		break;
 	}
 	return 1;
@@ -1026,7 +1061,27 @@ static int scroll_workspace_get_output(lua_State *L) {
 		lua_pushnil(L);
 		return 1;
 	}
-	lua_pushlightuserdata(L, workspace->output);
+	if (workspace->output) {
+		lua_pushlightuserdata(L, workspace->output);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+static int scroll_workspace_get_pin(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	struct sway_workspace *workspace = lua_touserdata(L, -1);
+	if (!workspace || workspace->node.type != N_WORKSPACE ||
+		!workspace->layout.pin.container) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushlightuserdata(L, workspace->layout.pin.container);
 	return 1;
 }
 
@@ -1052,7 +1107,11 @@ static int scroll_output_get_active_workspace(lua_State *L) {
 		lua_pushnil(L);
 		return 1;
 	}
-	lua_pushlightuserdata(L, output->current.active_workspace);
+	if (output->current.active_workspace) {
+		lua_pushlightuserdata(L, output->current.active_workspace);
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 
@@ -1248,6 +1307,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "container_get_fullscreen_app_mode", scroll_container_get_fullscreen_app_mode },
 	{ "container_get_fullscreen_view_mode", scroll_container_get_fullscreen_view_mode },
 	{ "container_get_fullscreen_layout_mode", scroll_container_get_fullscreen_layout_mode },
+	{ "container_get_pin_mode", scroll_container_get_pin_mode },
 	{ "container_get_parent", scroll_container_get_parent },
 	{ "container_get_children", scroll_container_get_children },
 	{ "container_get_views", scroll_container_get_views },
@@ -1262,6 +1322,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "workspace_get_width", scroll_workspace_get_width },
 	{ "workspace_get_height", scroll_workspace_get_height },
 	{ "workspace_get_output", scroll_workspace_get_output },
+	{ "workspace_get_pin", scroll_workspace_get_pin },
 	{ "output_get_enabled", scroll_output_get_enabled },
 	{ "output_get_name", scroll_output_get_name },
 	{ "output_get_active_workspace", scroll_output_get_active_workspace },

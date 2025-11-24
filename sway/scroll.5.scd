@@ -1788,7 +1788,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	Close/kill _view_.
 
 *container_get_workspace(container)*
-	Returns the _container's_ parent workspace pointer, or NULL if none.
+	Returns the _container's_ parent workspace pointer, or nil if none.
 
 *container_get_marks(container)*
 	Returns an array with all the marks associated to _container_.
@@ -1838,6 +1838,11 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	Returns a string with the _fullscreen_layout_ state for _container_.
 	Values can be "disabled" or "enabled". See the
 	*fullscreen layout* command for details.
+
+*container_get_pin_mode(container)*
+	Returns a string with the _pin_ mode for _container_.
+	Values can be "none", "beginning" or "end". See the
+	*pin* command for details.
 
 *container_get_parent(container)*
 	Returns the container parent of _container_ or nil if it is a top level
@@ -1909,8 +1914,11 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 *workspace_get_height(workspace)*
 	Returns an integer number with the _workspace_'s height in pixels.
 
+*workspace_get_pin(workspace)*
+	Returns the _workspace's_ pinned container pointer, or nil if none.
+
 *workspace_get_output(workspace)*
-	Returns the _workspace's_ output pointer, or NULL if none.
+	Returns the _workspace's_ output pointer, or nil if none.
 
 *output_get_enabled(output)*
 	Returns _true_ if the output (display) is enabled, or _false_ otherwise.
