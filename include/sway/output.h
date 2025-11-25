@@ -168,4 +168,7 @@ struct sway_output *output_for_coords(double lx, double ly);
 // Enable/disable each layer shell layer for output, according to mask (enum sway_layer_shell_type)
 void output_layer_shell_enable(struct sway_output *output, uint32_t mask);
 
+// Damage whole output
+void output_damage_whole(struct sway_output *output);
+
 #endif

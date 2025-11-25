@@ -8,6 +8,17 @@
 #include "sway/tree/scene.h"
 #include "sway/tree/node.h"
 
+enum sway_workspace_split {
+	WORKSPACE_SPLIT_NONE,
+	WORKSPACE_SPLIT_HORIZONTAL,
+	WORKSPACE_SPLIT_VERTICAL,
+
+	WORKSPACE_SPLIT_LEFT,
+	WORKSPACE_SPLIT_RIGHT,
+	WORKSPACE_SPLIT_TOP,
+	WORKSPACE_SPLIT_BOTTOM,
+};
+
 struct sway_view;
 
 struct sway_workspace_state {
@@ -54,6 +65,15 @@ struct sway_workspace {
 		struct sway_container *pin;
 		enum sway_layout_pin pin_position;
 	} gesture;
+
+	struct {
+		enum sway_workspace_split split;
+		double fraction;
+		int gap;
+		struct sway_workspace *sibling;
+		struct wlr_box output_area;
+		struct wlr_box usable_area;
+	} split;
 
 	struct sway_workspace_state current;
 };
@@ -150,5 +170,13 @@ void workspace_get_box(struct sway_workspace *workspace, struct wlr_box *box);
 size_t workspace_num_tiling_views(struct sway_workspace *ws);
 
 size_t workspace_num_sticky_containers(struct sway_workspace *ws);
+
+/**
+ * Splits a workspace into two, creating a new one
+ */
+void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split split,
+	double fraction, int gap);
+
+struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace);
 
 #endif

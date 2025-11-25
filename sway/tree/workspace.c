@@ -190,15 +190,32 @@ void workspace_consider_destroy(struct sway_workspace *ws) {
 		return;
 	}
 
+	struct sway_workspace *sibling = NULL;
+	if (ws->split.split != WORKSPACE_SPLIT_NONE) {
+		sibling = ws->split.sibling;
+		if (sibling->tiling->length | sibling->floating->length) {
+			return;
+		}
+		if (sibling->output && output_get_active_workspace(sibling->output) == sibling) {
+			return;
+		}
+	}
+
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
 		struct sway_node *node = seat_get_focus_inactive(seat, &root->node);
 		if (node == &ws->node) {
 			return;
 		}
+		if (sibling && node == &sibling->node) {
+			return;
+		}
 	}
 
 	workspace_begin_destroy(ws);
+	if (sibling) {
+		workspace_begin_destroy(sibling);
+	}
 }
 
 static bool workspace_valid_on_output(const char *output_name,
@@ -811,6 +828,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	if (old_ws != workspace && old_ws->output == workspace->output &&
+		workspace->split.sibling != old_ws &&
 		animation_enabled()) {
 		animate_workspace_switch(old_ws, workspace);
 	} else {
@@ -1178,4 +1196,51 @@ size_t workspace_num_sticky_containers(struct sway_workspace *ws) {
 	size_t count = 0;
 	workspace_for_each_container(ws, count_sticky_containers, &count);
 	return count;
+}
+
+struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace) {
+	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
+		return &workspace->output->usable_area;
+	} else {
+		return &workspace->split.usable_area;
+	}
+}
+
+void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split split,
+		double fraction, int gap) {
+	if (!workspace || !workspace->output ||
+		!(split == WORKSPACE_SPLIT_HORIZONTAL || split == WORKSPACE_SPLIT_VERTICAL)) {
+		return;
+	}
+	struct sway_output *output = workspace->output;
+	char *name = workspace_next_name(output->wlr_output->name);
+	struct sway_workspace *child = workspace_create(workspace->output, name);
+	child->split.sibling = workspace;
+	child->split.fraction = fraction;
+	child->split.gap = gap;
+	workspace->split.sibling = child;
+	workspace->split.fraction = fraction;
+	workspace->split.gap = gap;
+	if (split == WORKSPACE_SPLIT_VERTICAL) {
+		workspace->split.split = WORKSPACE_SPLIT_LEFT;
+		child->split.split = WORKSPACE_SPLIT_RIGHT;
+	} else {
+		workspace->split.split = WORKSPACE_SPLIT_TOP;
+		child->split.split = WORKSPACE_SPLIT_BOTTOM;
+	}
+	child->x = 0;
+	child->y = 0;
+	child->width = 0;
+	child->height = 0;
+	workspace->x = 0;
+	workspace->y = 0;
+	workspace->width = 0;
+	workspace->height = 0;
+	arrange_workspace(workspace);
+	arrange_workspace(child);
+	child->layers.tiling->node.info.output_box = &child->split.output_area;
+	workspace->layers.tiling->node.info.output_box = &workspace->split.output_area;
+	output_damage_whole(output);
+	node_set_dirty(&workspace->node);
+	node_set_dirty(&child->node);
 }

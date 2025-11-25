@@ -91,6 +91,7 @@ static void scene_node_init(struct sway_scene_node *node,
 			.scale = -1.0f,
 			.wlr_output = NULL,
 			.workspace = NULL,
+			.output_box = NULL,
 			.background = false
 		},
 	};
@@ -689,6 +690,23 @@ static bool scene_node_get_background(struct sway_scene_node *node) {
 	return false;
 }
 
+static struct wlr_box *scene_node_get_workspace_box(struct sway_scene_node *node) {
+	struct sway_scene_tree *tree;
+	if (node->type == SWAY_SCENE_NODE_TREE) {
+		tree = sway_scene_tree_from_node(node);
+	} else {
+		tree = node->parent;
+	}
+
+	while (tree != NULL) {
+		if (tree->node.info.output_box != NULL) {
+			return tree->node.info.output_box;
+		}
+		tree = tree->node.parent;
+	}
+	return NULL;
+}
+
 static void scene_node_apply_tiling_visibility(struct sway_scene_node *node,
 		struct wl_list *outputs) {
 	struct wlr_output *wlr_output = scene_node_get_output(node);
@@ -711,6 +729,13 @@ static void scene_node_apply_tiling_visibility(struct sway_scene_node *node,
 	}
 }
 
+static void scene_node_apply_workspace_visibility(struct sway_scene_node *node) {
+	struct wlr_box *box = scene_node_get_workspace_box(node);
+	if (box) {
+		pixman_region32_intersect_rect(&node->visible, &node->visible, box->x, box->y, box->width, box->height);
+	}
+}
+
 static bool scene_node_update_iterator(struct sway_scene_node *node,
 		double lx, double ly, void *_data) {
 	struct scene_update_data *data = _data;
@@ -730,6 +755,7 @@ static bool scene_node_update_iterator(struct sway_scene_node *node,
 		box.x, box.y, box.width, box.height);
 
 	scene_node_apply_tiling_visibility(node, data->outputs);
+	scene_node_apply_workspace_visibility(node);
 
 	if (data->calculate_visibility && !layout_overview_workspaces_enabled()) {
 		pixman_region32_t opaque;

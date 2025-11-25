@@ -308,10 +308,17 @@ void view_autoconfigure(struct sway_view *view) {
 
 	if (output && (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE ||
 		con->pending.fullscreen_layout == FULLSCREEN_ENABLED)) {
-		con->pending.content_x = output->lx;
-		con->pending.content_y = output->ly;
-		con->pending.content_width = output->width;
-		con->pending.content_height = output->height;
+		if (ws && ws->split.split != WORKSPACE_SPLIT_NONE) {
+			con->pending.content_x = ws->split.output_area.x;
+			con->pending.content_y = ws->split.output_area.y;
+			con->pending.content_width = ws->split.output_area.width;
+			con->pending.content_height = ws->split.output_area.height;
+		} else {
+			con->pending.content_x = output->lx;
+			con->pending.content_y = output->ly;
+			con->pending.content_width = output->width;
+			con->pending.content_height = output->height;
+		}
 		if (view_is_content_scaled(view)) {
 			float scale = view_get_content_scale(view);
 			con->pending.content_width /= scale;

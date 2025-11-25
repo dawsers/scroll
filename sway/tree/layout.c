@@ -267,23 +267,6 @@ bool layout_overview_workspaces_enabled() {
 	return root->overview;
 }
 
-static void output_damage_whole(struct sway_output *output) {
-	struct wlr_output *wlr_output = output->wlr_output;
-	struct sway_scene_output *scene_output = output->scene_output;
-
-	pixman_region32_t damage;
-	pixman_region32_init_rect(&damage, 0, 0, wlr_output->width, wlr_output->height);
-
-	wlr_output_schedule_frame(wlr_output);
-	wlr_damage_ring_add(&scene_output->damage_ring, &damage);
-
-	pixman_region32_union(&scene_output->pending_commit_damage,
-		&scene_output->pending_commit_damage, &damage);
-
-	pixman_region32_fini(&damage);
-}
-
-
 static const int workspaces_gap = 20;
 
 void layout_overview_workspaces_toggle() {

@@ -78,16 +78,9 @@ static bool parse_direction(const char *name,
 	return true;
 }
 
-/**
- * Get node in the direction of newly entered output.
- */
-static struct sway_node *get_node_in_output_direction(
-		struct sway_output *output, enum sway_layout_direction dir) {
+static struct sway_node *get_node_in_workspace_direction(
+		struct sway_workspace *ws, enum sway_layout_direction dir) {
 	struct sway_seat *seat = config->handler_context.seat;
-	struct sway_workspace *ws = output_get_active_workspace(output);
-	if (!sway_assert(ws, "Expected output to have a workspace")) {
-		return NULL;
-	}
 	if (ws->fullscreen) {
 		return seat_get_focus_inactive(seat, &ws->fullscreen->node);
 	}
@@ -139,6 +132,18 @@ static struct sway_node *get_node_in_output_direction(
 	}
 
 	return &ws->node;
+}
+
+/**
+ * Get node in the direction of newly entered output.
+ */
+static struct sway_node *get_node_in_output_direction(
+		struct sway_output *output, enum sway_layout_direction dir) {
+	struct sway_workspace *ws = output_get_active_workspace(output);
+	if (!sway_assert(ws, "Expected output to have a workspace")) {
+		return NULL;
+	}
+	return get_node_in_workspace_direction(ws, dir);
 }
 
 static struct sway_node *node_get_in_direction_tiling(
@@ -222,6 +227,18 @@ static struct sway_node *node_get_in_direction_tiling(
 		current = current->pending.parent;
 	}
 
+	// Check if this is a split workspace and we can move focus between the two siblings
+	if (container->pending.workspace) {
+		struct sway_workspace *ws = container->pending.workspace;
+		if ((dir == DIR_LEFT && ws->split.split == WORKSPACE_SPLIT_RIGHT) ||
+			(dir == DIR_RIGHT && ws->split.split == WORKSPACE_SPLIT_LEFT)) {
+			return get_node_in_workspace_direction(ws->split.sibling, dir);
+		}
+		if ((dir == DIR_UP && ws->split.split == WORKSPACE_SPLIT_BOTTOM) ||
+			(dir == DIR_DOWN && ws->split.split == WORKSPACE_SPLIT_TOP)) {
+			return get_node_in_workspace_direction(ws->split.sibling, dir);
+		}
+	}
 	// Check a different output
 	struct sway_output *output = container->pending.workspace->output;
 	struct sway_output *new_output = output_get_in_direction(output, layout_to_wlr_direction(dir));

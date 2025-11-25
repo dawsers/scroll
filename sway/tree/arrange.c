@@ -41,8 +41,8 @@ static void apply_horiz_layout(list_t *children, struct sway_container *active, 
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
 		if (child->pending.fullscreen_layout == FULLSCREEN_ENABLED && ws) {
-			const double w = ws->output->width;
-			const double h = ws->output->height;
+			const double w = ws->split.split != WORKSPACE_SPLIT_NONE ? ws->split.output_area.width : ws->output->width;
+			const double h = ws->split.split != WORKSPACE_SPLIT_NONE ? ws->split.output_area.height : ws->output->height;
 			child->pending.width = w;
 			child->pending.height = h;
 			if (parent) {
@@ -80,8 +80,8 @@ static void apply_vert_layout(list_t *children, struct sway_container *active, s
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
 		if (child->pending.fullscreen_layout == FULLSCREEN_ENABLED && ws) {
-			const double w = ws->output->width;
-			const double h = ws->output->height;
+			const double w = ws->split.split != WORKSPACE_SPLIT_NONE ? ws->split.output_area.width : ws->output->width;
+			const double h = ws->split.split != WORKSPACE_SPLIT_NONE ? ws->split.output_area.height : ws->output->height;
 			child->pending.width = w;
 			child->pending.height = h;
 			if (parent) {
@@ -152,6 +152,69 @@ void arrange_container(struct sway_container *container) {
 	node_set_dirty(&container->node);
 }
 
+static void arrange_workspace_split(struct sway_workspace *workspace) {
+	struct sway_output *output = workspace->output;
+	if (workspace->split.split == WORKSPACE_SPLIT_NONE || !output) {
+		return;
+	}
+	struct wlr_box area = {
+		.x = output->lx,
+		.y = output->ly,
+		.width = output->width,
+		.height = output->height,
+	};
+	// Usable area gaps
+	int gap_left = output->usable_area.x;
+	int gap_right = output->usable_area.x + output->usable_area.width - output->width;
+	int gap_top = output->usable_area.y;
+	int gap_bottom = output->usable_area.y + output->usable_area.height - output->height;
+
+	int gap_w = workspace->split.gap / 2;
+	workspace->split.output_area = area;
+	switch (workspace->split.split) {
+	case WORKSPACE_SPLIT_LEFT: {
+		int area_w = round(workspace->split.fraction * area.width);
+		workspace->split.output_area.width = area_w - gap_w;
+		workspace->split.usable_area.x = output->usable_area.x;
+		workspace->split.usable_area.y = output->usable_area.y;
+		workspace->split.usable_area.width = area_w - gap_w - gap_left;
+		workspace->split.usable_area.height = output->height - gap_top - gap_bottom;
+		break;
+	}
+	case WORKSPACE_SPLIT_RIGHT: {
+		int area_w = round(workspace->split.fraction * area.width);
+		workspace->split.output_area.width = area.width - area_w - workspace->split.gap;
+		workspace->split.output_area.x = area.x + area_w - gap_w + workspace->split.gap;
+		workspace->split.usable_area.x = output->usable_area.x - gap_left + area_w - gap_w + workspace->split.gap;
+		workspace->split.usable_area.y = output->usable_area.y;
+		workspace->split.usable_area.width = workspace->split.output_area.width - gap_right;
+		workspace->split.usable_area.height = output->height - gap_top - gap_bottom;
+		break;
+	}
+	case WORKSPACE_SPLIT_TOP: {
+		int area_w = round(workspace->split.fraction * area.height);
+		workspace->split.output_area.height = area_w - gap_w;
+		workspace->split.usable_area.x = output->usable_area.x;
+		workspace->split.usable_area.y = output->usable_area.y;
+		workspace->split.usable_area.width = output->width - gap_left - gap_right;
+		workspace->split.usable_area.height = area_w - gap_w - gap_top;
+		break;
+	}
+	case WORKSPACE_SPLIT_BOTTOM: {
+		int area_w = round(workspace->split.fraction * area.height);
+		workspace->split.output_area.height = area.height - area_w - workspace->split.gap;
+		workspace->split.output_area.y = area.y + area_w - gap_w + workspace->split.gap;
+		workspace->split.usable_area.x = output->usable_area.x;
+		workspace->split.usable_area.y = output->usable_area.y - gap_top + area_w - gap_w + workspace->split.gap;
+		workspace->split.usable_area.width = output->width - gap_left - gap_right;
+		workspace->split.usable_area.height = workspace->split.output_area.height - gap_bottom;
+		break;
+	}
+	default:
+		return;
+	}
+}
+
 void arrange_workspace(struct sway_workspace *workspace) {
 	if (config->reloading) {
 		return;
@@ -160,8 +223,11 @@ void arrange_workspace(struct sway_workspace *workspace) {
 		// Happens when there are no outputs connected
 		return;
 	}
+	if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+		arrange_workspace_split(workspace);
+	}
 	struct sway_output *output = workspace->output;
-	struct wlr_box *area = &output->usable_area;
+	struct wlr_box *area = workspace_get_output_usable_area(workspace);
 	sway_log(SWAY_DEBUG, "Usable area for ws: %dx%d@%d,%d",
 			area->width, area->height, area->x, area->y);
 

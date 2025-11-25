@@ -748,3 +748,7 @@ void output_layer_shell_enable(struct sway_output *output, uint32_t mask) {
 		output->layer_shell_mask = mask;
 	}
 }
+
+void output_damage_whole(struct sway_output *output) {
+	wlr_damage_ring_add_whole(&output->scene_output->damage_ring);
+}

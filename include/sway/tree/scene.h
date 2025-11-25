@@ -64,6 +64,7 @@ struct sway_scene_node_info {
 	double scale;			// scale for everything below
 	struct wlr_output *wlr_output;	// wlr_output the node belongs to (if tiled, otherwise NULL)
 	struct sway_workspace *workspace;
+	struct wlr_box *output_box;
 	bool background;	// bakground layer shell, usually the wallpaper
 };
 

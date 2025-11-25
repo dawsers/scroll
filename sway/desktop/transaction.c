@@ -693,7 +693,11 @@ static void default_arrange_children(struct sway_workspace *workspace,
 		offset = layout == L_HORIZ ? active->pending.x : active->pending.y;
 	} else {
 		if (active->pending.fullscreen_layout == FULLSCREEN_ENABLED && !layout_scale_enabled(workspace)) {
-			offset = layout == L_HORIZ ? workspace->output->lx : workspace->output->ly;
+			if (layout == L_HORIZ) {
+				offset = workspace->split.split != WORKSPACE_SPLIT_NONE ? workspace->split.output_area.x : workspace->output->lx;
+			} else {
+				offset = workspace->split.split != WORKSPACE_SPLIT_NONE ? workspace->split.output_area.y : workspace->output->ly;
+			}
 		} else {
 			offset = compute_active_offset(workspace, layout, children, active_idx,
 				workspace->width, workspace->height, gaps, pin);
@@ -1083,7 +1087,13 @@ static void arrange_fullscreen(struct sway_scene_tree *tree,
 	}
 	sway_scene_node_reparent(fs_node, tree);
 	sway_scene_node_lower_to_bottom(fs_node);
-	sway_scene_node_set_position(fs_node, 0, 0);
+	struct sway_output *output = ws->output;
+	if (output && ws->split.split != WORKSPACE_SPLIT_NONE) {
+		sway_scene_node_set_position(fs_node, ws->split.output_area.x - output->lx,
+			ws->split.output_area.y - output->ly);
+	} else {
+		sway_scene_node_set_position(fs_node, 0, 0);
+	}
 }
 
 static void arrange_workspace_floating(struct sway_workspace *ws) {
@@ -1195,6 +1205,9 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 
 		if (activated) {
 			struct sway_container *fs = child->current.fullscreen;
+			if (!fs && child->split.split != WORKSPACE_SPLIT_NONE) {
+				fs = child->split.sibling->current.fullscreen;
+			}
 			sway_scene_node_set_enabled(&child->layers.tiling->node, !fs && tiling);
 			sway_scene_node_set_enabled(&child->layers.fullscreen->node, fs);
 
@@ -1205,15 +1218,17 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 			if (fs) {
 				disable_workspace(child);
 
-				sway_scene_rect_set_size(output->fullscreen_background, width, height);
+				if (child->current.fullscreen) {
+					sway_scene_rect_set_size(output->fullscreen_background, width, height);
 
-				if (floating) {
-					arrange_workspace_floating(child);
+					if (floating) {
+						arrange_workspace_floating(child);
+					}
+					arrange_fullscreen(child->layers.fullscreen, fs, child,
+						width, height);
 				}
-				arrange_fullscreen(child->layers.fullscreen, fs, child,
-					width, height);
 			} else {
-				struct wlr_box *area = &output->usable_area;
+				struct wlr_box *area = workspace_get_output_usable_area(child);
 				struct side_gaps *gaps = &child->current_gaps;
 
 				sway_scene_node_set_position(&child->layers.tiling->node,

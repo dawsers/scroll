@@ -172,6 +172,50 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
+	if (strcasecmp(argv[0], "split") == 0) {
+		const char *expected = "Expected 'workspace split [h|v] [<fraction>] [<gap>]'";
+		struct sway_workspace *workspace = config->handler_context.workspace;
+		if (!workspace) {
+			return cmd_results_new(CMD_INVALID,
+					"This command only works when called from a workspace");
+		}
+		if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+			return cmd_results_new(CMD_INVALID,
+					"Workspaces can only be split once");
+		}
+		enum sway_workspace_split split = WORKSPACE_SPLIT_VERTICAL;
+		double fraction = 0.5;
+		int gap = 0;
+		if (argc > 1) {
+			if (strcasecmp(argv[1], "h") == 0) {
+				split = WORKSPACE_SPLIT_HORIZONTAL;
+			} else if (strcasecmp(argv[1], "v") == 0) {
+				split = WORKSPACE_SPLIT_VERTICAL;
+			} else {
+				return cmd_results_new(CMD_INVALID, "%s", expected);
+			}
+			if (argc > 2) {
+				char *end;
+				fraction = strtod(argv[2], &end);
+				if (*end) {
+					return cmd_results_new(CMD_INVALID, "%s", expected);
+				}
+				fraction = MIN(MAX(0.1, fraction), 0.9);
+				if (argc > 3) {
+					gap = strtol(argv[3], &end, 10);
+					if (*end) {
+						return cmd_results_new(CMD_INVALID, "%s", expected);
+					}
+					if (gap < 0) {
+						gap = 0;
+					}
+				}
+			}
+		}
+		workspace_split(workspace, split, fraction, gap);
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
+
 	int output_location = -1;
 	int gaps_location = -1;
 	int exec_location = -1;
