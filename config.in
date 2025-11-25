@@ -215,6 +215,24 @@ animations {
     bindsym $mod+Page_Up workspace prev_on_output
     bindsym $mod+Page_Down workspace next_on_output
 
+    # Split a workspace in two
+mode "wssplit" {
+    bindsym 1 workspace split v 0.25 10; mode default
+    bindsym Shift+1 workspace split h 0.25 10; mode default
+    bindsym 2 workspace split v 0.333333333 10; mode default
+    bindsym Shift+2 workspace split h 0.333333333 10; mode default
+    bindsym 3 workspace split v 0.5 10; mode default
+    bindsym Shift+3 workspace split h 0.5 10; mode default
+    bindsym 4 workspace split v 0.66666667 10; mode default
+    bindsym Shift+4 workspace split h 0.6666667 10; mode default
+    bindsym 5 workspace split v 0.75 10; mode default
+    bindsym Shift+5 workspace split h 0.75 10; mode default
+
+    # Return to default mode
+    bindsym Escape mode "default"
+}
+bindsym $mod+Shift+backslash mode "wssplit"
+
 # Scaling
     # Workspace
     bindsym $mod+Shift+comma scale_workspace incr -0.05
