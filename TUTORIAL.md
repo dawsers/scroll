@@ -42,6 +42,10 @@ will adapt and instead of having a row with columns of windows, you will have
 a column with rows of windows. You can configure each monitor independently through
 available options.
 
+If you have an ultra-wide display, you can also show two workspaces at the
+same time using `workspace split`. It will split the current workspace in two,
+and both will be shown at the same time.
+
 [Rows and Columns](https://github.com/user-attachments/assets/853d8117-99a0-4910-baa7-7a99e6acfe1e)
 
 
