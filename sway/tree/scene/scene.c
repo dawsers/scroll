@@ -1741,6 +1741,13 @@ static bool scene_node_at_iterator(struct sway_scene_node *node,
 			return false;
 		}
 	}
+	struct wlr_box *box = scene_node_get_workspace_box(node);
+	if (box) {
+		if (at_data->lx < box->x || at_data->lx >= box->x + box->width ||
+			at_data->ly < box->y || at_data->ly >= box->y + box->height) {
+			return false;
+		}
+	}
 
 	double rx = at_data->lx - lx;
 	double ry = at_data->ly - ly;

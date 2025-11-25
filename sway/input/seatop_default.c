@@ -582,7 +582,8 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 	if (focus && hovered_node->type == N_WORKSPACE) {
 		struct sway_output *focused_output = node_get_output(focus);
 		struct sway_output *hovered_output = node_get_output(hovered_node);
-		if (hovered_output != focused_output) {
+		struct sway_workspace *hovered_ws = hovered_node->sway_workspace;
+		if (hovered_output != focused_output || hovered_ws->split.split != WORKSPACE_SPLIT_NONE) {
 			seat_set_focus(seat, seat_get_focus_inactive(seat, hovered_node));
 			transaction_commit_dirty();
 		}

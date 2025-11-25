@@ -841,7 +841,16 @@ bool workspace_is_visible(struct sway_workspace *ws) {
 	if (ws->node.destroying) {
 		return false;
 	}
-	return output_get_active_workspace(ws->output) == ws;
+	struct sway_workspace *workspace = output_get_active_workspace(ws->output);
+	if (workspace == ws) {
+		return true;
+	}
+	if (workspace &&
+		workspace->split.split != WORKSPACE_SPLIT_NONE &&
+		workspace->split.sibling == ws) {
+		return true;
+	}
+	return false;
 }
 
 bool workspace_is_empty(struct sway_workspace *ws) {

@@ -165,6 +165,14 @@ struct sway_node *node_at_coords(
 	if (!ws) {
 		return NULL;
 	}
+	if (ws->split.split != WORKSPACE_SPLIT_NONE) {
+		// We may be hovering over the other workspace of the split
+		struct sway_workspace *sibling = ws->split.sibling;
+		if (lx >= sibling->split.output_area.x && lx < sibling->split.output_area.x + sibling->split.output_area.width &&
+			ly >= sibling->split.output_area.y && ly < sibling->split.output_area.y + sibling->split.output_area.height) {
+			return &sibling->node;
+		}
+	}
 
 	return &ws->node;
 }
