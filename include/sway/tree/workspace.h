@@ -66,7 +66,7 @@ struct sway_workspace {
 		enum sway_layout_pin pin_position;
 	} gesture;
 
-	struct {
+	struct sway_workspace_split_data {
 		enum sway_workspace_split split;
 		double fraction;
 		int gap;
@@ -178,5 +178,10 @@ void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split
 	double fraction, int gap);
 
 struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace);
+
+/**
+ * Swaps two workspaces
+ */
+void workspace_swap(struct sway_workspace *first, struct sway_workspace *second);
 
 #endif

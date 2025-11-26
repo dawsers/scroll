@@ -149,26 +149,7 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 						"Invalid workspace name '%s'", argv[1]);
 			}
 		}
-		char *name = workspace->name;
-		workspace->name = swap_ws->name;
-		swap_ws->name = name;
-		struct sway_output *output = workspace->output;
-		struct sway_output *swap_output = swap_ws->output;
-		if (output != swap_output) {
-			workspace_detach(workspace);
-			workspace_detach(swap_ws);
-			output_add_workspace(output, swap_ws);
-			output_add_workspace(swap_output, workspace);
-			output_sort_workspaces(output);
-			output_sort_workspaces(swap_output);
-			arrange_workspace(workspace);
-			arrange_workspace(swap_ws);
-		} else {
-			node_set_dirty(&swap_ws->node);
-			node_set_dirty(&workspace->node);
-			output_sort_workspaces(output);
-		}
-		workspace_switch(swap_ws);
+		workspace_swap(workspace, swap_ws);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 

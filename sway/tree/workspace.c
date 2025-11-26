@@ -1253,3 +1253,58 @@ void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split
 	node_set_dirty(&workspace->node);
 	node_set_dirty(&child->node);
 }
+
+void workspace_swap(struct sway_workspace *first, struct sway_workspace *second) {
+	char *name = first->name;
+	first->name = second->name;
+	second->name = name;
+	if (first->output != second->output) {
+		struct sway_output *first_output = first->output;
+		struct sway_output *second_output = second->output;
+		workspace_detach(first);
+		workspace_detach(second);
+		output_add_workspace(first_output, second);
+		output_add_workspace(second_output, first);
+		output_sort_workspaces(first_output);
+	}
+	output_sort_workspaces(second->output);
+
+	struct sway_workspace *first_sibling = first->split.split == WORKSPACE_SPLIT_NONE ?
+		NULL : first->split.sibling;
+	struct sway_workspace *second_sibling = second->split.split == WORKSPACE_SPLIT_NONE ?
+		NULL : second->split.sibling;
+
+	// Swap split structures and fix them. If the workspaces are not split, no harm done
+	struct sway_workspace_split_data data = first->split;
+	first->split = second->split;
+	second->split = data;
+	// Fix siblings
+	if (first_sibling) {
+		if (first_sibling == second) {
+			first->split.sibling = second;
+		} else {
+			first_sibling->split.sibling = second;
+		}
+	}
+	if (second_sibling) {
+		if (second_sibling == first) {
+			second->split.sibling = first;
+		} else {
+			second_sibling->split.sibling = first;
+		}
+	}
+
+	// Update scene node info for split/non-split workspaces
+	first->layers.tiling->node.info.output_box = first->split.split == WORKSPACE_SPLIT_NONE ?
+		NULL : &first->split.output_area;
+	second->layers.tiling->node.info.output_box = second->split.split == WORKSPACE_SPLIT_NONE ?
+		NULL : &second->split.output_area;
+
+	arrange_workspace(first);
+	arrange_workspace(second);
+	node_set_dirty(&first->node);
+	node_set_dirty(&second->node);
+	workspace_switch(second);
+	output_damage_whole(first->output);
+	output_damage_whole(second->output);
+}
