@@ -199,6 +199,9 @@ animations {
     # Note: workspaces can have any name you want, not just numbers.
     # We just use 1-10 as the default.
 
+    bindsym $mod+Ctrl+Shift+$left move workspace to output left
+    bindsym $mod+Ctrl+Shift+$right move workspace to output right
+
     bindsym $mod+Ctrl+1 workspace swap 1
     bindsym $mod+Ctrl+2 workspace swap 2
     bindsym $mod+Ctrl+3 workspace swap 3

@@ -404,6 +404,9 @@ static void workspace_move_to_output(struct sway_workspace *workspace,
 	if (workspace->output == output) {
 		return;
 	}
+	if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+		workspace_split_reset(workspace);
+	}
 	struct sway_output *old_output = workspace->output;
 	workspace_detach(workspace);
 	struct sway_workspace *new_output_old_ws =
