@@ -471,6 +471,19 @@ struct cmd_results *cmd_focus(int argc, char **argv) {
 	}
 
 	if (node->type == N_WORKSPACE) {
+		if (node->sway_workspace->split.split != WORKSPACE_SPLIT_NONE) {
+			struct sway_workspace *ws = node->sway_workspace;
+			if ((direction == DIR_LEFT && ws->split.split == WORKSPACE_SPLIT_RIGHT) ||
+				(direction == DIR_RIGHT && ws->split.split == WORKSPACE_SPLIT_LEFT) ||
+				(direction == DIR_DOWN && ws->split.split == WORKSPACE_SPLIT_TOP) ||
+				(direction == DIR_UP && ws->split.split == WORKSPACE_SPLIT_BOTTOM)) {
+				struct sway_container *container = seat_get_focus_inactive_tiling(seat, ws->split.sibling);
+				node = container ? &container->node : &ws->split.sibling->node;
+				seat_set_focus(seat, node);
+				seat_consider_warp_to_focus(seat);
+				return cmd_results_new(CMD_SUCCESS, NULL);
+			}
+		}
 		// Jump to the next output
 		struct sway_output *new_output =
 			output_get_in_direction(workspace->output, layout_to_wlr_direction(direction));
