@@ -1087,13 +1087,15 @@ static void arrange_fullscreen(struct sway_scene_tree *tree,
 	}
 	sway_scene_node_reparent(fs_node, tree);
 	sway_scene_node_lower_to_bottom(fs_node);
-	struct sway_output *output = ws->output;
-	if (output && ws->split.split != WORKSPACE_SPLIT_NONE) {
-		sway_scene_node_set_position(fs_node, ws->split.output_area.x - output->lx,
-			ws->split.output_area.y - output->ly);
-	} else {
-		sway_scene_node_set_position(fs_node, 0, 0);
+	if (ws && ws->split.split != WORKSPACE_SPLIT_NONE) {
+		struct sway_output *output = ws->output;
+		if (output) {
+			sway_scene_node_set_position(fs_node, ws->split.output_area.x - output->lx,
+				ws->split.output_area.y - output->ly);
+			return;
+		}
 	}
+	sway_scene_node_set_position(fs_node, 0, 0);
 }
 
 static void arrange_workspace_floating(struct sway_workspace *ws) {
