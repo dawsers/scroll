@@ -1207,21 +1207,26 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 
 		if (activated) {
 			struct sway_container *fs = child->current.fullscreen;
-			if (!fs && child->split.split != WORKSPACE_SPLIT_NONE) {
-				fs = child->split.sibling->current.fullscreen;
-			}
+			bool fs_split = child->split.split != WORKSPACE_SPLIT_NONE && child->split.sibling->current.fullscreen;
 			sway_scene_node_set_enabled(&child->layers.tiling->node, !fs && tiling);
 			sway_scene_node_set_enabled(&child->layers.fullscreen->node, fs);
 
 			sway_scene_node_set_enabled(&output->layers.shell_background->node, !fs);
 			sway_scene_node_set_enabled(&output->layers.shell_bottom->node, !fs);
-			sway_scene_node_set_enabled(&output->layers.fullscreen->node, fs);
+			sway_scene_node_set_enabled(&output->layers.fullscreen->node, fs || fs_split);
 
 			if (fs) {
 				disable_workspace(child);
 
 				if (child->current.fullscreen) {
-					sway_scene_rect_set_size(output->fullscreen_background, width, height);
+					if (child->split.split != WORKSPACE_SPLIT_NONE) {
+						struct wlr_box *box = &child->split.output_area;
+						sway_scene_node_set_position(&output->fullscreen_background->node, box->x, box->y);
+						sway_scene_rect_set_size(output->fullscreen_background, box->width, box->height);
+					} else {
+						sway_scene_node_set_position(&output->fullscreen_background->node, 0, 0);
+						sway_scene_rect_set_size(output->fullscreen_background, width, height);
+					}
 
 					if (floating) {
 						arrange_workspace_floating(child);
