@@ -352,7 +352,8 @@ static bool default_workspace_filter(struct sway_workspace *workspace, void *dat
 	bool activated = output->wlr_output->enabled;
 	if (!layout_overview_workspaces_enabled()) {
 		activated = activated &&
-			(output->current.active_workspace == workspace || output->current.active_workspace == workspace->split.sibling);
+			(output->current.active_workspace == workspace ||
+			 (workspace->split.split != WORKSPACE_SPLIT_NONE && output->current.active_workspace == workspace->split.sibling));
 	}
 	return activated;
 }

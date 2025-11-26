@@ -1254,6 +1254,21 @@ void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split
 	node_set_dirty(&child->node);
 }
 
+void workspace_split_reset(struct sway_workspace *workspace) {
+	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
+		return;
+	}
+	workspace->split.split = WORKSPACE_SPLIT_NONE;
+	workspace->layers.tiling->node.info.output_box = NULL;
+	struct sway_workspace *sibling = workspace->split.sibling;
+	sibling->split.split = WORKSPACE_SPLIT_NONE;
+	sibling->layers.tiling->node.info.output_box = NULL;
+	arrange_workspace(workspace);
+	arrange_workspace(sibling);
+	node_set_dirty(&workspace->node);
+	node_set_dirty(&sibling->node);
+}
+
 void workspace_swap(struct sway_workspace *first, struct sway_workspace *second) {
 	char *name = first->name;
 	first->name = second->name;

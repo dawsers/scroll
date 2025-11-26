@@ -177,6 +177,8 @@ size_t workspace_num_sticky_containers(struct sway_workspace *ws);
 void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split split,
 	double fraction, int gap);
 
+void workspace_split_reset(struct sway_workspace *workspace);
+
 struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace);
 
 /**

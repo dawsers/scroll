@@ -1520,13 +1520,15 @@ The default colors are:
 	Swaps the workspace with <name> and the currently focused one. They can be
 	on different outputs.
 
-*workspace* split [h|v] [<fraction>] [<gap>]
+*workspace* split [h|v|reset] [<fraction>] [<gap>]
 	Splits the current workspace horizontally (_h_) or vertically (_v_), and the
 	original workspace retains a _fraction_ (0.1-0.9) of the total size, leaving
 	an empty gap of integer _gap_ pixels between the two new workspaces.
 	The two workspaces have independent layouts.
 	A workspace can only be split once, so there can only be at most two visible
 	workspaces per output.
+	_reset_ undoes the split, making each of the workspaces use the full output
+	again.
 
 *workspace_auto_back_and_forth* yes|no
 	When _yes_, repeating a workspace switch command will switch back to the

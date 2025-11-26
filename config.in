@@ -227,6 +227,7 @@ mode "wssplit" {
     bindsym Shift+4 workspace split h 0.6666667 10; mode default
     bindsym 5 workspace split v 0.75 10; mode default
     bindsym Shift+5 workspace split h 0.75 10; mode default
+    bindsym r workspace split reset; mode default;
 
     # Return to default mode
     bindsym Escape mode "default"
