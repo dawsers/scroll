@@ -1269,10 +1269,20 @@ void workspace_split_reset(struct sway_workspace *workspace) {
 	node_set_dirty(&sibling->node);
 }
 
-void workspace_swap(struct sway_workspace *first, struct sway_workspace *second) {
+void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
+		bool name_only) {
 	char *name = first->name;
 	first->name = second->name;
 	second->name = name;
+	if (name_only) {
+		output_sort_workspaces(first->output);
+		if (second->output != first->output) {
+			output_sort_workspaces(second->output);
+		}
+		ipc_event_workspace(NULL, first, "rename");
+		ipc_event_workspace(NULL, second, "rename");
+		return;
+	}
 	if (first->output != second->output) {
 		struct sway_output *first_output = first->output;
 		struct sway_output *second_output = second->output;
@@ -1322,4 +1332,6 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second)
 	workspace_switch(second);
 	output_damage_whole(first->output);
 	output_damage_whole(second->output);
+	ipc_event_workspace(NULL, first, "move");
+	ipc_event_workspace(NULL, second, "move");
 }

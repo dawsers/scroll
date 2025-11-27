@@ -182,8 +182,9 @@ void workspace_split_reset(struct sway_workspace *workspace);
 struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace);
 
 /**
- * Swaps two workspaces
+ * Swaps two workspaces. If name_only is true, only their names are swapped.
  */
-void workspace_swap(struct sway_workspace *first, struct sway_workspace *second);
+void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
+		bool name_only);
 
 #endif

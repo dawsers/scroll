@@ -1516,9 +1516,12 @@ The default colors are:
 	can use it to open applications automatically when you create workspace
 	_name_.
 
-*workspace* swap <name>
+*workspace* swap <name> [name_only]
 	Swaps the workspace with <name> and the currently focused one. They can be
-	on different outputs.
+	on different outputs. If using the optional _name_only_ argument, only the
+	workspace names are swapped, leaving the containers where they are. This is
+	useful if you just want to re-organize your workspace names. See the
+	*rename* command if you just want to rename a workspace.
 
 *workspace* split [h|v|reset] [<fraction>] [<gap>]
 	Splits the current workspace horizontally (_h_) or vertically (_v_), and the

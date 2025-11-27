@@ -202,6 +202,7 @@ animations {
     bindsym $mod+Ctrl+Shift+$left move workspace to output left
     bindsym $mod+Ctrl+Shift+$right move workspace to output right
 
+    # Swap workspace contents
     bindsym $mod+Ctrl+1 workspace swap 1
     bindsym $mod+Ctrl+2 workspace swap 2
     bindsym $mod+Ctrl+3 workspace swap 3
@@ -212,6 +213,18 @@ animations {
     bindsym $mod+Ctrl+8 workspace swap 8
     bindsym $mod+Ctrl+9 workspace swap 9
     bindsym $mod+Ctrl+0 workspace swap 10
+
+    # Swap only workspace names
+    bindsym $mod+Ctrl+Shift+1 workspace swap 1 name_only
+    bindsym $mod+Ctrl+Shift+2 workspace swap 2 name_only
+    bindsym $mod+Ctrl+Shift+3 workspace swap 3 name_only
+    bindsym $mod+Ctrl+Shift+4 workspace swap 4 name_only
+    bindsym $mod+Ctrl+Shift+5 workspace swap 5 name_only
+    bindsym $mod+Ctrl+Shift+6 workspace swap 6 name_only
+    bindsym $mod+Ctrl+Shift+7 workspace swap 7 name_only
+    bindsym $mod+Ctrl+Shift+8 workspace swap 8 name_only
+    bindsym $mod+Ctrl+Shift+9 workspace swap 9 name_only
+    bindsym $mod+Ctrl+Shift+0 workspace swap 10 name_only
 
     bindsym $mod+Shift+Page_Up workspace prev
     bindsym $mod+Shift+Page_Down workspace next

@@ -149,7 +149,13 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 						"Invalid workspace name '%s'", argv[1]);
 			}
 		}
-		workspace_swap(workspace, swap_ws);
+		bool name_only;
+		if (argc > 2 && strcasecmp(argv[2], "name_only") == 0) {
+			name_only = true;
+		} else {
+			name_only = false;
+		}
+		workspace_swap(workspace, swap_ws, name_only);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
