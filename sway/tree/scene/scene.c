@@ -468,7 +468,7 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 	scene_buffer->primary_output = NULL;
 
 	size_t count = 0;
-	uint64_t active_outputs = 0;
+	uint64_t active_outputs = scene_buffer->active_outputs;
 
 	uint32_t visible_area = region_area(&node->visible);
 
@@ -522,6 +522,10 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 			}
 
 			active_outputs |= 1ull << scene_output->index;
+		} else if (overlap <= 0) {
+			active_outputs = active_outputs & ~(1ull << scene_output->index);
+		}
+		if (active_outputs & 1ull << scene_output->index) {
 			count++;
 		}
 	}
