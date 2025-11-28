@@ -35,8 +35,6 @@ struct wlr_buffer_pass_options {
 	 * Leave NULL to indicate the default transform (Gamma 2.2 encoding for
 	 * sRGB monitors) */
 	struct wlr_color_transform *color_transform;
-	/** Primaries describing the color volume of the destination buffer */
-	const struct wlr_color_primaries *primaries;
 
 	/* Signal a timeline synchronization point when the render pass completes.
 	 *

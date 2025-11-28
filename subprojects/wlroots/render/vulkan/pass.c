@@ -253,14 +253,6 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 			.lut_3d_scale = (float)(dim - 1) / dim,
 		};
 
-		if (pass->has_primaries) {
-			// overwrite matrix from color_tranform, if any
-			struct wlr_color_primaries srgb;
-			wlr_color_primaries_from_named(&srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
-
-			wlr_color_primaries_transform_absolute_colorimetric(&srgb, &pass->primaries, matrix);
-		}
-
 		encode_color_matrix(matrix, frag_pcr_data.matrix);
 
 		VkPipeline pipeline = VK_NULL_HANDLE;
@@ -1549,10 +1541,6 @@ struct wlr_vk_render_pass *vulkan_begin_render_pass(struct wlr_vk_renderer *rend
 	if (options != NULL && options->signal_timeline != NULL) {
 		pass->signal_timeline = wlr_drm_syncobj_timeline_ref(options->signal_timeline);
 		pass->signal_point = options->signal_point;
-	}
-	if (options != NULL && options->primaries != NULL) {
-		pass->has_primaries = true;
-		pass->primaries = *options->primaries;
 	}
 
 	rect_union_init(&pass->updated_region);

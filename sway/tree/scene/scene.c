@@ -3034,13 +3034,22 @@ bool sway_scene_output_build_state(struct sway_scene_output *scene_output,
 	}
 
 	struct wlr_color_transform *color_transform = NULL;
-	const struct wlr_color_primaries *primaries = NULL;
-	struct wlr_color_primaries primaries_value;
 	const struct wlr_output_image_description *img_desc = scene_output_pending_image_description(output, state);
 	if (img_desc != NULL) {
-		color_transform = wlr_color_transform_init_linear_to_inverse_eotf(img_desc->transfer_function);
-		sway_color_primaries_from_named(&primaries_value, img_desc->primaries);
-		primaries = &primaries_value;
+		struct wlr_color_primaries primaries_srgb;
+		sway_color_primaries_from_named(&primaries_srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
+		struct wlr_color_primaries primaries;
+		sway_color_primaries_from_named(&primaries, img_desc->primaries);
+		float matrix[9];
+		wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
+		struct wlr_color_transform *transforms[] = {
+			wlr_color_transform_init_matrix(matrix),
+			wlr_color_transform_init_linear_to_inverse_eotf(img_desc->transfer_function),
+		};
+		size_t transform_count = sizeof(transforms) / sizeof(transforms[0]);
+		color_transform = wlr_color_transform_init_pipeline(transforms, transform_count);
+		wlr_color_transform_unref(transforms[0]);
+		wlr_color_transform_unref(transforms[1]);
 	}
 	if (options->color_transform != NULL) {
 		assert(color_transform == NULL);
@@ -3063,7 +3072,6 @@ bool sway_scene_output_build_state(struct sway_scene_output *scene_output,
 			&(struct wlr_buffer_pass_options){
 		.timer = timer ? timer->render_timer : NULL,
 		.color_transform = color_transform,
-		.primaries = primaries,
 		.signal_timeline = scene_output->in_timeline,
 		.signal_point = scene_output->in_point,
 	});

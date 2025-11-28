@@ -257,13 +257,22 @@ static struct wlr_buffer *render_cursor_buffer(struct wlr_output_cursor *cursor)
 		buffer->width, buffer->height);
 
 	struct wlr_buffer_pass_options options = {0};
-	struct wlr_color_primaries primaries_value;
 	if (output->image_description != NULL) {
-		options.color_transform = wlr_color_transform_init_linear_to_inverse_eotf(
-			output->image_description->transfer_function);
-		wlr_color_primaries_from_named(&primaries_value,
-			output->image_description->primaries);
-		options.primaries = &primaries_value;
+		struct wlr_color_primaries primaries_srgb;
+		wlr_color_primaries_from_named(&primaries_srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
+		struct wlr_color_primaries primaries;
+		wlr_color_primaries_from_named(&primaries, output->image_description->primaries);
+		float matrix[9];
+		wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
+		struct wlr_color_transform *transforms[] = {
+			wlr_color_transform_init_matrix(matrix),
+			wlr_color_transform_init_linear_to_inverse_eotf(
+				output->image_description->transfer_function),
+		};
+		size_t transform_count = sizeof(transforms) / sizeof(transforms[0]);
+		options.color_transform = wlr_color_transform_init_pipeline(transforms, transform_count);
+		wlr_color_transform_unref(transforms[0]);
+		wlr_color_transform_unref(transforms[1]);
 	}
 	struct wlr_render_pass *pass = wlr_renderer_begin_buffer_pass(renderer, buffer, &options);
 	wlr_color_transform_unref(options.color_transform);
