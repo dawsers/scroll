@@ -142,6 +142,12 @@ struct wlr_color_transform *wlr_color_transform_init_lut_3x1d(size_t dim,
 	const uint16_t *r, const uint16_t *g, const uint16_t *b);
 
 /**
+ * Initialize a color transformation to apply a 3×3 matrix. Returns NULL on
+ * failure.
+ */
+struct wlr_color_transform *wlr_color_transform_init_matrix(const float matrix[static 9]);
+
+/**
  * Initialize a color transformation to apply a sequence of color transforms
  * one after another.
  */
