@@ -2816,8 +2816,8 @@ static struct wlr_color_transform *scene_output_combine_color_transforms(
 		combined = wlr_color_transform_ref(gamma_lut);
 	} else {
 		struct wlr_color_transform *transforms[] = {
-			gamma_lut,
 			supplied,
+			gamma_lut,
 		};
 		size_t transforms_len = sizeof(transforms) / sizeof(transforms[0]);
 		combined = wlr_color_transform_init_pipeline(transforms, transforms_len);
