@@ -120,7 +120,7 @@
         If any preedit text is present, it is replaced with the cursor for the
         purpose of this event.
 
-        The argument text is a buffer containing the preedit string, and must
+        The argument text is a buffer containing the surrounding text, and must
         include the cursor position, and the complete selection. It should
         contain additional characters before and after these. There is a
         maximum length of wayland messages, so text can not be longer than 4000
