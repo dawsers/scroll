@@ -213,6 +213,7 @@ struct wlr_vk_render_format_setup {
 	struct wl_list link; // wlr_vk_renderer.render_format_setups
 	const struct wlr_vk_format *render_format; // used in renderpass
 	bool use_blending_buffer;
+	bool use_srgb;
 	VkRenderPass render_pass;
 
 	VkPipeline output_pipe_identity;
