@@ -151,6 +151,46 @@ static float get_luminance_multiplier(const struct wlr_color_luminances *src_lum
 	return (dst_lum->reference / src_lum->reference) * (src_lum->max / dst_lum->max);
 }
 
+static bool unwrap_color_transform(struct wlr_color_transform *transform,
+		float matrix[static 9], enum wlr_color_transfer_function *tf) {
+	if (transform == NULL) {
+		wlr_matrix_identity(matrix);
+		*tf = WLR_COLOR_TRANSFER_FUNCTION_GAMMA22;
+		return true;
+	}
+	struct wlr_color_transform_inverse_eotf *eotf;
+	struct wlr_color_transform_matrix *as_matrix;
+	struct wlr_color_transform_pipeline *pipeline;
+	switch (transform->type) {
+	case COLOR_TRANSFORM_INVERSE_EOTF:
+		eotf = wlr_color_transform_inverse_eotf_from_base(transform);
+		wlr_matrix_identity(matrix);
+		*tf = eotf->tf;
+		return true;
+	case COLOR_TRANSFORM_MATRIX:
+		as_matrix = wl_container_of(transform, as_matrix, base);
+		memcpy(matrix, as_matrix->matrix, sizeof(float[9]));
+		*tf = WLR_COLOR_TRANSFER_FUNCTION_EXT_LINEAR;
+		return true;
+	case COLOR_TRANSFORM_PIPELINE:
+		pipeline = wl_container_of(transform, pipeline, base);
+		if (pipeline->len != 2
+				|| pipeline->transforms[0]->type != COLOR_TRANSFORM_MATRIX
+				|| pipeline->transforms[1]->type != COLOR_TRANSFORM_INVERSE_EOTF) {
+			return false;
+		}
+		as_matrix = wl_container_of(pipeline->transforms[0], as_matrix, base);
+		eotf = wlr_color_transform_inverse_eotf_from_base(pipeline->transforms[1]);
+		memcpy(matrix, as_matrix->matrix, sizeof(float[9]));
+		*tf = eotf->tf;
+		return true;
+	case COLOR_TRANSFORM_LCMS2:
+	case COLOR_TRANSFORM_LUT_3X1D:
+		return false;
+	}
+	return false;
+}
+
 static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 	struct wlr_vk_render_pass *pass = get_render_pass(wlr_pass);
 	struct wlr_vk_renderer *renderer = pass->renderer;
@@ -190,12 +230,21 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 		};
 		encode_proj_matrix(final_matrix, vert_pcr_data.mat4);
 
-		struct wlr_vk_color_transform *transform = NULL;
+		float matrix[9];
+		enum wlr_color_transfer_function tf = WLR_COLOR_TRANSFER_FUNCTION_GAMMA22;
+		bool need_lut = false;
 		size_t dim = 1;
-		if (pass->color_transform && pass->color_transform->type != COLOR_TRANSFORM_INVERSE_EOTF) {
+		struct wlr_vk_color_transform *transform = NULL;
+		if (pass->color_transform != NULL) {
 			transform = get_color_transform(pass->color_transform, renderer);
 			assert(transform);
-			dim = transform->lut_3d.dim;
+			need_lut = transform->lut_3d.dim > 0;
+			dim = need_lut ? transform->lut_3d.dim : 1;
+			memcpy(matrix, transform->color_matrix, sizeof(matrix));
+			tf = transform->inverse_eotf;
+		}
+		if (pass->color_transform == NULL || need_lut) {
+			wlr_matrix_identity(matrix);
 		}
 
 		struct wlr_vk_frag_output_pcr_data frag_pcr_data = {
@@ -204,28 +253,20 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 			.lut_3d_scale = (float)(dim - 1) / dim,
 		};
 
-		float matrix[9];
 		if (pass->has_primaries) {
+			// overwrite matrix from color_tranform, if any
 			struct wlr_color_primaries srgb;
 			wlr_color_primaries_from_named(&srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
 
 			wlr_color_primaries_transform_absolute_colorimetric(&srgb, &pass->primaries, matrix);
-		} else {
-			wlr_matrix_identity(matrix);
 		}
+
 		encode_color_matrix(matrix, frag_pcr_data.matrix);
 
 		VkPipeline pipeline = VK_NULL_HANDLE;
-		if (pass->color_transform && pass->color_transform->type != COLOR_TRANSFORM_INVERSE_EOTF) {
+		if (need_lut) {
 			pipeline = render_buffer->two_pass.render_setup->output_pipe_lut3d;
 		} else {
-			enum wlr_color_transfer_function tf = WLR_COLOR_TRANSFER_FUNCTION_GAMMA22;
-			if (pass->color_transform && pass->color_transform->type == COLOR_TRANSFORM_INVERSE_EOTF) {
-				struct wlr_color_transform_inverse_eotf *inverse_eotf =
-					wlr_color_transform_inverse_eotf_from_base(pass->color_transform);
-				tf = inverse_eotf->tf;
-			}
-
 			switch (tf) {
 			case WLR_COLOR_TRANSFER_FUNCTION_EXT_LINEAR:
 				pipeline = render_buffer->two_pass.render_setup->output_pipe_identity;
@@ -258,7 +299,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 			sizeof(frag_pcr_data), &frag_pcr_data);
 
 		VkDescriptorSet lut_ds;
-		if (transform != NULL) {
+		if (need_lut) {
 			lut_ds = transform->lut_3d.ds;
 		} else {
 			lut_ds = renderer->output_ds_lut3d_dummy;
@@ -1398,7 +1439,10 @@ static struct wlr_vk_color_transform *vk_color_transform_create(
 		return NULL;
 	}
 
-	if (transform->type != COLOR_TRANSFORM_INVERSE_EOTF) {
+	bool need_lut = !unwrap_color_transform(transform, vk_transform->color_matrix,
+		&vk_transform->inverse_eotf);
+
+	if (need_lut) {
 		vk_transform->lut_3d.dim = 33;
 		if (!create_3d_lut_image(renderer, transform,
 				vk_transform->lut_3d.dim,

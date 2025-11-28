@@ -621,11 +621,12 @@ struct wlr_vk_buffer_span {
 };
 
 
-// Lookup table for a color transform
+// Prepared form for a color transform
 struct wlr_vk_color_transform {
 	struct wlr_addon addon; // owned by: wlr_vk_renderer
 	struct wl_list link; // wlr_vk_renderer, list of all color transforms
 
+	// if populated, carries the entire transform, other parameters are to be ignored
 	struct {
 		size_t dim;
 		VkImage image;
@@ -634,6 +635,9 @@ struct wlr_vk_color_transform {
 		VkDescriptorSet ds;
 		struct wlr_vk_descriptor_pool *ds_pool;
 	} lut_3d;
+
+	float color_matrix[9];
+	enum wlr_color_transfer_function inverse_eotf;
 };
 void vk_color_transform_destroy(struct wlr_addon *addon);
 
