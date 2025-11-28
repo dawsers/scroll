@@ -165,4 +165,11 @@ void wlr_color_transform_unref(struct wlr_color_transform *tr);
 void wlr_color_transform_eval(struct wlr_color_transform *tr,
 	float out[static 3], const float in[static 3]);
 
+/**
+ * Compute the matrix to convert between two linear RGB color spaces
+ */
+void wlr_color_primaries_transform_absolute_colorimetric(
+	const struct wlr_color_primaries *source,
+	const struct wlr_color_primaries *destination, float matrix[static 9]);
+
 #endif

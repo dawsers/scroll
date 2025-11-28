@@ -311,6 +311,18 @@ void wlr_color_primaries_to_xyz(const struct wlr_color_primaries *primaries, flo
 	memcpy(matrix, result, sizeof(result));
 }
 
+void wlr_color_primaries_transform_absolute_colorimetric(
+		const struct wlr_color_primaries *source,
+		const struct wlr_color_primaries *destination, float matrix[static 9]) {
+	float source_to_xyz[9];
+	wlr_color_primaries_to_xyz(source, source_to_xyz);
+	float destination_to_xyz[9];
+	wlr_color_primaries_to_xyz(destination, destination_to_xyz);
+	float xyz_to_destination[9];
+	matrix_invert(xyz_to_destination, destination_to_xyz);
+	wlr_matrix_multiply(matrix, xyz_to_destination, source_to_xyz);
+}
+
 void wlr_color_transfer_function_get_default_luminance(enum wlr_color_transfer_function tf,
 		struct wlr_color_luminances *lum) {
 	switch (tf) {

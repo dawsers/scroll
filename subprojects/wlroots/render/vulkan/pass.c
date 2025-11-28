@@ -209,14 +209,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 			struct wlr_color_primaries srgb;
 			wlr_color_primaries_from_named(&srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
 
-			float srgb_to_xyz[9];
-			wlr_color_primaries_to_xyz(&srgb, srgb_to_xyz);
-			float dst_primaries_to_xyz[9];
-			wlr_color_primaries_to_xyz(&pass->primaries, dst_primaries_to_xyz);
-			float xyz_to_dst_primaries[9];
-			matrix_invert(xyz_to_dst_primaries, dst_primaries_to_xyz);
-
-			wlr_matrix_multiply(matrix, xyz_to_dst_primaries, srgb_to_xyz);
+			wlr_color_primaries_transform_absolute_colorimetric(&srgb, &pass->primaries, matrix);
 		} else {
 			wlr_matrix_identity(matrix);
 		}
@@ -851,14 +844,8 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 		struct wlr_color_primaries srgb;
 		wlr_color_primaries_from_named(&srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
 
-		float src_primaries_to_xyz[9];
-		wlr_color_primaries_to_xyz(options->primaries, src_primaries_to_xyz);
-		float srgb_to_xyz[9];
-		wlr_color_primaries_to_xyz(&srgb, srgb_to_xyz);
-		float xyz_to_srgb[9];
-		matrix_invert(xyz_to_srgb, srgb_to_xyz);
-
-		wlr_matrix_multiply(color_matrix, xyz_to_srgb, src_primaries_to_xyz);
+		wlr_color_primaries_transform_absolute_colorimetric(options->primaries,
+			&srgb, color_matrix);
 	} else {
 		wlr_matrix_identity(color_matrix);
 	}
