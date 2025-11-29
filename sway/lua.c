@@ -1085,6 +1085,52 @@ static int scroll_workspace_get_pin(lua_State *L) {
 	return 1;
 }
 
+static int scroll_workspace_get_split(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_createtable(L, 0, 0);
+		return 1;
+	}
+	struct sway_workspace *workspace = lua_touserdata(L, -1);
+	if (!workspace || workspace->node.type != N_WORKSPACE) {
+		lua_createtable(L, 0, 0);
+		return 1;
+	}
+	lua_newtable(L);
+	switch (workspace->split.split) {
+	case WORKSPACE_SPLIT_NONE:
+	case WORKSPACE_SPLIT_HORIZONTAL:
+	case WORKSPACE_SPLIT_VERTICAL:
+	default:
+		lua_pushstring(L, "none");
+		break;
+	case WORKSPACE_SPLIT_TOP:
+		lua_pushstring(L, "top");
+		break;
+	case WORKSPACE_SPLIT_BOTTOM:
+		lua_pushstring(L, "bottom");
+		break;
+	case WORKSPACE_SPLIT_LEFT:
+		lua_pushstring(L, "left");
+		break;
+	case WORKSPACE_SPLIT_RIGHT:
+		lua_pushstring(L, "right");
+		break;
+	}
+	lua_setfield(L, -2, "split");
+
+	lua_pushnumber(L, workspace->split.fraction);
+	lua_setfield(L, -2, "fraction");
+
+	lua_pushinteger(L, workspace->split.gap);
+	lua_setfield(L, -2, "gap");
+
+	lua_pushlightuserdata(L, workspace->split.sibling);
+	lua_setfield(L, -2, "sibling");
+
+	return 1;
+}
+
 static int scroll_scratchpad_get_containers(lua_State *L) {
 	lua_checkstack(L, root->scratchpad->length + STACK_MIN);
 	lua_createtable(L, root->scratchpad->length, 0);
@@ -1323,6 +1369,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "workspace_get_height", scroll_workspace_get_height },
 	{ "workspace_get_output", scroll_workspace_get_output },
 	{ "workspace_get_pin", scroll_workspace_get_pin },
+	{ "workspace_get_split", scroll_workspace_get_split },
 	{ "output_get_enabled", scroll_output_get_enabled },
 	{ "output_get_name", scroll_output_get_name },
 	{ "output_get_active_workspace", scroll_output_get_active_workspace },

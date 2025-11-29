@@ -1933,6 +1933,18 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 *workspace_get_pin(workspace)*
 	Returns the _workspace's_ pinned container pointer, or nil if none.
 
+*workspace_get_split(workspace)*
+	Returns a table with the split state for _workspace_. The
+	keys and values of that table are:
+
+	_split_: "none"|"top"|"bottom"|"left"|"right"
+
+	_fraction_: number
+
+	_gap_: integer number
+
+	_sibling_: the sibling workspace's pointer
+
 *workspace_get_output(workspace)*
 	Returns the _workspace's_ output pointer, or nil if none.
 
