@@ -1532,6 +1532,9 @@ The default colors are:
 	workspaces per output.
 	_reset_ undoes the split, making each of the workspaces use the full output
 	again.
+	If you call the command on an already split workspace, it will apply the
+	new parameters, also setting the active workspace 'left' (if _v_) or 'top'
+	(if _h_ splitting).
 
 *workspace_auto_back_and_forth* yes|no
 	When _yes_, repeating a workspace switch command will switch back to the

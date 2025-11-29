@@ -204,10 +204,6 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 				}
 			}
 		}
-		if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
-			return cmd_results_new(CMD_INVALID,
-					"Workspaces can only be split once");
-		}
 		workspace_split(workspace, split, fraction, gap);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}

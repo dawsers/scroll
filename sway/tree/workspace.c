@@ -1222,8 +1222,13 @@ void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split
 		return;
 	}
 	struct sway_output *output = workspace->output;
-	char *name = workspace_next_name(output->wlr_output->name);
-	struct sway_workspace *child = workspace_create(workspace->output, name);
+	struct sway_workspace *child;
+	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
+		char *name = workspace_next_name(output->wlr_output->name);
+		child = workspace_create(workspace->output, name);
+	} else {
+		child = workspace->split.sibling;
+	}
 	child->split.sibling = workspace;
 	child->split.fraction = fraction;
 	child->split.gap = gap;
