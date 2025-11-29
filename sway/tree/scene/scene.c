@@ -551,9 +551,11 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 		}
 	}
 
-	// if there are active outputs on this node, we should always have a primary
-	// output
-	assert(!scene_buffer->active_outputs || scene_buffer->primary_output);
+	if (!scene_buffer->primary_output) {
+		// When no output contains a big enough fraction of the buffer, it means
+		// the primary output has been disconnected or we are exiting.
+		return;
+	}
 
 	// Skip output update event if nothing was updated
 	if (old_active == active_outputs &&
