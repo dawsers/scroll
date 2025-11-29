@@ -492,7 +492,7 @@ set|plus|minus|toggle <amount>
 	the per-output *allow_tearing* setting. See *scroll-output*(5) for further
 	details.
 
-*move* left|right|up|down|beinning|end [<px> px] [nomode]
+*move* left|right|up|down|beginning|end [<px> px] [nomode]
 	Moves the focused container in the direction specified. The optional _px_
 	argument specifies how many pixels to move the container if it is floating.
 	If unspecified,	the default is 10 pixels. Pixels are ignored when moving
@@ -1516,7 +1516,7 @@ The default colors are:
 	can use it to open applications automatically when you create workspace
 	_name_.
 
-*workspace* swap <name> [name_only]
+*workspace* swap [number] <[num:]name> [name_only]
 	Swaps the workspace with <name> and the currently focused one. They can be
 	on different outputs. If using the optional _name_only_ argument, only the
 	workspace names are swapped, leaving the containers where they are. This is

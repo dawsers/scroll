@@ -137,12 +137,18 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 			return cmd_results_new(CMD_INVALID,
 					"This command only works when called from a workspace");
 		}
+		if (argc < 2) {
+			return cmd_results_new(CMD_INVALID,
+					"Expected 'workspace swap [number] <[num:]name> [name_only]'");
+		}
 		struct sway_workspace *swap_ws;
-		if (isdigit(argv[1][0])) {
-			if (!(swap_ws = workspace_by_number(argv[1]))) {
-				return cmd_results_new(CMD_INVALID,
-						"Invalid workspace number '%s'", argv[1]);
-			}
+		int arg = 2;
+		if (strcasecmp(argv[1], "number") == 0) {
+			if (argc < 3 || !isdigit(argv[2][0]) ||
+				!(swap_ws = workspace_by_number(argv[2]))) {
+				return cmd_results_new(CMD_INVALID,	"Invalid workspace number");
+			} 
+			++arg;
 		} else {
 			if (!(swap_ws = workspace_by_name(argv[1]))) {
 				return cmd_results_new(CMD_INVALID,
@@ -150,7 +156,7 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 			}
 		}
 		bool name_only;
-		if (argc > 2 && strcasecmp(argv[2], "name_only") == 0) {
+		if (argc > arg && strcasecmp(argv[arg], "name_only") == 0) {
 			name_only = true;
 		} else {
 			name_only = false;

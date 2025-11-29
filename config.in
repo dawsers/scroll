@@ -203,28 +203,28 @@ animations {
     bindsym $mod+Ctrl+Shift+$right move workspace to output right
 
     # Swap workspace contents
-    bindsym $mod+Ctrl+1 workspace swap 1
-    bindsym $mod+Ctrl+2 workspace swap 2
-    bindsym $mod+Ctrl+3 workspace swap 3
-    bindsym $mod+Ctrl+4 workspace swap 4
-    bindsym $mod+Ctrl+5 workspace swap 5
-    bindsym $mod+Ctrl+6 workspace swap 6
-    bindsym $mod+Ctrl+7 workspace swap 7
-    bindsym $mod+Ctrl+8 workspace swap 8
-    bindsym $mod+Ctrl+9 workspace swap 9
-    bindsym $mod+Ctrl+0 workspace swap 10
+    bindsym $mod+Ctrl+1 workspace swap number 1
+    bindsym $mod+Ctrl+2 workspace swap number 2
+    bindsym $mod+Ctrl+3 workspace swap number 3
+    bindsym $mod+Ctrl+4 workspace swap number 4
+    bindsym $mod+Ctrl+5 workspace swap number 5
+    bindsym $mod+Ctrl+6 workspace swap number 6
+    bindsym $mod+Ctrl+7 workspace swap number 7
+    bindsym $mod+Ctrl+8 workspace swap number 8
+    bindsym $mod+Ctrl+9 workspace swap number 9
+    bindsym $mod+Ctrl+0 workspace swap number 10
 
     # Swap only workspace names
-    bindsym $mod+Ctrl+Shift+1 workspace swap 1 name_only
-    bindsym $mod+Ctrl+Shift+2 workspace swap 2 name_only
-    bindsym $mod+Ctrl+Shift+3 workspace swap 3 name_only
-    bindsym $mod+Ctrl+Shift+4 workspace swap 4 name_only
-    bindsym $mod+Ctrl+Shift+5 workspace swap 5 name_only
-    bindsym $mod+Ctrl+Shift+6 workspace swap 6 name_only
-    bindsym $mod+Ctrl+Shift+7 workspace swap 7 name_only
-    bindsym $mod+Ctrl+Shift+8 workspace swap 8 name_only
-    bindsym $mod+Ctrl+Shift+9 workspace swap 9 name_only
-    bindsym $mod+Ctrl+Shift+0 workspace swap 10 name_only
+    bindsym $mod+Ctrl+Shift+1 workspace swap number 1 name_only
+    bindsym $mod+Ctrl+Shift+2 workspace swap number 2 name_only
+    bindsym $mod+Ctrl+Shift+3 workspace swap number 3 name_only
+    bindsym $mod+Ctrl+Shift+4 workspace swap number 4 name_only
+    bindsym $mod+Ctrl+Shift+5 workspace swap number 5 name_only
+    bindsym $mod+Ctrl+Shift+6 workspace swap number 6 name_only
+    bindsym $mod+Ctrl+Shift+7 workspace swap number 7 name_only
+    bindsym $mod+Ctrl+Shift+8 workspace swap number 8 name_only
+    bindsym $mod+Ctrl+Shift+9 workspace swap number 9 name_only
+    bindsym $mod+Ctrl+Shift+0 workspace swap number 10 name_only
 
     bindsym $mod+Shift+Page_Up workspace prev
     bindsym $mod+Shift+Page_Down workspace next
