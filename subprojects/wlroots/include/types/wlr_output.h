@@ -23,6 +23,9 @@ bool output_cursor_set_texture(struct wlr_output_cursor *cursor,
 	int32_t hotspot_x, int32_t hotspot_y, struct wlr_drm_syncobj_timeline *wait_timeline,
 	uint64_t wait_point);
 
+bool output_cursor_refresh_color_transform(struct wlr_output_cursor *cursor,
+	const struct wlr_output_image_description *img_desc);
+
 void output_defer_present(struct wlr_output *output, struct wlr_output_event_present event);
 
 bool output_prepare_commit(struct wlr_output *output, const struct wlr_output_state *state);

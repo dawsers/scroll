@@ -53,6 +53,7 @@ struct wlr_output_cursor {
 
 	struct {
 		struct wl_listener renderer_destroy;
+		struct wlr_color_transform *color_transform;
 	} WLR_PRIVATE;
 };
 

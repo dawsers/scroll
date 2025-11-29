@@ -240,6 +240,11 @@ static void output_apply_state(struct wlr_output *output,
 		} else {
 			output->image_description = NULL;
 		}
+
+		struct wlr_output_cursor *output_cursor;
+		wl_list_for_each(output_cursor, &output->cursors, link) {
+			output_cursor_refresh_color_transform(output_cursor, output->image_description);
+		}
 	}
 
 	if (state->committed & WLR_OUTPUT_STATE_COLOR_TRANSFORM) {
