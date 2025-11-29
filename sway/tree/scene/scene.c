@@ -12,6 +12,7 @@
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
+#include <types/wlr_output.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
 #include "util.h"
@@ -2408,7 +2409,7 @@ void sway_scene_output_destroy(struct sway_scene_output *scene_output) {
 	wlr_color_transform_unref(scene_output->gamma_lut_color_transform);
 	wlr_color_transform_unref(scene_output->prev_gamma_lut_color_transform);
 	wlr_color_transform_unref(scene_output->prev_supplied_color_transform);
-	wlr_color_transform_unref(scene_output->prev_combined_color_transform);
+	wlr_color_transform_unref(scene_output->combined_color_transform);
 	wl_array_release(&scene_output->render_list);
 	free(scene_output);
 }
@@ -2801,39 +2802,73 @@ static void scene_output_state_attempt_gamma(struct sway_scene_output *scene_out
 	wlr_output_state_finish(&gamma_pending);
 }
 
-static struct wlr_color_transform *scene_output_combine_color_transforms(
-		struct sway_scene_output *scene_output, struct wlr_color_transform *supplied) {
-	struct wlr_color_transform *gamma_lut = scene_output->gamma_lut_color_transform;
-	assert(gamma_lut != NULL);
+static bool scene_output_combine_color_transforms(
+		struct sway_scene_output *scene_output, struct wlr_color_transform *supplied,
+		const struct wlr_output_image_description *img_desc, bool render_gamma_lut) {
+	struct wlr_color_transform *transforms[3] = {0};
+	const size_t transforms_cap = sizeof(transforms) / sizeof(transforms[0]);
+	size_t transforms_len = 0;
 
-	if (gamma_lut == scene_output->prev_gamma_lut_color_transform &&
-			supplied == scene_output->prev_supplied_color_transform) {
-		return wlr_color_transform_ref(scene_output->prev_combined_color_transform);
+	if (img_desc != NULL) {
+		assert(supplied == NULL);
+		struct wlr_color_primaries primaries_srgb;
+		sway_color_primaries_from_named(&primaries_srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
+		struct wlr_color_primaries primaries;
+		sway_color_primaries_from_named(&primaries, img_desc->primaries);
+		float matrix[9];
+		wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
+		assert(transforms_len < transforms_cap);
+		transforms[transforms_len++] =	wlr_color_transform_init_matrix(matrix);
+		assert(transforms_len < transforms_cap);
+		transforms[transforms_len++] = wlr_color_transform_init_linear_to_inverse_eotf(
+			img_desc->transfer_function);
+	} else if (supplied != NULL) {
+		assert(transforms_len < transforms_cap);
+		transforms[transforms_len++] = wlr_color_transform_ref(supplied);
+	} else {
+		assert(transforms_len < transforms_cap);
+		transforms[transforms_len++] = wlr_color_transform_init_linear_to_inverse_eotf(
+			WLR_COLOR_TRANSFER_FUNCTION_GAMMA22);
 	}
 
-	struct wlr_color_transform *combined;
-	if (supplied == NULL) {
-		combined = wlr_color_transform_ref(gamma_lut);
-	} else {
-		struct wlr_color_transform *transforms[] = {
-			supplied,
-			gamma_lut,
-		};
-		size_t transforms_len = sizeof(transforms) / sizeof(transforms[0]);
-		combined = wlr_color_transform_init_pipeline(transforms, transforms_len);
-		if (combined == NULL) {
-			return NULL;
+	struct wlr_color_transform *gamma_lut = scene_output->gamma_lut_color_transform;
+	if (gamma_lut != NULL && render_gamma_lut) {
+		assert(transforms_len < transforms_cap);
+		transforms[transforms_len++] = wlr_color_transform_ref(gamma_lut);
+	}
+
+	for (size_t i = 0; i < transforms_len; ++i) {
+		if (transforms[i] == NULL) {
+			goto err_transforms;
 		}
+	}
+	struct wlr_color_transform *combined;
+	if (transforms_len == 1) {
+		combined = wlr_color_transform_ref(transforms[0]);
+	} else {
+		combined = wlr_color_transform_init_pipeline(transforms, transforms_len);
+	}
+	if (combined == NULL) {
+		goto err_transforms;
+	}
+	for (size_t i = 0; i < transforms_len; ++i) {
+		wlr_color_transform_unref(transforms[i]);
 	}
 
 	wlr_color_transform_unref(scene_output->prev_gamma_lut_color_transform);
-	scene_output->prev_gamma_lut_color_transform = wlr_color_transform_ref(gamma_lut);
+	scene_output->prev_gamma_lut_color_transform = gamma_lut ? wlr_color_transform_ref(gamma_lut) : NULL;
 	wlr_color_transform_unref(scene_output->prev_supplied_color_transform);
 	scene_output->prev_supplied_color_transform = supplied ? wlr_color_transform_ref(supplied) : NULL;
-	wlr_color_transform_unref(scene_output->prev_combined_color_transform);
-	scene_output->prev_combined_color_transform = wlr_color_transform_ref(combined);
+	wlr_color_transform_unref(scene_output->combined_color_transform);
+	scene_output->combined_color_transform = combined;
 
-	return combined;
+	return true;
+
+err_transforms:
+	for (size_t i = 0; i < transforms_len; ++i) {
+		wlr_color_transform_unref(transforms[i]);
+	}
+	return false;
 }
 
 bool sway_scene_output_build_state(struct sway_scene_output *scene_output,
@@ -3033,49 +3068,27 @@ bool sway_scene_output_build_state(struct sway_scene_output *scene_output,
 		timer->pre_render_duration = timespec_to_nsec(&duration);
 	}
 
-	struct wlr_color_transform *color_transform = NULL;
-	const struct wlr_output_image_description *img_desc = scene_output_pending_image_description(output, state);
-	if (img_desc != NULL) {
-		struct wlr_color_primaries primaries_srgb;
-		sway_color_primaries_from_named(&primaries_srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
-		struct wlr_color_primaries primaries;
-		sway_color_primaries_from_named(&primaries, img_desc->primaries);
-		float matrix[9];
-		wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
-		struct wlr_color_transform *transforms[] = {
-			wlr_color_transform_init_matrix(matrix),
-			wlr_color_transform_init_linear_to_inverse_eotf(img_desc->transfer_function),
-		};
-		size_t transform_count = sizeof(transforms) / sizeof(transforms[0]);
-		color_transform = wlr_color_transform_init_pipeline(transforms, transform_count);
-		wlr_color_transform_unref(transforms[0]);
-		wlr_color_transform_unref(transforms[1]);
-	}
-	if (options->color_transform != NULL) {
-		assert(color_transform == NULL);
-		color_transform = wlr_color_transform_ref(options->color_transform);
-	}
-
-	if (render_gamma_lut) {
-		struct wlr_color_transform *combined =
-			scene_output_combine_color_transforms(scene_output, color_transform);
-		wlr_color_transform_unref(color_transform);
-		if (combined == NULL) {
+	if ((render_gamma_lut
+			&& scene_output->gamma_lut_color_transform != scene_output->prev_gamma_lut_color_transform)
+			|| scene_output->prev_supplied_color_transform != options->color_transform
+			|| (state->committed & WLR_OUTPUT_STATE_IMAGE_DESCRIPTION)) {
+		const struct wlr_output_image_description *output_description =
+			output_pending_image_description(output, state);
+		if (!scene_output_combine_color_transforms(scene_output, options->color_transform,
+				output_description, render_gamma_lut)) {
 			wlr_buffer_unlock(buffer);
 			return false;
 		}
-		color_transform = combined;
 	}
 
 	scene_output->in_point++;
 	struct wlr_render_pass *render_pass = wlr_renderer_begin_buffer_pass(output->renderer, buffer,
 			&(struct wlr_buffer_pass_options){
 		.timer = timer ? timer->render_timer : NULL,
-		.color_transform = color_transform,
+		.color_transform = scene_output->combined_color_transform,
 		.signal_timeline = scene_output->in_timeline,
 		.signal_point = scene_output->in_point,
 	});
-	wlr_color_transform_unref(color_transform);
 	if (render_pass == NULL) {
 		wlr_buffer_unlock(buffer);
 		return false;

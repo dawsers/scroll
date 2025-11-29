@@ -258,7 +258,7 @@ struct wlr_scene_output {
 
 		struct wlr_color_transform *prev_gamma_lut_color_transform;
 		struct wlr_color_transform *prev_supplied_color_transform;
-		struct wlr_color_transform *prev_combined_color_transform;
+		struct wlr_color_transform *combined_color_transform;
 
 		struct wl_listener output_commit;
 		struct wl_listener output_damage;
