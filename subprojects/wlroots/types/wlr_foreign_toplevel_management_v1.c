@@ -417,16 +417,17 @@ static void toplevel_resource_send_parent(
 		return;
 	}
 	struct wl_client *client = wl_resource_get_client(toplevel_resource);
-	struct wl_resource *parent_resource = NULL;
 	if (parent) {
-		parent_resource = wl_resource_find_for_client(&parent->resources, client);
-		if (!parent_resource) {
-			/* don't send an event if this client destroyed the parent handle */
-			return;
+		struct wl_resource *parent_resource;
+		wl_resource_for_each(parent_resource, &parent->resources) {
+			if (wl_resource_get_client(parent_resource) == client) {
+				zwlr_foreign_toplevel_handle_v1_send_parent(
+					toplevel_resource, parent_resource);
+			}
 		}
+	} else {
+		zwlr_foreign_toplevel_handle_v1_send_parent(toplevel_resource, NULL);
 	}
-	zwlr_foreign_toplevel_handle_v1_send_parent(toplevel_resource,
-		parent_resource);
 }
 
 void wlr_foreign_toplevel_handle_v1_set_parent(
@@ -624,10 +625,13 @@ static void foreign_toplevel_manager_bind(struct wl_client *client, void *data,
 	}
 	/* Second loop: send details about each toplevel. */
 	wl_list_for_each_safe(toplevel, tmp, &manager->toplevels, link) {
-		struct wl_resource *toplevel_resource =
-			wl_resource_find_for_client(&toplevel->resources, client);
-		toplevel_send_details_to_toplevel_resource(toplevel,
-			toplevel_resource);
+		struct wl_resource *toplevel_resource;
+		wl_resource_for_each(toplevel_resource, &toplevel->resources) {
+			if (wl_resource_get_client(toplevel_resource) == client) {
+				toplevel_send_details_to_toplevel_resource(toplevel,
+					toplevel_resource);
+			}
+		}
 	}
 }
 
