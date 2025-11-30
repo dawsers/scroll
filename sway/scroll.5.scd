@@ -1512,9 +1512,43 @@ The default colors are:
 	to the workspace before moving).
 
 *workspace* <name> exec <command>
-	Specifies a command to execute when a workspace with _name_ is created. You
-	can use it to open applications automatically when you create workspace
-	_name_.
+	This command has been deprecated in favor of Lua scripting, which provides
+	a much more powerful rule.
+	This command was used to execute a command when a workspace with _name_
+	was created, for example to open applications automatically when creating
+	workspace _name_.
+	The best way to do this now is through this script that lets you execute
+	external or even scroll commands:
+
+```
+-- workspace_exec.lua <name> <commands>
+local args, state = ...
+
+local scroll = require("scroll")
+
+local function on_create_ws(workspace, _)
+  local name = scroll.workspace_get_name(workspace)
+  if name == args[1] then
+    local cmd = table.concat(args, " ", 2)
+    scroll.command(workspace, cmd)
+  end
+end
+
+scroll.add_callback("workspace_create", on_create_ws, nil)
+```
+
+	Save it to `/home/xxxx/.config/scroll/scripts/workspace_exec.lua`, and
+	then you can use it in your config file like this:
+
+```
+set $lua_scripts /home/xxxx/.config/scroll/scripts
+
+# Examples
+# split workspace 1 as soon as it gets created
+lua $lua_scripts/workspace_exec.lua 1 workspace split v 0.5
+# open a kitty terminal every time terminal 1 is created
+lua $lua_scripts/workspace_exec.lua 1 exec kitty
+```
 
 *workspace* swap [number] <[num:]name> [name_only]
 	Swaps the workspace with <name> and the currently focused one. They can be

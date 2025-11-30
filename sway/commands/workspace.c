@@ -28,14 +28,12 @@ static struct workspace_config *workspace_config_find_or_create(char *ws_name) {
 	wsc->gaps_outer.right = INT_MIN;
 	wsc->gaps_outer.bottom = INT_MIN;
 	wsc->gaps_outer.left = INT_MIN;
-	wsc->exec = create_list();
 	list_add(config->workspace_configs, wsc);
 	return wsc;
 }
 
 void free_workspace_config(struct workspace_config *wsc) {
 	free(wsc->workspace);
-	list_free_items_and_destroy(wsc->exec);
 	list_free_items_and_destroy(wsc->outputs);
 	free(wsc);
 }
@@ -210,7 +208,6 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 
 	int output_location = -1;
 	int gaps_location = -1;
-	int exec_location = -1;
 
 	for (int i = 0; i < argc; ++i) {
 		if (strcasecmp(argv[i], "output") == 0) {
@@ -226,8 +223,9 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 	}
 	for (int i = 0; i < argc; ++i) {
 		if (strcasecmp(argv[i], "exec") == 0) {
-			exec_location = i;
-			break;
+			return cmd_results_new(CMD_INVALID,
+				"'workspace <name> exec <command>' has been deprecated. See "
+				"man 5 scroll for details");
 		}
 	}
 	if (output_location == 0) {
@@ -247,24 +245,6 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 		}
 		for (int i = output_location + 1; i < argc; ++i) {
 			list_add(wsc->outputs, strdup(argv[i]));
-		}
-	} else if (exec_location == 0) {
-		return cmd_results_new(CMD_INVALID,
-			"Expected 'workspace <name> exec <command>'");
-	} else if (exec_location > 0) {
-		if ((error = checkarg(argc, "workspace", EXPECTED_AT_LEAST,
-						exec_location + 1))) {
-			return error;
-		}
-		char *ws_name = join_args(argv, exec_location);
-		struct workspace_config *wsc = workspace_config_find_or_create(ws_name);
-		free(ws_name);
-		if (!wsc) {
-			return cmd_results_new(CMD_FAILURE,
-					"Unable to allocate workspace exec");
-		}
-		for (int i = exec_location + 1; i < argc; ++i) {
-			list_add(wsc->exec, strdup(argv[i]));
 		}
 	} else if (gaps_location >= 0) {
 		if ((error = cmd_workspace_gaps(argc, argv, gaps_location))) {
@@ -295,7 +275,6 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 		struct sway_seat *seat = config->handler_context.seat;
 
 		struct sway_workspace *ws = NULL;
-		bool created = false;
 		if (strcasecmp(argv[0], "number") == 0) {
 			if (argc < 2) {
 				return cmd_results_new(CMD_INVALID,
@@ -309,7 +288,6 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 				char *name = join_args(argv + 1, argc - 1);
 				ws = workspace_create(NULL, name);
 				free(name);
-				created = true;
 			}
 			if (ws && auto_back_and_forth) {
 				ws = workspace_auto_back_and_forth(ws);
@@ -327,13 +305,11 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 			}
 			if (!(ws = workspace_by_name(argv[0]))) {
 				ws = workspace_create(NULL, seat->prev_workspace_name);
-				created = true;
 			}
 		} else {
 			char *name = join_args(argv, argc);
 			if (!(ws = workspace_by_name(name))) {
 				ws = workspace_create(NULL, name);
-				created = true;
 			}
 			free(name);
 			if (ws && auto_back_and_forth) {
@@ -345,19 +321,6 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 		}
 		workspace_switch(ws);
 		seat_consider_warp_to_focus(seat);
-		if (created) {
-			struct workspace_config *wsc = workspace_find_config(ws->name);
-			if (wsc && wsc->exec->length > 0) {
-				int argc = wsc->exec->length;
-				char **argv = malloc(wsc->exec->length * sizeof(char *));
-				for (int i = 0; i < wsc->exec->length; ++i) {
-					argv[i] = wsc->exec->items[i];
-				}
-				struct cmd_results *result = cmd_exec_process(argc, argv);
-				free(argv);
-				free(result);
-			}
-		}
 	}
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

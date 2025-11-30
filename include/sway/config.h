@@ -332,7 +332,6 @@ struct workspace_config {
 	list_t *outputs;
 	int gaps_inner;
 	struct side_gaps gaps_outer;
-	list_t *exec;
 };
 
 enum pango_markup_config {
