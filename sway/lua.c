@@ -114,6 +114,11 @@ static int scroll_command_error(lua_State *L, const char *error) {
 	return 1;
 }
 
+static void workspace_consider_destroy_iter(struct sway_workspace *workspace,
+		void *data) {
+	workspace_consider_destroy(workspace);
+}
+
 // scroll.command(container|workspace|nil, command)
 static int scroll_command(lua_State *L) {
 	int argc = lua_gettop(L);
@@ -160,6 +165,8 @@ static int scroll_command(lua_State *L) {
 		lua_rawseti(L, -2, i + 1);
 	}
 	free(cmd);
+	// Garbage collection of empty workspaces
+	root_for_each_workspace(workspace_consider_destroy_iter, NULL);
 	return 1;
 }
 

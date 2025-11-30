@@ -193,7 +193,7 @@ void workspace_consider_destroy(struct sway_workspace *ws) {
 	struct sway_workspace *sibling = NULL;
 	if (ws->split.split != WORKSPACE_SPLIT_NONE) {
 		sibling = ws->split.sibling;
-		if (sibling->tiling->length | sibling->floating->length) {
+		if (sibling->tiling->length || sibling->floating->length) {
 			return;
 		}
 		if (sibling->output && output_get_active_workspace(sibling->output) == sibling) {
