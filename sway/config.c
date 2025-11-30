@@ -577,6 +577,11 @@ bool load_main_config(const char *file, bool is_active, bool validating) {
 				old_config->xwayland ? "enabled" : "disabled");
 		config->xwayland = old_config->xwayland;
 
+		// xwayland_output_scale can only be enabled/disabled at launch
+		sway_log(SWAY_DEBUG, "xwayland_output_scale will remain %s",
+				old_config->xwayland_output_scale ? "enabled" : "disabled");
+		config->xwayland_output_scale = old_config->xwayland_output_scale;
+
 		// primary_selection can only be enabled/disabled at launch
 		sway_log(SWAY_DEBUG, "primary_selection will remain %s",
 				old_config->primary_selection ? "enabled" : "disabled");

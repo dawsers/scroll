@@ -35,7 +35,7 @@ static void output_send_details(struct sway_xdg_output_v1 *xdg_output,
 #endif
 
 	int32_t x, y, width, height;
-	if (!xserver) {
+	if (!xserver || config->xwayland_output_scale) {
 		x = xdg_output->x;
 		y = xdg_output->y;
 		width = xdg_output->width;
