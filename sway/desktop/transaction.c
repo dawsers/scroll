@@ -904,6 +904,7 @@ static void arrange_container(struct sway_container *con,
 			sway_scene_node_set_position(&con->view->scene_tree->node, 0, 0);
 			sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
 			sway_scene_node_set_enabled(&con->decoration.full->node, false);
+			sway_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
 			return;
 		}
 		double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;

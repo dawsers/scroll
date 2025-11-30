@@ -1472,6 +1472,7 @@ void container_set_fullscreen_layout(struct sway_container *con,
 	container_set_fullscreen_application(con, mode);
 	con->pending.fullscreen_layout = mode;
 	if (con->pending.parent) {
+		node_set_dirty(&con->node);
 		con = con->pending.parent;
 	}
 	con->pending.fullscreen_layout = mode;

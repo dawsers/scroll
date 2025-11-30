@@ -902,12 +902,18 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	container_update_representation(container);
 
 	if (fullscreen) {
-		container_set_fullscreen(view->container, FULLSCREEN_WORKSPACE);
-		arrange_workspace(view->container->pending.workspace);
-	} else {
-		if (container->pending.workspace) {
-			arrange_workspace(container->pending.workspace);
+		switch (config->fullscreen_on_request) {
+		case FULLSCREEN_REQUEST_DEFAULT:
+		default:
+			container_set_fullscreen(container, FULLSCREEN_WORKSPACE);
+			break;
+		case FULLSCREEN_REQUEST_LAYOUT:
+			container_set_fullscreen_layout(container, FULLSCREEN_ENABLED);
+			break;
 		}
+	}
+	if (container->pending.workspace) {
+		arrange_workspace(container->pending.workspace);
 	}
 
 	view_execute_criteria(view);
