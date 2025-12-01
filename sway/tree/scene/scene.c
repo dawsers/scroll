@@ -2119,7 +2119,9 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			.swap_xy = swap_xy,
 			.flip_x = flip_x,
 			.flip_y = flip_y,
-			.radius_top = round(scene_shadow->decoration->title_bar_border_radius * data->scale),
+			.radius_top = round((scene_shadow->decoration->title_bar ?
+				scene_shadow->decoration->title_bar_border_radius :
+				scene_shadow->decoration->border_radius) * data->scale),
 			.radius_bottom = round(scene_shadow->decoration->border_radius * data->scale),
 			.enabled = scene_shadow->enabled,
 			.blur = scene_shadow->blur,

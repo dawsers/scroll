@@ -223,7 +223,8 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 		}
 	}
 
-	setup_blending(!texture->has_alpha && alpha == 1.0 ?
+	setup_blending(!texture->has_alpha && alpha == 1.0 &&
+		options->radius_top == 0.0f && options->radius_bottom == 0.0f ?
 		WLR_RENDER_BLEND_MODE_NONE : options->blend_mode);
 
 	glUseProgram(shader->program);
