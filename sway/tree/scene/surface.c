@@ -238,7 +238,7 @@ void sway_scene_surface_reconfigure(struct sway_scene_surface *scene_surface) {
 		pixman_region32_intersect_rect(&opaque, &opaque, 0, 0, width, height);
 	}
 
-	if (width <= 0 || height <= 0 || (src_box.width <= 1.0 && src_box.height <= 1.0)) {
+	if (width <= 0 || height <= 0 || (src_box.width < 1.0 && src_box.height < 1.0)) {
 		sway_scene_buffer_set_buffer(scene_buffer, NULL);
 		pixman_region32_fini(&opaque);
 		return;
