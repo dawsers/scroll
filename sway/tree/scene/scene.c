@@ -1788,8 +1788,10 @@ static bool scene_node_at_iterator(struct sway_scene_node *node,
 		struct sway_view *view = scene_decoration->view;
 		struct sway_container *con = view->container;
 		if (con) {
-			struct sway_workspace *workspace = con->pending.workspace;
-			double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+			double scale = view_get_total_scale(view);
+			if (scale <= 0.0) {
+				scale = 1.0;
+			}
 			const double cx = rx / scale + con->pending.x - con->pending.content_x;
 			const double cy = ry / scale + con->pending.y - con->pending.content_y;
 			if (cx > 0.0 && cx < con->pending.content_width &&
