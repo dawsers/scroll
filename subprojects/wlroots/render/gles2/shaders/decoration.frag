@@ -37,8 +37,8 @@ float fw2(float r, vec2 p) {
 vec4 circumference(vec2 p, float r, vec4 c) {
     float d = length(p);
     vec4 color = antialias(d, r, r + border_width, fw2(d, p), c);
-	if (dim && color.a <= 0.0) {
-		return dim_color;
+	if (dim && d < r + 1.0) {
+		return mix(dim_color, color, color.a);
 	}
 	return color;
 }
