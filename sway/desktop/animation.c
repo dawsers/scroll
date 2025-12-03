@@ -182,7 +182,6 @@ void animation_create() {
 	animation->config.window_open = NULL;
 	animation->config.window_move = NULL;
 	animation->config.window_size = NULL;
-	animation->config.window_update = NULL;
 	animation->config.workspace_switch = NULL;
 
 	config_default_animation_callbacks();
@@ -201,9 +200,6 @@ void animation_destroy() {
 		}
 		if (animation->config.workspace_switch) {
 			animation_path_destroy(animation->config.workspace_switch);
-		}
-		if (animation->config.window_update) {
-			animation_path_destroy(animation->config.window_update);
 		}
 		if (animation->config.window_size) {
 			animation_path_destroy(animation->config.window_size);
@@ -298,9 +294,6 @@ void animation_set_type(enum sway_animation_type anim) {
 		break;
 	case ANIMATION_WINDOW_MOVE:
 		animation->pending.path = animation->config.window_move;
-		break;
-	case ANIMATION_WINDOW_UPDATE:
-		animation->pending.path = animation->config.window_update;
 		break;
 	case ANIMATION_WORKSPACE_SWITCH:
 		animation->pending.path = animation->config.workspace_switch;

@@ -365,7 +365,6 @@ sway_cmd animations_cmd_style;
 sway_cmd animations_cmd_window_open;
 sway_cmd animations_cmd_window_move;
 sway_cmd animations_cmd_window_size;
-sway_cmd animations_cmd_window_update;
 sway_cmd animations_cmd_workspace_switch;
 
 #endif

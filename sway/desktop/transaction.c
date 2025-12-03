@@ -1739,7 +1739,6 @@ static void set_instruction_ready(
 	}
 
 	instruction->node->instruction = NULL;
-	animation_set_type(ANIMATION_WINDOW_UPDATE);
 	transaction_progress();
 }
 

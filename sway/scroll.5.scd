@@ -103,10 +103,6 @@ The following commands may only be used in the configuration file.
 	config. It is the curve for windows resizing (_cycle_size_, _set_size_,
 	_fit_size_, and _resize_ commands).
 
-	*window_update* enabled [duration] [var animation curve] [off animation curve]
-	Default is not defined, so it uses _default_ unless you set one up in your
-	config. It is the curve for a client window requesting an update.
-
 	*workspace_switch* enabled [duration] [var animation curve] [off animation curve]
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve for workspace switching animations.

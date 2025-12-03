@@ -13,7 +13,6 @@ static const struct cmd_handler animations_config_handlers[] = {
 	{ "window_move", animations_cmd_window_move },
 	{ "window_open", animations_cmd_window_open },
 	{ "window_size", animations_cmd_window_size },
-	{ "window_update", animations_cmd_window_update },
 	{ "workspace_switch", animations_cmd_workspace_switch },
 };
 
@@ -156,15 +155,6 @@ struct cmd_results *animations_cmd_window_size(int argc, char **argv) {
 	}
 	struct sway_animation_config *config = animation_get_config();
 	return parse_animation_curve(argc, argv, &config->window_size);
-}
-
-struct cmd_results *animations_cmd_window_update(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "window_update", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->window_update);
 }
 
 struct cmd_results *animations_cmd_workspace_switch(int argc, char **argv) {
