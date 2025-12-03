@@ -13,6 +13,9 @@ struct sway_xdg_output_v1 {
 	int32_t x, y;
 	int32_t width, height;
 
+	int32_t p_x, p_y;
+	int32_t p_width, p_height;
+
 	struct {
 		struct wl_listener destroy;
 		struct wl_listener description;

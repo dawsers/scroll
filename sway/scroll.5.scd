@@ -631,6 +631,28 @@ set|plus|minus|toggle <amount>
 	Use _increment_ with a delta value (for example 0.05 or -0.05) to increment
 	or decrement the current scale. Use _reset_ to recover the original scale.
 
+	Xwayland windows cannot be scaled to values under 1.0. This is a safeguard
+	to avoid issues. The reason is X11 windows are rendered position dependent,
+	unlike Wayland windows. This means each client stores the window location,
+	and has the notion of a display where all these windows are located at all
+	times. The virtual display has a maximum resolution given by a `int16_t`
+	value, effectively 16384x16384 pixels. Using content scaling with values
+	under 1.0 can make X windows too big for this maximum virtual canvas.
+	*scroll* can render those windows, but the underlying X server wouldn't
+	accept input to areas of them that fall outside of the virtual canvas,
+	creating strange issues. Another problem is the virtual canvas is the same
+	for *all* X windows, so having a couple of them tiled using zoomed out
+	content scaling could soon end up having the same problem.
+
+	Someone could say "then use a bigger virtual monitor so I can use scales
+	under 1.0". That would be an option, creating by default a bigger virtual
+	monitor when the X server asks for monitor sizes would work, but then it
+	would break full screen views, because the client would feed *scroll*
+	buffers of the size of that virtual	monitor.
+
+	If you want to have Xwayland windows at 1:1 physical monitor scale, read
+	about the option *xwayland_output_scale*.
+
 *scale_workspace* <exact number|increment number|reset|overview>
 	This command will scale the workspace to an _exact_ scale, or
 	incrementally by a delta value. If you want a useful automatic scale, use

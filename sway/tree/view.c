@@ -1397,9 +1397,17 @@ void view_set_content_scale(struct sway_view *view, float scale) {
 	} else if (scale > VIEW_MAX_CONTENT_SCALE) {
 		scale = VIEW_MAX_CONTENT_SCALE;
 	}
-	view->content_scale = scale;
-	arrange_container(view->container);
-	transaction_commit_dirty();
+#if WLR_HAS_XWAYLAND
+	// Safeguard for Xwayland windows.Read `man 5 scroll`: scale_content.
+	if (view->type == SWAY_VIEW_XWAYLAND && scale < 1.0f) {
+		scale = 1.0f;
+	}
+#endif
+	if (view->content_scale != scale) {
+		view->content_scale = scale;
+		arrange_container(view->container);
+		transaction_commit_dirty();
+	}
 }
 
 void view_increment_content_scale(struct sway_view *view, double increment) {

@@ -62,9 +62,20 @@ static void get_node_coords(struct wlr_xwayland_surface *xsurface, double *dx, d
 			float content_scale = view_get_content_scale(view);
 			scale = scale > 0.0 ? scale * content_scale : content_scale;
 		}
+		double xsurf_x, xsurf_y;
+		if (!config->xwayland_output_scale && ws->output) {
+			struct wlr_output_layout_output *layout_o = wlr_output_layout_get(root->output_layout, ws->output->wlr_output);
+			const double wlr_scale = layout_o->output->scale;
+			xsurf_x = round(layout_o->x + (xsurface->x - layout_o->p_x) / wlr_scale);
+			xsurf_y = round(layout_o->y + (xsurface->y - layout_o->p_y) / wlr_scale);
+			scale = scale > 0.0 ? scale * wlr_scale : wlr_scale;
+		} else {
+			xsurf_x = xsurface->x;
+			xsurf_y = xsurface->y;
+		}
 		if (scale > 0.0) {
-			x = con->pending.content_x + (xsurface->x - con->pending.content_x) * scale;
-			y = con->pending.content_y + (xsurface->y - con->pending.content_y) * scale;
+			x = con->pending.content_x + (xsurf_x - con->pending.content_x) * scale;
+			y = con->pending.content_y + (xsurf_y - con->pending.content_y) * scale;
 
 			if (container_is_floating(con)) {
 				// When we scale the workspace, this is how floating windows are
@@ -81,12 +92,24 @@ static void get_node_coords(struct wlr_xwayland_surface *xsurface, double *dx, d
 				y += coffsety;
 			}
 		} else {
-			x = xsurface->x;
-			y = xsurface->y;
+			x = xsurf_x;
+			y = xsurf_y;
 		}
 	} else {
-		x = xsurface->x;
-		y = xsurface->y;
+		double xsurf_x = xsurface->x;
+		double xsurf_y = xsurface->y;
+		if (!config->xwayland_output_scale) {
+			// Find the output
+			struct wlr_output *output = wlr_output_layout_output_at_physical(root->output_layout, xsurface->x, xsurface->y);
+			if (output) {
+				struct wlr_output_layout_output *layout_o = wlr_output_layout_get(root->output_layout, output);
+				const double wlr_scale = layout_o->output->scale;
+				xsurf_x = round(layout_o->x + (xsurface->x - layout_o->p_x) / wlr_scale);
+				xsurf_y = round(layout_o->y + (xsurface->y - layout_o->p_y) / wlr_scale);
+			}
+		}
+		x = xsurf_x;
+		y = xsurf_y;
 	}
 	*dx = x;
 	*dy = y;
@@ -340,6 +363,16 @@ static uint32_t configure(struct sway_view *view, double lx, double ly, int widt
 		return 0;
 	}
 
+	if (!config->xwayland_output_scale) {
+		if (view->container && view->container->pending.workspace) {
+			struct sway_output *output = view->container->pending.workspace->output;
+			if (output) {
+				struct wlr_output_layout_output *layout_o = wlr_output_layout_get(root->output_layout, output->wlr_output);
+				lx = round(layout_o->p_x + (lx - layout_o->x) * layout_o->output->scale);
+				ly = round(layout_o->p_y + (ly - layout_o->y) * layout_o->output->scale);
+			}
+		}
+	}
 	wlr_xwayland_surface_configure(xsurface, lx, ly, width, height);
 
 	// xwayland doesn't give us a serial for the configure
@@ -865,14 +898,15 @@ struct sway_view *view_from_wlr_xwayland_surface(
 		struct wlr_xwayland_surface *xsurface) {
 	struct wlr_xwayland_surface *xs = xsurface;
 	while (xs) {
-		if (xs->data) {
+		if (xs->data && ((struct sway_view *)(xs->data))->container) {
 			return xs->data;
 		}
 		xs = xs->parent;
 	}
 	if (xsurface) {
 		// We could be here if an unmanaged surface (a tooltip for example) is
-		// created without a parent view. Try to find the "parent" by checking PIDs
+		// created without a parent view, or with a "fake" view that doesn't
+		// have a container. Try to find the "parent" by checking PIDs
 		pid_t pid = xsurface->pid;
 		struct sway_container *con = root_find_container(find_container_by_pid, &pid);
 		if (con && con->view) {

@@ -70,6 +70,12 @@ must be separated by one space. For example:
 	Note that the left x-pos of eDP1 is 1600 = 3200/2 and the bottom y-pos is
 	1020 + (1800 / 2) = 1920 = 0 + 1920
 
+	Try to use positions bigger than 0. Xwayland windows are position dependent,
+	and any window located at negative coordinates will make the server think
+	it is outside of the view, and won't accept any input. If your configuration
+	uses negative coordinates for position, simply translate all your output
+	positions until no output uses negative coordinates.
+
 *output* <name> scale <factor> [force]
 	Scales the specified output by the specified scale _factor_. An integer is
 	recommended, but fractional values are also supported. You may be better

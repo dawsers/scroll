@@ -869,7 +869,7 @@ static void default_arrange_children(struct sway_workspace *workspace,
 	}
 }
 
-static void map_to_configure(double content_x, double content_y, double content_width,
+static void map_to_configure(struct sway_view *view, double content_x, double content_y, double content_width,
 		double content_height, int *cx, int *cy, int *cw, int *ch) {
 	// We need to match what we did in view_configure()
 	*cx = round(content_x);
@@ -878,6 +878,16 @@ static void map_to_configure(double content_x, double content_y, double content_
 	int ey = round(content_y + content_height);
 	*cw = ex - *cx;
 	*ch = ey - *cy;
+#if WLR_HAS_XWAYLAND
+	if (!config->xwayland_output_scale && view->container && view->container->pending.workspace) {
+		struct sway_output *output = view->container->pending.workspace->output;
+		if (output) {
+			struct wlr_output_layout_output *layout_o = wlr_output_layout_get(root->output_layout, output->wlr_output);
+			*cx = round(layout_o->p_x + (*cx - layout_o->x) * layout_o->output->scale);
+			*cy = round(layout_o->p_y + (*cy - layout_o->y) * layout_o->output->scale);
+		}
+	}
+#endif
 }
 
 static void animation_arrange_children(struct sway_workspace *workspace,
@@ -1018,11 +1028,11 @@ static void arrange_container(struct sway_container *con,
 			double t, x, y, off;
 			animation_get_values(&t, &x, &y, &off);
 			int pcx, pcy, pcw, pch;
-			map_to_configure(con->pending.content_x, con->pending.content_y,
+			map_to_configure(con->view, con->pending.content_x, con->pending.content_y,
 				con->pending.content_width, con->pending.content_height,
 				&pcx, &pcy, &pcw, &pch);
 			int ocx, ocy, ocw, och;
-			map_to_configure(con->old_content.x, con->old_content.y,
+			map_to_configure(con->view, con->old_content.x, con->old_content.y,
 				con->old_content.width, con->old_content.height,
 				&ocx, &ocy, &ocw, &och);
 			if (t >= 1.0 &&
@@ -1614,11 +1624,11 @@ static bool should_configure(struct sway_node *node,
 	// here those that come in the transaction.
 	if (node->sway_container->view->type == SWAY_VIEW_XWAYLAND) {
 		int cx, cy, cw, ch;
-		map_to_configure(cstate->content_x, cstate->content_y, cstate->content_width,
-			cstate->content_height, &cx, &cy, &cw, &ch);
+		map_to_configure(node->sway_container->view, cstate->content_x, cstate->content_y,
+			cstate->content_width, cstate->content_height, &cx, &cy, &cw, &ch);
 		int ix, iy, iw, ih;
-		map_to_configure(istate->content_x, istate->content_y, istate->content_width,
-			istate->content_height, &ix, &iy, &iw, &ih);
+		map_to_configure(node->sway_container->view, istate->content_x, istate->content_y,
+			istate->content_width, istate->content_height, &ix, &iy, &iw, &ih);
 		if (cx != ix || cy != iy || cw != iw || ch != ih) {
 			// Update old_content so we don't re-configure in arrange_container()
 			node->sway_container->old_content.x = istate->content_x;
@@ -1749,7 +1759,7 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 	struct sway_transaction_instruction *instruction =
 		view->container->node.instruction;
 	int ccx, ccy, ccw, cch;
-	map_to_configure(instruction->container_state.content_x, instruction->container_state.content_y,
+	map_to_configure(view, instruction->container_state.content_x, instruction->container_state.content_y,
 		instruction->container_state.content_width, instruction->container_state.content_height,
 		&ccx, &ccy, &ccw, &cch);
 	if (instruction != NULL &&

@@ -47,6 +47,7 @@ struct wlr_output_layout_output {
 	struct wlr_output *output;
 
 	int x, y;
+	int p_x, p_y;  // these are unscaled coordinates
 	struct wl_list link;
 
 	bool auto_configured;
@@ -79,6 +80,13 @@ struct wlr_output_layout_output *wlr_output_layout_get(
  */
 struct wlr_output *wlr_output_layout_output_at(
 	struct wlr_output_layout *layout, double lx, double ly);
+
+/**
+ * Get the output at the specified physical layout coordinates. Returns NULL if no
+ * output matches the coordinates.
+ */
+struct wlr_output *wlr_output_layout_output_at_physical(struct wlr_output_layout *layout,
+		double lx, double ly);
 
 /**
  * Add the output to the layout at the specified coordinates. If the output is

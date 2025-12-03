@@ -41,11 +41,10 @@ static void output_send_details(struct sway_xdg_output_v1 *xdg_output,
 		width = xdg_output->width;
 		height = xdg_output->height;
 	} else {
-		struct wlr_output *output = xdg_output->layout_output->output;
-		x = round(xdg_output->x * output->scale);
-		y = round(xdg_output->y * output->scale);
-		width = xdg_output->layout_output->output->width;
-		height = xdg_output->layout_output->output->height;
+		x = xdg_output->p_x;
+		y = xdg_output->p_y;
+		width = xdg_output->p_width;
+		height = xdg_output->p_height;
 	}
 	zxdg_output_v1_send_logical_position(resource,
 		x, y);
@@ -63,6 +62,8 @@ static void output_update(struct sway_xdg_output_v1 *xdg_output) {
 	if (layout_output->x != xdg_output->x || layout_output->y != xdg_output->y) {
 		xdg_output->x = layout_output->x;
 		xdg_output->y = layout_output->y;
+		xdg_output->p_x = layout_output->p_x;
+		xdg_output->p_y = layout_output->p_y;
 		updated = true;
 	}
 
@@ -71,6 +72,8 @@ static void output_update(struct sway_xdg_output_v1 *xdg_output) {
 	if (xdg_output->width != width || xdg_output->height != height) {
 		xdg_output->width = width;
 		xdg_output->height = height;
+		wlr_output_transformed_resolution(layout_output->output,
+			&xdg_output->p_width, &xdg_output->p_height);
 		updated = true;
 	}
 
