@@ -345,6 +345,7 @@ void sway_scene_surface_reconfigure(struct sway_scene_surface *scene_surface) {
 			&surface->buffer->base, &options);
 
 		if (syncobj_surface_state != NULL &&
+			syncobj_surface_state->release_timeline != NULL &&
 				(surface->current.committed & WLR_SURFACE_STATE_BUFFER &&
 				 surface->buffer->source != NULL)) {
 			wlr_linux_drm_syncobj_v1_state_signal_release_with_buffer(syncobj_surface_state,
