@@ -1516,11 +1516,12 @@ static void clip_view(struct sway_view *view) {
 		view_get_animation_sizes(view, &wt, &ht);
 		double content_scale = view_is_content_scaled(view) ?
 			view_get_content_scale(view) : 1.0;
+		// clip == {0) means no clipping, so use at least 1
 		struct wlr_box clip = {
 			.x = view->geometry.x,
 			.y = view->geometry.y,
-			.width = round(wt / content_scale),
-			.height = round(ht / content_scale)
+			.width = MAX(1, round(wt / content_scale)),
+			.height = MAX(1, round(ht / content_scale))
 		};
 		sway_scene_subsurface_tree_set_clip(&view->content_tree->node, &clip);
 	} else {
