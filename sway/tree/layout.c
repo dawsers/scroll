@@ -571,13 +571,17 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 		view->width_fraction = layout_get_default_width(workspace);
 		// Start the animation from the center of the workspace
 		view->current.x = workspace->x + 0.5 * workspace->width;
+		view->pending.x = view->current.x;
 		parent->current.x = view->current.x;
+		parent->pending.x = view->current.x;
 	}
 	parent->width_fraction = view->width_fraction;
 	if (view->height_fraction <= 0.0) {
 		view->height_fraction = layout_get_default_height(workspace);
 		view->current.y = workspace->y + 0.5 * workspace->height;
+		view->pending.y = view->current.y;
 		parent->current.y = view->current.y;
+		parent->pending.y = view->current.y;
 	}
 	parent->height_fraction = view->height_fraction;
 	// Insert the container

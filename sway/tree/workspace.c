@@ -127,6 +127,13 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 	output_add_workspace(output, ws);
 	output_sort_workspaces(output);
 
+	struct wlr_box *area = workspace_get_output_usable_area(ws);
+	ws->width = area->width;
+	ws->height = area->height;
+	ws->x = output->lx + area->x;
+	ws->y = output->ly + area->y;
+	workspace_add_gaps(ws);
+
 	ipc_event_workspace(NULL, ws, "init");
 	wl_signal_emit_mutable(&root->events.new_node, &ws->node);
 
