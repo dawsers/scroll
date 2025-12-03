@@ -98,7 +98,7 @@ void animation_set_type(enum sway_animation_type anim);
 void animation_begin();
 
 // Ends the current animation
-//void animation_end();
+void animation_end();
 
 // Animates one frame for output
 void animation_animate(struct wlr_output *output);

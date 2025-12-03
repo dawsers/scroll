@@ -771,6 +771,8 @@ static void add_delta_to_containers(list_t *containers,
 }
 
 static void animate_workspace_switch(struct sway_workspace *from, struct sway_workspace *to) {
+	animation_end();
+	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	struct workspace_switch_data *data = malloc(sizeof(struct workspace_switch_data));
 	data->from = from;
 	data->to = to;
@@ -826,7 +828,6 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	}
 	seat_set_focus(seat, next);
 
-	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	if (old_ws != workspace && old_ws->output == workspace->output &&
 		workspace->split.sibling != old_ws &&
 		animation_enabled()) {

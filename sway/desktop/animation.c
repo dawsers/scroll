@@ -444,6 +444,10 @@ static void stop_animation() {
 	}
 }
 
+void animation_end() {
+	stop_animation();
+}
+
 // Begin the pending animation
 void animation_begin() {
 	stop_animation();
