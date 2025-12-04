@@ -1476,7 +1476,8 @@ void container_set_fullscreen_layout(struct sway_container *con,
 		con = con->pending.parent;
 	}
 	con->pending.fullscreen_layout = mode;
-	output_layer_shell_enable(workspace->output, LAYER_SHELL_OVERLAY);
+	output_layer_shell_enable(workspace->output,
+		mode == FULLSCREEN_ENABLED ? LAYER_SHELL_OVERLAY : LAYER_SHELL_ALL);
 	arrange_workspace(workspace);
 	node_set_dirty(&workspace->node);
 	node_set_dirty(&con->node);
