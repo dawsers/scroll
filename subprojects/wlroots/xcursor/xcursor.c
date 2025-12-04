@@ -602,7 +602,7 @@ xcursor_build_fullname(const char *dir, const char *subdir, const char *file)
 static const char *
 xcursor_next_path(const char *path)
 {
-	char *colon = strchr(path, ':');
+	const char *colon = strchr(path, ':');
 
 	if (!colon)
 		return NULL;
