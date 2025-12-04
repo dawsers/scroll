@@ -78,7 +78,9 @@ struct cmd_results *cmd_toggle_size(int argc, char **argv) {
 		if (container_is_floating(current)) {
 			return cmd_results_new(CMD_INVALID, "Cannot toggle_size floating containers");
 		}
+		animation_set_type(ANIMATION_WINDOW_SIZE);
 		layout_toggle_size_container(current, width_fraction, height_fraction);
+		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 	const char usage[] = "Expected 'toggle_size <this|active|all|reset> <width_fraction> <height_fraction>'";
 
