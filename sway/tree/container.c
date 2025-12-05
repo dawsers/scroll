@@ -9,6 +9,7 @@
 #include <wlr/types/wlr_subcompositor.h>
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
+#include "sway/desktop/animation.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 #include "sway/ipc-server.h"
@@ -1261,6 +1262,8 @@ static void container_fullscreen_workspace(struct sway_container *con) {
 				"Expected a non-fullscreen container")) {
 		return;
 	}
+	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
+
 	con->pending.fullscreen_mode = FULLSCREEN_WORKSPACE;
 	con->fullscreen = true;
 
@@ -1295,6 +1298,7 @@ static void container_fullscreen_global(struct sway_container *con) {
 				"Expected a non-fullscreen container")) {
 		return;
 	}
+	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
 
 	root->fullscreen_global = con;
 	con->saved_x = con->pending.x;
@@ -1320,6 +1324,7 @@ void container_fullscreen_disable(struct sway_container *con) {
 				"Expected a fullscreen container")) {
 		return;
 	}
+	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
 
 	if (container_is_floating(con)) {
 		con->pending.x = con->saved_x;
@@ -1469,13 +1474,16 @@ void container_set_fullscreen_layout(struct sway_container *con,
 	if (layout_scale_enabled(workspace)) {
 		return;
 	}
+	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
+
 	container_set_fullscreen_application(con, mode);
 	con->pending.fullscreen_layout = mode;
 	if (con->pending.parent) {
 		node_set_dirty(&con->node);
 		con = con->pending.parent;
+		con->pending.fullscreen_application = mode;
+		con->pending.fullscreen_layout = mode;
 	}
-	con->pending.fullscreen_layout = mode;
 	output_layer_shell_enable(workspace->output,
 		mode == FULLSCREEN_ENABLED ? LAYER_SHELL_OVERLAY : LAYER_SHELL_ALL);
 	arrange_workspace(workspace);

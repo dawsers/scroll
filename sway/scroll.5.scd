@@ -98,14 +98,26 @@ The following commands may only be used in the configuration file.
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve for windows opening.
 
+	*window_fullscreen* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the curve for (un)setting windows full screen.
+
 	*window_size* enabled [duration] [var animation curve] [off animation curve]
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve for windows resizing (_cycle_size_, _set_size_,
-	_fit_size_, and _resize_ commands).
+	_fit_size_, _toggle_size_ and _resize_ commands).
 
 	*workspace_switch* enabled [duration] [var animation curve] [off animation curve]
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve for workspace switching animations.
+
+	*overview* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the curve used when turning on/off overview mode.
+
+	*jump* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the curve used when starting/ending jump mode.
 
 	Format of an animation curve:
 

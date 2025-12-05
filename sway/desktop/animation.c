@@ -181,8 +181,11 @@ void animation_create() {
 	list_free_items_and_destroy(default_points);
 	animation->config.window_open = NULL;
 	animation->config.window_move = NULL;
+	animation->config.window_fullscreen = NULL;
 	animation->config.window_size = NULL;
 	animation->config.workspace_switch = NULL;
+	animation->config.overview = NULL;
+	animation->config.jump = NULL;
 
 	config_default_animation_callbacks();
 	animation->current.callbacks = animation->default_callbacks;
@@ -192,11 +195,17 @@ void animation_create() {
 
 void animation_destroy() {
 	if (animation) {
-		if (animation->timer) {
+		if (root && animation->timer) {
 			wl_event_source_remove(animation->timer);
 		}
 		if (animation->outputs) {
 			list_free(animation->outputs);
+		}
+		if (animation->config.jump) {
+			animation_path_destroy(animation->config.jump);
+		}
+		if (animation->config.overview) {
+			animation_path_destroy(animation->config.overview);
 		}
 		if (animation->config.workspace_switch) {
 			animation_path_destroy(animation->config.workspace_switch);
@@ -206,6 +215,9 @@ void animation_destroy() {
 		}
 		if (animation->config.window_move) {
 			animation_path_destroy(animation->config.window_move);
+		}
+		if (animation->config.window_fullscreen) {
+			animation_path_destroy(animation->config.window_fullscreen);
 		}
 		if (animation->config.window_open) {
 			animation_path_destroy(animation->config.window_open);
@@ -295,8 +307,17 @@ void animation_set_type(enum sway_animation_type anim) {
 	case ANIMATION_WINDOW_MOVE:
 		animation->pending.path = animation->config.window_move;
 		break;
+	case ANIMATION_WINDOW_FULLSCREEN:
+		animation->pending.path = animation->config.window_fullscreen;
+		break;
 	case ANIMATION_WORKSPACE_SWITCH:
 		animation->pending.path = animation->config.workspace_switch;
+		break;
+	case ANIMATION_OVERVIEW:
+		animation->pending.path = animation->config.overview;
+		break;
+	case ANIMATION_JUMP:
+		animation->pending.path = animation->config.jump;
 		break;
 	}
 }
@@ -581,6 +602,8 @@ static void animation_curve_get_values(struct sway_animation_curve *curve, doubl
 		*x = 1.0; *y = 0.0;
 		*scale = 0.0;
 		return;
+	} else if (t_off < 0.0) {
+		t_off = 0.0;
 	}
 	if (curve->off.n > 0) {
 		lookup_xy(&curve->off, t_off, x, y);

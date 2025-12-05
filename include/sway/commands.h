@@ -362,9 +362,12 @@ sway_cmd animations_cmd_enabled;
 sway_cmd animations_cmd_default;
 sway_cmd animations_cmd_frequency;
 sway_cmd animations_cmd_style;
+sway_cmd animations_cmd_window_fullscreen;
 sway_cmd animations_cmd_window_open;
 sway_cmd animations_cmd_window_move;
 sway_cmd animations_cmd_window_size;
 sway_cmd animations_cmd_workspace_switch;
+sway_cmd animations_cmd_overview;
+sway_cmd animations_cmd_jump;
 
 #endif

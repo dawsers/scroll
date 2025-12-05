@@ -266,10 +266,18 @@ void arrange_workspace(struct sway_workspace *workspace) {
 			workspace->x, workspace->y);
 	if (workspace->fullscreen) {
 		struct sway_container *fs = workspace->fullscreen;
-		fs->pending.x = output->lx;
-		fs->pending.y = output->ly;
-		fs->pending.width = output->width;
-		fs->pending.height = output->height;
+		if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+			struct wlr_box *box = &workspace->split.output_area;
+			fs->pending.x = box->x;
+			fs->pending.y = box->y;
+			fs->pending.width = box->width;
+			fs->pending.height = box->height;
+		} else {
+			fs->pending.x = output->lx;
+			fs->pending.y = output->ly;
+			fs->pending.width = output->width;
+			fs->pending.height = output->height;
+		}
 		arrange_container(fs);
 	} else {
 		struct wlr_box box;

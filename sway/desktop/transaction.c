@@ -284,10 +284,6 @@ static void disable_container(struct sway_container *con) {
 	}
 }
 
-static void arrange_container(struct sway_container *con,
-		double dwidth, double dheight, bool title_bar, int gaps,
-		struct sway_workspace *workspace);
-
 static double get_active_position_pin(struct sway_workspace *workspace,
 		enum sway_container_layout layout, list_t *children, int active_idx,
 		int gaps, float scale, struct sway_container *pin) {
@@ -665,10 +661,13 @@ static double compute_active_offset(struct sway_workspace *workspace,
 	}
 }
 
-static void default_arrange_children(struct sway_workspace *workspace,
+static void arrange_container(struct sway_container *con,
+		bool title_bar, int gaps, struct sway_workspace *workspace);
+
+static void arrange_children(struct sway_workspace *workspace,
 		enum sway_container_layout layout, list_t *children,
 		struct sway_container *active, struct sway_scene_tree *content,
-		int width, int height, int gaps) {
+		int gaps) {
 
 	if (children->length == 0) {
 		return;
@@ -712,8 +711,6 @@ static void default_arrange_children(struct sway_workspace *workspace,
 		}
 	}
 
-	double t, x, y, anim_scale;
-	animation_get_values(&t, &x, &y, &anim_scale);
 	if (layout == L_VERT) {
 		double off = offset;
 		for (int i = active_idx; i < children->length; ++i) {
@@ -722,70 +719,32 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			if (parent && parent->jump.jumping) {
 				off = child->pending.y;
 			}
-			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
-			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
-			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
-			double movement = fabs(off - child->animation.y0);
-			if (movement > 0.0) {
-				child->animation.yt = linear_scale(child->animation.y0, off, x);
-				animation_set_animation_enabled(true);
-			} else if (fabs(child->pending.x - child->animation.x0) > 0.0) {
-				child->animation.yt = child->animation.y0 + y * anim_scale * workspace->height;
-			} else {
-				child->animation.yt = child->animation.y0;
-				animation_set_animation_enabled(false);
-			}
-			sway_scene_node_set_position(&child->scene_tree->node, 0, child->animation.yt - workspace->y);
-			child->current.y = off;
-			child->pending.y = off;
+			child->current.y = child->pending.y = off;
 			if (parent) {
 				child->current.x = parent->current.x;
 				child->pending.x = parent->pending.x;
 			} else {
-				child->current.x = workspace->x + scale * gaps;
-				child->pending.x = workspace->x + scale * gaps;
+				child->current.x = child->pending.x = workspace->x + scale * gaps;
 			}
-			sway_scene_node_reparent(&child->scene_tree->node, content);
-			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
-			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
-			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
+			arrange_container(child, true, gaps, workspace);
 			off += scale * (child->pending.height + 2 * gaps);
 		}
 		off = offset;
 		for (int i = active_idx - 1; i >= 0; i--) {
 			struct sway_container *child = children->items[i];
 			struct sway_container *parent = child->pending.parent;
-			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
-			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			off -= scale * (child->pending.height + 2 * gaps);
 			if (parent && parent->jump.jumping) {
 				off = child->pending.y;
 			}
-			child->current.y = off;
-			child->pending.y = off;
+			child->current.y = child->pending.y = off;
 			if (parent) {
 				child->current.x = parent->current.x;
 				child->pending.x = parent->pending.x;
 			} else {
-				child->current.x = workspace->x + scale * gaps;
-				child->pending.x = workspace->x + scale * gaps;
+				child->current.x = child->pending.x = workspace->x + scale * gaps;
 			}
-			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
-			double movement = fabs(off - child->animation.y0);
-			if (movement > 0.0) {
-				child->animation.yt = linear_scale(child->animation.y0, off, x);
-				animation_set_animation_enabled(true);
-			} else if (fabs(child->pending.x - child->animation.x0) > 0.0) {
-				child->animation.yt = child->animation.y0 + y * anim_scale * workspace->height;
-			} else {
-				child->animation.yt = child->animation.y0;
-				animation_set_animation_enabled(false);
-			}
-			sway_scene_node_set_position(&child->scene_tree->node, 0, child->animation.yt - workspace->y);
-			sway_scene_node_reparent(&child->scene_tree->node, content);
-			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
-			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
-			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
+			arrange_container(child, true, gaps, workspace);
 		}
 	} else if (layout == L_HORIZ) {
 		double off = offset;
@@ -795,74 +754,36 @@ static void default_arrange_children(struct sway_workspace *workspace,
 			if (parent && parent->jump.jumping) {
 				off = child->pending.x;
 			}
-			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
-			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
-			double movement = fabs(off - child->animation.x0);
-			if (movement > 0.0) {
-				child->animation.xt = linear_scale(child->animation.x0, off, x);
-				animation_set_animation_enabled(true);
-			} else if (fabs(child->pending.y - child->animation.y0) > 0.0) {
-				child->animation.xt = child->animation.x0 + y * anim_scale * workspace->width;
-			} else {
-				child->animation.xt = child->animation.x0;
-				animation_set_animation_enabled(false);
-			}
-			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
-			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
 			// Update child for next iteration. Transactions don't re-arrange
 			// the layout (arrange.c:apply_xxx()), so we need to set it here,
 			// otherwise the next call will have the positions wrong and the
 			// offset won't be optimal.
-			child->current.x = off;
-			child->pending.x = off;
+			child->current.x = child->pending.x = off;
 			if (parent) {
 				child->current.y = parent->current.y;
 				child->pending.y = parent->pending.y;
 			} else {
-				child->current.y = workspace->y + scale * gaps;
-				child->pending.y = workspace->y + scale * gaps;
+				child->current.y = child->pending.y = workspace->y + scale * gaps;
 			}
-			sway_scene_node_reparent(&child->scene_tree->node, content);
-			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
-			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
-			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
+			arrange_container(child, true, gaps, workspace);
 			off += scale * (child->pending.width + 2 * gaps);
 		}
 		off = offset;
 		for (int i = active_idx - 1; i >= 0; i--) {
 			struct sway_container *child = children->items[i];
 			struct sway_container *parent = child->pending.parent;
-			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
-			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			off -= scale * (child->pending.width + 2 * gaps);
 			if (parent && parent->jump.jumping) {
 				off = child->pending.x;
 			}
-			child->current.x = off;
-			child->pending.x = off;
+			child->current.x = child->pending.x = off;
 			if (parent) {
 				child->current.y = parent->current.y;
 				child->pending.y = parent->pending.y;
 			} else {
-				child->current.y = workspace->y + scale * gaps;
-				child->pending.y = workspace->y + scale * gaps;
+				child->current.y = child->pending.y = workspace->y + scale * gaps;
 			}
-			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
-			double movement = fabs(off - child->animation.x0);
-			if (movement > 0.0) {
-				child->animation.xt = linear_scale(child->animation.x0, off, x);
-				animation_set_animation_enabled(true);
-			} else if (fabs(child->pending.y - child->animation.y0) > 0.0) {
-				child->animation.xt = child->animation.x0 + y * anim_scale * workspace->width;
-			} else {
-				child->animation.xt = child->animation.x0;
-				animation_set_animation_enabled(false);
-			}
-			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
-			sway_scene_node_reparent(&child->scene_tree->node, content);
-			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
-			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
-			arrange_container(child, child->animation.wt, child->animation.ht, true, gaps, workspace);
+			arrange_container(child, true, gaps, workspace);
 		}
 	} else {
 		sway_assert(false, "unreachable");
@@ -890,11 +811,45 @@ static void map_to_configure(struct sway_view *view, double content_x, double co
 #endif
 }
 
-static void animation_arrange_children(struct sway_workspace *workspace,
+static void animation_update_container(struct sway_container *con,
+		int width, int height, double t, double x, double y, double anim_scale) {
+	const double off_x = con->pending.x;
+	const double off_y = con->pending.y;
+	con->animation.ht = fmax(1, linear_scale(con->animation.h0, con->animation.h1, t));
+	animation_set_animation_enabled(con->animation.h1 != con->animation.h0);
+	con->animation.wt = fmax(1, linear_scale(con->animation.w0, con->animation.w1, t));
+	animation_set_animation_enabled(con->animation.w1 != con->animation.w0);
+	sway_scene_node_set_enabled(&con->decoration.tree->node, true);
+	con->animation.xt = con->animation.x0;
+	animation_set_animation_enabled(false);
+	// 1.0 to account for rounding errors when the workspace is scaled
+	if (fabs(off_x - con->animation.x0) > 1.0) {
+		con->animation.xt += linear_scale(0.0, off_x - con->animation.x0, x);
+		animation_set_animation_enabled(true);
+	}
+	if (y != 0.0) {
+		con->animation.xt += y * anim_scale * width;
+		animation_set_animation_enabled(true);
+	}
+	con->animation.yt = con->animation.y0;
+	animation_set_animation_enabled(false);
+	if (fabs(off_y - con->animation.y0) > 1.0) {
+		con->animation.yt += linear_scale(0.0, off_y - con->animation.y0, x);
+		animation_set_animation_enabled(true);
+	}
+	if (y != 0.0) {
+		con->animation.yt += y * anim_scale * height;
+		animation_set_animation_enabled(true);
+	}
+	con->current.x = con->pending.x = off_x;
+	con->current.y = con->pending.y = off_y;
+}
+
+static void animate_children(struct sway_workspace *workspace,
 		enum sway_container_layout layout, list_t *children,
 		struct sway_scene_tree *content);
 
-static void arrange_container(struct sway_container *con,
+static void animate_view(struct sway_container *con,
 		double dwidth, double dheight, bool title_bar, int gaps,
 		struct sway_workspace *workspace) {
 	if (!root->filters.container_filter(workspace, con, root->filters.container_filter_data)) {
@@ -905,162 +860,185 @@ static void arrange_container(struct sway_container *con,
 	// make sure it's enabled for viewing
 	sway_scene_node_set_enabled(&con->scene_tree->node, true);
 
-	if (con->output_handler) {
-		sway_scene_buffer_set_dest_size(con->output_handler, dwidth, dheight);
+	if (con->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+		sway_scene_node_set_position(&con->view->scene_tree->node, 0, 0);
+		sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
+		sway_scene_node_set_enabled(&con->decoration.full->node, false);
+		sway_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
+		view_reconfigure(con->view);
+		return;
+	}
+	double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+	double border_top = container_titlebar_height() * scale;
+	double border_width = MAX(1, con->current.border_thickness * scale);
+	double width = scale * dwidth;
+	double height = scale * dheight;
+
+	if (title_bar && con->current.border != B_NORMAL) {
+		sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
 	}
 
-	if (con->view) {
-		if (con->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
-			sway_scene_node_set_position(&con->view->scene_tree->node, 0, 0);
-			sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
-			sway_scene_node_set_enabled(&con->decoration.full->node, false);
-			sway_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
-			return;
-		}
-		double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
-		double border_top = container_titlebar_height() * scale;
-		double border_width = MAX(1, con->current.border_thickness * scale);
-		double width = scale * dwidth;
-		double height = scale * dheight;
-
-		if (title_bar && con->current.border != B_NORMAL) {
-			sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
-		}
-
-		if (con->current.border == B_NORMAL) {
-			if (title_bar) {
-				arrange_title_bar(con, 0, 0, dwidth, border_top);
-			} else {
-				border_top = 0;
-				// should be handled by the parent container
-			}
-			border_top += border_width;
-		} else if (con->current.border == B_PIXEL) {
-			container_update(con);
-			border_top = title_bar && con->current.border_top ? border_width : 0;
-		} else if (con->current.border == B_NONE) {
-			container_update(con);
-			border_top = 0;
-			border_width = 0;
-		} else if (con->current.border == B_CSD) {
-			border_top = 0;
-			border_width = 0;
-			con->decoration.full->title_bar = false;
+	if (con->current.border == B_NORMAL) {
+		if (title_bar) {
+			arrange_title_bar(con, 0, 0, dwidth, border_top);
 		} else {
-			sway_assert(false, "unreachable");
+			border_top = 0;
+			// should be handled by the parent container
 		}
-
-		if (con->current.border != B_NORMAL || !title_bar) {
-			sway_scene_decoration_set_title_bar(con->decoration.full, false, 0, 0);
-		}
-
-		double border_left = con->current.border_left ? border_width : 0;
-		sway_scene_decoration_set_size(con->decoration.full, width, height);
-		sway_scene_decoration_set_border_width(con->decoration.full, border_width);
-		sway_scene_decoration_set_border_radius(con->decoration.full, con->pending.decoration.border_radius * scale);
-		double shadow_offset[2] = {
-			con->pending.decoration.shadow_offset_x,
-			con->pending.decoration.shadow_offset_y
-		};
-		sway_scene_node_set_enabled(&con->shadow->node, false);
-		struct sway_scene_decoration * decoration = con->decoration.full;
-		struct sway_scene_shadow *shadow = con->shadow;
-		double sx, sy, sw, sh;
-		const double size = con->pending.decoration.shadow_size;
-		if (con->pending.decoration.shadow_dynamic) {
-			// For a height (or width) of 0.5 root->height, compute ratio d/D so 
-			// height projected is height + 2 * size
-			double w = 0.5 * root->width * scale;
-			double h = 0.5 * root->height * scale;
-			double ratio = root->width >= root->height ?
-				h / (h + 2 * size * scale) :
-				w / (w + 2 * size * scale);
-			// Coordinates relative to center
-			double x = 0.5 * root->width - con->pending.x;
-			double y = 0.5 * root->height - con->pending.y;
-			double proj_x = 0.5 * root->width - x / ratio;
-			double proj_y = 0.5 * root->height - y / ratio;
-			sx = decoration->node.x + proj_x - con->pending.x;
-			sy = decoration->node.y + proj_y - con->pending.y;
-			sw = width / ratio;
-			sh = height / ratio;
-		} else {
-			sx = decoration->node.x + (shadow_offset[0] - size) * scale;
-			sy = decoration->node.y + (shadow_offset[1] - size) * scale;
-			sw = width + 2.0 * scale * (size);
-			sh = height + 2.0 * scale * (size);
-		}
-		sway_scene_node_set_position(&shadow->node, sx, sy);
-
-		float shadow_color[4] = {
-			con->pending.decoration.shadow_color_r,
-			con->pending.decoration.shadow_color_g,
-			con->pending.decoration.shadow_color_b,
-			con->pending.decoration.shadow_color_a,
-		};
-		sway_scene_shadow_set_properties(shadow, sw, sh,
-			con->pending.decoration.shadow, con->pending.decoration.shadow_dynamic,
-			con->pending.decoration.shadow_size,
-			con->pending.decoration.shadow_blur, shadow_offset, shadow_color);
-		sway_scene_node_set_enabled(&con->decoration.full->node, true);
-
-		// make sure to reparent, it's possible that the client just came out of
-		// fullscreen mode where the parent of the surface is not the container
-		sway_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
-		sway_scene_node_set_position(&con->view->scene_tree->node,
-			border_left, border_top);
-
-		sway_scene_node_set_enabled(&shadow->node, shadow->enabled);
-
-		// Update content geometry
-		view_autoconfigure(con->view);
-#if WLR_HAS_XWAYLAND
-		// Re-configure Xwayland views that change position. The reason is unlike
-		// sway, we update the positions of containers when the transaction is
-		// committed (instead of every time a arrange.c:arrange_XXX() happens.
-		// Views are configured before the transaction re-arranges containers,
-		// so their position may be wrong. This is especially important for
-		// Xwayland windows, because their buffers use absolute positions, and
-		// popup positions could then be wrong..
-		// Here we configure any view that has changed position.
-		if(con->view->type == SWAY_VIEW_XWAYLAND) {
-			// Only update the view at the end of the animation to avoid stress
-			double t, x, y, off;
-			animation_get_values(&t, &x, &y, &off);
-			int pcx, pcy, pcw, pch;
-			map_to_configure(con->view, con->pending.content_x, con->pending.content_y,
-				con->pending.content_width, con->pending.content_height,
-				&pcx, &pcy, &pcw, &pch);
-			int ocx, ocy, ocw, och;
-			map_to_configure(con->view, con->old_content.x, con->old_content.y,
-				con->old_content.width, con->old_content.height,
-				&ocx, &ocy, &ocw, &och);
-			if (t >= 1.0 &&
-				(pcx != ocx || pcy != ocy || pcw != ocw || pch != och)) {
-				view_configure(con->view, con->pending.content_x, con->pending.content_y,
-					con->pending.content_width, con->pending.content_height);
-				con->current.content_x = con->pending.content_x;
-				con->current.content_y = con->pending.content_y;
-				con->current.content_width = con->pending.content_width;
-				con->current.content_height = con->pending.content_height;
-			}
-		}
-#endif
-		view_reconfigure(con->view);
+		border_top += border_width;
+	} else if (con->current.border == B_PIXEL) {
+		container_update(con);
+		border_top = title_bar && con->current.border_top ? border_width : 0;
+	} else if (con->current.border == B_NONE) {
+		container_update(con);
+		border_top = 0;
+		border_width = 0;
+	} else if (con->current.border == B_CSD) {
+		border_top = 0;
+		border_width = 0;
+		con->decoration.full->title_bar = false;
 	} else {
+		sway_assert(false, "unreachable");
+	}
+
+	if (con->current.border != B_NORMAL || !title_bar) {
+		sway_scene_decoration_set_title_bar(con->decoration.full, false, 0, 0);
+	}
+
+	double border_left = con->current.border_left ? border_width : 0;
+	sway_scene_decoration_set_size(con->decoration.full, width, height);
+	sway_scene_decoration_set_border_width(con->decoration.full, border_width);
+	sway_scene_decoration_set_border_radius(con->decoration.full, con->pending.decoration.border_radius * scale);
+	double shadow_offset[2] = {
+		con->pending.decoration.shadow_offset_x,
+		con->pending.decoration.shadow_offset_y
+	};
+	sway_scene_node_set_enabled(&con->shadow->node, false);
+	struct sway_scene_decoration * decoration = con->decoration.full;
+	struct sway_scene_shadow *shadow = con->shadow;
+	double sx, sy, sw, sh;
+	const double size = con->pending.decoration.shadow_size;
+	if (con->pending.decoration.shadow_dynamic) {
+		// For a height (or width) of 0.5 root->height, compute ratio d/D so 
+		// height projected is height + 2 * size
+		double w = 0.5 * root->width * scale;
+		double h = 0.5 * root->height * scale;
+		double ratio = root->width >= root->height ?
+			h / (h + 2 * size * scale) :
+			w / (w + 2 * size * scale);
+		// Coordinates relative to center
+		double x = 0.5 * root->width - con->pending.x;
+		double y = 0.5 * root->height - con->pending.y;
+		double proj_x = 0.5 * root->width - x / ratio;
+		double proj_y = 0.5 * root->height - y / ratio;
+		sx = decoration->node.x + proj_x - con->pending.x;
+		sy = decoration->node.y + proj_y - con->pending.y;
+		sw = width / ratio;
+		sh = height / ratio;
+	} else {
+		sx = decoration->node.x + (shadow_offset[0] - size) * scale;
+		sy = decoration->node.y + (shadow_offset[1] - size) * scale;
+		sw = width + 2.0 * scale * (size);
+		sh = height + 2.0 * scale * (size);
+	}
+	sway_scene_node_set_position(&shadow->node, sx, sy);
+
+	float shadow_color[4] = {
+		con->pending.decoration.shadow_color_r,
+		con->pending.decoration.shadow_color_g,
+		con->pending.decoration.shadow_color_b,
+		con->pending.decoration.shadow_color_a,
+	};
+	sway_scene_shadow_set_properties(shadow, sw, sh,
+		con->pending.decoration.shadow, con->pending.decoration.shadow_dynamic,
+		con->pending.decoration.shadow_size,
+		con->pending.decoration.shadow_blur, shadow_offset, shadow_color);
+	sway_scene_node_set_enabled(&con->decoration.full->node, true);
+
+	// make sure to reparent, it's possible that the client just came out of
+	// fullscreen mode where the parent of the surface is not the container
+	sway_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
+	sway_scene_node_set_position(&con->view->scene_tree->node,
+		border_left, border_top);
+
+	sway_scene_node_set_enabled(&shadow->node, shadow->enabled);
+
+	// Update content geometry
+	view_autoconfigure(con->view);
+#if WLR_HAS_XWAYLAND
+	// Re-configure Xwayland views that change position. The reason is unlike
+	// sway, we update the positions of containers when the transaction is
+	// committed (instead of every time a arrange.c:arrange_XXX() happens.
+	// Views are configured before the transaction re-arranges containers,
+	// so their position may be wrong. This is especially important for
+	// Xwayland windows, because their buffers use absolute positions, and
+	// popup positions could then be wrong..
+	// Here we configure any view that has changed position.
+	if(con->view->type == SWAY_VIEW_XWAYLAND) {
+		// Only update the view at the end of the animation to avoid stress
+		double t, x, y, off;
+		animation_get_values(&t, &x, &y, &off);
+		int pcx, pcy, pcw, pch;
+		map_to_configure(con->view, con->pending.content_x, con->pending.content_y,
+			con->pending.content_width, con->pending.content_height,
+			&pcx, &pcy, &pcw, &pch);
+		int ocx, ocy, ocw, och;
+		map_to_configure(con->view, con->old_content.x, con->old_content.y,
+			con->old_content.width, con->old_content.height,
+			&ocx, &ocy, &ocw, &och);
+		if (t >= 1.0 &&
+			(pcx != ocx || pcy != ocy || pcw != ocw || pch != och)) {
+			view_configure(con->view, con->pending.content_x, con->pending.content_y,
+				con->pending.content_width, con->pending.content_height);
+			con->current.content_x = con->pending.content_x;
+			con->current.content_y = con->pending.content_y;
+			con->current.content_width = con->pending.content_width;
+			con->current.content_height = con->pending.content_height;
+		}
+	}
+#endif
+	view_reconfigure(con->view);
+}
+
+static void arrange_container(struct sway_container *con,
+		bool title_bar, int gaps, struct sway_workspace *workspace) {
+	if (!root->filters.container_filter(workspace, con, root->filters.container_filter_data)) {
+		sway_scene_node_set_enabled(&con->scene_tree->node, false);
+		return;
+	}
+	// this container might have previously been in the scratchpad,
+	// make sure it's enabled for viewing
+	sway_scene_node_set_enabled(&con->scene_tree->node, true);
+
+	if (con->view == NULL) {
 		// make sure to disable the title bar if the parent is not managing it
 		if (title_bar) {
 			sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
 		}
 
 		if (!root->filters.free_animation_activation_filter(workspace, root->filters.free_animation_activation_filter_data)) {
-			default_arrange_children(workspace, con->current.layout,
+			arrange_children(workspace, con->current.layout,
 				con->current.children, con->current.focused_inactive_child,
-				con->content_tree, dwidth, dheight, gaps);
-		} else {
-			animation_arrange_children(workspace, con->current.layout,
-				con->current.children, con->content_tree);
+				con->content_tree, gaps);
 		}
+	}
+}
+
+static void animate_container(struct sway_container *con,
+		double dwidth, double dheight, bool title_bar, int gaps,
+		struct sway_workspace *workspace) {
+	if (!root->filters.container_filter(workspace, con, root->filters.container_filter_data)) {
+		return;
+	}
+
+	if (con->output_handler) {
+		sway_scene_buffer_set_dest_size(con->output_handler, dwidth, dheight);
+	}
+
+	if (con->view) {
+		animate_view(con, dwidth, dheight, title_bar, gaps, workspace);
+	} else {
+		animate_children(workspace, con->current.layout, con->current.children, con->content_tree);
 	}
 }
 
@@ -1070,8 +1048,7 @@ static int container_get_gaps(struct sway_container *con) {
 }
 
 static void arrange_fullscreen(struct sway_scene_tree *tree,
-		struct sway_container *fs, struct sway_workspace *ws,
-		int width, int height) {
+		struct sway_container *fs, struct sway_workspace *ws) {
 	struct sway_scene_node *fs_node;
 	if (fs->view) {
 		fs_node = &fs->view->scene_tree->node;
@@ -1080,7 +1057,7 @@ static void arrange_fullscreen(struct sway_scene_tree *tree,
 		sway_scene_node_set_enabled(&fs->scene_tree->node, false);
 	} else {
 		fs_node = &fs->scene_tree->node;
-		arrange_container(fs, width, height, true, container_get_gaps(fs), fs->current.workspace);
+		arrange_container(fs, true, container_get_gaps(fs), fs->current.workspace);
 	}
 
 	if (ws) {
@@ -1098,15 +1075,42 @@ static void arrange_fullscreen(struct sway_scene_tree *tree,
 	}
 	sway_scene_node_reparent(fs_node, tree);
 	sway_scene_node_lower_to_bottom(fs_node);
-	if (ws && ws->split.split != WORKSPACE_SPLIT_NONE) {
-		struct sway_output *output = ws->output;
-		if (output) {
-			sway_scene_node_set_position(fs_node, ws->split.output_area.x - output->lx,
-				ws->split.output_area.y - output->ly);
-			return;
-		}
+}
+
+static void animate_fullscreen(struct sway_scene_tree *tree,
+		struct sway_container *fs, struct sway_workspace *ws) {
+	struct sway_scene_node *fs_node;
+	if (fs->view) {
+		fs_node = &fs->view->scene_tree->node;
+
+		// if we only care about the view, disable any decorations
+		sway_scene_node_set_enabled(&fs->scene_tree->node, false);
+	} else {
+		// We shouldn't be here
+		sway_assert(false, "Unreachable");
+		return;
 	}
-	sway_scene_node_set_position(fs_node, 0, 0);
+	if (ws && !ws->output) {
+		return;
+	}
+	double t, x, y, anim_scale;
+	animation_get_values(&t, &x, &y, &anim_scale);
+	animation_update_container(fs, fs->animation.w1, fs->animation.h1, t, x, y, anim_scale);
+	if (ws) {
+		struct sway_output *output = ws->output;
+		if (ws->split.split != WORKSPACE_SPLIT_NONE) {
+			sway_scene_node_set_position(&output->fullscreen_background->node, fs->animation.xt, fs->animation.yt);
+			sway_scene_rect_set_size(output->fullscreen_background, fs->animation.wt, fs->animation.ht);
+			sway_scene_node_set_position(fs_node, fs->animation.xt - output->lx, fs->animation.yt - output->ly);
+		} else {
+			sway_scene_node_set_position(&output->fullscreen_background->node, fs->animation.xt, fs->animation.yt);
+			sway_scene_rect_set_size(output->fullscreen_background, fs->animation.wt, fs->animation.ht);
+			sway_scene_node_set_position(fs_node, fs->animation.xt, fs->animation.yt);
+		}
+	} else {
+		sway_scene_node_set_position(fs_node, fs->animation.xt, fs->animation.yt);
+	}
+	view_reconfigure(fs->view);
 }
 
 static void arrange_workspace_floating(struct sway_workspace *ws) {
@@ -1140,23 +1144,43 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 		}
 
 		sway_scene_node_reparent(&floater->scene_tree->node, layer);
+		sway_scene_node_set_enabled(&floater->scene_tree->node, true);
+		sway_scene_node_set_enabled(&floater->decoration.tree->node, true);
+
+		arrange_container(floater, true, ws->gaps_inner, ws);
+	}
+}
+
+static void animate_workspace_floating(struct sway_workspace *ws) {
+	if (ws->current.floating->length == 0) {
+		return;
+	}
+	double t, x, y, anim_scale;
+	animation_get_values(&t, &x, &y, &anim_scale);
+
+	for (int i = 0; i < ws->current.floating->length; i++) {
+		struct sway_container *child = ws->current.floating->items[i];
+
+		if (child->current.fullscreen_mode != FULLSCREEN_NONE) {
+			continue;
+		}
+
+		animation_update_container(child, ws->width, ws->height, t, x, y, anim_scale);
+
 		if (layout_scale_enabled(ws)) {
 			const float scale = layout_scale_get(ws);
 			const double minx = ws->output->lx + 0.5 * ws->output->width * (1.0 - scale);
 			const double miny = ws->output->ly + 0.5 * ws->output->height * (1.0 - scale);
-			const double x = minx + scale * (floater->current.x - ws->output->lx);
-			const double y = miny + scale * (floater->current.y - ws->output->ly);
-			sway_scene_node_set_position(&floater->scene_tree->node, x, y);
+			const double x = minx + scale * (child->animation.xt - ws->output->lx);
+			const double y = miny + scale * (child->animation.yt - ws->output->ly);
+			sway_scene_node_set_position(&child->scene_tree->node, x, y);
 
 		} else {
-			sway_scene_node_set_position(&floater->scene_tree->node,
-				floater->current.x, floater->current.y);
+			sway_scene_node_set_position(&child->scene_tree->node,
+				child->animation.xt, child->animation.yt);
 		}
-		sway_scene_node_set_enabled(&floater->scene_tree->node, true);
-		sway_scene_node_set_enabled(&floater->decoration.tree->node, true);
 
-		arrange_container(floater, floater->current.width, floater->current.height,
-			true, ws->gaps_inner, ws);
+		animate_container(child, child->animation.wt, child->animation.ht, true, ws->gaps_inner, ws);
 	}
 }
 
@@ -1170,13 +1194,17 @@ static void arrange_workspace_tiling(struct sway_workspace *ws,
 		layout_overview_recompute_scale(ws, ws->gaps_inner);
 	}
 	if (!root->filters.free_animation_activation_filter(ws, root->filters.free_animation_activation_filter_data)) {
-		default_arrange_children(ws, layout_get_type(ws), ws->tiling,
+		arrange_children(ws, layout_get_type(ws), ws->tiling,
 			ws->current.focused_inactive_child, ws->layers.tiling,
-			width, height, ws->gaps_inner);
-	} else {
-		animation_arrange_children(ws, layout_get_type(ws), ws->tiling,
-			ws->layers.tiling);
+			ws->gaps_inner);
 	}
+}
+
+static void animate_workspace_tiling(struct sway_workspace *ws) {
+	if (ws->tiling->length == 0) {
+		return;
+	}
+	animate_children(ws, layout_get_type(ws), ws->tiling, ws->layers.tiling);
 }
 
 static void disable_workspace(struct sway_workspace *ws) {
@@ -1198,7 +1226,7 @@ static void disable_workspace(struct sway_workspace *ws) {
 	}
 }
 
-static void arrange_output(struct sway_output *output, int width, int height) {
+static void arrange_output(struct sway_output *output) {
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
@@ -1235,22 +1263,10 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 			if (fs) {
 				disable_workspace(child);
 
-				if (child->current.fullscreen) {
-					if (child->split.split != WORKSPACE_SPLIT_NONE) {
-						struct wlr_box *box = &child->split.output_area;
-						sway_scene_node_set_position(&output->fullscreen_background->node, box->x, box->y);
-						sway_scene_rect_set_size(output->fullscreen_background, box->width, box->height);
-					} else {
-						sway_scene_node_set_position(&output->fullscreen_background->node, 0, 0);
-						sway_scene_rect_set_size(output->fullscreen_background, width, height);
-					}
-
-					if (floating) {
-						arrange_workspace_floating(child);
-					}
-					arrange_fullscreen(child->layers.fullscreen, fs, child,
-						width, height);
+				if (floating) {
+					arrange_workspace_floating(child);
 				}
+				arrange_fullscreen(child->layers.fullscreen, fs, child);
 			} else {
 				struct wlr_box *area = workspace_get_output_usable_area(child);
 				struct side_gaps *gaps = &child->current_gaps;
@@ -1272,6 +1288,32 @@ static void arrange_output(struct sway_output *output, int width, int height) {
 			sway_scene_node_set_enabled(&child->layers.fullscreen->node, false);
 
 			disable_workspace(child);
+		}
+	}
+}
+
+static void animate_output(struct sway_output *output) {
+	for (int i = 0; i < output->current.workspaces->length; i++) {
+		struct sway_workspace *child = output->current.workspaces->items[i];
+
+		bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
+
+		if (activated) {
+			struct sway_container *fs = child->current.fullscreen;
+			bool floating = root->filters.workspace_floating_filter(child, root->filters.workspace_floating_filter_data);
+
+			if (fs) {
+				animate_fullscreen(child->layers.fullscreen, fs, child);
+			} else {
+				bool tiling = root->filters.workspace_tiling_filter(child, root->filters.workspace_tiling_filter_data);
+
+				if (tiling) {
+					animate_workspace_tiling(child);
+				}
+				if (floating) {
+					animate_workspace_floating(child);
+				}
+			}
 		}
 	}
 }
@@ -1339,8 +1381,7 @@ static void arrange_root(struct sway_root *root) {
 			}
 		}
 
-		arrange_fullscreen(root->layers.fullscreen_global, fs, NULL,
-			root->width, root->height);
+		arrange_fullscreen(root->layers.fullscreen_global, fs, NULL);
 	} else {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
@@ -1372,10 +1413,28 @@ static void arrange_root(struct sway_root *root) {
 			sway_scene_node_set_enabled(&output->layers.shell_top->node, output->layer_shell_mask & LAYER_SHELL_TOP);
 			sway_scene_node_set_enabled(&output->layers.shell_overlay->node, output->layer_shell_mask & LAYER_SHELL_OVERLAY);
 
-			arrange_output(output, output->width, output->height);
+			arrange_output(output);
 		}
 	}
 
+	arrange_popups(root->layers.popup);
+}
+
+static void animate_root(struct sway_root *root) {
+	struct sway_container *fs = root->fullscreen_global;
+
+	if (fs) {
+		animate_fullscreen(root->layers.fullscreen_global, fs, NULL);
+	} else {
+		for (int i = 0; i < root->outputs->length; i++) {
+			struct sway_output *output = root->outputs->items[i];
+			bool activated = root->filters.output_filter(output, root->filters.output_filter_data);
+			if (!output->enabled || !output->wlr_output->enabled || !activated) {
+				continue;
+			}
+			animate_output(output);
+		}
+	}
 	arrange_popups(root->layers.popup);
 }
 
@@ -1456,7 +1515,7 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	}
 }
 
-static void animation_arrange_children(struct sway_workspace *workspace,
+static void animate_children(struct sway_workspace *workspace,
 		enum sway_container_layout layout, list_t *children,
 		struct sway_scene_tree *content) {
 	if (children->length == 0) {
@@ -1473,15 +1532,16 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
 			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
-			double movement = fabs(off - child->animation.y0);
-			if (movement > 0.0) {
-				child->animation.yt = linear_scale(child->animation.y0, off, x);
+			child->animation.yt = child->animation.y0;
+			animation_set_animation_enabled(false);
+			// 1.0 to account for rounding errors when the workspace is scaled
+			if (fabs(off - child->animation.y0) > 1.0) {
+				child->animation.yt += linear_scale(0.0, off - child->animation.y0, x);
 				animation_set_animation_enabled(true);
-			} else if (fabs(child->pending.x - child->animation.x0) > 0.0) {
-				child->animation.yt = child->animation.y0 + y * anim_scale * workspace->height;
-			} else {
-				child->animation.yt = child->animation.y0;
-				animation_set_animation_enabled(false);
+			}
+			if (y != 0.0) {
+				child->animation.yt += y * anim_scale * workspace->height;
+				animation_set_animation_enabled(true);
 			}
 			sway_scene_node_set_position(&child->scene_tree->node, 0, child->animation.yt - workspace->y);
 			child->current.y = off;
@@ -1493,7 +1553,7 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			sway_scene_node_reparent(&child->scene_tree->node, content);
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
 			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
-			arrange_container(child, child->animation.wt, child->animation.ht, true, 0, workspace);
+			animate_container(child, child->animation.wt, child->animation.ht, true, 0, workspace);
 		}
 	} else if (layout == L_HORIZ) {
 		for (int i = 0; i < children->length; ++i) {
@@ -1502,15 +1562,15 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			struct sway_container *parent = child->pending.parent;
 			animation_set_animation_enabled(child->animation.w1 != child->animation.w0);
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
-			double movement = fabs(off - child->animation.x0);
-			if (movement > 0.0) {
-				child->animation.xt = linear_scale(child->animation.x0, off, x);
+			child->animation.xt = child->animation.x0;
+			animation_set_animation_enabled(false);
+			if (fabs(off - child->animation.x0) > 1.0) {
+				child->animation.xt += linear_scale(0.0, off - child->animation.x0, x);
 				animation_set_animation_enabled(true);
-			} else if (fabs(child->pending.y - child->animation.y0) > 0.0) {
-				child->animation.xt = child->animation.x0 + y * anim_scale * workspace->width;
-			} else {
-				child->animation.xt = child->animation.x0;
-				animation_set_animation_enabled(false);
+			}
+			if (y != 0.0) {
+				child->animation.xt += y * anim_scale * workspace->width;
+				animation_set_animation_enabled(true);
 			}
 			sway_scene_node_set_enabled(&child->decoration.tree->node, true);
 			sway_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
@@ -1527,7 +1587,7 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 			sway_scene_node_reparent(&child->scene_tree->node, content);
 			animation_set_animation_enabled(child->animation.h1 != child->animation.h0);
 			child->animation.ht = fmax(1, linear_scale(child->animation.h0, child->animation.h1, t));
-			arrange_container(child, child->animation.wt, child->animation.ht, true, 0, workspace);
+			animate_container(child, child->animation.wt, child->animation.ht, true, 0, workspace);
 		}
 	} else {
 		sway_assert(false, "unreachable");
@@ -1535,7 +1595,7 @@ static void animation_arrange_children(struct sway_workspace *workspace,
 }
 
 static void animation_callback(void *data) {
-	arrange_root(root);
+	animate_root(root);
 }
 
 static void animation_callback_end(void *data) {
@@ -1564,6 +1624,8 @@ static void transaction_progress(void) {
 	}
 	set_animation_data(server.queued_transaction);
 	transaction_apply(server.queued_transaction);
+	animation_end();
+	arrange_root(root);
 	animation_begin();
 	cursor_rebase_all();
 	transaction_destroy(server.queued_transaction);

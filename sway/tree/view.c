@@ -1469,9 +1469,7 @@ static void view_get_animation_sizes(struct sway_view *view, double *wt, double 
 	struct sway_container *con = view->container;
 	int border_horiz, border_vert;
 	container_get_borders(con, &border_horiz, &border_vert);
-	if (animation_enabled() &&
-		view->container->pending.fullscreen_mode == FULLSCREEN_NONE &&
-		!container_is_floating(view->container)) {
+	if (animation_enabled()) {
 		*wt = MAX(con->animation.wt - border_horiz, 0.0);
 		*ht = MAX(con->animation.ht - border_vert, 0.0);
 	} else {
@@ -1482,9 +1480,8 @@ static void view_get_animation_sizes(struct sway_view *view, double *wt, double 
 
 void view_get_animation_scales(struct sway_view *view,
 		double *wscale, double *hscale) {
-	if (view && view->container && view->container->pending.fullscreen_mode == FULLSCREEN_NONE &&
-		animation_get_config()->style == ANIM_STYLE_SCALE &&
-		!container_is_floating(view->container)) {
+	if (view && view->container &&
+		animation_get_config()->style == ANIM_STYLE_SCALE) {
 		struct sway_container *con = view->container;
 		int border_horiz, border_vert;
 		container_get_borders(con, &border_horiz, &border_vert);

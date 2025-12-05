@@ -13,6 +13,7 @@
 #include "wlr/types/wlr_cursor.h"
 #include "sway/ipc-server.h"
 #include <libevdev/libevdev.h>
+#include "sway/desktop/animation.h"
 
 struct sway_trails {
 	list_t *trails;
@@ -256,6 +257,7 @@ void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_o
 		// container_toggle_jump_decoration() needs the correct scale.
 		layout_overview_recompute_scale(workspace, workspace->gaps_inner);
 	}
+	animation_set_type(ANIMATION_OVERVIEW);
 	ipc_event_scroller("overview", workspace);
 }
 
@@ -1430,6 +1432,7 @@ cleanup:
 	free(specific);
 	free(common);
 	free(jump_data);
+	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
 }
@@ -1522,7 +1525,7 @@ void layout_jump() {
 			nwindows += container->pending.children->length;
 		}
 	}
-	transaction_commit_dirty();
+	animation_set_type(ANIMATION_JUMP);
 	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
 	common->nwindows = nwindows;
 	common->nkeys = nkeys;
@@ -1688,7 +1691,7 @@ void layout_jump_floating() {
 		}
 		nwindows += workspace->floating->length;
 	}
-	transaction_commit_dirty();
+	animation_set_type(ANIMATION_JUMP);
 	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
 	common->nwindows = nwindows;
 	common->nkeys = nkeys;
@@ -1774,6 +1777,7 @@ static void jump_scratchpad_handle_keyboard_key_end(void *data, bool focus) {
 	free(specific);
 	free(common);
 	free(jump_data);
+	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
 }
@@ -1814,7 +1818,6 @@ static void jump_scratchpad_handle_keyboard_key(struct sway_keyboard *keyboard,
 		}
 	}
 	common->keyboard_key_end(jump_data, focus);
-	//jump_scratchpad_handle_keyboard_key_end(jump_data, focus);
 }
 
 static bool jump_scratchpad_handle_button(struct sway_seat *seat, uint32_t time_msec,
@@ -1872,8 +1875,8 @@ void layout_jump_scratchpad(struct sway_workspace *workspace) {
 		}
 		layout_overview_toggle(workspace, OVERVIEW_FLOATING);
 	}
-	transaction_commit_dirty();
 
+	animation_set_type(ANIMATION_JUMP);
 	uint32_t nwindows = workspace->floating->length;
 	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
 	common->nwindows = nwindows;
@@ -1902,7 +1905,6 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 
 	// Restore original trailmarked views
 	layout_overview_toggle(workspace, OVERVIEW_DISABLED);
-	transaction_commit_dirty();
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *view = workspace->floating->items[i];
 		view->pending.x = view->jump.x;
@@ -1941,6 +1943,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 	free(common);
 	free(jump_data);
 	root_set_default_filters(root);
+	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
 }
@@ -2032,8 +2035,8 @@ void layout_jump_trailmark(struct sway_workspace *workspace) {
 		}
 		layout_overview_toggle(workspace, OVERVIEW_FLOATING);
 	}
-	transaction_commit_dirty();
 
+	animation_set_type(ANIMATION_JUMP);
 	uint32_t nwindows = workspace->floating->length;
 	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
 	common->nwindows = nwindows;
@@ -2258,6 +2261,7 @@ static void container_jump(struct jump_data *jump_data) {
 	}
 	node_set_dirty(&container->node);
 
+	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 }
 
@@ -2284,6 +2288,7 @@ static void jump_container_handle_keyboard_key_end(void *data, bool focus) {
 	free(specific);
 	free(common);
 	free(jump_data);
+	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
 }

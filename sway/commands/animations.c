@@ -9,7 +9,10 @@ static const struct cmd_handler animations_config_handlers[] = {
 	{ "default", animations_cmd_default },
 	{ "enabled", animations_cmd_enabled },
 	{ "frequency_ms", animations_cmd_frequency },
+	{ "jump", animations_cmd_jump },
+	{ "overview", animations_cmd_overview },
 	{ "style", animations_cmd_style },
+	{ "window_fullscreen", animations_cmd_window_fullscreen },
 	{ "window_move", animations_cmd_window_move },
 	{ "window_open", animations_cmd_window_open },
 	{ "window_size", animations_cmd_window_size },
@@ -148,6 +151,15 @@ struct cmd_results *animations_cmd_window_move(int argc, char **argv) {
 	return parse_animation_curve(argc, argv, &config->window_move);
 }
 
+struct cmd_results *animations_cmd_window_fullscreen(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "window_fullscreen", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->window_fullscreen);
+}
+
 struct cmd_results *animations_cmd_window_size(int argc, char **argv) {
 	struct cmd_results *error;
 	if ((error = checkarg(argc, "window_size", EXPECTED_AT_LEAST, 1))) {
@@ -164,6 +176,24 @@ struct cmd_results *animations_cmd_workspace_switch(int argc, char **argv) {
 	}
 	struct sway_animation_config *config = animation_get_config();
 	return parse_animation_curve(argc, argv, &config->workspace_switch);
+}
+
+struct cmd_results *animations_cmd_overview(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "overview", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->overview);
+}
+
+struct cmd_results *animations_cmd_jump(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "jump", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->jump);
 }
 
 struct cmd_results *cmd_animations(int argc, char **argv) {
