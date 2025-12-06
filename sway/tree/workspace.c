@@ -1308,8 +1308,12 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 	node_set_dirty(&first->node);
 	node_set_dirty(&second->node);
 	workspace_switch(second);
-	output_damage_whole(first->output);
-	output_damage_whole(second->output);
+	if (first->output) {
+		output_damage_whole(first->output);
+	}
+	if (second->output && second->output != first->output) {
+		output_damage_whole(second->output);
+	}
 	ipc_event_workspace(NULL, first, "move");
 	ipc_event_workspace(NULL, second, "move");
 }
