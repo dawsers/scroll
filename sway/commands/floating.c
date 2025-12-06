@@ -20,16 +20,15 @@ struct cmd_results *cmd_floating(int argc, char **argv) {
 		return cmd_results_new(CMD_INVALID,
 				"Can't run this command while there's no outputs connected.");
 	}
-	struct sway_container *container = config->handler_context.container;
+	struct sway_node *node = config->handler_context.node;
 	struct sway_workspace *workspace = config->handler_context.workspace;
-	if (!container && workspace->tiling->length == 0) {
-		return cmd_results_new(CMD_INVALID, "Can't float an empty workspace");
+	struct sway_container *container = config->handler_context.container;
+	if (node->type == N_WORKSPACE) {
+		container = seat_get_focus_inactive_tiling(config->handler_context.seat, workspace);
 	}
 	if (!container) {
-		// Wrap the workspace's children in a container so we can float it
-		container = workspace_wrap_children(workspace);
-		layout_modifiers_set_mode(workspace, L_HORIZ);
-		seat_set_focus_container(config->handler_context.seat, container);
+		return cmd_results_new(CMD_INVALID,
+				"'floating' needs a container");
 	}
 
 	if (container->pending.fullscreen_layout == FULLSCREEN_ENABLED) {

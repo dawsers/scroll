@@ -197,11 +197,11 @@ static struct cmd_results *cmd_move_container(bool no_auto_back_and_forth,
 	struct sway_workspace *workspace = config->handler_context.workspace;
 	struct sway_container *container = config->handler_context.container;
 	if (node->type == N_WORKSPACE) {
-		if (workspace->tiling->length == 0) {
-			return cmd_results_new(CMD_FAILURE,
-					"Can't move an empty workspace");
+		container = seat_get_focus_inactive_tiling(config->handler_context.seat, workspace);
+		if (!container) {
+			return cmd_results_new(CMD_INVALID,
+					"Need a container to move");
 		}
-		container = workspace_wrap_children(workspace);
 	}
 
 	if (container->pending.fullscreen_mode == FULLSCREEN_GLOBAL) {
@@ -756,9 +756,7 @@ static struct cmd_results *cmd_move_to_scratchpad(void) {
 				"Can't move an empty workspace to the scratchpad");
 	}
 	if (node->type == N_WORKSPACE) {
-		// Wrap the workspace's children in a container
-		con = workspace_wrap_children(ws);
-		layout_modifiers_set_mode(ws, L_HORIZ);
+		con = seat_get_focus_inactive_tiling(config->handler_context.seat, ws);
 	}
 
 	// If the container is in a floating split container,
