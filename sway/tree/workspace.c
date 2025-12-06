@@ -686,7 +686,12 @@ static bool workspace_switch_workspace_filter(struct sway_workspace *workspace, 
 		return workspace == data->from || workspace == data->to;
 	}
 	if (!layout_overview_workspaces_enabled()) {
-		if (output->current.active_workspace != workspace) {
+		struct sway_workspace *active = output->current.active_workspace;
+		if (workspace != active) {
+			if (workspace->split.split != WORKSPACE_SPLIT_NONE &&
+				workspace->split.sibling == active) {
+				return true;
+			}
 			return false;
 		}
 	}
