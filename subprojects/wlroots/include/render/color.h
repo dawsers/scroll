@@ -88,12 +88,6 @@ struct wlr_color_transform_lut_3x1d *color_transform_lut_3x1d_from_base(
 	struct wlr_color_transform *tr);
 
 /**
- * Obtain primaries values from a well-known primaries name.
- */
-void wlr_color_primaries_from_named(struct wlr_color_primaries *out,
-	enum wlr_color_named_primaries named);
-
-/**
  * Compute the matrix to convert RGB color values to CIE 1931 XYZ.
  */
 void wlr_color_primaries_to_xyz(const struct wlr_color_primaries *primaries, float matrix[static 9]);

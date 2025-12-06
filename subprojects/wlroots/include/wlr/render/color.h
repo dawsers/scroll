@@ -172,6 +172,12 @@ void wlr_color_transform_eval(struct wlr_color_transform *tr,
 	float out[static 3], const float in[static 3]);
 
 /**
+ * Obtain primaries values from a well-known primaries name.
+ */
+void wlr_color_primaries_from_named(struct wlr_color_primaries *out,
+	enum wlr_color_named_primaries named);
+
+/**
  * Compute the matrix to convert between two linear RGB color spaces
  */
 void wlr_color_primaries_transform_absolute_colorimetric(
