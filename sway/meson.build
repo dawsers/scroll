@@ -251,7 +251,6 @@ sway_sources = files(
 	'tree/scene/debug.c',
 	'tree/scene/output.c',
 	'tree/scene/ext_image_capture_source_v1.c',
-	'tree/scene/color.c',
 
 	'protocol/xdg_output_v1.c',
 )

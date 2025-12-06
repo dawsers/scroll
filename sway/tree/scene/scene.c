@@ -24,7 +24,6 @@
 #include "sway/tree/debug.h"
 #include "sway/output.h"
 #include "output.h"
-#include "color.h"
 #include "sway/desktop/animation.h"
 
 #include <wlr/config.h>
@@ -2005,7 +2004,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 
 		struct wlr_color_primaries primaries = {0};
 		if (scene_buffer->primaries != 0) {
-			sway_color_primaries_from_named(&primaries, scene_buffer->primaries);
+			wlr_color_primaries_from_named(&primaries, scene_buffer->primaries);
 		}
 
 		bool swap_xy, flip_x, flip_y;
@@ -2818,9 +2817,9 @@ static bool scene_output_combine_color_transforms(
 	if (img_desc != NULL) {
 		assert(supplied == NULL);
 		struct wlr_color_primaries primaries_srgb;
-		sway_color_primaries_from_named(&primaries_srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
+		wlr_color_primaries_from_named(&primaries_srgb, WLR_COLOR_NAMED_PRIMARIES_SRGB);
 		struct wlr_color_primaries primaries;
-		sway_color_primaries_from_named(&primaries, img_desc->primaries);
+		wlr_color_primaries_from_named(&primaries, img_desc->primaries);
 		float matrix[9];
 		wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
 		assert(transforms_len < transforms_cap);
