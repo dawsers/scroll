@@ -608,10 +608,14 @@ set|plus|minus|toggle <amount>
 *rename* workspace [<old_name>] to <new_name>
 	Rename either <old_name> or the focused workspace to the <new_name>
 
-*resize* shrink|grow width|height [<amount> [px|ppt]]
+*resize* shrink|grow width|height|up|down|left|right [<amount> [px|ppt]]
 	Resizes the currently focused container by _amount_, specified in pixels or
 	percentage points. If the units are omitted, floating containers are resized
 	in px and tiled containers by ppt. _amount_ will default to 10 if omitted.
+	For floating containers, the parameter (width|height|up|down|left|right)
+	determines the resize direction, with _width_ and _height_ resizing with a
+	center anchor, and _up_, _down_, _left_ or _right_ defining what edge will
+	be moving, leaving the opposite as anchor.
 
 *resize* set height <height> [px|ppt]
 	Sets the height of the container to _height_, specified in pixels or
