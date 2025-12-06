@@ -411,6 +411,14 @@ mode "resize" {
     bindsym $down resize grow height 100px
     bindsym $up resize shrink height 100px
     bindsym $right resize grow width 100px
+    bindsym Shift+$left resize shrink right 100px
+    bindsym Shift+$down resize grow down 100px
+    bindsym Shift+$up resize shrink down 100px
+    bindsym Shift+$right resize grow right 100px
+    bindsym Ctrl+$left resize grow left 100px
+    bindsym Ctrl+$down resize shrink up 100px
+    bindsym Ctrl+$up resize grow up 100px
+    bindsym Ctrl+$right resize shrink left 100px
 
     # Return to default mode
     bindsym Escape mode "default"
