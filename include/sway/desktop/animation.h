@@ -21,6 +21,7 @@ enum sway_animation_type {
 	ANIMATION_WINDOW_OPEN,
 	ANIMATION_WINDOW_SIZE,
 	ANIMATION_WINDOW_MOVE,
+	ANIMATION_WINDOW_MOVE_FLOAT,
 	ANIMATION_WINDOW_FULLSCREEN,
 	ANIMATION_WORKSPACE_SWITCH,
 	ANIMATION_OVERVIEW,
@@ -39,6 +40,7 @@ struct sway_animation_config {
 	struct sway_animation_path *window_open;
 	struct sway_animation_path *window_size;
 	struct sway_animation_path *window_move;
+	struct sway_animation_path *window_move_float;
 	struct sway_animation_path *window_fullscreen;
 	struct sway_animation_path *workspace_switch;
 	struct sway_animation_path *overview;

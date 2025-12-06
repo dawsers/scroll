@@ -94,6 +94,11 @@ The following commands may only be used in the configuration file.
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve for windows movement (`move` command).
 
+	*window_move_float* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the curve for floating windows movement (`move` command for
+	floating windows).
+
 	*window_open* enabled [duration] [var animation curve] [off animation curve]
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve for windows opening.

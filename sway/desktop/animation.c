@@ -181,6 +181,7 @@ void animation_create() {
 	list_free_items_and_destroy(default_points);
 	animation->config.window_open = NULL;
 	animation->config.window_move = NULL;
+	animation->config.window_move_float = NULL;
 	animation->config.window_fullscreen = NULL;
 	animation->config.window_size = NULL;
 	animation->config.workspace_switch = NULL;
@@ -215,6 +216,9 @@ void animation_destroy() {
 		}
 		if (animation->config.window_move) {
 			animation_path_destroy(animation->config.window_move);
+		}
+		if (animation->config.window_move_float) {
+			animation_path_destroy(animation->config.window_move_float);
 		}
 		if (animation->config.window_fullscreen) {
 			animation_path_destroy(animation->config.window_fullscreen);
@@ -306,6 +310,9 @@ void animation_set_type(enum sway_animation_type anim) {
 		break;
 	case ANIMATION_WINDOW_MOVE:
 		animation->pending.path = animation->config.window_move;
+		break;
+	case ANIMATION_WINDOW_MOVE_FLOAT:
+		animation->pending.path = animation->config.window_move_float;
 		break;
 	case ANIMATION_WINDOW_FULLSCREEN:
 		animation->pending.path = animation->config.window_fullscreen;

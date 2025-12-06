@@ -14,6 +14,7 @@ static const struct cmd_handler animations_config_handlers[] = {
 	{ "style", animations_cmd_style },
 	{ "window_fullscreen", animations_cmd_window_fullscreen },
 	{ "window_move", animations_cmd_window_move },
+	{ "window_move_float", animations_cmd_window_move_float },
 	{ "window_open", animations_cmd_window_open },
 	{ "window_size", animations_cmd_window_size },
 	{ "workspace_switch", animations_cmd_workspace_switch },
@@ -149,6 +150,15 @@ struct cmd_results *animations_cmd_window_move(int argc, char **argv) {
 	}
 	struct sway_animation_config *config = animation_get_config();
 	return parse_animation_curve(argc, argv, &config->window_move);
+}
+
+struct cmd_results *animations_cmd_window_move_float(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "window_move_float", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->window_move_float);
 }
 
 struct cmd_results *animations_cmd_window_fullscreen(int argc, char **argv) {

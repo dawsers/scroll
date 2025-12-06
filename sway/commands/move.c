@@ -523,7 +523,7 @@ static struct cmd_results *cmd_move_in_direction(
 			return cmd_results_new(CMD_FAILURE, "Invalid direction for floating container");
 		}
 		container_floating_move_to(container, lx, ly);
-		animation_set_type(ANIMATION_WINDOW_MOVE);
+		animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 	struct sway_workspace *old_ws = container->pending.workspace;
@@ -595,7 +595,7 @@ static struct cmd_results *cmd_move_to_position_pointer(
 
 	/* Actually move the container. */
 	container_floating_move_to(container, lx, ly);
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
@@ -656,7 +656,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 			ly = ws->y + (ws->height - container->pending.height) / 2;
 		}
 		container_floating_move_to(container, lx, ly);
-		animation_set_type(ANIMATION_WINDOW_MOVE);
+		animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
@@ -743,7 +743,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 		ly.amount += ws->y;
 	}
 	container_floating_move_to(container, lx.amount, ly.amount);
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
