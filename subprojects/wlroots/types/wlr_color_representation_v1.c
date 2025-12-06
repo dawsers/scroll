@@ -354,6 +354,8 @@ static void handle_display_destroy(struct wl_listener *listener, void *data) {
 
 	wl_list_remove(&manager->display_destroy.link);
 	wl_global_destroy(manager->global);
+	free(manager->supported_alpha_modes);
+	free(manager->supported_coeffs_and_ranges);
 	free(manager);
 }
 
