@@ -1224,6 +1224,9 @@ static void arrange_output(struct sway_output *output) {
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
+		if (child->node.destroying) {
+			continue;
+		}
 		bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
 
 		sway_scene_node_reparent(&child->layers.tiling->node, output->layers.tiling);
@@ -1290,6 +1293,9 @@ static void animate_output(struct sway_output *output) {
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
+		if (child->node.destroying) {
+			continue;
+		}
 		bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
 
 		if (activated) {
