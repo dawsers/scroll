@@ -116,6 +116,8 @@ bool animation_enabled();
 void animation_reset_outputs();
 // Adds the output to the current animation
 void animation_add_output(struct wlr_output *output);
+// Adds every enabled output to the current animation
+void animation_add_all_outputs();
 // Hints the animation system about a possible early cancel of a running animation
 void animation_set_animation_enabled(bool enable);
 

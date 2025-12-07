@@ -431,6 +431,15 @@ void animation_add_output(struct wlr_output *output) {
 	}
 }
 
+void animation_add_all_outputs() {
+	for (int i = 0; i < root->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		if (output->enabled && output->wlr_output->enabled) {
+			list_add(animation->outputs, output->wlr_output);
+		}
+	}
+}
+
 void animation_reset_outputs() {
 	if (animation->outputs) {
 		list_reset(animation->outputs);
