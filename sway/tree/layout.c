@@ -210,8 +210,47 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 	}
 }
 
+static void overview_push_container_position(struct sway_container *container, void *data) {
+	container->overview.x = container->pending.x;
+	container->overview.y = container->pending.y;
+}
+
+static void overview_pop_container_position(struct sway_container *container, void *data) {
+	container->pending.x = container->overview.x;
+	container->pending.y = container->overview.y;
+}
+
+static void overview_push_positions(struct sway_workspace *workspace,
+		enum sway_layout_overview mode) {
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *container = workspace->tiling->items[i];
+		overview_push_container_position(container, NULL);
+		container_for_each_child(container, overview_push_container_position, NULL);
+	}
+	for (int i = 0; i < workspace->floating->length; ++i) {
+		struct sway_container *container = workspace->floating->items[i];
+		overview_push_container_position(container, NULL);
+		container_for_each_child(container, overview_push_container_position, NULL);
+	}
+}
+
+static void overview_pop_positions(struct sway_workspace *workspace,
+		enum sway_layout_overview mode) {
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *container = workspace->tiling->items[i];
+		overview_pop_container_position(container, NULL);
+		container_for_each_child(container, overview_pop_container_position, NULL);
+	}
+	for (int i = 0; i < workspace->floating->length; ++i) {
+		struct sway_container *container = workspace->floating->items[i];
+		overview_pop_container_position(container, NULL);
+		container_for_each_child(container, overview_pop_container_position, NULL);
+	}
+}
+
 void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_overview mode) {
 	if (workspace->layout.overview != OVERVIEW_DISABLED) {
+		overview_pop_positions(workspace, mode);
 		// Disable and restore old scale value
 		workspace->layout.overview = OVERVIEW_DISABLED;
 		workspace_set_scale(workspace, workspace->layout.mem_scale);
@@ -242,6 +281,7 @@ void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_o
 			arrange_root();
 		}
 	} else {
+		overview_push_positions(workspace, mode);
 		output_layer_shell_enable(workspace->output, LAYER_SHELL_ALL);
 		workspace->layout.mem_scale = layout_scale_get(workspace);
 		workspace->layout.overview = mode;

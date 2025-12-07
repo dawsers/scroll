@@ -197,7 +197,13 @@ struct sway_container {
 
 	bool fullscreen; // container needs to recover fs mode when refocused
 
-	// For XWayland cotainers, because they need to be reconfigured when
+	// Save the original coordinates before toggling overview, so we can come
+	// back to the exact same position if focus doesn't change.
+	struct {
+		double x, y;
+	} overview;
+
+	// For XWayland containers, because they need to be reconfigured when
 	// changing positions, and some containes will change position without
 	// being in the transaction (change of focus, move container, etc.)
 	struct {
