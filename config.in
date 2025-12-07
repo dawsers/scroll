@@ -426,6 +426,25 @@ mode "resize" {
 }
 bindsym $mod+Shift+r mode "resize"
 
+mode "floating" {
+    bindsym $left move left 50px
+    bindsym $down move down 50px
+    bindsym $up move up 50px
+    bindsym $right move right 50px
+    bindsym Shift+$left resize shrink right 50px
+    bindsym Shift+$down resize grow down 50px
+    bindsym Shift+$up resize shrink down 50px
+    bindsym Shift+$right resize grow right 50px
+    bindsym Ctrl+$left resize grow left 50px
+    bindsym Ctrl+$down resize shrink up 50px
+    bindsym Ctrl+$up resize grow up 50px
+    bindsym Ctrl+$right resize shrink left 50px
+
+    # Return to default mode
+    bindsym Escape mode "default"
+}
+bindsym $mod+Ctrl+r mode "floating"
+
 # Toggle Size (and maximize)
 bindsym $mod+t toggle_size this 1.0 1.0
 bindsym $mod+Shift+t toggle_size active 1.0 1.0
