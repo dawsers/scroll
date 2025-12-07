@@ -663,9 +663,15 @@ static void workspace_switch_callback_end(void *callback_data) {
 
 static bool switching_output(struct sway_workspace *workspace,
 		struct workspace_switch_data *data) {
+	if (!data) {
+		return false;
+	}
 	struct sway_output *output = workspace->output;
 	struct sway_output *from_output = data->from->output;
 	struct sway_output *to_output = data->to->output;
+	if (!output || !from_output || !to_output) {
+		return false;
+	}
 	if (output == from_output || output == to_output) {
 		return true;
 	}
@@ -677,15 +683,12 @@ static bool workspace_switch_animation_filter(struct sway_workspace *workspace, 
 }
 
 static bool workspace_switch_workspace_filter(struct sway_workspace *workspace, void *filter_data) {
-	struct sway_output *output = workspace->output;
-	if (!output->wlr_output->enabled) {
-		return false;
-	}
 	if (switching_output(workspace, filter_data)) {
 		struct workspace_switch_data *data = filter_data;
 		return workspace == data->from || workspace == data->to;
 	}
 	if (!layout_overview_workspaces_enabled()) {
+		struct sway_output *output = workspace->output;
 		struct sway_workspace *active = output->current.active_workspace;
 		if (workspace != active) {
 			if (workspace->split.split != WORKSPACE_SPLIT_NONE &&
@@ -840,7 +843,9 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	}
 	seat_set_focus(seat, next);
 
-	if (old_ws != workspace && old_ws->output == workspace->output &&
+	// old_ws may not have an output because it is being destroyed if empty
+	if (old_ws != workspace && old_ws->output &&
+		old_ws->output == workspace->output &&
 		workspace->split.sibling != old_ws &&
 		animation_enabled()) {
 		animate_workspace_switch(old_ws, workspace);

@@ -1224,7 +1224,7 @@ static void arrange_output(struct sway_output *output) {
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
-		if (child->node.destroying) {
+		if (!child || child->node.destroying) {
 			continue;
 		}
 		bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
@@ -1293,7 +1293,7 @@ static void animate_output(struct sway_output *output) {
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
-		if (child->node.destroying) {
+		if (!child || child->node.destroying) {
 			continue;
 		}
 		bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
@@ -1361,8 +1361,8 @@ static void arrange_root(struct sway_root *root) {
 	if (fs) {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
-			bool activated = root->filters.output_filter(output, root->filters.output_filter_data);
-			if (!output->enabled || !output->wlr_output->enabled || !activated) {
+			if (!output->enabled || !output->wlr_output->enabled ||
+				!root->filters.output_filter(output, root->filters.output_filter_data)) {
 				continue;
 			}
 			struct sway_workspace *ws = output->current.active_workspace;
@@ -1385,8 +1385,8 @@ static void arrange_root(struct sway_root *root) {
 	} else {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
-			bool activated = root->filters.output_filter(output, root->filters.output_filter_data);
-			if (!output->enabled || !output->wlr_output->enabled || !activated) {
+			if (!output->enabled || !output->wlr_output->enabled ||
+				!root->filters.output_filter(output, root->filters.output_filter_data)) {
 				continue;
 			}
 
@@ -1428,8 +1428,8 @@ static void animate_root(struct sway_root *root) {
 	} else {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
-			bool activated = root->filters.output_filter(output, root->filters.output_filter_data);
-			if (!output->enabled || !output->wlr_output->enabled || !activated) {
+			if (!output->enabled || !output->wlr_output->enabled ||
+				!root->filters.output_filter(output, root->filters.output_filter_data)) {
 				continue;
 			}
 			animate_output(output);
@@ -1467,6 +1467,9 @@ static void set_animation_data(struct sway_transaction *transaction) {
 			struct sway_workspace *pending = container->pending.workspace;
 			if (pending && pending->output) {
 				animation_add_output(pending->output->wlr_output);
+			}
+			if (!current && !pending) {
+				animation_add_all_outputs();
 			}
 			break;
 			}
