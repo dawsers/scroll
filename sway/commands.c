@@ -143,6 +143,7 @@ static const struct cmd_handler config_handlers[] = {
 static const struct cmd_handler command_handlers[] = {
 	{ "align", cmd_align },
 	{ "allow_tearing", cmd_allow_tearing },
+	{ "animations_enable", cmd_animations_enable },
 	{ "border", cmd_border },
 	{ "create_output", cmd_create_output },
 	{ "cycle_size", cmd_cycle_size },

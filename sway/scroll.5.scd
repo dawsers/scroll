@@ -68,7 +68,8 @@ The following commands may only be used in the configuration file.
 	Subcommands are:
 
 	*enabled* <yes|no>
-	Default value is _yes_. Enables/disables animations globally.
+	Default value is _yes_. Enables/disables animations globally. See the
+	*animations_enable* command to enable/disable animations at run-time.
 
 	*frequency_ms* <number>
 	Default is _16_. Number of milliseconds for each animation step. The
@@ -314,6 +315,9 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 
 	You can also center a window on your workspace using _middle_, it will
 	center its column, and also the window within the column.
+
+*animations_enable* <yes|no|toggle>
+	Enable/disable animations at run-time. It can be used as a toggle too.
 
 *border* none|normal|csd|pixel [<n>]
 	Set border style for focused window. _normal_ includes a border of

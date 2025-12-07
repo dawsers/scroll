@@ -99,6 +99,7 @@ sway_cmd cmd_align;
 sway_cmd cmd_align_reset_auto;
 sway_cmd cmd_allow_tearing;
 sway_cmd cmd_animations;
+sway_cmd cmd_animations_enable;
 sway_cmd cmd_assign;
 sway_cmd cmd_bar;
 sway_cmd cmd_bindcode;

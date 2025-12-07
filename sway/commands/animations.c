@@ -20,6 +20,16 @@ static const struct cmd_handler animations_config_handlers[] = {
 	{ "workspace_switch", animations_cmd_workspace_switch },
 };
 
+struct cmd_results *cmd_animations_enable(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "animations_enable", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	config->enabled = parse_boolean(argv[0], config->enabled);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
 struct cmd_results *animations_cmd_enabled(int argc, char **argv) {
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, "enabled", EXPECTED_AT_LEAST, 1))) {
