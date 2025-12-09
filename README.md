@@ -151,6 +151,134 @@ ninja -C build/
 sudo ninja -C build/ install
 ```
 
+## Useful Tips after Installation
+
+Aside from the dependencies listed in the package for your distribution,
+*scroll* works best with some additional software to make your life easier,
+and some extra system configuration for the best possible experience.
+
+### XDG Portals
+
+Wayland compositors use *portals* for added functionality. It is recommended
+to install `xdg-desktop-portal`, `xdg-desktop-portal-gtk` and
+`xdg-desktop-portal-wlr` to use with *scroll*. The last one adds specific
+functionality for screencasting and video recording. You should also install
+`pipewire` if you plan on recording desktop videos or do screencasting.
+
+*scroll*'s AUR package by default installs the file
+`/usr/share/xdg-desktop-portal/scroll-portals.conf` which configures what
+portal to use for each situation. If you install *scroll* manually, or your
+distribution package doesn't include that file, you can create it either
+in the location mentioned above, or in
+`~/.config/xdg-desktop-portal/scroll-portals.conf`, with the following content:
+
+```
+[preferred]
+default=gtk
+org.freedesktop.impl.portal.ScreenCast=wlr
+org.freedesktop.impl.portal.Screenshot=wlr
+org.freedesktop.impl.portal.Inhibit=none
+```
+
+### Environment Variables
+
+Some application frameworks use special environment variables to decide
+whether to run in Wayland or X11 mode. Even though *scroll* is compatible with
+X11 applications out of the box, running Wayland applications should always be
+preferred; they will provide a better experience. Try to find Wayland
+alternatives to your favorite X11 applications, and if you have doubts, use
+the [Discussions board](https://github.com/dawsers/scroll/discussions) to
+ask for good alternatives. Any application that works well with *sway* will
+also work with *scroll*.
+
+*scroll* doesn't let you define environment variables in its configuration
+file, so you will need to set them before launching *scroll*, for example in
+your `~/.bash_profile` or the one your shell uses.
+
+``` sh
+# Sway/Scroll needs its environment variables here
+# Set GTK theme
+export GTK_THEME=Adwaita-dark
+# Tell QT, GDK and others to use the Wayland backend by default, X11 if not available
+export QT_QPA_PLATFORM="wayland;xcb"
+export GDK_BACKEND="wayland,x11"
+export SDL_VIDEODRIVER=wayland
+export CLUTTER_BACKEND=wayland
+
+# XDG desktop variables to set scroll as the desktop
+export XDG_CURRENT_DESKTOP=scroll
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=scroll
+
+# Configure Electron to use Wayland instead of X11
+export ELECTRON_OZONE_PLATFORM_HINT=wayland
+
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1 # Disables window decorations on Qt applications
+export QT_QPA_PLATFORMTHEME=qt6ct
+# This is to (temporarily) fix font rendering on QWebEngineView 6
+# (qutebrowser, goldendict etc.)
+# https://bugreports.qt.io/browse/QTBUG-113574
+export QT_SCALE_FACTOR_ROUNDING_POLICY=RoundPreferFloor
+
+# If you use a Nvidia card
+# NVIDIA environment variables
+export LIBVA_DRIVER_NAME=nvidia
+export GBM_BACKEND=nvidia-drm
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+
+export XCURSOR_THEME=Adwaita
+export XCURSOR_SIZE=24
+```
+
+### Starting from a tty
+
+*scroll* can be started from your session manager, the distribution provides a
+`scroll.desktop` file. But if you want to skip the installation of a session
+manager, you can start *scroll* directly from a TTY.
+
+Modifying your `~/.bash_profile` like the following will let you start
+*scroll* every time you login from tty1, without the need for a login manager.
+
+``` sh
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+
+# If you want to use the vulkan renderer instead of the gles2 one (more
+# features, experimental, better performance) uncomment this line
+# export WLR_RENDERER=vulkan
+
+# Start scroll directly if you login from tty1
+if [ "$(tty)" = "/dev/tty1" ];then
+    exec scroll
+fi
+
+```
+
+### Starting From a Display Manager
+
+*scroll* includes `/usr/share/wayland-sessions/scroll.desktop`, so when you
+install it, *scroll* should be included in the sessions menu of your display
+manager of choice.
+
+### Choosing a Desktop Bar
+
+Most bars that support *sway* will work using their configuration for *sway*,
+for example [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell)
+or [Waybar](https://github.com/Alexays/Waybar). Configure your bar as if you
+were goingto use *sway*, and it will work.
+
+Bars for *sway* that are not aware of *scroll* will work, but will be missing
+features *scroll* provides, like showing the current *mode modifiers*, trails
+or spaces.
+
+I wrote a bar, [gtkshell](https://github.com/dawsers/gtkshell) which shows
+a special *scroll* module that could be ported to other bars, and is aware
+of *scroll* specific features. See `man 7 scroll-ipc`.
+
+The very basic included `scrollbar` is also *scroll*-aware and shows mode
+modifiers, trail information etc.
+
+
 ## Configuration
 
 *scroll* is very compatible with *i3* and *sway*, but because it uses a
@@ -158,6 +286,365 @@ scrolling layout, to use its extra features you will need to spend some time
 configuring key bindings and options. *scroll* includes an example configuration
 file that will usually be installed in `/etc/scroll/config`. Copy it to
 `~/.config/scroll/config` and make your changes.
+
+The configuration file may include other files by using the `include <file>`
+command. You can use this to split the configuration in more manageable pieces,
+or when you have several systems that share some parts of the configuration,
+but not all of it.
+
+Another useful feature are *variables*. You can set variables that apply to
+the configuration, and use them in any command. For example:
+
+```
+# Logo key. Use Mod1 for Alt.
+set $mod Mod4
+
+# Home row direction keys, like vim
+# set $left h
+# set $down j
+# set $up k
+# set $right l
+# Arrow keys like Emacs
+set $left Left
+set $down Down
+set $up Up
+set $right Right
+
+bindsym $mod+$left focus left
+bindsym $mod+$down focus down
+bindsym $mod+$up focus up
+bindsym $mod+$right focus right
+bindsym $mod+home focus beginning
+bindsym $mod+end focus end
+```
+
+### Configuring Your Monitors
+
+You will need to configure your monitors (*outputs*) first. Run `scrollmsg -t
+get_outputs` to get a list of output names. You will use the connector name
+to identify each output. Each name will correspond to a block in your
+configuration file where you will set the output's properties.
+
+For example:
+
+```
+output HDMI-A-1 {
+    background #202020 solid_color
+    scale 1.25
+    position 0 0
+}
+output DP-2 {
+    background /usr/share/backgrounds/scroll/Sway_Wallpaper_Blue_1920x1080.png fill
+    scale 1.25
+    # hdr on
+}
+```
+
+Monitors will auto-arrange, so you only need to set the `position` parameter
+if the auto-arrangement doesn't do what you want.
+
+You can also set the default layout options per monitor. For example if one of
+your monitors is in portrait mode and you prefer a vertical layout type for
+it, set `layout_type vertical` (the default is horizontal).
+
+For all the details about how to configure a monitor and the available options,
+read `man 5 scroll-output`
+
+#### HDR
+
+*scroll* supports HDR like the latest version of *sway*.
+
+*scroll* can use two different renderers: gles2 (default) and vulkan. The
+vulkan renderer is experimental, but has better performance and supports more
+features, like advanced color profiles and **HDR**.
+
+So, to enable HDR and advanced color profiles, you will have to use the vulkan
+renderer. Simply set `export WLR_RENDERER=vulkan` in your `~/.bash_profile` to
+choose the vulkan renderer over the default gles2 one, and then set `hdr on`
+in your monitor configuration as explained in `man 5 scroll-output`
+
+
+### Configuring Your Keyboard
+
+By default, *scroll* will configure your keyboard and mouse to make them
+usable, but if you have some special needs (like specific or additional layouts),
+you should spend some time reading `man 5 scroll-input`
+
+For example, to simply configure a keyboard to have two layouts available, you
+can do it like this:
+
+```
+input type:keyboard {
+    xkb_layout "us,us"
+    xkb_variant ",intl"
+    xkb_numlock enabled
+}
+```
+
+It will set two layouts for the default keyboard, `us` and `us-international`,
+and you can change from one to the other using `$mod+Space` like this:
+
+```
+    bindsym $mod+Space input type:keyboard xkb_switch_layout next
+```
+
+### Starting Some Applications
+
+After configuring the keyboard, you should start some applications, for
+example:
+
+```
+### Exec startup apps
+
+# Execute your favorite apps at launch
+# It is convenient to start the DBUS environment here if you login from a tty
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+# Start your favorite desktop bar
+exec waybar
+# Start the gnome authentication daemon to be able to run sudo apps
+exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+```
+
+### Window Defaults
+
+Here, you will configure the look of windows.
+
+```
+### Windows defaults
+# Use a default window without title bars, only a 2 pixel border
+default_border pixel 2
+# windows with a title bar will have it with rounded corners or radius 8px
+titlebar_border_radius 8
+# the default decoration for windows has rounded borders of 12px radius
+default_decoration border_radius 12
+# These are all the options you can tweak for the default decoration
+# default_decoration border_radius 12 shadow true shadow_dynamic true shadow_size 40 shadow_blur 30 shadow_offset 40 40 shadow_color #00000070 dim false dim_color #00000040
+
+# Use an inner gap of 4 and an outer gap of 20
+gaps inner 4
+gaps outer 20
+
+# Colors for focused and unfocused windows, including their title bars if any
+client.focused #15439e #4b4b4b #e0e0e0 #2e9ef4 #15439e
+client.focused_inactive #595959 #3b3b3b #e0e0e0 #2e9ef4 #595959
+client.unfocused #595959 #1b1b1b #e0e0e0 #2e9ef4 #595959
+```
+
+### Layout Settings
+
+*scroll* only supports one type of tiled layout, a scrolling layout. In this
+section we will set the default values for this layout. These values can be
+changed per monitor too.
+
+`layout_widths` and `layout_heights` affect your preferred fractions, those
+you select with `cycle_size`, but you can still use any fraction using other
+commands like `set_size` or `resize`.
+
+```
+# Layout settings
+layout_default_width 0.5
+layout_default_height 1.0
+layout_widths [0.33333333 0.5 0.666666667 1.0]
+layout_heights [0.33333333 0.5 0.666666667 1.0]
+```
+
+### Setting Some Options
+
+In this section we will configure some of the most common options for
+*scroll*. They are explained [here](#options-specific-to-scroll)
+
+```
+# These are the default values for some useful scroll options, consult
+# `man 5 scroll` and change them to your preference
+
+# align_reset_auto yes
+# cursor_shake_magnify false
+# cycle_size_wrap false
+# fullscreen_movefocus true nofollow
+# fullscreen_on_request default
+# maximize_if_single false
+# workspace_next_on_output_create_empty true
+# xwayland_output_scale true
+# focus_wrapping no
+# focus_on_window_activation focus
+# xdg_activation_force false
+```
+
+### configuring Animations
+
+The next section defines which animations will be used by *scroll*. For more
+details about animations, check the manual or read [this](#animation-options)
+
+```
+# Animations
+animations {
+    enabled yes
+    default yes 300 var 3 [ 0.215 0.61 0.355 1 ]
+    window_open yes 300 var 3 [ 0 0 1 1 ]
+    window_move yes 300 var 3 [ 0.215 0.61 0.355 1 ] off 0.05 6 [0 0.6 0.4 0 1 0 0.4 -0.6 1 -0.6]
+    window_size yes 300 var 3 [ -0.35 0 0 0.5 ]
+    workspace_switch yes 500 var simple [ 0.215 0.61 0.355 1 ]
+    window_fullscreen yes 500 var simple [ 0.3 0.5 0.4 1 ]
+    # You can also define curves for the following events
+    # window_move_float
+    # overview
+    # jump
+}
+
+```
+
+### Key Bindings
+
+*scroll* provides a quite powerful key binding system where you can use
+keys, mouse buttons or trackpad gestures to run different actions. You can also
+use *modes* which allow you to have modal key bindings, where several actions
+are available when you type a prefix. You can read all about this in `man 5 scroll`.
+
+The main way to set key bindings is through `bindsym`. `bindsym` uses the
+symbols associated to each key in the active keyboard layout. For example,
+to call `cycle_size h prev` when pressing `Mod+minus` use:
+
+```
+bindsym $mod+minus cycle_size h prev
+```
+
+However, people who need to use more than one layout in their system may find
+the problem some keys don't always correspond to the same symbol, for example
+on a `us` keyboard that uses a QWERTY and an AZERTY layout, hitting `q` will
+type a `q` under the QWERTY layout, but an `a` under the other one. For this
+reason, `bindsym` accepts the `--to-code` option. This option sets the key
+binding's symbol to be translated by the first layout defined for the
+keyboard, instead of the current layout. This makes bindings permanent, no
+matter which layout is currently being used.
+
+There is also `bindcode` to exactly match a key code to a binding. Each key of
+your keyboard has a unique key code. Use `wev` to know the number
+corresponding to any key, and set the binding. For example, the `t` key in
+many cases corresponds to the code `28`. You can set a binding like this:
+
+```
+bindcode $mod+28 toggle_size this 1.0 1.0
+```
+
+or easier to read:
+
+```
+set $KEY_T 28
+bindcode $mod+$KEY_T toggle_size this 1.0 1.0
+```
+
+Mouse buttons are named `buttonX`, with `X` being a numeber: `1` left mouse
+button, `2`, right mouse button etc. You can also use `wev` to identify mouse
+button codes instead: `272`, `273`, etc.
+
+*scroll* also supports the command `send_shortcut` which allows you to send
+modifiers/key/mouse button combinations to the currently focused application.
+For example:
+
+```
+# Use mouse->back as middle mouse button to close Firefox tabs
+bindsym --whole-window button9 send_shortcut button2
+```
+
+#### Key Binding Modes
+
+*scroll* has a lot of commands, and the default configuration has an
+overwhelming number of key bindings. This is only possible because of keyboard
+*modes*. A *mode* is a special state where a keyboard prefix triggers a
+sub-map. This allows you to have groups of related commands that can be
+triggered after a leader key binding. There is a parent mode, called
+"default", from which all the others hang. For example:
+
+```
+# Mode modifiers
+mode "modifiers" {
+    bindsym $right set_mode after; mode default
+    bindsym $left set_mode before; mode default
+    bindsym home set_mode beginning; mode default
+    bindsym end set_mode end; mode default
+    bindsym $up set_mode focus; mode default
+    bindsym $down set_mode nofocus; mode default
+    bindsym h set_mode center_horiz; mode default
+    bindsym Shift+h set_mode nocenter_horiz; mode default
+    bindsym v set_mode center_vert; mode default
+    bindsym Shift+v set_mode nocenter_vert; mode default
+    bindsym r set_mode reorder_auto; mode default
+    bindsym Shift+r set_mode noreorder_auto; mode default
+
+    # Return to default mode
+    bindsym Escape mode "default"
+}
+bindsym $mod+backslash mode "modifiers"
+```
+
+Pressing `mod+backslash` will enter a special "modifiers" mode. In that mode,
+*scroll* only listens to certain bindings defined for the mode. In this case,
+the ones within the mode block. You can exit the mode by adding `mode default`
+to the end of the command, as in the example, or pressing `Escape`, which
+simply calls `mode default` and returns to the main, parent default mode.
+
+If your desktop bar supports showing the *sway/scroll* keyboard mode, you can
+use the name of the mode to add interesting information. Read
+[this section](#screenshots) for an example. It sets the mode name to a
+string that shows the different key bindings for the mode, so you have
+"documentation" on your desktop bar.
+
+### Lock and Suspend
+
+`swaylock` and `swayidle` are simple applications you can use for locking and
+suspending your session if you still don't have any favorites.
+
+In your config:
+
+```
+set $lock_cmd "pidof swaylock || swaylock"
+exec swayidle -w
+bindsym $mod+l exec $lock_cmd
+```
+
+Then create the following file `~/.config/swayidle/config`
+
+```
+timeout 600 'swaylock -f'
+timeout 605 'scrollmsg "output * power off"' resume 'scrollmsg "output * power on"'
+timeout 30 'if pgrep swaylock; then scrollmsg "output * power off"; fi' resume 'if pgrep swaylock; then scrollmsg "output * power on"; fi'
+before-sleep 'swaylock -f'
+lock 'swaylock -f; sleep 5s; scrollmsg "output * power off"'
+```
+
+and `~/.config/swaylock/config`
+
+```
+daemonize
+show-failed-attempts
+color=000000
+ignore-empty-password
+```
+
+This configuration will lock your system when you press `mod+l` or after 10
+minutes of staying idle. After locking it, monitors will enter a suspended
+state until you try to enter your password.
+
+### Screenshots
+
+*scroll* can use any Wayland screenshot tool. The following example is just
+for people who don't have a favorite one, or are installing their first
+Wayland compositor. It uses `swappy`, `grim` and `slurp`.
+
+```
+set $satty swappy -f -
+set $printscreen_mode 'printscreen (r:region f:full o:output w:window)'
+mode $printscreen_mode {
+    bindsym r exec grim -g "$(slurp -d)" - | $satty; mode default
+    bindsym f exec grim - | $satty; mode default
+    bindsym o exec grim -o "$(scrollmsg -t get_outputs | jq -r '.[] | select(.focused) | .name')" - | $satty; mode default
+    bindsym w exec scrollmsg -t get_tree | jq -r '.. | select(.focused?) | .rect | "\(.x),\(.y) \(.width)x\(.height)"' | grim -g - - | $satty; mode default
+
+    bindsym Escape mode "default"
+}
+bindsym $mod+Print mode $printscreen_mode
+```
+
 
 
 ## Commands and Quirks Specific to *scroll*
@@ -568,8 +1055,6 @@ animations {
 }
 ```
 
-
-
 ### Spaces
 
 A *space* is a configuration of existing windows. You can control spaces with
@@ -746,8 +1231,9 @@ bindsym $mod+Shift+semicolon mode "trail"
 
 ### Tips for Using Marks
 
-*scroll* also supports sway's mark based navigation. I use these scripts and
-key bindings:
+Even though trails and trailmarks are in general more useful because of the
+`jump` functionality, *scroll* also supports sway's mark based navigation. I use
+these scripts and key bindings:
 
 ``` config
     # Marks
@@ -822,6 +1308,37 @@ mark=$( (generate_marks) | rofi -p "Switch to mark" -dmenu)
 [[ -z $mark ]] && exit
 
 scrollmsg "[con_mark=\b$mark\b]" focus
+```
+
+
+## Workspace Rules
+
+*scroll* supports Lua scripts, so you can do very complex things. A simple
+example of the Lua API is this script that implements "workspace rules":
+
+``` lua
+-- workspace_exec <name> <commands>
+local args, state = ...
+
+local scroll = require("scroll")
+
+local function on_create_ws(workspace, _)
+  local name = scroll.workspace_get_name(workspace)
+  if name == args[1] then
+    local cmd = table.concat(args, " ", 2)
+    scroll.command(workspace, cmd)
+  end
+end
+
+scroll.add_callback("workspace_create", on_create_ws, nil)
+```
+
+Examples:
+
+```
+lua $lua_scripts/workspace_exec.lua 1 workspace split v 0.5
+lua $lua_scripts/workspace_exec.lua 3 exec kitty yazi
+lua $lua_scripts/workspace_exec.lua 1 exec kitty
 ```
 
 
@@ -908,6 +1425,10 @@ select a new window, and full screen state will follow.
 However, those in full screen mode will recover that mode when focusing on them
 again.
 
+`focus_follows_mouse full`: `full` is a new argument for `focus_follows_mouse`
+which makes *scroll* change focus to a window when hovering over it, only when
+it is fully inside the viewport.
+
 `fullscreen_on_request default|layout`: Default is `default`.
 This command/option controls what scroll does when an application requests
 full screen mode for a container.
@@ -940,16 +1461,33 @@ clients that don't implement the xdg-activation protocol correctly will be able
 to activate focus on other windows. See `focus_on_window_activation` to set the
 state of the activated window to `urgent` or `focused`.
 
-### Workspace Options
+### Decoration Options
 
-Scroll adds another subcommand to Sway's `workspace`. You can create a rule
-that executes a command when creating a new named workspace. For example, to
-start `kitty` every time you create workspace 3, add this to your
-configuration:
+*scroll* uses different decorations (borders, title bars etc.) than *sway*. It
+supports rounded corners and title bars, shadows, dimming of inactive windows
+etc. The following options affect their properties.
 
-``` config
-workspace 3 exec kitty
-```
+`default_decoration [border_radius <n>] [shadow true|false]
+[shadow_dynamic true|false]	[shadow_size <n>] [shadow_blur <n>]
+[shadow_offset x y]	[shadow_color #RRGGBBAA] [dim true|false]
+[dim_color #RRGGBBAA]`: Sets the default values for window decorations.
+
+* `border radius`: Radius of the border, in pixels. Default is 0.
+* `shadow`: Turns on/off shadow casting for the window. Default is off.
+* `shadow_dynamic`: Turns of/off dynamic shadows. Dynamic shadows make the
+shadow offset variable depending on the location of the window. Default	is off.
+* `shadow_size`: size in pixels of the shadow. Default is 40.
+* `shadow_blur`: Value of the blur radius in pixelz, where 0 means sharp
+shadows. Default is	30.
+* `shadow_offset`: Shadow's offset from the window. Default is 40 40.
+* `shadow_color`: Color of the shadow. Default is #00000070.
+* `dim`: Turns on/off dimming of the content when the window is not in focus.
+Default is off.
+* `dim_color`: Color used to dim the content when the window is not in focus.
+Default is #00000040.
+
+`titlebar_border_radius`: When title bars are enabled, this will set the
+radius of the top title bar borders. Default is 0.
 
 ### Gesture Options
 
@@ -985,16 +1523,28 @@ content may be deformed	while animating.
 `default`: defines the default animation curve. Follows the format explained
 below. default is `yes 300 var 3 [ 0.215 0.61 0.355 1 ]`
 
-`window_move`: defines the curve for windows movement (`move` command). By
-default it is not defined, so it uses the `default` curve unless you add one to
-your config.
+The following curves are not defined by default, so they use the `default`
+curve unless you add one to your config.
 
-`window_open`: defines the curve for windows opening. By default it is not
-defined, so it uses the `default` curve unless you add one to your config.
+`window_move`: defines the curve for windows movement (`move` command).
+
+`window_move_float`: It is the curve for floating windows movement
+(`move` command for	floating windows).
+
+`window_open`: defines the curve for windows opening.
+
+`window_fullscreen`: It is the curve for (un)setting windows full
+screen.
 
 `window_size`: defines the curve for windows resizing (`cycle_size`,
-`set_size`, `fit_size`, `resize` commands). By default it is not defined, so
-it uses the `default` curve unless you add one to your config.
+`set_size`, `fit_size`, `resize` commands)..
+
+`workspace_switch`: curve for workspace switching animations.
+
+`overview`: used when turning on/off overview mode.
+
+`jump`:  used when starting/ending jump mode (except `jump
+workspaces`).
 
 Format of an animation curve:
 
@@ -1034,6 +1584,19 @@ animations {
     window_size yes 300 var 3 [ -0.35 0 0 0.5 ]
 }
 ```
+
+## X11 Aplications and Xwayland
+
+*scroll*, like *sway*, supports the Xwayland compatibility layer for X11
+applications. Xwayland works in *rootless* mode, where each X11 window is a
+first-class resident among the native Wayland windows, allowing full interaction
+between them.
+
+*scroll* adds the ability to run Xwayland applications at their native scale
+instead of the fractional scale defined in your monitor configuration. This is
+to avoid blurriness problems, because X11 doesn't support HiDPI properly. Set
+`xwayland_output_scale false` in your configuration, and Xwayland applications
+will always run at scale 1.
 
 ## Lua Scripting
 
@@ -1261,3 +1824,101 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 	json_object_object_add(object, "trailmark", json_object_new_boolean(layout_trails_trailmarked(c->view)));
 }
 ```
+
+## What are the Differences between *sway* and *scroll*?
+
+They share most commands and configuration syntax, but *scroll* only supports a
+scrolling layout similar to [PaperWM](https://github.com/paperwm/PaperWM),
+[niri](https://github.com/YaLTeR/niri) or [hyprscroller](https://github.com/dawsers/hyprscroller).
+
+*scroll* removes all the original *sway*/*i3* layouts, but adds many new
+features, among them:
+
+* Animations: *scroll* supports very customizable animations.
+
+* *scroll* supports rounded borders and title bars, dimming of inactive
+  windows, and dynamic shadows with blur.
+
+* Content scaling: The content of individual windows can be scaled
+  independently of the general output scale.
+
+* Overview and Jump modes: You can see an overview of the desktop and work
+  with the windows at that scale. Jump allows you to move to any window with
+  just some key presses, like easymotion in some editors. There is also a jump
+  mode to preview and switch to any available workspace.
+
+* Workspace scaling: Apart from overview, you can scale the workspace to any
+  scale, and continue working.
+
+* Lua scripting: scroll provides a lua API to script the window manager.
+
+* Several full screen modes: `workspace`, `global`, `application` and `layout`.
+
+* Trackpad/Mouse scrolling: You can use the trackpad or mouse dragging to
+  navigate/scroll the workspace windows.
+
+* Portrait and Landscape monitor support: The layout works and adapts to both
+  portrait or landscape monitors. You can define the layout orientation per
+  output (monitor).
+
+* For ultra-wide displays, you can split a workspace in two and show them both
+  at the same time (`workspace split` command).
+
+Aside from the differences mentioned above, *scroll* adds many new commands
+and configuration options. For those familiar with *sway*, this is a list that
+includes most of the new commands; check the manual for more information about
+each one of them:
+
+1. No need for `--unsupported-gpu` if you are using a Nvidia card.
+
+### Config-Only Commands
+
+`align_reset_auto`, `animations`, `cursor_shake_magnify`, `cycle_size_wrap`,
+`fullscreen_movefocus`, `gesture_scroll_enable`, `gesture_scroll_fingers`,
+`gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
+`jump_labels_keys`, `jump_labels_scale`, `layout_default_height`,
+`layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,
+`workspace_next_on_output_create_empty`, `xwayland_output_scale`
+
+### Runtime Only Commands
+
+`align`, `animations_enable`, `cycle_size`, `decoration`, `fit_size`,
+`focus begin/end`, `fullscreen application|layout`, `jump`, `layout_transpose`,
+`move beginning|end nomode`, `pin`, `scale_content`, `scale_workspace`,
+`scratchpad jump`, `selection`, `set_mode`, `set_size`, `space`,
+`toggle_size`, `trail`, `trailmark`
+
+### Config or Runtime Commands
+
+Colors for pinned and selected containers. Indicator changes to show next
+insertion location.
+
+`default_decoration`, `focus_follows_mouse full`,
+`fullscreen_on_request default|layout`, `titlebar_border_radius`,
+`kill focused|unfocused|all`, `send_shortcut`, `workspace swap`,
+`workspace split`, `xdg_activation_force`
+
+`lua` and API
+
+### scroll-bar
+
+`mode top`, `scroller_indicator`, `trails_indicator`
+
+Colors: `scroller`
+
+### IPC Protocol
+
+commands: `GET_SCROLLER`, `GET_TRAILS`, `GET_SPACES`
+
+events: `scroller`, `trails`
+
+`fully_visible` attribute for windows
+
+### Outputs
+
+`scale <factor> [force]`, `layout_type`, `layout_default_height`,
+`layout_default_width`, `layout_heights`, `layout_widths`
+
+### scrollnag
+
+`--edge center`, `--width`
