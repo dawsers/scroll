@@ -439,6 +439,9 @@ You can create selections from trails, and a new trail for the current
 selection. This also provides memory for selections, and a way to quickly
 navigate favorite windows by using `trailmark jump`.
 
+[Trailmarks](https://github.com/user-attachments/assets/abb75af4-9208-48c3-8c72-45de8db4b374)
+
+
 ## Working in Full Screen Mode
 
 Overview and jump can be very helpful when you work in fullscreen mode. You
