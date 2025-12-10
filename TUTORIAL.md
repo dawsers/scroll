@@ -449,7 +449,7 @@ can keep all your windows maximized or in full screen mode, and toggle
 overview on/off to see your full desktop, and quickly focus or change the
 position to a different application.
 
-[Full Screen](https://github.com/user-attachments/assets/fed977a0-8e87-4f94-bd68-7159578499ba)
+[Full Screen](https://github.com/user-attachments/assets/21fd0b5c-d497-428f-b967-7cd24f97513a)
 
 You can also use `fullscreen application` to toggle a full screen UI for any
 application, while still having its content fit in the assigned container.
