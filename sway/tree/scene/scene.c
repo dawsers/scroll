@@ -481,10 +481,12 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 	struct sway_scene_output *scene_output;
 	wl_list_for_each(scene_output, outputs, link) {
 		if (scene_output == ignore) {
+			active_outputs = active_outputs & ~(1ull << scene_output->index);
 			continue;
 		}
 
 		if (!scene_output->output->enabled) {
+			active_outputs = active_outputs & ~(1ull << scene_output->index);
 			continue;
 		}
 
@@ -496,6 +498,7 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 		}
 
 		if (wlr_output) {
+			active_outputs = active_outputs & ~(1ull << scene_output->index);
 			continue;
 		}
 
