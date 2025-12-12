@@ -44,6 +44,12 @@ static void default_touch_wl_cancel(struct wlr_seat_touch_grab *grab,
 	wlr_seat_touch_send_cancel(grab->seat, seat_client);
 }
 
+static void default_touch_clear_focus(struct wlr_seat_touch_grab *grab, uint32_t time_msec,
+		struct wlr_touch_point *point) {
+	wlr_seat_touch_point_clear_focus(grab->seat, time_msec, point->touch_id);
+}
+
+
 const struct wlr_touch_grab_interface default_touch_grab_impl = {
 	.down = default_touch_down,
 	.up = default_touch_up,
@@ -52,6 +58,7 @@ const struct wlr_touch_grab_interface default_touch_grab_impl = {
 	.frame = default_touch_frame,
 	.cancel = default_touch_cancel,
 	.wl_cancel = default_touch_wl_cancel,
+	.clear_focus = default_touch_clear_focus,
 };
 
 
@@ -253,6 +260,19 @@ void wlr_seat_touch_notify_cancel(struct wlr_seat *seat,
 		if (point->client == seat_client) {
 			touch_point_destroy(point);
 		}
+	}
+}
+
+void wlr_seat_touch_notify_clear_focus(struct wlr_seat *seat,
+		uint32_t time, int32_t touch_id) {
+	struct wlr_seat_touch_grab *grab = seat->touch_state.grab;
+	struct wlr_touch_point *point = wlr_seat_touch_get_point(seat, touch_id);
+	if (!point) {
+		return;
+	}
+
+	if (grab->interface->clear_focus) {
+		grab->interface->clear_focus(grab, time, point);
 	}
 }
 

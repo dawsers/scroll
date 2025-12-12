@@ -174,13 +174,19 @@ static void xdg_touch_grab_cancel(struct wlr_seat_touch_grab *grab) {
 	wlr_seat_touch_end_grab(grab->seat);
 }
 
+static void xdg_touch_grab_clear_focus(struct wlr_seat_touch_grab *grab, uint32_t time_msec,
+		struct wlr_touch_point *point) {
+	wlr_seat_touch_point_clear_focus(grab->seat, time_msec, point->touch_id);
+}
+
 static const struct wlr_touch_grab_interface xdg_touch_grab_impl = {
 	.down = xdg_touch_grab_down,
 	.up = xdg_touch_grab_up,
 	.motion = xdg_touch_grab_motion,
 	.enter = xdg_touch_grab_enter,
 	.frame = xdg_touch_grab_frame,
-	.cancel = xdg_touch_grab_cancel
+	.cancel = xdg_touch_grab_cancel,
+	.clear_focus = xdg_touch_grab_clear_focus,
 };
 
 static void destroy_xdg_popup_grab(struct wlr_xdg_popup_grab *xdg_grab) {

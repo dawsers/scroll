@@ -334,6 +334,12 @@ static void drag_handle_touch_cancel(struct wlr_seat_touch_grab *grab) {
 	drag_destroy(drag);
 }
 
+static void drag_handle_clear_focus(struct wlr_seat_touch_grab *grab, uint32_t time_msec,
+		struct wlr_touch_point *point) {
+	struct wlr_drag *drag = grab->data;
+	drag_set_focus(drag, NULL, 0, 0);
+}
+
 static const struct wlr_touch_grab_interface
 		data_device_touch_drag_interface = {
 	.down = drag_handle_touch_down,
@@ -341,6 +347,7 @@ static const struct wlr_touch_grab_interface
 	.motion = drag_handle_touch_motion,
 	.enter = drag_handle_touch_enter,
 	.cancel = drag_handle_touch_cancel,
+	.clear_focus = drag_handle_clear_focus,
 };
 
 static void drag_handle_keyboard_enter(struct wlr_seat_keyboard_grab *grab,

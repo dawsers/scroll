@@ -140,6 +140,8 @@ struct wlr_touch_grab_interface {
 	// Send wl_touch.cancel
 	void (*wl_cancel)(struct wlr_seat_touch_grab *grab,
 			struct wlr_seat_client *seat_client);
+	void (*clear_focus)(struct wlr_seat_touch_grab *grab, uint32_t time_msec,
+			struct wlr_touch_point *point);
 };
 
 /**
@@ -685,6 +687,8 @@ void wlr_seat_touch_notify_cancel(struct wlr_seat *seat,
 		struct wlr_seat_client *seat_client);
 
 void wlr_seat_touch_notify_frame(struct wlr_seat *seat);
+void wlr_seat_touch_notify_clear_focus(struct wlr_seat *seat,
+		uint32_t time_msec, int32_t touch_id);
 
 /**
  * How many touch points are currently down for the seat.
