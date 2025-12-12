@@ -49,11 +49,14 @@ vec3 linear_color_to_pq(vec3 color) {
 }
 
 vec3 linear_color_to_bt1886(vec3 color) {
-	float lb = pow(0.0001, 1.0 / 2.4);
-	float lw = pow(1.0, 1.0 / 2.4);
+	float Lmin = 0.01;
+	float Lmax = 100.0;
+	float lb = pow(Lmin, 1.0 / 2.4);
+	float lw = pow(Lmax, 1.0 / 2.4);
 	float a  = pow(lw - lb, 2.4);
 	float b  = lb / (lw - lb);
-	return pow(color / a, vec3(1.0 / 2.4)) - vec3(b);
+	vec3 L = color * (Lmax - Lmin) + vec3(Lmin);
+	return pow(L / a, vec3(1.0 / 2.4)) - vec3(b);
 }
 
 void main() {

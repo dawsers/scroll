@@ -54,11 +54,14 @@ vec3 pq_color_to_linear(vec3 color) {
 }
 
 vec3 bt1886_color_to_linear(vec3 color) {
-	float lb = pow(0.0001, 1.0 / 2.4);
-	float lw = pow(1.0, 1.0 / 2.4);
+	float Lmin = 0.01;
+	float Lmax = 100.0;
+	float lb = pow(Lmin, 1.0 / 2.4);
+	float lw = pow(Lmax, 1.0 / 2.4);
 	float a  = pow(lw - lb, 2.4);
 	float b  = lb / (lw - lb);
-	return a * pow(color + vec3(b), vec3(2.4));
+	vec3 L = a * pow(color + vec3(b), vec3(2.4));
+	return (L - Lmin) / (Lmax - Lmin);
 }
 
 float antialias(float x, float x0, float x1, float fw) {
