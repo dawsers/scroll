@@ -1,5 +1,7 @@
 # scroll
 
+<img width="256" height="256" src="https://github.com/dawsers/scroll/blob/master/scroll.png" />
+
 [scroll](https://github.com/dawsers/scroll) is a Wayland compositor forked
 from [sway](https://github.com/swaywm/sway). The main difference is *scroll*
 only supports one layout, a scrolling layout similar to

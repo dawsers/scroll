@@ -224,6 +224,11 @@ install_data(
 	install_dir: join_paths(datadir, 'wayland-sessions')
 )
 
+install_data(
+	'scroll.png',
+	install_dir: join_paths(datadir, 'icons')
+)
+
 if get_option('default-wallpaper')
 	wallpaper_files = files(
 		'assets/Sway_Wallpaper_Blue_768x1024.png',
