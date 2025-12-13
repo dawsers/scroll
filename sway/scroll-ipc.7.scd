@@ -1629,10 +1629,10 @@ available:
 |- 0x80000015
 :  input
 :  Sent when something related to input devices changes
-|- 0x80000030
+|- 0x8000001e
 :  scroller
 :  Sent when a scroller property for the current workspace changes
-|- 0x80000031
+|- 0x8000001f
 :  trails
 :  Sent when there is a change in trails
 
@@ -2032,7 +2032,7 @@ The following change types are currently available:
 }
 ```
 
-## 0x80000030. SCROLLER
+## 0x8000001e. SCROLLER
 
 Sent when a scroller property for the current workspace changes. The event
 consists of a single object with the following properties:
@@ -2074,7 +2074,7 @@ The following change types are currently available:
 
 For a description of the properties, see _GET_SCROLLER_
 
-## 0x80000031. TRAILS
+## 0x8000001f. TRAILS
 
 Sent when there is a change in trails. The event
 consists of a single object with the following properties:
