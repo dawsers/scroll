@@ -88,7 +88,7 @@ The following commands may only be used in the configuration file.
 	while animating.
 
 	*default* enabled [duration] [var animation curve] [off animation curve]
-	Default is default is _yes 300 var 3 [ 0.215 0.61 0.355 1 ]_.
+	Default is _yes 300 var 3 [ 0.215 0.61 0.355 1 ]_.
 	Defines the default animation curve. Follows the format explained below.
 
 	*window_move* enabled [duration] [var animation curve] [off animation curve]
