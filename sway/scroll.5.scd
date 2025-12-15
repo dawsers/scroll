@@ -88,7 +88,7 @@ The following commands may only be used in the configuration file.
 	while animating.
 
 	*default* enabled [duration] [var animation curve] [off animation curve]
-	Default is default is _yes 300 var 3 [ 0.215 0.61 0.355 1 ]_.
+	Default is _yes 300 var 3 [ 0.215 0.61 0.355 1 ]_.
 	Defines the default animation curve. Follows the format explained below.
 
 	*window_move* enabled [duration] [var animation curve] [off animation curve]
@@ -1783,7 +1783,7 @@ local args, state = ...
 ```
 
 You can call the same script many times with the same or different arguments,
-and you can check the arguments passed to the script on each invokation using
+and you can check the arguments passed to the script on each invocation using
 the variable _args_ if you store it at startup.
 
 _state_ is another special variable that allows you to store script-local data
