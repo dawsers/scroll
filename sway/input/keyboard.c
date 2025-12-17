@@ -1162,6 +1162,7 @@ void sway_keyboard_destroy(struct sway_keyboard *keyboard) {
 
 void sway_keyboard_set_keypress_cb(struct sway_keyboard *keyboard,
 		sway_keyboard_cb_fn callback, void *callbak_data) {
+	sway_keyboard_disarm_key_repeat(keyboard);
 	keyboard->key_press_cb_data = callbak_data;
 	keyboard->key_press_cb = callback;
 }
