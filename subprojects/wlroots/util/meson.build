@@ -15,4 +15,5 @@ wlr_files += files(
 	'token.c',
 	'transform.c',
 	'utf8.c',
+	'version.c',
 )
