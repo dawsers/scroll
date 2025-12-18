@@ -2159,9 +2159,10 @@ static void scene_output_state_attempt_gamma(struct wlr_scene_output *scene_outp
 static bool scene_output_combine_color_transforms(
 		struct wlr_scene_output *scene_output, struct wlr_color_transform *supplied,
 		const struct wlr_output_image_description *img_desc, bool render_gamma_lut) {
-	struct wlr_color_transform *transforms[3] = {0};
-	const size_t transforms_cap = sizeof(transforms) / sizeof(transforms[0]);
-	size_t transforms_len = 0;
+	bool result = false;
+	struct wlr_color_transform *color_matrix = NULL;
+	struct wlr_color_transform *inv_eotf = NULL;
+	struct wlr_color_transform *user_gamma = NULL;
 
 	if (img_desc != NULL) {
 		assert(supplied == NULL);
@@ -2171,42 +2172,35 @@ static bool scene_output_combine_color_transforms(
 		wlr_color_primaries_from_named(&primaries, img_desc->primaries);
 		float matrix[9];
 		wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
-		assert(transforms_len < transforms_cap);
-		transforms[transforms_len++] =	wlr_color_transform_init_matrix(matrix);
-		assert(transforms_len < transforms_cap);
-		transforms[transforms_len++] = wlr_color_transform_init_linear_to_inverse_eotf(
-			img_desc->transfer_function);
+		color_matrix = wlr_color_transform_init_matrix(matrix);
+		inv_eotf = wlr_color_transform_init_linear_to_inverse_eotf(img_desc->transfer_function);
+		if (color_matrix == NULL || inv_eotf == NULL) {
+			goto cleanup_transforms;
+		}
 	} else if (supplied != NULL) {
-		assert(transforms_len < transforms_cap);
-		transforms[transforms_len++] = wlr_color_transform_ref(supplied);
+		inv_eotf = wlr_color_transform_ref(supplied);
 	} else {
-		assert(transforms_len < transforms_cap);
-		transforms[transforms_len++] = wlr_color_transform_init_linear_to_inverse_eotf(
+		inv_eotf = wlr_color_transform_init_linear_to_inverse_eotf(
 			WLR_COLOR_TRANSFER_FUNCTION_GAMMA22);
+		if (inv_eotf == NULL) {
+			goto cleanup_transforms;
+		}
 	}
 
 	struct wlr_color_transform *gamma_lut = scene_output->gamma_lut_color_transform;
 	if (gamma_lut != NULL && render_gamma_lut) {
-		assert(transforms_len < transforms_cap);
-		transforms[transforms_len++] = wlr_color_transform_ref(gamma_lut);
+		user_gamma = wlr_color_transform_ref(gamma_lut);
 	}
 
-	for (size_t i = 0; i < transforms_len; ++i) {
-		if (transforms[i] == NULL) {
-			goto err_transforms;
-		}
-	}
 	struct wlr_color_transform *combined;
-	if (transforms_len == 1) {
-		combined = wlr_color_transform_ref(transforms[0]);
-	} else {
-		combined = wlr_color_transform_init_pipeline(transforms, transforms_len);
-	}
-	if (combined == NULL) {
-		goto err_transforms;
-	}
-	for (size_t i = 0; i < transforms_len; ++i) {
-		wlr_color_transform_unref(transforms[i]);
+	struct wlr_color_transform *transforms[] = {
+		color_matrix,
+		inv_eotf,
+		user_gamma,
+	};
+	const size_t transforms_len = sizeof(transforms) / sizeof(transforms[0]);
+	if (!color_transform_compose(&combined, transforms, transforms_len)) {
+		goto cleanup_transforms;
 	}
 
 	wlr_color_transform_unref(scene_output->prev_gamma_lut_color_transform);
@@ -2216,13 +2210,13 @@ static bool scene_output_combine_color_transforms(
 	wlr_color_transform_unref(scene_output->combined_color_transform);
 	scene_output->combined_color_transform = combined;
 
-	return true;
+	result = true;
 
-err_transforms:
-	for (size_t i = 0; i < transforms_len; ++i) {
-		wlr_color_transform_unref(transforms[i]);
-	}
-	return false;
+cleanup_transforms:
+	wlr_color_transform_unref(color_matrix);
+	wlr_color_transform_unref(inv_eotf);
+	wlr_color_transform_unref(user_gamma);
+	return result;
 }
 
 bool wlr_scene_output_build_state(struct wlr_scene_output *scene_output,

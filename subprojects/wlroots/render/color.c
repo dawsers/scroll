@@ -268,6 +268,71 @@ void wlr_color_transform_eval(struct wlr_color_transform *tr,
 	}
 }
 
+static size_t color_transform_compose_collect(struct wlr_color_transform **out,
+		size_t out_capacity, struct wlr_color_transform **transforms, size_t len) {
+	size_t count = 0;
+	for (size_t i = 0; i < len; i++) {
+		struct wlr_color_transform *transform = transforms[i];
+		if (transform == NULL) {
+			continue;
+		}
+
+		if (transform->type == COLOR_TRANSFORM_PIPELINE) {
+			struct wlr_color_transform_pipeline *pipeline = wl_container_of(transform,
+				pipeline, base);
+			count += color_transform_compose_collect(out, out_capacity,
+				pipeline->transforms, pipeline->len);
+		} else {
+			if (out_capacity > 0) {
+				*out = wlr_color_transform_ref(transform);
+				out++;
+				out_capacity--;
+			}
+			count++;
+		}
+	}
+	return count;
+}
+
+bool color_transform_compose(struct wlr_color_transform **result,
+		struct wlr_color_transform **transforms, size_t len) {
+	// The normalized form has the following properties :
+	// - No NULL transform in a pipeline
+	// - No pipeline of length 1
+	// - No nested pipelines
+	bool status = false;
+
+	size_t result_len = color_transform_compose_collect(NULL, 0, transforms, len);
+	if (result_len == 0) {
+		*result = NULL;
+		return true;
+	}
+
+	struct wlr_color_transform **result_transforms = calloc(result_len,
+		sizeof(result_transforms[0]));
+	if (result_transforms == NULL) {
+		return false;
+	}
+	color_transform_compose_collect(result_transforms, result_len, transforms, len);
+
+	if (result_len == 1) {
+		*result = wlr_color_transform_ref(result_transforms[0]);
+	} else {
+		*result = wlr_color_transform_init_pipeline(result_transforms, result_len);
+		if (*result == NULL) {
+			goto cleanup_transforms;
+		}
+	}
+	status = true;
+
+cleanup_transforms:
+	for (size_t i = 0; i < result_len; i++) {
+		wlr_color_transform_unref(result_transforms[i]);
+	}
+	free(result_transforms);
+	return status;
+}
+
 void wlr_color_primaries_from_named(struct wlr_color_primaries *out,
 		enum wlr_color_named_primaries named) {
 	switch (named) {
