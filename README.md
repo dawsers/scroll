@@ -122,15 +122,58 @@ stable version.
 
 Thanks to @mecattaf, [scroll stable is also available on the Fedora Copr](https://copr.fedorainfracloud.org/coprs/scrollwm/packages/).
 
-### Void Linux
-
-Thanks to @brihadeesh for setting up a Void linux template for the stable version of
-scroll on his repo, [here](https://git.sr.ht/~peregrinator/scroll-void-template).
-
 ### NixOS
 
 Thanks to @AsahiRocks for creating a nix flake of scroll stable in his repository,
 [here](https://github.com/AsahiRocks/scroll-flake)
+
+### Artix Linux and Arch-derived Distributions not Using `systemd`
+
+Artix uses `elogind` instead of `systemd`'s login daemon to provide some
+services. That means the AUR packages for *scroll* won't work out of the box.
+Artix doesn't have a package for *scroll* in their repository, so if you want
+to install it, you can either do it manually, or modify the AUR package as
+explained [here](https://github.com/dawsers/scroll/issues/164).
+
+``` bash
+git clone https://aur.archlinux.org/sway-scroll.git
+cd sway-scroll
+```
+
+Apply this patch:
+
+``` diff
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -19,7 +19,7 @@
+ 	"libliftoff"
+ 	"libglvnd"
+ 	"lcms2"
+-	"systemd-libs"
++	"elogind"
+ 	"opengl-driver"
+ 	"xcb-util-errors"
+ 	"xcb-util-renderutil"
+@@ -62,7 +62,7 @@
+
+ build() {
+   mkdir -p build
+-  arch-meson build scroll -D sd-bus-provider=libsystemd -D werror=false -D b_ndebug=true
++  arch-meson build scroll -D sd-bus-provider=libelogind -D werror=false -D b_ndebug=true
+   ninja -C build
+ }
+```
+
+And make and install the package.
+
+``` bash
+makepkg -si
+```
+
+### Void Linux
+
+Thanks to @brihadeesh for setting up a Void linux template for the stable version of
+scroll on his repo, [here](https://git.sr.ht/~peregrinator/scroll-void-template).
 
 ### Post-Installation
 
