@@ -105,6 +105,7 @@ struct sway_root {
 	} filters;
 
 	bool overview;
+	bool jumping;
 
 	list_t *spaces;
 };

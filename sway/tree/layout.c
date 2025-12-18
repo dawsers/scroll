@@ -1403,7 +1403,8 @@ static void jump_handle_keyboard_key_end(void *data, bool focus) {
 	struct jump_data *jump_data = data;
 	struct jump_specific_data *specific = jump_data->specific;
 	struct jump_common_data *common = jump_data->common;
-	// Finished, remove decorations
+	// Finished, remove decorations and prepare focus
+	struct sway_container *focused = NULL;
 	for (int w = 0; w < specific->workspaces->length; ++w) {
 		struct sway_workspace *workspace = specific->workspaces->items[w];
 		if (layout_overview_mode(workspace) == OVERVIEW_TILING) {
@@ -1412,45 +1413,37 @@ static void jump_handle_keyboard_key_end(void *data, bool focus) {
 				for (int j = 0; j < container->pending.children->length; ++j) {
 					struct sway_container *view = container->pending.children->items[j];
 					container_toggle_jump_decoration(workspace, view, NULL, 0, 0);
+					if (focus) {
+						if (view->jump.id == (int32_t)common->window_number) {
+							focused = view;
+						}
+					}
+					view->jump.id = -1;
 				}
 			}
 		} else {
 			for (int i = 0; i < workspace->floating->length; ++i) {
 				struct sway_container *view = workspace->floating->items[i];
 				container_toggle_jump_decoration(workspace, view, NULL, 0, 0);
-			}
-		}
-	}
-
-	if (focus) {
-		uint32_t n = 0;
-		for (int w = 0; w < specific->workspaces->length; ++w) {
-			struct sway_workspace *workspace = specific->workspaces->items[w];
-			if (layout_overview_mode(workspace) == OVERVIEW_TILING) {
-				for (int i = 0; i < workspace->tiling->length; ++i) {
-					struct sway_container *container = workspace->tiling->items[i];
-					if (n + container->pending.children->length > common->window_number) {
-						struct sway_container *view = container->pending.children->items[common->window_number - n];
-						struct sway_seat *seat = input_manager_current_seat();
-						seat_set_focus_container(seat, view);
-						seat_consider_warp_to_focus(seat);
-						goto cleanup;
-					} else {
-						n += container->pending.children->length;
+				if (focus) {
+					if (view->jump.id == (int32_t)common->window_number) {
+						focused = view;
 					}
 				}
-			} else {
-				struct sway_container *view = workspace->floating->items[common->window_number];
-				struct sway_seat *seat = input_manager_current_seat();
-				seat_set_focus_container(seat, view);
-				sway_scene_node_raise_to_top(&view->scene_tree->node);
-				seat_consider_warp_to_focus(seat);
-				goto cleanup;
+				view->jump.id = -1;
 			}
 		}
 	}
 
-cleanup:
+	if (focused) {
+		struct sway_seat *seat = input_manager_current_seat();
+		seat_set_focus_container(seat, focused);
+		if (layout_overview_mode(focused->pending.workspace) != OVERVIEW_TILING) {
+			sway_scene_node_raise_to_top(&focused->scene_tree->node);
+		}
+		seat_consider_warp_to_focus(seat);
+	}
+
 	for (int w = 0; w < specific->workspaces->length; ++w) {
 		struct sway_workspace *workspace = specific->workspaces->items[w];
 		bool tiling = layout_overview_mode(workspace) == OVERVIEW_TILING;
@@ -1466,6 +1459,7 @@ cleanup:
 			}
 		}
 	}
+	root->jumping = false;
 	list_free(specific->workspaces);
 	free(specific);
 	free(common);
@@ -1575,12 +1569,14 @@ void layout_jump() {
 			struct sway_container *container = workspace->tiling->items[i];
 			for (int j = 0; j < container->pending.children->length; ++j) {
 				struct sway_container *view = container->pending.children->items[j];
+				view->jump.id = n;
 				char *label = generate_label(n++, config->jump_labels_keys, nkeys);
 				container_toggle_jump_decoration(workspace, view, label, view->pending.width, view->pending.height);
 				free(label);
 			}
 		}
 	}
+	root->jumping = true;
 	override_input(true, jump_handle_keyboard_key, jump_data, jump_handle_button, jump_data);
 }
 
@@ -1739,11 +1735,13 @@ void layout_jump_floating() {
 		struct sway_workspace *workspace = specific->workspaces->items[i];
 		for (int i = 0; i < workspace->floating->length; ++i) {
 			struct sway_container *view = workspace->floating->items[i];
+			view->jump.id = n;
 			char *label = generate_label(n++, config->jump_labels_keys, nkeys);
 			container_toggle_jump_decoration(workspace, view, label, view->pending.width, view->pending.height);
 			free(label);
 		}
 	}
+	root->jumping = true;
 	override_input(true, jump_handle_keyboard_key, jump_data, jump_handle_button, jump_data);
 }
 
@@ -1812,6 +1810,7 @@ static void jump_scratchpad_handle_keyboard_key_end(void *data, bool focus) {
 	}
 	node_set_dirty(&workspace->node);
 
+	root->jumping = false;
 	free(specific);
 	free(common);
 	free(jump_data);
@@ -1848,8 +1847,14 @@ static void jump_scratchpad_handle_keyboard_key(struct sway_keyboard *keyboard,
 		common->keys_pressed++;
 		if (common->keys_pressed == common->nkeys) {
 			if (common->window_number < common->nwindows) {
-				focus = true;
-				common->focused = specific->workspace->floating->items[common->window_number];
+				for (int i = 0; i < specific->workspace->floating->length; ++i) {
+					struct sway_container *con = specific->workspace->floating->items[i];
+					if (con->jump.id == (int32_t)common->window_number) {
+						focus = true;
+						common->focused = con;
+					}
+					con->jump.id = -1;
+				}
 			}
 		} else {
 			return;
@@ -1923,10 +1928,12 @@ void layout_jump_scratchpad(struct sway_workspace *workspace) {
 
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *view = workspace->floating->items[i];
+		view->jump.id = i;
 		char *label = generate_label(i, config->jump_labels_keys, nkeys);
 		container_toggle_jump_decoration(workspace, view, label, view->pending.width, view->pending.height);
 		free(label);
 	}
+	root->jumping = true;
 	override_input(true, jump_scratchpad_handle_keyboard_key, jump_data, jump_scratchpad_handle_button, jump_data);
 }
 
@@ -1977,6 +1984,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 	}
 	node_set_dirty(&workspace->node);
 
+	root->jumping = false;
 	free(specific);
 	free(common);
 	free(jump_data);
@@ -2083,10 +2091,12 @@ void layout_jump_trailmark(struct sway_workspace *workspace) {
 
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *view = workspace->floating->items[i];
+		view->jump.id = i;
 		char *label = generate_label(i, config->jump_labels_keys, nkeys);
 		container_toggle_jump_decoration(workspace, view, label, view->pending.width, view->pending.height);
 		free(label);
 	}
+	root->jumping = true;
 	override_input(true, jump_scratchpad_handle_keyboard_key, jump_data, jump_scratchpad_handle_button, jump_data);
 }
 
@@ -2137,6 +2147,7 @@ static void jump_workspaces_handle_keyboard_key_end(void *data, bool focus) {
 		}
 	}
 
+	root->jumping = false;
 	free(specific);
 	free(common);
 	free(jump_data);
@@ -2201,6 +2212,7 @@ void layout_jump_workspaces() {
 		return;
 	}
 
+	root->jumping = true;
 	uint32_t nkeys = nworkspaces == 1 ? 1 : ceil(log10(nworkspaces) / log10(strlen(config->jump_labels_keys)));
 	common->nwindows = nworkspaces;
 	common->nkeys = nkeys;
@@ -2323,6 +2335,7 @@ static void jump_container_handle_keyboard_key_end(void *data, bool focus) {
 		seat_consider_warp_to_focus(seat);
 	}
 
+	root->jumping = false;
 	free(specific);
 	free(common);
 	free(jump_data);
@@ -2362,6 +2375,7 @@ void layout_jump_container(struct sway_container *container) {
 	common->keyboard_key_end = jump_container_handle_keyboard_key_end;
 	specific->jumping = false;
 
+	root->jumping = true;
 	container_jump(jump_data);
 
 	override_input(true, jump_handle_keyboard_key, jump_data, jump_container_handle_button, jump_data);

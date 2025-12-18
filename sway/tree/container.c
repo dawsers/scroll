@@ -115,6 +115,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->jump.text = NULL;
 	c->jump.tree = alloc_scene_tree(c->scene_tree, &failed);
 	sway_scene_node_set_enabled(&c->jump.tree->node, false);
+	c->jump.id = -1;
 
 	if (view) {
 		// only containers with views can have borders

@@ -61,7 +61,9 @@ struct cmd_results *cmd_scale_workspace(int argc, char **argv) {
 	} else if (strcasecmp(argv[0], "reset") == 0) {
 		layout_scale_reset(workspace);
 	} else if (strcasecmp(argv[0], "overview") == 0) {
-		layout_overview_toggle(workspace, OVERVIEW_ALL);
+		if (!root->jumping) {
+			layout_overview_toggle(workspace, OVERVIEW_ALL);
+		}
 	} else {
 		fail = 1;
 	}
