@@ -2199,7 +2199,7 @@ static bool scene_output_combine_color_transforms(
 		user_gamma,
 	};
 	const size_t transforms_len = sizeof(transforms) / sizeof(transforms[0]);
-	if (!color_transform_compose(&combined, transforms, transforms_len)) {
+	if (!wlr_color_transform_compose(&combined, transforms, transforms_len)) {
 		goto cleanup_transforms;
 	}
 

@@ -294,7 +294,7 @@ static size_t color_transform_compose_collect(struct wlr_color_transform **out,
 	return count;
 }
 
-bool color_transform_compose(struct wlr_color_transform **result,
+bool wlr_color_transform_compose(struct wlr_color_transform **result,
 		struct wlr_color_transform **transforms, size_t len) {
 	// The normalized form has the following properties :
 	// - No NULL transform in a pipeline
