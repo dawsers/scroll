@@ -88,8 +88,8 @@ struct wlr_color_transform *wlr_color_transform_init_pipeline(
 	}
 	wlr_color_transform_init(&tx->base, COLOR_TRANSFORM_PIPELINE);
 
-	// TODO: flatten nested pipeline transforms
 	for (size_t i = 0; i < len; i++) {
+		assert(transforms[i] != NULL);
 		copy[i] = wlr_color_transform_ref(transforms[i]);
 	}
 
