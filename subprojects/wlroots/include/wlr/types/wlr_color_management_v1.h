@@ -14,6 +14,7 @@
 
 #include <wlr/render/color.h>
 
+struct wlr_renderer;
 struct wlr_surface;
 
 struct wlr_image_description_v1_data {
@@ -118,5 +119,19 @@ wlr_color_manager_v1_primaries_to_wlr(enum wp_color_manager_v1_primaries primari
  */
 enum wp_color_manager_v1_primaries
 wlr_color_manager_v1_primaries_from_wlr(enum wlr_color_named_primaries primaries);
+
+/**
+ * Get a list of supported transfer functions for a renderer. The caller is
+ * responsible for free'ing the array.
+ */
+enum wp_color_manager_v1_transfer_function *
+wlr_color_manager_v1_transfer_function_list_from_renderer(struct wlr_renderer *renderer, size_t *len);
+
+/**
+ * Get a list of supported named primaries for a renderer. The caller is
+ * responsible for free'ing the array.
+ */
+enum wp_color_manager_v1_primaries *
+wlr_color_manager_v1_primaries_list_from_renderer(struct wlr_renderer *renderer, size_t *len);
 
 #endif
