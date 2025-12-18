@@ -1520,6 +1520,9 @@ static bool jump_handle_button(struct sway_seat *seat, uint32_t time_msec,
 }
 
 void layout_jump() {
+	if (root->jumping) {
+		return;
+	}
 	struct jump_data *jump_data = calloc(1, sizeof(struct jump_data));
 	struct jump_specific_data *specific = calloc(1, sizeof(struct jump_specific_data));
 	struct jump_common_data *common = calloc(1, sizeof(struct jump_common_data));
@@ -1689,6 +1692,9 @@ static void organize_floating_windows(struct sway_workspace *workspace) {
 }
 
 void layout_jump_floating() {
+	if (root->jumping) {
+		return;
+	}
 	struct jump_data *jump_data = calloc(1, sizeof(struct jump_data));
 	struct jump_specific_data *specific = calloc(1, sizeof(struct jump_specific_data));
 	struct jump_common_data *common = calloc(1, sizeof(struct jump_common_data));
@@ -1882,7 +1888,7 @@ static bool jump_scratchpad_handle_button(struct sway_seat *seat, uint32_t time_
 }
 
 void layout_jump_scratchpad(struct sway_workspace *workspace) {
-	if (root->scratchpad->length == 0) {
+	if (root->scratchpad->length == 0 || root->jumping) {
 		return;
 	}
 	struct jump_data *jump_data = calloc(1, sizeof(struct jump_data));
@@ -2017,7 +2023,7 @@ static bool trailmarks_container_filter(struct sway_workspace *workspace,
 }
 
 void layout_jump_trailmark(struct sway_workspace *workspace) {
-	if (!workspace) {
+	if (!workspace || root->jumping) {
 		return;
 	}
 	// Similarly to jump scratchpad, disable any floating windows in the current
@@ -2189,6 +2195,9 @@ static bool jump_workspaces_handle_button(struct sway_seat *seat, uint32_t time_
 }
 
 void layout_jump_workspaces() {
+	if (root->jumping) {
+		return;
+	}
 	layout_overview_workspaces_toggle();
 
 	struct jump_data *jump_data = calloc(1, sizeof(struct jump_data));
@@ -2355,6 +2364,9 @@ static bool jump_container_handle_button(struct sway_seat *seat, uint32_t time_m
 }
 
 void layout_jump_container(struct sway_container *container) {
+	if (root->jumping) {
+		return;
+	}
 	if (container->pending.parent) {
 		container = container->pending.parent;
 	}
