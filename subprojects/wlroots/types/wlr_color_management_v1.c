@@ -1055,6 +1055,7 @@ wlr_color_manager_v1_transfer_function_list_from_renderer(struct wlr_renderer *r
 		WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_GAMMA22,
 		WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_ST2084_PQ,
 		WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_EXT_LINEAR,
+		WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_BT1886,
 	};
 
 	enum wp_color_manager_v1_transfer_function *out = NULL;
