@@ -60,6 +60,14 @@ struct sway_workspace {
 	bool urgent;
 
 	struct {
+		double x, y;
+		double width, height;
+		double scale;
+		struct sway_scene_tree *tree;
+		struct sway_text_node *text;
+	} jump;
+
+	struct {
 		bool scrolling;
 		double dx, dy;
 		struct sway_container *pin;

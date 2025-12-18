@@ -89,14 +89,6 @@ struct sway_scroller {
 	} pin;
 
 	struct {
-		double x, y;
-		double width, height;
-		double scale;
-		struct sway_scene_tree *tree;
-		struct sway_text_node *text;
-	} workspaces;
-
-	struct {
 		enum sway_toggle_size mode;
 		struct sway_container *container;
 		double width, height;

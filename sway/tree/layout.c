@@ -83,11 +83,7 @@ void layout_init(struct sway_workspace *workspace) {
 	layout_modifiers_init(workspace);
 	workspace->layout.overview = OVERVIEW_DISABLED;
 	workspace->layout.mem_scale = -1.0f;  // disabled
-	workspace->layout.workspaces.text = NULL;
 	layout_toggle_size_init(workspace);
-	bool failed = false;
-	workspace->layout.workspaces.tree = alloc_scene_tree(workspace->output->layers.shell_overlay, &failed);
-	sway_scene_node_set_enabled(&workspace->layout.workspaces.tree->node, false);
 	ipc_event_scroller("new", workspace);
 }
 
@@ -341,12 +337,13 @@ void layout_overview_workspaces_toggle() {
 				double gapy = (uheight - rows * scale * height) / (rows + 1);
 				for (int c = 0; c < cols; ++c) {
 					struct sway_workspace *child = output->current.workspaces->items[j++];
+					sway_scene_node_reparent(&child->jump.tree->node, output->layers.shell_overlay);
 					child->layout.fullscreen = child->fullscreen;
-					child->layout.workspaces.x = round(left + gapx + c * (scale * width + gapx));
-					child->layout.workspaces.y = round(top + gapy + r * (scale * height + gapy));
-					child->layout.workspaces.width = ceil(scale * width);
-					child->layout.workspaces.height = ceil(scale * height);
-					child->layout.workspaces.scale = scale;
+					child->jump.x = round(left + gapx + c * (scale * width + gapx));
+					child->jump.y = round(top + gapy + r * (scale * height + gapy));
+					child->jump.width = ceil(scale * width);
+					child->jump.height = ceil(scale * height);
+					child->jump.scale = scale;
 					child->layers.tiling->node.info.workspace = child;
 					node_set_dirty(&child->node);
 					if (child->fullscreen) {
@@ -362,6 +359,7 @@ void layout_overview_workspaces_toggle() {
 		} else {
 			for (int j = 0; j < output->current.workspaces->length; ++j) {
 				struct sway_workspace *child = output->current.workspaces->items[j];
+				sway_scene_node_reparent(&child->jump.tree->node, root->staging);
 				child->layers.tiling->node.info.workspace = NULL;
 				node_set_dirty(&child->node);
 				if (child->layout.fullscreen) {
@@ -2094,30 +2092,30 @@ void layout_jump_trailmark(struct sway_workspace *workspace) {
 
 static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *text) {
 	if (!text) {
-		if (ws->layout.workspaces.text) {
-			sway_scene_node_destroy(ws->layout.workspaces.text->node);
-			ws->layout.workspaces.text = NULL;
+		if (ws->jump.text) {
+			sway_scene_node_destroy(ws->jump.text->node);
+			ws->jump.text = NULL;
 		}
 		return;
-	} else if (!ws->layout.workspaces.text) {
-		ws->layout.workspaces.text = sway_text_node_create(ws->layout.workspaces.tree,
+	} else if (!ws->jump.text) {
+		ws->jump.text = sway_text_node_create(ws->jump.tree,
 			text, config->jump_labels_color, false);
 	} else {
-		sway_text_node_set_text(ws->layout.workspaces.text, text);
+		sway_text_node_set_text(ws->jump.text, text);
 	}
-	sway_text_node_set_background(ws->layout.workspaces.text, config->jump_labels_background);
+	sway_text_node_set_background(ws->jump.text, config->jump_labels_background);
 	double jscale = config->jump_labels_scale;
-	double scale = fmin((double) ws->width / ws->layout.workspaces.text->width,
-		(double) ws->height / ws->layout.workspaces.text->height);
+	double scale = fmin((double) ws->width / ws->jump.text->width,
+		(double) ws->height / ws->jump.text->height);
 	const double oscale = ws->output->wlr_output->scale;
-	const double wscale = ws->layout.workspaces.scale;
-	sway_text_node_scale(ws->layout.workspaces.text, jscale * scale * wscale);
-	int x = ws->layout.workspaces.x + 0.5 * (ws->layout.workspaces.width - ws->layout.workspaces.text->width * jscale * scale * wscale * oscale);
-	int y = ws->layout.workspaces.y + 0.5 * (ws->layout.workspaces.height - ws->layout.workspaces.text->height * jscale * scale * wscale * oscale);
+	const double wscale = ws->jump.scale;
+	sway_text_node_scale(ws->jump.text, jscale * scale * wscale);
+	int x = ws->jump.x + 0.5 * (ws->jump.width - ws->jump.text->width * jscale * scale * wscale * oscale);
+	int y = ws->jump.y + 0.5 * (ws->jump.height - ws->jump.text->height * jscale * scale * wscale * oscale);
 	x /= oscale;
 	y /= oscale;
-	sway_scene_node_set_position(&ws->layout.workspaces.tree->node, x, y);
-	sway_scene_node_set_enabled(&ws->layout.workspaces.tree->node, true);
+	sway_scene_node_set_position(&ws->jump.tree->node, x, y);
+	sway_scene_node_set_enabled(&ws->jump.tree->node, true);
 }
 
 static void jump_workspaces_handle_keyboard_key_end(void *data, bool focus) {
@@ -2163,10 +2161,10 @@ static bool jump_workspaces_handle_button(struct sway_seat *seat, uint32_t time_
 				struct sway_workspace *child = output->current.workspaces->items[j];
 				// If this workspace is the one under the cursor, set focused
 				// and jump_data->window_number to n
-				if (x >= child->layout.workspaces.x &&
-					x <= child->layout.workspaces.x + child->layout.workspaces.width &&
-					y >= child->layout.workspaces.y &&
-					y <= child->layout.workspaces.y + child->layout.workspaces.height) {
+				if (x >= child->jump.x &&
+					x <= child->jump.x + child->jump.width &&
+					y >= child->jump.y &&
+					y <= child->jump.y + child->jump.height) {
 					focus = true;
 					common->window_number = n;
 				}
