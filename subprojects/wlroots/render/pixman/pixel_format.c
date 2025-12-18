@@ -96,6 +96,10 @@ static const struct wlr_pixman_pixel_format formats[] = {
 		.drm_format = DRM_FORMAT_XBGR2101010,
 		.pixman_format = PIXMAN_x2b10g10r10,
 	},
+	{
+		.drm_format = DRM_FORMAT_ABGR16161616,
+		.pixman_format = PIXMAN_a16b16g16r16,
+	},
 #endif
 };
 
