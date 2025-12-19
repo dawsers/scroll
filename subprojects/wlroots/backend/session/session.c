@@ -36,6 +36,15 @@ static void handle_disable_seat(struct libseat *seat, void *data) {
 
 static int libseat_event(int fd, uint32_t mask, void *data) {
 	struct wlr_session *session = data;
+	if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
+		if (mask & WL_EVENT_ERROR) {
+			wlr_log(WLR_ERROR, "Failed to wait for libseat event");
+		} else {
+			wlr_log(WLR_INFO, "Failed to wait for libseat event");
+		}
+		wlr_session_destroy(session);
+		return 0;
+	}
 	if (libseat_dispatch(session->seat_handle, 0) == -1) {
 		wlr_log_errno(WLR_ERROR, "Failed to dispatch libseat");
 		wlr_session_destroy(session);
