@@ -377,7 +377,7 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 <criteria> *focus*
 	Moves focus to the container that matches the specified criteria.
 
-*focus* up|right|down|left|begin|end
+*focus* up|right|down|left|beginning|end
 	Moves focus to the next container in the specified direction.
 
 *focus* prev|next [sibling]
@@ -737,10 +737,10 @@ set|plus|minus|toggle <amount>
 
 	_<h|v|t>_: set horizontal, vertical, or toggle the current mode.
 
-	_position_: It is one of after (default), before, end, beg. This parameter
-	decides the position of new windows: after the current one (default value),
-	before the current one, at the end of the row/column, or at the beginning
-	of the row/column.
+	_position_: It is one of after (default), before, end, beginning (or beg).
+	This parameter decides the position of new windows: after the current one
+	(default value), before the current one, at the end of the row/column, or
+	at the beginning of the row/column.
 
 	_focus_: One of focus (default) or nofocus. When creating a new window,
 	this parameter controls whether it will get focus or not.
@@ -1150,7 +1150,7 @@ runtime.
 	_indicator_
 		The color used to indicate where a new window will open. In a tiled
 		container, depending on the mode (_horizontal_ or _vertical_) and the
-		insert mode modifier (_before_, _after_, _begin_, _end_), the
+		insert mode modifier (_before_, _after_, _beginning_, _end_), the
 		corresponding border will be painted with this color, overriding the
 		title border color too if there is one. This only applies to the
 		currently focused window.
