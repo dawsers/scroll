@@ -198,7 +198,7 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 	if (maxh < fh) {
 		maxh = fh;
 	}
-	double scale = fmin(workspace->width / w, workspace->height / maxh);
+	double scale = fmin(fmin(workspace->width / w, workspace->height / maxh), 1.0);
 	if (workspace->layers.tiling->node.info.scale != scale) {
 		workspace_set_scale(workspace, scale);
 		node_set_dirty(&workspace->node);
