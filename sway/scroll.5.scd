@@ -1880,6 +1880,9 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 *view_close(view)*
 	Close/kill _view_.
 
+*container_set_focus(container)*
+	Sets the focus on _container_.
+
 *container_get_workspace(container)*
 	Returns the _container's_ parent workspace pointer, or nil if none.
 
@@ -1951,6 +1954,9 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 *container_get_id(container)*
 	Returns an integer value with the unique container id, or nil if error.
+
+*workspace_set_focus(workspace)*
+	Sets the focus on the last active container of _workspace_.
 
 *workspace_get_name(workspace)*
 	Returns a string with the name of the _workspace_, or nil if error.

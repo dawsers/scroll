@@ -452,6 +452,20 @@ static int scroll_view_close(lua_State *L) {
 	return 0;
 }
 
+static int scroll_container_set_focus(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		return 0;
+	}
+	struct sway_container *container = lua_touserdata(L, -1);
+	if (!container || container->node.type != N_CONTAINER) {
+		return 0;
+	}
+	struct sway_seat *seat = input_manager_current_seat();
+	seat_set_focus_container(seat, container);
+	return 0;
+}
+
 static int scroll_container_get_workspace(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc == 0) {
@@ -795,6 +809,24 @@ static int scroll_container_get_id(lua_State *L) {
 	}
 	lua_pushinteger(L, container->node.id);
 	return 1;
+}
+
+static int scroll_workspace_set_focus(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		return 0;
+	}
+	struct sway_workspace *workspace = lua_touserdata(L, -1);
+	if (!workspace || workspace->node.type != N_WORKSPACE) {
+		return 0;
+	}
+	struct sway_seat *seat = input_manager_current_seat();
+	seat_set_focus_workspace(seat, workspace);
+	struct sway_node *focus = seat_get_focus_inactive(seat, &workspace->node);
+	if (focus != NULL) {
+		seat_set_focus(seat, focus);
+	}
+	return 0;
 }
 
 static int scroll_workspace_get_name(lua_State *L) {
@@ -1347,6 +1379,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "view_get_shell", scroll_view_get_shell },
 	{ "view_get_tag", scroll_view_get_tag },
 	{ "view_close", scroll_view_close },
+	{ "container_set_focus", scroll_container_set_focus },
 	{ "container_get_workspace", scroll_container_get_workspace },
 	{ "container_get_marks", scroll_container_get_marks },
 	{ "container_get_floating", scroll_container_get_floating },
@@ -1365,6 +1398,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "container_get_children", scroll_container_get_children },
 	{ "container_get_views", scroll_container_get_views },
 	{ "container_get_id", scroll_container_get_id },
+	{ "workspace_set_focus", scroll_workspace_set_focus },
 	{ "workspace_get_name", scroll_workspace_get_name },
 	{ "workspace_get_tiling", scroll_workspace_get_tiling },
 	{ "workspace_get_floating", scroll_workspace_get_floating },
