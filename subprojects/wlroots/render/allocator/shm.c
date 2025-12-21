@@ -23,6 +23,7 @@ static struct wlr_shm_buffer *shm_buffer_from_buffer(
 
 static void buffer_destroy(struct wlr_buffer *wlr_buffer) {
 	struct wlr_shm_buffer *buffer = shm_buffer_from_buffer(wlr_buffer);
+	wlr_buffer_finish(wlr_buffer);
 	munmap(buffer->data, buffer->size);
 	close(buffer->shm.fd);
 	free(buffer);

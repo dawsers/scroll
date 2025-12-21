@@ -31,6 +31,7 @@ static bool buffer_get_dmabuf(struct wlr_buffer *wlr_buffer, struct wlr_dmabuf_a
 
 static void buffer_destroy(struct wlr_buffer *wlr_buffer) {
 	struct wlr_udmabuf_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+	wlr_buffer_finish(wlr_buffer);
 	wlr_dmabuf_attributes_finish(&buffer->dmabuf);
 	close(buffer->shm.fd);
 	free(buffer);
