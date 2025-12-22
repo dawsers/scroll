@@ -488,6 +488,7 @@ ssize_t wlr_session_find_gpus(struct wlr_session *session,
 
 	if (udev_enumerate_get_list_entry(en) == NULL) {
 		udev_enumerate_unref(en);
+		en = NULL;
 		wlr_log(WLR_INFO, "Waiting for a KMS device");
 
 		struct find_gpus_add_handler handler = {0};
@@ -501,7 +502,6 @@ ssize_t wlr_session_find_gpus(struct wlr_session *session,
 			if (ret < 0) {
 				wlr_log_errno(WLR_ERROR, "Failed to wait for KMS device: "
 					"wl_event_loop_dispatch failed");
-				udev_enumerate_unref(en);
 				return -1;
 			}
 
@@ -562,12 +562,10 @@ ssize_t wlr_session_find_gpus(struct wlr_session *session,
 
 		struct wlr_device *wlr_dev =
 			session_open_if_kms(session, udev_device_get_devnode(dev));
+		udev_device_unref(dev);
 		if (!wlr_dev) {
-			udev_device_unref(dev);
 			continue;
 		}
-
-		udev_device_unref(dev);
 
 		ret[i] = wlr_dev;
 		if (is_primary) {
