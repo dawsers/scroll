@@ -1106,6 +1106,11 @@ void layout_drag_container_to_container(struct sway_container *container, struct
 	arrange_workspace(workspace);
 	workspace_update_representation(workspace);
 	node_set_dirty(&workspace->node);
+	if (old_workspace && old_workspace != workspace) {
+		arrange_workspace(old_workspace);
+		workspace_update_representation(old_workspace);
+		node_set_dirty(&old_workspace->node);
+	}
 }
 
 static int layout_direction_compute_index(list_t *list, void *item,
