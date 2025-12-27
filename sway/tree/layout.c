@@ -727,6 +727,7 @@ static void drag_parent_container_to_workspace(struct sway_container *container,
 	}
 	//node_set_dirty(&old_workspace->node);
 	if (old_workspace != workspace) {
+		container->pending.layout = workspace->layout.type == L_HORIZ ? L_VERT : L_HORIZ;
 		arrange_workspace(old_workspace);
 	}
 	// Find insertion point
@@ -785,6 +786,7 @@ static void move_container_before(struct sway_container *container, struct sway_
 	}
 	if (old_workspace != workspace) {
 		remove_active_parent_container_from_workspace(cidx, old_workspace);
+		container->pending.layout = workspace->layout.type == L_HORIZ ? L_VERT : L_HORIZ;
 		workspace_insert_tiling_direct(workspace, container, tidx);
 		return;
 	}
@@ -811,6 +813,7 @@ static void move_container_after(struct sway_container *container, struct sway_c
 	}
 	if (old_workspace != workspace) {
 		remove_active_parent_container_from_workspace(cidx, old_workspace);
+		container->pending.layout = workspace->layout.type == L_HORIZ ? L_VERT : L_HORIZ;
 		workspace_insert_tiling_direct(workspace, container, tidx + 1);
 		return;
 	}
@@ -838,6 +841,8 @@ static void swap_containers(struct sway_container *container, struct sway_contai
 	if (old_workspace != workspace) {
 		remove_active_parent_container_from_workspace(cidx, old_workspace);
 		remove_active_parent_container_from_workspace(tidx, workspace);
+		container->pending.layout = workspace->layout.type == L_HORIZ ? L_VERT : L_HORIZ;
+		target->pending.layout = old_workspace->layout.type == L_HORIZ ? L_VERT : L_HORIZ;
 		workspace_insert_tiling_direct(old_workspace, target, cidx);
 		workspace_insert_tiling_direct(workspace, container, tidx);
 		return;
@@ -850,7 +855,7 @@ static void swap_containers(struct sway_container *container, struct sway_contai
 	list_swap(workspace->tiling, cidx, tidx);
 }
 
-static void insert_children_before(struct sway_container *container, struct sway_container *target) {
+static void insert_children_relative(struct sway_container *container, struct sway_container *target, int offset) {
 	struct sway_workspace *old_workspace = container->pending.workspace;
 	int cidx = list_find(old_workspace->tiling, container);
 	remove_active_parent_container_from_workspace(cidx, old_workspace);
@@ -860,26 +865,8 @@ static void insert_children_before(struct sway_container *container, struct sway
 		container_insert_update_parent_fullscreen_layout(target, con);
 		con->pending.parent = target;
 		con->pending.workspace = target->pending.workspace;
-		list_insert(target->pending.children, 0, con);
+		list_insert(target->pending.children, offset, con);
 		list_del(children, children->length - 1);
-	}
-	container_reap_empty(container);
-	container_update_representation(target);
-	node_set_dirty(&target->node);
-}
-
-static void insert_children_after(struct sway_container *container, struct sway_container *target) {
-	struct sway_workspace *old_workspace = container->pending.workspace;
-	int cidx = list_find(old_workspace->tiling, container);
-	remove_active_parent_container_from_workspace(cidx, old_workspace);
-	list_t *children = container->pending.children;
-	while (children->length > 0) {
-		struct sway_container *con = children->items[0];
-		container_insert_update_parent_fullscreen_layout(target, con);
-		con->pending.parent = target;
-		con->pending.workspace = target->pending.workspace;
-		list_add(target->pending.children, con);
-		list_del(children, 0);
 	}
 	container_reap_empty(container);
 	container_update_representation(target);
@@ -993,7 +980,7 @@ void layout_drag_container_to_container(struct sway_container *container, struct
 		struct sway_workspace *workspace, enum wlr_edges edge) {
 	struct sway_workspace *old_workspace = container->pending.workspace;
 	bool move_parent = layout_get_type(old_workspace) == layout_modifiers_get_mode(old_workspace);
-	enum sway_container_layout layout = layout_get_type(old_workspace);
+	enum sway_container_layout layout = layout_get_type(workspace);
 	if (move_parent) {
 		// Get parent (top level container)
 		container = container->pending.parent;
@@ -1007,11 +994,11 @@ void layout_drag_container_to_container(struct sway_container *container, struct
 			switch (edge) {
 			case WLR_EDGE_TOP:
 				// Parallel
-				insert_children_before(container, target);
+				insert_children_relative(container, target, 0);
 				break;
 			case WLR_EDGE_BOTTOM:
 				// Parallel
-				insert_children_after(container, target);
+				insert_children_relative(container, target, target->pending.children->length);
 				break;
 			case WLR_EDGE_LEFT:
 				// Move container
@@ -1038,11 +1025,11 @@ void layout_drag_container_to_container(struct sway_container *container, struct
 				break;
 			case WLR_EDGE_LEFT:
 				// Parallel
-				insert_children_before(container, target);
+				insert_children_relative(container, target, 0);
 				break;
 			case WLR_EDGE_RIGHT:
 				// Parallel
-				move_container_after(container, target, workspace);
+				insert_children_relative(container, target, target->pending.children->length);
 				break;
 			case WLR_EDGE_NONE:
 				// Swap containers
