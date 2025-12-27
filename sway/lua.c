@@ -133,6 +133,9 @@ static int scroll_command(lua_State *L) {
 		if (!found) {
 			return scroll_command_error(L, "Error: scroll_command() received a container parameter that does not exist");
 		}
+		if (!container->view) {
+			return scroll_command_error(L, "Error: scroll_command() received a container parameter that does not have a view");
+		}
 		seat_set_raw_focus(seat, &container->node);
 		seat = NULL;
 	} else {

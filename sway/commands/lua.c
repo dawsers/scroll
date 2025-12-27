@@ -40,6 +40,10 @@ struct cmd_results *cmd_lua(int argc, char **argv) {
 
 	err = lua_pcall(config->lua.state, 2, LUA_MULTRET, 0);
 	if (err != LUA_OK) {
+		const char *str = luaL_checkstring(config->lua.state, -1);
+		if (str) {
+			return cmd_results_new(CMD_FAILURE, "Error %s executing lua script %s", str, argv[0]);
+		}
 		return cmd_results_new(CMD_FAILURE, "Error %d executing lua script %s", err, argv[0]);
 	}
 

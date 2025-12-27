@@ -1769,7 +1769,22 @@ The following attributes may be matched with:
 
 scroll provides a Lua API to enable scripting of the window manager. You can
 access properties of the window manager, execute commands or add callbacks to
-window events.
+window and workspace events.
+
+Lua scripts are a powerful way to customize scroll, but if you are not careful,
+you can also make the compositor crash. The best way to debug a script before
+running it in your main environment is to run it in a "nested" instance of
+scroll. Wayland compositors can be run in a window, so you can run another
+instance of scroll from a terminal window running in scroll, and debug your
+script there. Create a simplified debug configuration file whose key bindings
+don't overlap the ones currently running (for example, changing your _mod_
+key to another one), and also skips bar creation and monitor configuration
+(in nested mode, you virtual monitor will be called WL-1). Then start scroll
+from a terminal.
+
+```
+scroll -c ~/.config/scroll/config.debug
+```
 
 You can assign scripts to keyboard bindings, or add them to your configuration
 file for execution when it loads.
@@ -1810,6 +1825,15 @@ print(val)
 ```
 
 Each time you run the script, it will increment and print the value for "test".
+
+When writing Lua scripts, you can access pointers to scroll's workspaces,
+containers or views. A view (window) has an immutable pointer throughout its
+lifetime, from creation (mapping) to destruction (unmapping). A container,
+instead, can be destroyed or transformed when moving, changing workspace or in
+several other ciscumstances. So if you want to store some references in the
+state from one run of your script to another, store view pointers, never
+containers. You can always get the valid enclosing container for a view using
+the API when you need it.
 
 This is the current supported API:
 
