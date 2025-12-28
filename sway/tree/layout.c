@@ -859,6 +859,10 @@ static void insert_children_relative(struct sway_container *container, struct sw
 	struct sway_workspace *old_workspace = container->pending.workspace;
 	int cidx = list_find(old_workspace->tiling, container);
 	remove_active_parent_container_from_workspace(cidx, old_workspace);
+	int idx = list_find(target->pending.children, target->current.focused_inactive_child);
+	if (idx >= 0) {
+		offset = offset == 0 ? idx : idx + 1;
+	}
 	list_t *children = container->pending.children;
 	while (children->length > 0) {
 		struct sway_container *con = children->items[children->length - 1];
