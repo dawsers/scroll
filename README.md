@@ -1649,6 +1649,10 @@ scroll provides a Lua API to enable scripting of the window manager. The API
 is evolving. Read the manual's (`man 5 scroll`) Lua section for all the
 details.
 
+Place [this definition file](https://github.com/dawsers/scroll/blob/master/scroll.lua)
+in one of your development Lua runtime directories for the Lua LSP server to
+have access to the API information.
+
 Using the command `lua` you can run Lua scripts that access window manager
 properties, execute commands or add callbacks to window events.
 

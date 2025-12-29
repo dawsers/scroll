@@ -1791,6 +1791,11 @@ file for execution when it loads.
 
 The module is called *scroll*.
 
+Place the module's definition file
+(https://github.com/dawsers/scroll/blob/master/scroll.lua) in one of your
+development Lua runtime directories for the Lua LSP server to have access to
+the API information.
+
 A script should start by receiving its arguments and state, like:
 
 ```
