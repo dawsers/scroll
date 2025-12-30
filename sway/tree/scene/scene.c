@@ -332,7 +332,7 @@ static void scene_node_opaque_region(struct sway_scene_node *node, int x, int y,
 
 struct scene_update_data {
 	pixman_region32_t *visible;
-	pixman_region32_t *update_region;
+	const pixman_region32_t *update_region;
 	struct wlr_box update_box;
 	struct wl_list *outputs;
 	bool calculate_visibility;
@@ -342,7 +342,7 @@ struct scene_update_data {
 #endif
 };
 
-static uint32_t region_area(pixman_region32_t *region) {
+static uint32_t region_area(const pixman_region32_t *region) {
 	uint32_t area = 0;
 
 	int nrects;
@@ -430,7 +430,7 @@ static void scene_output_damage_whole(struct sway_scene_output *scene_output) {
 	pixman_region32_fini(&damage);
 }
 
-static void scene_damage_outputs(struct sway_scene *scene, pixman_region32_t *damage) {
+static void scene_damage_outputs(struct sway_scene *scene, const pixman_region32_t *damage) {
 	if (pixman_region32_empty(damage)) {
 		return;
 	}
@@ -826,7 +826,7 @@ static void scene_node_bounds(struct sway_scene_node *node,
 }
 
 static void scene_update_region(struct sway_scene *scene,
-		pixman_region32_t *update_region) {
+		const pixman_region32_t *update_region) {
 	pixman_region32_t visible;
 	pixman_region32_init(&visible);
 	pixman_region32_copy(&visible, update_region);
