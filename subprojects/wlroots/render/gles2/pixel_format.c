@@ -71,6 +71,11 @@ static const struct wlr_gles2_pixel_format formats[] = {
 		.gl_type = GL_UNSIGNED_INT_2_10_10_10_REV_EXT,
 	},
 	{
+		.drm_format = DRM_FORMAT_BGR161616F,
+		.gl_format = GL_RGB,
+		.gl_type = GL_HALF_FLOAT_OES,
+	},
+	{
 		.drm_format = DRM_FORMAT_XBGR16161616F,
 		.gl_format = GL_RGBA,
 		.gl_type = GL_HALF_FLOAT_OES,
@@ -79,6 +84,12 @@ static const struct wlr_gles2_pixel_format formats[] = {
 		.drm_format = DRM_FORMAT_ABGR16161616F,
 		.gl_format = GL_RGBA,
 		.gl_type = GL_HALF_FLOAT_OES,
+	},
+	{
+		.drm_format = DRM_FORMAT_BGR161616,
+		.gl_internalformat = GL_RGB16_EXT,
+		.gl_format = GL_RGB,
+		.gl_type = GL_UNSIGNED_SHORT,
 	},
 	{
 		.drm_format = DRM_FORMAT_XBGR16161616,
