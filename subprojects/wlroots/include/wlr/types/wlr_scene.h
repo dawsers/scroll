@@ -126,10 +126,6 @@ struct wlr_scene_surface {
 	struct {
 		struct wlr_box clip;
 
-		// Output used for frame pacing (surface frame callbacks, presentation
-		// time feedback, etc), may be NULL
-		struct wlr_output *frame_pacing_output;
-
 		struct wlr_addon addon;
 
 		struct wl_listener outputs_update;
