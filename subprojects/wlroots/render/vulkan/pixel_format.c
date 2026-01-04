@@ -18,9 +18,25 @@ static const struct wlr_vk_format formats[] = {
 		.vk_srgb = VK_FORMAT_R8_SRGB,
 	},
 	{
+		.drm = DRM_FORMAT_R16F,
+		.vk = VK_FORMAT_R16_SFLOAT,
+	},
+	{
+		.drm = DRM_FORMAT_R32F,
+		.vk = VK_FORMAT_R32_SFLOAT,
+	},
+	{
 		.drm = DRM_FORMAT_GR88,
 		.vk = VK_FORMAT_R8G8_UNORM,
 		.vk_srgb = VK_FORMAT_R8G8_SRGB,
+	},
+	{
+		.drm = DRM_FORMAT_GR1616F,
+		.vk = VK_FORMAT_R16G16_SFLOAT,
+	},
+	{
+		.drm = DRM_FORMAT_GR3232F,
+		.vk = VK_FORMAT_R32G32_SFLOAT,
 	},
 	{
 		.drm = DRM_FORMAT_RGB888,
@@ -127,6 +143,14 @@ static const struct wlr_vk_format formats[] = {
 	// matches the DRM formats'.
 #if WLR_LITTLE_ENDIAN
 	{
+		.drm = DRM_FORMAT_BGR161616,
+		.vk = VK_FORMAT_R16G16B16_UNORM,
+	},
+	{
+		.drm = DRM_FORMAT_BGR161616F,
+		.vk = VK_FORMAT_R16G16B16_SFLOAT,
+	},
+	{
 		.drm = DRM_FORMAT_ABGR16161616,
 		.vk = VK_FORMAT_R16G16B16A16_UNORM,
 	},
@@ -141,6 +165,14 @@ static const struct wlr_vk_format formats[] = {
 	{
 		.drm = DRM_FORMAT_XBGR16161616F,
 		.vk = VK_FORMAT_R16G16B16A16_SFLOAT,
+	},
+	{
+		.drm = DRM_FORMAT_BGR323232F,
+		.vk = VK_FORMAT_R32G32B32_SFLOAT,
+	},
+	{
+		.drm = DRM_FORMAT_ABGR32323232F,
+		.vk = VK_FORMAT_R32G32B32A32_SFLOAT,
 	},
 #endif
 
