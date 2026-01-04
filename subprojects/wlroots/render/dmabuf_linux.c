@@ -50,30 +50,6 @@ bool dmabuf_check_sync_file_import_export(void) {
 	return KERNEL_VERSION(major, minor, patch) >= KERNEL_VERSION(5, 20, 0);
 }
 
-// TODO: drop these definitions once widespread
-
-#if !defined(DMA_BUF_IOCTL_IMPORT_SYNC_FILE)
-
-struct dma_buf_import_sync_file {
-	__u32 flags;
-	__s32 fd;
-};
-
-#define DMA_BUF_IOCTL_IMPORT_SYNC_FILE _IOW(DMA_BUF_BASE, 3, struct dma_buf_import_sync_file)
-
-#endif
-
-#if !defined(DMA_BUF_IOCTL_EXPORT_SYNC_FILE)
-
-struct dma_buf_export_sync_file {
-	__u32 flags;
-	__s32 fd;
-};
-
-#define DMA_BUF_IOCTL_EXPORT_SYNC_FILE _IOWR(DMA_BUF_BASE, 2, struct dma_buf_export_sync_file)
-
-#endif
-
 bool dmabuf_import_sync_file(int dmabuf_fd, uint32_t flags, int sync_file_fd) {
 	struct dma_buf_import_sync_file data = {
 		.flags = flags,

@@ -18,7 +18,11 @@ wlr_files += files(
 	'wlr_object.c',
 )
 
-if cc.has_header('linux/dma-buf.h') and target_machine.system() == 'linux'
+has_dma_buf_import_sync_file = cc.has_header('linux/dma-buf.h') and cc.has_define(
+	'DMA_BUF_IOCTL_IMPORT_SYNC_FILE',
+	prefix: '#include <linux/dma-buf.h>',
+)
+if has_dma_buf_import_sync_file and target_machine.system() == 'linux'
 	wlr_files += files('dmabuf_linux.c')
 else
 	wlr_files += files('dmabuf_fallback.c')
