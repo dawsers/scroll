@@ -96,6 +96,12 @@ static void handle_scene_buffer_outputs_update(
 
 	surface->frame_pacing_output = get_surface_frame_pacing_output(surface->surface);
 
+	// If the surface is no longer visible on any output, keep the last sent
+	// preferred configuration to avoid unnecessary redraws
+	if (wl_list_empty(&surface->surface->current_outputs)) {
+		return;
+	}
+
 	double scale = get_surface_preferred_buffer_scale(surface->surface);
 	wlr_fractional_scale_v1_notify_scale(surface->surface, scale);
 	wlr_surface_set_preferred_buffer_scale(surface->surface, ceil(scale));
