@@ -20,6 +20,7 @@ struct scene_node_source {
 	struct wlr_scene_output *scene_output;
 
 	struct wl_event_source *idle_frame;
+	size_t num_started;
 
 	struct wl_listener node_destroy;
 	struct wl_listener scene_output_destroy;
@@ -103,11 +104,22 @@ static void source_render(struct scene_node_source *source) {
 
 static void source_start(struct wlr_ext_image_capture_source_v1 *base, bool with_cursors) {
 	struct scene_node_source *source = wl_container_of(base, source, base);
+
+	source->num_started++;
+	if (source->num_started > 1) {
+		return;
+	}
+
 	source_render(source);
 }
 
 static void source_stop(struct wlr_ext_image_capture_source_v1 *base) {
 	struct scene_node_source *source = wl_container_of(base, source, base);
+
+	source->num_started--;
+	if (source->num_started > 0) {
+		return;
+	}
 
 	struct wlr_output_state state;
 	wlr_output_state_init(&state);
