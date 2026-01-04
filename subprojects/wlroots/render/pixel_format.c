@@ -45,8 +45,24 @@ static const struct wlr_pixel_format_info pixel_format_info[] = {
 		.bytes_per_block = 1,
 	},
 	{
+		.drm_format = DRM_FORMAT_R16F,
+		.bytes_per_block = 2,
+	},
+	{
+		.drm_format = DRM_FORMAT_R32F,
+		.bytes_per_block = 4,
+	},
+	{
 		.drm_format = DRM_FORMAT_GR88,
 		.bytes_per_block = 2,
+	},
+	{
+		.drm_format = DRM_FORMAT_GR1616F,
+		.bytes_per_block = 4,
+	},
+	{
+		.drm_format = DRM_FORMAT_GR3232F,
+		.bytes_per_block = 8,
 	},
 	{
 		.drm_format = DRM_FORMAT_RGB888,
@@ -55,6 +71,18 @@ static const struct wlr_pixel_format_info pixel_format_info[] = {
 	{
 		.drm_format = DRM_FORMAT_BGR888,
 		.bytes_per_block = 3,
+	},
+	{
+		.drm_format = DRM_FORMAT_BGR161616,
+		.bytes_per_block = 6,
+	},
+	{
+		.drm_format = DRM_FORMAT_BGR161616F,
+		.bytes_per_block = 6,
+	},
+	{
+		.drm_format = DRM_FORMAT_BGR323232F,
+		.bytes_per_block = 12,
 	},
 	{
 		.drm_format = DRM_FORMAT_RGBX4444,
@@ -135,6 +163,10 @@ static const struct wlr_pixel_format_info pixel_format_info[] = {
 		.drm_format = DRM_FORMAT_ABGR16161616F,
 		.opaque_substitute = DRM_FORMAT_XBGR16161616F,
 		.bytes_per_block = 8,
+	},
+	{
+		.drm_format = DRM_FORMAT_ABGR32323232F,
+		.bytes_per_block = 16,
 	},
 	{
 		.drm_format = DRM_FORMAT_XBGR16161616,
