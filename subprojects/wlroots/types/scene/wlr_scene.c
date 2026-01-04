@@ -185,6 +185,8 @@ struct wlr_scene *wlr_scene_create(void) {
 	wl_list_init(&scene->gamma_control_manager_v1_destroy.link);
 	wl_list_init(&scene->gamma_control_manager_v1_set_gamma.link);
 
+	scene->restack_xwayland_surfaces = true;
+
 	const char *debug_damage_options[] = {
 		"none",
 		"rerender",
@@ -293,6 +295,7 @@ struct scene_update_data {
 	struct wlr_box update_box;
 	struct wl_list *outputs;
 	bool calculate_visibility;
+	bool restack_xwayland_surfaces;
 
 #if WLR_HAS_XWAYLAND
 	struct wlr_xwayland_surface *restack_above;
@@ -609,7 +612,9 @@ static bool scene_node_update_iterator(struct wlr_scene_node *node,
 
 	update_node_update_outputs(node, data->outputs, NULL, NULL);
 #if WLR_HAS_XWAYLAND
-	restack_xwayland_surface(node, &box, data);
+	if (data->restack_xwayland_surfaces) {
+		restack_xwayland_surface(node, &box, data);
+	}
 #endif
 
 	return false;
@@ -671,6 +676,7 @@ static void scene_update_region(struct wlr_scene *scene,
 		},
 		.outputs = &scene->outputs,
 		.calculate_visibility = scene->calculate_visibility,
+		.restack_xwayland_surfaces = scene->restack_xwayland_surfaces,
 	};
 
 	// update node visibility and output enter/leave events
@@ -686,7 +692,9 @@ static void scene_node_update(struct wlr_scene_node *node,
 	int x, y;
 	if (!wlr_scene_node_coords(node, &x, &y)) {
 #if WLR_HAS_XWAYLAND
-		restack_xwayland_surface_below(node);
+		if (scene->restack_xwayland_surfaces) {
+			restack_xwayland_surface_below(node);
+		}
 #endif
 		if (damage) {
 			scene_update_region(scene, damage);

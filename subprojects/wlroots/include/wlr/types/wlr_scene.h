@@ -105,6 +105,8 @@ struct wlr_scene {
 	struct wlr_gamma_control_manager_v1 *gamma_control_manager_v1;
 	struct wlr_color_manager_v1 *color_manager_v1;
 
+	bool restack_xwayland_surfaces;
+
 	struct {
 		struct wl_listener linux_dmabuf_v1_destroy;
 		struct wl_listener gamma_control_manager_v1_destroy;
