@@ -250,7 +250,7 @@ void sway_scene_surface_reconfigure(struct sway_scene_surface *scene_surface) {
 		return;
 	}
 
-	float opacity = 1.0;
+	float opacity = scene_buffer->opacity;
 	const struct wlr_alpha_modifier_surface_v1_state *alpha_modifier_state =
 		wlr_alpha_modifier_v1_get_surface_state(surface);
 	if (alpha_modifier_state != NULL) {
