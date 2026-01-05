@@ -864,6 +864,7 @@ static void animate_view(struct sway_container *con,
 		sway_scene_node_set_position(&con->view->scene_tree->node, 0, 0);
 		sway_scene_node_set_enabled(&con->title_bar.tree->node, false);
 		sway_scene_node_set_enabled(&con->decoration.full->node, false);
+		sway_scene_node_set_enabled(&con->shadow->node, false);
 		sway_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
 		view_reconfigure(con->view);
 		return;
@@ -1055,6 +1056,7 @@ static void arrange_fullscreen(struct sway_scene_tree *tree,
 
 		// if we only care about the view, disable any decorations
 		sway_scene_node_set_enabled(&fs->scene_tree->node, false);
+		sway_scene_node_set_enabled(&fs->shadow->node, false);
 	} else {
 		fs_node = &fs->scene_tree->node;
 		arrange_container(fs, true, container_get_gaps(fs), fs->current.workspace);
