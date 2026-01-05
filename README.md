@@ -1774,7 +1774,7 @@ and the [FAQ](https://github.com/emersion/xdg-desktop-portal-wlr/wiki/FAQ).
 *scroll* adds IPC events you can use to create a module for your favorite
 desktop bar.
 
-See `include/ipc.h` for `IPG_GET_SCROLLER`, `IPC_EVENT_SCROLLER`,
+See `include/ipc.h` for `IPC_GET_SCROLLER`, `IPC_EVENT_SCROLLER`, `IPC_EVENT_LUA`,
 `IPG_GET_TRAILS` and `IPC_EVENT_TRAILS`.
 
 You can get data for mode/mode modifiers, overview and scale mode as well as

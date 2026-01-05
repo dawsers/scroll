@@ -552,6 +552,21 @@ void ipc_event_trails() {
 	json_object_put(json);
 }
 
+void ipc_event_lua(const char *id, json_object *data) {
+	if (!ipc_has_event_listeners(IPC_EVENT_LUA)) {
+		return;
+	}
+	sway_log(SWAY_DEBUG, "Sending Lua event");
+
+	json_object *json = json_object_new_object();
+	json_object_object_add(json, "id", json_object_new_string(id));
+	json_object_object_add(json, "data", data);
+
+	const char *json_string = json_object_to_json_string(json);
+	ipc_send_event(json_string, IPC_EVENT_LUA);
+	json_object_put(json);
+}
+
 int ipc_client_handle_writable(int client_fd, uint32_t mask, void *data) {
 	struct ipc_client *client = data;
 
@@ -798,6 +813,8 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 				client->subscribed_events |= event_mask(IPC_EVENT_SCROLLER);
 			} else if (strcmp(event_type, "trails") == 0) {
 				client->subscribed_events |= event_mask(IPC_EVENT_TRAILS);
+			} else if (strcmp(event_type, "lua") == 0) {
+				client->subscribed_events |= event_mask(IPC_EVENT_LUA);
 			} else {
 				const char msg[] = "{\"success\": false}";
 				ipc_send_reply(client, payload_type, msg, strlen(msg));

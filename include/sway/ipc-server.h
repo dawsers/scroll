@@ -1,5 +1,6 @@
 #ifndef _SWAY_IPC_SERVER_H
 #define _SWAY_IPC_SERVER_H
+#include <json.h>
 #include <sys/socket.h>
 #include "sway/config.h"
 #include "sway/input/input-manager.h"
@@ -24,5 +25,6 @@ void ipc_event_input(const char *change, struct sway_input_device *device);
 void ipc_event_output(void);
 void ipc_event_scroller(const char *change, struct sway_workspace *workspace);
 void ipc_event_trails();
+void ipc_event_lua(const char *id, json_object *data);
 
 #endif

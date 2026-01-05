@@ -1629,6 +1629,9 @@ available:
 |- 0x80000015
 :  input
 :  Sent when something related to input devices changes
+|- 0x8000001d
+:  lua
+:  Sent by lua scripts
 |- 0x8000001e
 :  scroller
 :  Sent when a scroller property for the current workspace changes
@@ -2031,6 +2034,21 @@ The following change types are currently available:
 	}
 }
 ```
+
+## 0x8000001d. LUA
+
+Sent by Lua scripts. The event
+consists of a single object with the following properties:
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- id
+:  string
+:[ identifier set by the script that sends the data
+|- data
+:  object
+:  An object that contains the data sent by the script
 
 ## 0x8000001e. SCROLLER
 

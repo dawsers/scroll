@@ -1,5 +1,6 @@
 #include <lua.h>
 #include <lauxlib.h>
+#include <json.h>
 #include "log.h"
 #include "sway/lua.h"
 #include "sway/commands.h"
@@ -7,30 +8,52 @@
 #include "sway/tree/container.h"
 #include "sway/tree/workspace.h"
 #include "sway/output.h"
+#include "sway/ipc-server.h"
 
 #if 0
+static void print_table(lua_State *L, int index);
+
+static void print_value(lua_State *L, int i) {
+	//sway_log(SWAY_DEBUG, "%d\t%s", i, luaL_typename(L, i));
+	switch (lua_type(L, i)) {
+	case LUA_TNUMBER:
+		sway_log(SWAY_DEBUG, "%g", lua_tonumber(L, i));
+		break;
+	case LUA_TSTRING:
+		sway_log(SWAY_DEBUG, "%s", lua_tostring(L, i));
+		break;
+	case LUA_TBOOLEAN:
+		sway_log(SWAY_DEBUG, "%s", lua_toboolean(L, i) ? "true" : "false");
+		break;
+	case LUA_TNIL:
+		sway_log(SWAY_DEBUG, "%s", "nil");
+		break;
+	case LUA_TTABLE:
+		print_table(L, i);
+		break;
+	default:
+		sway_log(SWAY_DEBUG, "%p", lua_topointer(L, i));
+		break;
+	}
+}
+
+static void print_table(lua_State *L, int index) {
+	lua_pushnil(L);  // first key
+	while (lua_next(L, index) != 0) {
+		// uses 'key' (at index -2) and 'value' (at index -1)
+		int top = lua_gettop(L);
+		print_value(L, top - 1);
+		print_value(L, top);
+		// removes 'value'; keeps 'key' for next iteration
+		lua_pop(L, 1);
+     }
+}
+
 static void print_stack(lua_State *L) {
 	int top = lua_gettop(L);
 	sway_log(SWAY_DEBUG, "Printing Lua stack...");
 	for (int i = 1; i <= top; ++i) {
-		sway_log(SWAY_DEBUG, "%d\t%s", i, luaL_typename(L, i));
-		switch (lua_type(L, i)) {
-		case LUA_TNUMBER:
-			sway_log(SWAY_DEBUG, "%g", lua_tonumber(L, i));
-			break;
-		case LUA_TSTRING:
-			sway_log(SWAY_DEBUG, "%s", lua_tostring(L, i));
-			break;
-		case LUA_TBOOLEAN:
-			sway_log(SWAY_DEBUG, "%s", lua_toboolean(L, i) ? "true" : "false");
-			break;
-		case LUA_TNIL:
-			sway_log(SWAY_DEBUG, "%s", "nil");
-			break;
-		default:
-			sway_log(SWAY_DEBUG, "%p", lua_topointer(L, i));
-			break;
-		}
+		print_value(L, i);
 	}
 }
 #endif
@@ -89,6 +112,83 @@ static int scroll_state_set_value(lua_State *L) {
 			lua_setfield(L, -2, key);
 		}
 	}
+	return 0;
+}
+
+static bool lua_is_array(lua_State *L, int index) {
+	lua_pushnil(L);
+	int n = 0;
+	while (lua_next(L, index) != 0) {
+		int top = lua_gettop(L);
+		if (lua_type(L, top - 1) != LUA_TNUMBER || lua_tointeger(L, top - 1) != ++n) {
+			lua_pop(L, 2);
+			return false;
+		}
+		lua_pop(L, 1);
+	}
+	return true;
+}
+
+static json_object *lua_table_to_json(lua_State *L, int index);
+
+static json_object *lua_value_to_json(lua_State *L, int i) {
+	switch (lua_type(L, i)) {
+	case LUA_TNUMBER:
+		if (lua_isinteger(L, i)) {
+			return json_object_new_int(lua_tointeger(L, i));
+		} else {
+			return json_object_new_double(lua_tonumber(L, i));
+		}
+	case LUA_TSTRING:
+		return json_object_new_string(lua_tostring(L, i));
+	case LUA_TBOOLEAN:
+		return json_object_new_boolean(lua_toboolean(L, i));
+	case LUA_TTABLE:
+		return lua_table_to_json(L, i);
+	default:
+		return NULL;
+	}
+}
+
+static json_object *lua_table_to_json(lua_State *L, int index) {
+	json_object *result;
+	bool is_array = lua_is_array(L, index);
+	if (is_array) {
+		result = json_object_new_array();
+	} else {
+		result = json_object_new_object();
+	}
+	lua_pushnil(L);
+	while (lua_next(L, index) != 0) {
+		int top = lua_gettop(L);
+		// uses 'key' (at top - 1) and 'value' (at top)
+		if (is_array) {
+			json_object_array_add(result, lua_value_to_json(L, top));
+		} else {
+			if (lua_type(L, top - 1) == LUA_TSTRING) {
+				json_object_object_add(result, lua_tostring(L, top - 1), lua_value_to_json(L, top));
+			} else if (lua_type(L, top - 1) == LUA_TNUMBER) {
+				char idx[32];
+				sprintf(idx, "%lld", lua_tointeger(L, top - 1));
+				json_object_object_add(result, idx, lua_value_to_json(L, top));
+			}
+		}
+		lua_pop(L, 1);
+	}
+	return result;
+}
+
+static int scroll_ipc_send(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc < 2) {
+		return 0;
+	}
+	const char *id = lua_tostring(L, 1);
+	if (!id || !lua_istable(L, 2)) {
+		return 0;
+	}
+	json_object *data = lua_table_to_json(L, 2);
+	ipc_event_lua(id, data);
 	return 0;
 }
 
@@ -1366,6 +1466,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "log", scroll_log },
 	{ "state_set_value", scroll_state_set_value },
 	{ "state_get_value", scroll_state_get_value },
+	{ "ipc_send", scroll_ipc_send },
 	{ "command", scroll_command },
 	{ "focused_view", scroll_focused_view },
 	{ "focused_container", scroll_focused_container },

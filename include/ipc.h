@@ -43,6 +43,7 @@ enum ipc_command_type {
 	IPC_EVENT_INPUT = ((1<<31) | 21),
 
 	// scroll-specific event types
+	IPC_EVENT_LUA = ((1<<31) | 29),
 	IPC_EVENT_SCROLLER = ((1<<31) | 30),
 	IPC_EVENT_TRAILS = ((1<<31) | 31),
 };

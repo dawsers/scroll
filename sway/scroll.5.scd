@@ -1852,6 +1852,10 @@ This is the current supported API:
 *state_get_value(state, key)*
 	Returns the value stored at _key_ in the script's _state_.
 
+*ipc_send(id, data)*
+	Encodes and sends _data_ (a Lua table as complex as needed) as a json object
+	through the IPC interface, generating a new LUA event with the string _id_.
+
 *command(container|workspace|nil, command)*
 	Execute a scroll _command_ with _container_ or _workspace_ as its context.
 	If the first parameter is _nil_, use the default context, usually the

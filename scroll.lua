@@ -32,6 +32,17 @@ function scroll.state_set_value(state, key, value) end
 function scroll.state_get_value(state, key) end
 
 ---
+--- Encodes and sends 'data' (a Lua table as complex as needed) as a json
+--- object through the IPC interface, generating a new LUA event with 'id'
+--- (string)
+---
+--- @param id string
+--- @param data table
+---
+--- @return integer
+function scroll.ipc_send(id, data) end
+
+---
 --- Execute a scroll command with container or workspace as its context.
 --- If the first paramenter is nil, use the default context, usually the
 --- focused container or workspace.
