@@ -179,7 +179,7 @@ void wlr_xwayland_set_cursor(struct wlr_xwayland *xwayland,
 	}
 
 	wlr_buffer_unlock(xwayland->cursor_buffer);
-	xwayland->cursor_buffer = wlr_buffer_lock(xwayland->cursor_buffer);
+	xwayland->cursor_buffer = wlr_buffer_lock(buffer);
 	xwayland->cursor_hotspot.x = hotspot_x;
 	xwayland->cursor_hotspot.y = hotspot_y;
 }
