@@ -31,6 +31,8 @@
 #include <wlr/xcursor.h>
 #include "xcursor/xcursor.h"
 
+#include "xcursor/cursor_data.h"
+
 static void xcursor_destroy(struct wlr_xcursor *cursor) {
 	for (size_t i = 0; i < cursor->image_count; i++) {
 		free(cursor->images[i]->buffer);
@@ -42,7 +44,30 @@ static void xcursor_destroy(struct wlr_xcursor *cursor) {
 	free(cursor);
 }
 
-#include "xcursor/cursor_data.h"
+static struct wlr_xcursor_image *xcursor_image_create(uint32_t width, uint32_t height,
+		uint32_t hotspot_x, uint32_t hotspot_y, uint32_t delay, const void *buffer) {
+	struct wlr_xcursor_image *image = calloc(1, sizeof(*image));
+	if (image == NULL) {
+		return NULL;
+	}
+
+	image->width = width;
+	image->height = height;
+	image->hotspot_x = hotspot_x;
+	image->hotspot_y = hotspot_y;
+	image->delay = delay;
+
+	size_t size = width * height * sizeof(uint32_t);
+	image->buffer = malloc(size);
+	if (image->buffer == NULL) {
+		free(image);
+		return NULL;
+	}
+
+	memcpy(image->buffer, buffer, size);
+
+	return image;
+}
 
 static struct wlr_xcursor *xcursor_create_from_data(
 		const struct cursor_metadata *metadata, struct wlr_xcursor_theme *theme) {
@@ -60,31 +85,15 @@ static struct wlr_xcursor *xcursor_create_from_data(
 	cursor->name = strdup(metadata->name);
 	cursor->total_delay = 0;
 
-	struct wlr_xcursor_image *image = calloc(1, sizeof(*image));
+	struct wlr_xcursor_image *image = xcursor_image_create(metadata->width, metadata->height,
+		metadata->hotspot_x, metadata->hotspot_y, 0, cursor_data + metadata->offset);
 	if (!image) {
 		goto err_free_images;
 	}
 
 	cursor->images[0] = image;
-	image->buffer = NULL;
-	image->width = metadata->width;
-	image->height = metadata->height;
-	image->hotspot_x = metadata->hotspot_x;
-	image->hotspot_y = metadata->hotspot_y;
-	image->delay = 0;
-
-	int size = metadata->width * metadata->height * sizeof(uint32_t);
-	image->buffer = malloc(size);
-	if (!image->buffer) {
-		goto err_free_image;
-	}
-
-	memcpy(image->buffer, cursor_data + metadata->offset, size);
 
 	return cursor;
-
-err_free_image:
-	free(image);
 
 err_free_images:
 	free(cursor->name);
@@ -132,28 +141,13 @@ static struct wlr_xcursor *xcursor_create_from_xcursor_images(
 	cursor->total_delay = 0;
 
 	for (int i = 0; i < images->nimage; i++) {
-		struct wlr_xcursor_image *image = calloc(1, sizeof(*image));
+		const struct xcursor_image *data = images->images[i];
+		struct wlr_xcursor_image *image = xcursor_image_create(data->width, data->height,
+			data->xhot, data->yhot, data->delay, data->pixels);
 		if (image == NULL) {
 			break;
 		}
 
-		image->buffer = NULL;
-
-		image->width = images->images[i]->width;
-		image->height = images->images[i]->height;
-		image->hotspot_x = images->images[i]->xhot;
-		image->hotspot_y = images->images[i]->yhot;
-		image->delay = images->images[i]->delay;
-
-		size_t size = image->width * image->height * 4;
-		image->buffer = malloc(size);
-		if (!image->buffer) {
-			free(image);
-			break;
-		}
-
-		/* copy pixels to shm pool */
-		memcpy(image->buffer, images->images[i]->pixels, size);
 		cursor->total_delay += image->delay;
 		cursor->images[i] = image;
 		cursor->image_count++;
