@@ -138,6 +138,7 @@ struct sway_animation {
 	struct timespec start;
 	double time;
 	struct wl_event_source *timer;
+	uint32_t id;
 
 	list_t *outputs;
 	enum sway_animation_enabled enabled;
@@ -386,6 +387,7 @@ static void schedule_frames() {
 		int idx = get_animating_index(output->wlr_output);
 		if (idx >= 0) {
 			wlr_output_schedule_frame(output->wlr_output);
+			output->animation_id = animation->id;
 		}
 	}
 }
@@ -418,6 +420,9 @@ bool animation_enabled() {
 
 bool animation_animating(struct wlr_output *output) {
 	if (animation->enabled == ANIMATION_ENABLED_NO) {
+		return false;
+	}
+	if (output->data && animation->id != ((struct sway_output *)output->data)->animation_id) {
 		return false;
 	}
 	int idx = get_animating_index(output);
@@ -465,6 +470,7 @@ void animation_set_animation_enabled(bool enable) {
 static void stop_animation() {
 	if (animation->animating) {
 		animation->animating = false;
+		animation->id++;
 		if (animation->timer) {
 			wl_event_source_remove(animation->timer);
 			animation->timer = NULL;

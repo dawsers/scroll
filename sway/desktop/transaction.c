@@ -1100,7 +1100,7 @@ static void animate_fullscreen(struct sway_scene_tree *tree,
 	animation_update_container(fs, fs->animation.w1, fs->animation.h1, t, x, y, anim_scale);
 	if (ws) {
 		struct sway_output *output = ws->output;
-		sway_scene_node_set_position(&output->fullscreen_background->node, fs->animation.xt, fs->animation.yt);
+		sway_scene_node_set_position(&output->fullscreen_background->node, fs->animation.xt - output->lx, fs->animation.yt - output->ly);
 		sway_scene_rect_set_size(output->fullscreen_background, fs->animation.wt, fs->animation.ht);
 		sway_scene_node_set_position(fs_node, fs->animation.xt - output->lx, fs->animation.yt - output->ly);
 	} else {
