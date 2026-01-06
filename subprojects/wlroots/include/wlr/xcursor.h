@@ -56,6 +56,10 @@ struct wlr_xcursor_image {
 	uint32_t hotspot_y; /* hot-spot y (must be inside image) */
 	uint32_t delay; /* animation delay to next frame (ms) */
 	uint8_t *buffer; /* pixel data */
+
+	struct {
+		struct wlr_readonly_data_buffer *readonly_buffer;
+	} WLR_PRIVATE;
 };
 
 /**
@@ -118,6 +122,11 @@ struct wlr_xcursor *wlr_xcursor_theme_get_cursor(
  * This function converts a timestamp (in ms) to a cursor image index.
  */
 int wlr_xcursor_frame(struct wlr_xcursor *cursor, uint32_t time);
+
+/**
+ * Get a struct wlr_buffer from a cursor image.
+ */
+struct wlr_buffer *wlr_xcursor_image_get_buffer(struct wlr_xcursor_image *image);
 
 /**
  * Get the name of the resize cursor for the given edges.

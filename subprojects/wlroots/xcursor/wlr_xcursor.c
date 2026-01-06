@@ -23,18 +23,21 @@
  * SOFTWARE.
  */
 
+#include <drm_fourcc.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wlr/util/log.h>
 #include <wlr/xcursor.h>
+#include "types/wlr_buffer.h"
 #include "xcursor/xcursor.h"
 
 #include "xcursor/cursor_data.h"
 
 static void xcursor_destroy(struct wlr_xcursor *cursor) {
 	for (size_t i = 0; i < cursor->image_count; i++) {
+		readonly_data_buffer_drop(cursor->images[i]->readonly_buffer);
 		free(cursor->images[i]->buffer);
 		free(cursor->images[i]);
 	}
@@ -57,16 +60,28 @@ static struct wlr_xcursor_image *xcursor_image_create(uint32_t width, uint32_t h
 	image->hotspot_y = hotspot_y;
 	image->delay = delay;
 
-	size_t size = width * height * sizeof(uint32_t);
+	size_t stride = width * sizeof(uint32_t);
+	size_t size = stride * height;
 	image->buffer = malloc(size);
 	if (image->buffer == NULL) {
-		free(image);
-		return NULL;
+		goto err_image;
 	}
 
 	memcpy(image->buffer, buffer, size);
 
+	image->readonly_buffer = readonly_data_buffer_create(DRM_FORMAT_ARGB8888,
+		stride, width, height, image->buffer);
+	if (image->readonly_buffer == NULL) {
+		goto err_buffer;
+	}
+
 	return image;
+
+err_buffer:
+	free(image->buffer);
+err_image:
+	free(image);
+	return NULL;
 }
 
 static struct wlr_xcursor *xcursor_create_from_data(
@@ -328,6 +343,10 @@ static int xcursor_frame_and_duration(struct wlr_xcursor *cursor,
 
 int wlr_xcursor_frame(struct wlr_xcursor *_cursor, uint32_t time) {
 	return xcursor_frame_and_duration(_cursor, time, NULL);
+}
+
+struct wlr_buffer *wlr_xcursor_image_get_buffer(struct wlr_xcursor_image *image) {
+	return &image->readonly_buffer->base;
 }
 
 const char *wlr_xcursor_get_resize_name(enum wlr_edges edges) {
