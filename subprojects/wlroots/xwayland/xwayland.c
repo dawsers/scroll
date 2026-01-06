@@ -8,20 +8,12 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/util/log.h>
 #include <wlr/xwayland/shell.h>
 #include <wlr/xwayland/xwayland.h>
 #include "xwayland/xwm.h"
-
-struct wlr_xwayland_cursor {
-	uint8_t *pixels;
-	uint32_t stride;
-	uint32_t width;
-	uint32_t height;
-	int32_t hotspot_x;
-	int32_t hotspot_y;
-};
 
 static void handle_server_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_xwayland *xwayland =
@@ -53,10 +45,9 @@ static void xwayland_mark_ready(struct wlr_xwayland *xwayland) {
 		xwm_set_seat(xwayland->xwm, xwayland->seat);
 	}
 
-	if (xwayland->cursor != NULL) {
-		struct wlr_xwayland_cursor *cur = xwayland->cursor;
-		xwm_set_cursor(xwayland->xwm, cur->pixels, cur->stride, cur->width,
-			cur->height, cur->hotspot_x, cur->hotspot_y);
+	if (xwayland->cursor_buffer != NULL) {
+		xwm_set_cursor(xwayland->xwm, xwayland->cursor_buffer,
+			xwayland->cursor_hotspot.x, xwayland->cursor_hotspot.y);
 	}
 
 	wl_signal_emit_mutable(&xwayland->events.ready, NULL);
@@ -95,7 +86,7 @@ void wlr_xwayland_destroy(struct wlr_xwayland *xwayland) {
 	wl_list_remove(&xwayland->server_start.link);
 	wl_list_remove(&xwayland->server_ready.link);
 	wl_list_remove(&xwayland->shell_destroy.link);
-	free(xwayland->cursor);
+	wlr_buffer_unlock(xwayland->cursor_buffer);
 
 	wlr_xwayland_set_seat(xwayland, NULL);
 	if (xwayland->own_server) {
@@ -181,26 +172,16 @@ error_shell_v1:
 }
 
 void wlr_xwayland_set_cursor(struct wlr_xwayland *xwayland,
-		uint8_t *pixels, uint32_t stride, uint32_t width, uint32_t height,
-		int32_t hotspot_x, int32_t hotspot_y) {
+		struct wlr_buffer *buffer, int32_t hotspot_x, int32_t hotspot_y) {
 	if (xwayland->xwm != NULL) {
-		xwm_set_cursor(xwayland->xwm, pixels, stride, width, height,
-			hotspot_x, hotspot_y);
+		xwm_set_cursor(xwayland->xwm, buffer, hotspot_x, hotspot_y);
 		return;
 	}
 
-	free(xwayland->cursor);
-
-	xwayland->cursor = calloc(1, sizeof(*xwayland->cursor));
-	if (xwayland->cursor == NULL) {
-		return;
-	}
-	xwayland->cursor->pixels = pixels;
-	xwayland->cursor->stride = stride;
-	xwayland->cursor->width = width;
-	xwayland->cursor->height = height;
-	xwayland->cursor->hotspot_x = hotspot_x;
-	xwayland->cursor->hotspot_y = hotspot_y;
+	wlr_buffer_unlock(xwayland->cursor_buffer);
+	xwayland->cursor_buffer = wlr_buffer_lock(xwayland->cursor_buffer);
+	xwayland->cursor_hotspot.x = hotspot_x;
+	xwayland->cursor_hotspot.y = hotspot_y;
 }
 
 static void xwayland_handle_seat_destroy(struct wl_listener *listener,

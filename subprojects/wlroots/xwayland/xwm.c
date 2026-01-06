@@ -1,6 +1,8 @@
 #include <assert.h>
+#include <drm_fourcc.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
@@ -2487,8 +2489,8 @@ static void xwm_get_render_format(struct wlr_xwm *xwm) {
 	free(reply);
 }
 
-void xwm_set_cursor(struct wlr_xwm *xwm, const uint8_t *pixels, uint32_t stride,
-		uint32_t width, uint32_t height, int32_t hotspot_x, int32_t hotspot_y) {
+void xwm_set_cursor(struct wlr_xwm *xwm, struct wlr_buffer *buffer,
+		int32_t hotspot_x, int32_t hotspot_y) {
 	if (!xwm->render_format_id) {
 		wlr_log(WLR_ERROR, "Cannot set xwm cursor: no render format available");
 		return;
@@ -2497,11 +2499,24 @@ void xwm_set_cursor(struct wlr_xwm *xwm, const uint8_t *pixels, uint32_t stride,
 		xcb_free_cursor(xwm->xcb_conn, xwm->cursor);
 	}
 
+	void *pixels = NULL;
+	uint32_t format = DRM_FORMAT_INVALID;
+	size_t stride = 0;
+	if (!wlr_buffer_begin_data_ptr_access(buffer, WLR_BUFFER_DATA_PTR_ACCESS_READ,
+			&pixels, &format, &stride)) {
+		return;
+	}
+
+	if (format != DRM_FORMAT_ARGB8888) {
+		wlr_buffer_end_data_ptr_access(buffer);
+		wlr_log(WLR_ERROR, "Only ARGB8888 is supported for Xwayland cursors");
+		return;
+	}
 	int depth = 32;
 
 	xcb_pixmap_t pix = xcb_generate_id(xwm->xcb_conn);
-	xcb_create_pixmap(xwm->xcb_conn, depth, pix, xwm->screen->root, width,
-		height);
+	xcb_create_pixmap(xwm->xcb_conn, depth, pix, xwm->screen->root, buffer->width,
+		buffer->height);
 
 	xcb_render_picture_t pic = xcb_generate_id(xwm->xcb_conn);
 	xcb_render_create_picture(xwm->xcb_conn, pic, pix, xwm->render_format_id,
@@ -2511,9 +2526,11 @@ void xwm_set_cursor(struct wlr_xwm *xwm, const uint8_t *pixels, uint32_t stride,
 	xcb_create_gc(xwm->xcb_conn, gc, pix, 0, NULL);
 
 	xcb_put_image(xwm->xcb_conn, XCB_IMAGE_FORMAT_Z_PIXMAP, pix, gc,
-		width, height, 0, 0, 0, depth, stride * height * sizeof(uint8_t),
+		buffer->width, buffer->height, 0, 0, 0, depth, stride * buffer->height,
 		pixels);
 	xcb_free_gc(xwm->xcb_conn, gc);
+
+	wlr_buffer_end_data_ptr_access(buffer);
 
 	xwm->cursor = xcb_generate_id(xwm->xcb_conn);
 	xcb_render_create_cursor(xwm->xcb_conn, xwm->cursor, pic, hotspot_x,

@@ -17,6 +17,7 @@
 #include <wlr/util/addon.h>
 
 struct wlr_box;
+struct wlr_buffer;
 struct wlr_xwm;
 struct wlr_data_source;
 struct wlr_drag;
@@ -41,7 +42,6 @@ struct wlr_xwayland {
 	bool own_server;
 	struct wlr_xwm *xwm;
 	struct wlr_xwayland_shell_v1 *shell_v1;
-	struct wlr_xwayland_cursor *cursor;
 
 	// Value the DISPLAY environment variable should be set to by the compositor
 	const char *display_name;
@@ -67,6 +67,11 @@ struct wlr_xwayland {
 	void *data;
 
 	struct {
+		struct wlr_buffer *cursor_buffer;
+		struct {
+			int32_t x, y;
+		} cursor_hotspot;
+
 		struct wl_listener server_start;
 		struct wl_listener server_ready;
 		struct wl_listener server_destroy;
@@ -279,8 +284,7 @@ struct wlr_xwayland *wlr_xwayland_create_with_server(struct wl_display *display,
 void wlr_xwayland_destroy(struct wlr_xwayland *wlr_xwayland);
 
 void wlr_xwayland_set_cursor(struct wlr_xwayland *wlr_xwayland,
-	uint8_t *pixels, uint32_t stride, uint32_t width, uint32_t height,
-	int32_t hotspot_x, int32_t hotspot_y);
+	struct wlr_buffer *buffer, int32_t hotspot_x, int32_t hotspot_y);
 
 void wlr_xwayland_surface_activate(struct wlr_xwayland_surface *surface,
 	bool activated);
