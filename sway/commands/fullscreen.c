@@ -128,7 +128,6 @@ struct cmd_results *cmd_fullscreen(int argc, char **argv) {
 	container_set_fullscreen(container, mode);
 	container_set_fullscreen_container(container, mode != FULLSCREEN_NONE);
 	arrange_root();
-	animation_end();
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

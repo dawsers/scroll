@@ -1378,6 +1378,7 @@ void container_set_fullscreen(struct sway_container *con,
 		return;
 	}
 
+	animation_end();
 	struct sway_workspace *workspace = con->pending.workspace;
 	switch (mode) {
 	case FULLSCREEN_NONE:
