@@ -19,7 +19,6 @@ struct scene_node_source {
 	struct wlr_output output;
 	struct sway_scene_output *scene_output;
 
-	struct wl_event_source *idle_frame;
 	size_t num_started;
 
 	struct wl_listener node_destroy;
@@ -139,6 +138,9 @@ static void source_stop(struct wlr_ext_image_capture_source_v1 *base) {
 static void source_request_frame(struct wlr_ext_image_capture_source_v1 *base,
 		bool schedule_frame) {
 	struct scene_node_source *source = wl_container_of(base, source, base);
+	if (source->output.frame_pending) {
+		wlr_output_send_frame(&source->output);
+	}
 	if (schedule_frame) {
 		wlr_output_update_needs_frame(&source->output);
 	}
@@ -178,12 +180,6 @@ static void source_update_buffer_constraints(struct scene_node_source *source,
 		output->swapchain, output->renderer);
 }
 
-static void source_handle_idle_frame(void *data) {
-	struct scene_node_source *source = data;
-	source->idle_frame = NULL;
-	wlr_output_send_frame(&source->output);
-}
-
 static bool output_test(struct wlr_output *output, const struct wlr_output_state *state) {
 	struct scene_node_source *source = wl_container_of(output, source, output);
 
@@ -218,11 +214,6 @@ static bool output_test(struct wlr_output *output, const struct wlr_output_state
 
 static bool output_commit(struct wlr_output *output, const struct wlr_output_state *state) {
 	struct scene_node_source *source = wl_container_of(output, source, output);
-
-	if (source->idle_frame != NULL) {
-		sway_log(SWAY_DEBUG, "Failed to commit capture output: a frame is still pending");
-		return false;
-	}
 
 	if ((state->committed & WLR_OUTPUT_STATE_ENABLED) && !state->enabled) {
 		return true;
@@ -260,9 +251,6 @@ static bool output_commit(struct wlr_output *output, const struct wlr_output_sta
 	wl_signal_emit_mutable(&source->base.events.frame, &frame_event.base);
 
 	pixman_region32_fini(&full_damage);
-
-	source->idle_frame =
-		wl_event_loop_add_idle(output->event_loop, source_handle_idle_frame, source);
 
 	return true;
 }
