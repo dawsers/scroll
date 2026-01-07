@@ -128,9 +128,12 @@ static void source_stop(struct wlr_ext_image_capture_source_v1 *base) {
 	wlr_output_state_finish(&state);
 }
 
-static void source_schedule_frame(struct wlr_ext_image_capture_source_v1 *base) {
+static void source_request_frame(struct wlr_ext_image_capture_source_v1 *base,
+		bool schedule_frame) {
 	struct scene_node_source *source = wl_container_of(base, source, base);
-	wlr_output_update_needs_frame(&source->output);
+	if (schedule_frame) {
+		wlr_output_update_needs_frame(&source->output);
+	}
 }
 
 static void source_copy_frame(struct wlr_ext_image_capture_source_v1 *base,
@@ -149,7 +152,7 @@ static void source_copy_frame(struct wlr_ext_image_capture_source_v1 *base,
 static const struct wlr_ext_image_capture_source_v1_interface source_impl = {
 	.start = source_start,
 	.stop = source_stop,
-	.schedule_frame = source_schedule_frame,
+	.request_frame = source_request_frame,
 	.copy_frame = source_copy_frame,
 };
 

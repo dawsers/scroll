@@ -21,7 +21,7 @@ struct wlr_ext_image_capture_source_v1_interface {
 	// TODO: drop with_cursors flag
 	void (*start)(struct wlr_ext_image_capture_source_v1 *source, bool with_cursors);
 	void (*stop)(struct wlr_ext_image_capture_source_v1 *source);
-	void (*schedule_frame)(struct wlr_ext_image_capture_source_v1 *source);
+	void (*request_frame)(struct wlr_ext_image_capture_source_v1 *source, bool schedule_frame);
 	void (*copy_frame)(struct wlr_ext_image_capture_source_v1 *source,
 		struct wlr_ext_image_copy_capture_frame_v1 *dst_frame,
 		struct wlr_ext_image_capture_source_v1_frame_event *frame_event);

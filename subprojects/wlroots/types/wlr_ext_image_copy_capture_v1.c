@@ -281,10 +281,10 @@ static void frame_handle_capture(struct wl_client *client,
 
 	frame->capturing = true;
 
-	bool need_frame = !pixman_region32_empty(&frame->session->damage);
+	bool schedule_frame = !pixman_region32_empty(&frame->session->damage);
 	struct wlr_ext_image_capture_source_v1 *source = frame->session->source;
-	if (need_frame && source->impl->schedule_frame) {
-		source->impl->schedule_frame(source);
+	if (source->impl->request_frame) {
+		source->impl->request_frame(source, schedule_frame);
 	}
 }
 
