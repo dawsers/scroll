@@ -671,6 +671,10 @@ static void scene_node_cleanup_when_disabled(struct wlr_scene_node *node, bool x
 		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *child;
 		wl_list_for_each(child, &scene_tree->children, link) {
+			if (!child->enabled) {
+				continue;
+			}
+
 			scene_node_cleanup_when_disabled(child, xwayland_restack);
 		}
 		return;
