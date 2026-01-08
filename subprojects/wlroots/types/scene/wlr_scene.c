@@ -697,12 +697,28 @@ static void scene_node_cleanup_when_disabled(struct wlr_scene_node *node,
 #endif
 }
 
+/**
+ * Updates the nodes visibility, xwayland restacking, send leave/enter events
+ * and damages the screen. The damage region is used to not only damage the
+ * screen, but to direct the update logic to only update certain parts of the
+ * screen and not the whole thing. If a NULL damage is given, the damage is
+ * assumed to be the previous nodes visibility.
+ *
+ * Currently, the only usage for an explicit damage is for update scenarios where
+ * the scene node might be enabled/disabled. If the scene node is disabled, the
+ * update logic will ignore the node. This is normally desirable as most update
+ * scenarios like updating the color or whatever. However, it's not what we want
+ * when disabling the node. Note that reparenting the node could lead to the node
+ * being reparented to a disabled super tree.
+ */
 static void scene_node_update(struct wlr_scene_node *node,
 		pixman_region32_t *damage) {
 	struct wlr_scene *scene = scene_node_get_root(node);
 
 	int x, y;
 	if (!wlr_scene_node_coords(node, &x, &y)) {
+		// We assume explicit damage on a disabled tree means the node was just
+		// disabled.
 		if (damage) {
 			scene_node_cleanup_when_disabled(node, scene->restack_xwayland_surfaces, &scene->outputs);
 
