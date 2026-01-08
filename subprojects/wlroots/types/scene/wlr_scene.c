@@ -569,25 +569,6 @@ static void restack_xwayland_surface(struct wlr_scene_node *node,
 
 	data->restack_above = xwayland_surface;
 }
-
-static void restack_xwayland_surface_below(struct wlr_scene_node *node) {
-	if (node->type == WLR_SCENE_NODE_TREE) {
-		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
-		struct wlr_scene_node *child;
-		wl_list_for_each(child, &scene_tree->children, link) {
-			restack_xwayland_surface_below(child);
-		}
-		return;
-	}
-
-	struct wlr_xwayland_surface *xwayland_surface =
-		scene_node_try_get_managed_xwayland_surface(node);
-	if (!xwayland_surface) {
-		return;
-	}
-
-	wlr_xwayland_surface_restack(xwayland_surface, NULL, XCB_STACK_MODE_BELOW);
-}
 #endif
 
 static bool scene_node_update_iterator(struct wlr_scene_node *node,
@@ -685,17 +666,37 @@ static void scene_update_region(struct wlr_scene *scene,
 	pixman_region32_fini(&visible);
 }
 
+static void scene_node_cleanup_when_disabled(struct wlr_scene_node *node, bool xwayland_restack) {
+	if (node->type == WLR_SCENE_NODE_TREE) {
+		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
+		struct wlr_scene_node *child;
+		wl_list_for_each(child, &scene_tree->children, link) {
+			scene_node_cleanup_when_disabled(child, xwayland_restack);
+		}
+		return;
+	}
+
+#if WLR_HAS_XWAYLAND
+	if (xwayland_restack) {
+		struct wlr_xwayland_surface *xwayland_surface =
+			scene_node_try_get_managed_xwayland_surface(node);
+		if (!xwayland_surface) {
+			return;
+		}
+
+		wlr_xwayland_surface_restack(xwayland_surface, NULL, XCB_STACK_MODE_BELOW);
+	}
+#endif
+}
+
 static void scene_node_update(struct wlr_scene_node *node,
 		pixman_region32_t *damage) {
 	struct wlr_scene *scene = scene_node_get_root(node);
 
 	int x, y;
 	if (!wlr_scene_node_coords(node, &x, &y)) {
-#if WLR_HAS_XWAYLAND
-		if (scene->restack_xwayland_surfaces) {
-			restack_xwayland_surface_below(node);
-		}
-#endif
+		scene_node_cleanup_when_disabled(node, scene->restack_xwayland_surfaces);
+
 		if (damage) {
 			scene_update_region(scene, damage);
 			scene_damage_outputs(scene, damage);
