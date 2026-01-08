@@ -666,7 +666,8 @@ static void scene_update_region(struct wlr_scene *scene,
 	pixman_region32_fini(&visible);
 }
 
-static void scene_node_cleanup_when_disabled(struct wlr_scene_node *node, bool xwayland_restack) {
+static void scene_node_cleanup_when_disabled(struct wlr_scene_node *node,
+		bool xwayland_restack, struct wl_list *outputs) {
 	if (node->type == WLR_SCENE_NODE_TREE) {
 		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *child;
@@ -675,10 +676,13 @@ static void scene_node_cleanup_when_disabled(struct wlr_scene_node *node, bool x
 				continue;
 			}
 
-			scene_node_cleanup_when_disabled(child, xwayland_restack);
+			scene_node_cleanup_when_disabled(child, xwayland_restack, outputs);
 		}
 		return;
 	}
+
+	pixman_region32_clear(&node->visible);
+	update_node_update_outputs(node, outputs, NULL, NULL);
 
 #if WLR_HAS_XWAYLAND
 	if (xwayland_restack) {
@@ -699,7 +703,7 @@ static void scene_node_update(struct wlr_scene_node *node,
 
 	int x, y;
 	if (!wlr_scene_node_coords(node, &x, &y)) {
-		scene_node_cleanup_when_disabled(node, scene->restack_xwayland_surfaces);
+		scene_node_cleanup_when_disabled(node, scene->restack_xwayland_surfaces, &scene->outputs);
 
 		if (damage) {
 			scene_update_region(scene, damage);
