@@ -875,9 +875,9 @@ static void scene_node_update(struct sway_scene_node *node,
 
 	double x, y;
 	if (!sway_scene_node_coords(node, &x, &y)) {
-		scene_node_cleanup_when_disabled(node, scene->restack_xwayland_surfaces, &scene->outputs);
-
 		if (damage) {
+			scene_node_cleanup_when_disabled(node, scene->restack_xwayland_surfaces, &scene->outputs);
+
 			scene_update_region(scene, damage);
 			scene_damage_outputs(scene, damage);
 			pixman_region32_fini(damage);
