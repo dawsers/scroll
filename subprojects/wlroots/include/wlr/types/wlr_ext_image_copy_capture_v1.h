@@ -20,7 +20,29 @@ struct wlr_ext_image_copy_capture_manager_v1 {
 	struct wl_global *global;
 
 	struct {
+		struct wl_signal new_session; // wlr_ext_image_copy_capture_session_v1
+	} events;
+
+	struct {
 		struct wl_listener display_destroy;
+	} WLR_PRIVATE;
+};
+
+struct wlr_ext_image_copy_capture_session_v1 {
+	struct wl_resource *resource;
+	struct wlr_ext_image_capture_source_v1 *source;
+	struct wlr_ext_image_copy_capture_frame_v1 *frame;
+
+	struct {
+		struct wl_signal destroy;
+	} events;
+
+	struct {
+		struct wl_listener source_destroy;
+		struct wl_listener source_constraints_update;
+		struct wl_listener source_frame;
+
+		pixman_region32_t damage;
 	} WLR_PRIVATE;
 };
 
