@@ -131,4 +131,12 @@ struct wlr_ext_image_capture_source_v1 *wlr_ext_image_capture_source_v1_create_w
 	struct wlr_scene_node *node, struct wl_event_loop *event_loop,
 	struct wlr_allocator *allocator, struct wlr_renderer *renderer);
 
+/**
+ * Returns the corresponding wlr_output for a image capture source
+ * managed by wlr_ext_output_image_capture_source_manager_v1
+ * or NULL if the image capture source is not managed by
+ * wlr_ext_output_image_capture_source_manager_v1.
+ */
+struct wlr_output *wlr_output_try_from_ext_image_capture_source_v1(struct wlr_ext_image_capture_source_v1 *source);
+
 #endif

@@ -392,3 +392,13 @@ static void output_cursor_source_finish(struct output_cursor_source *cursor_sour
 	wl_list_remove(&cursor_source->output_commit.link);
 	wl_list_remove(&cursor_source->prev_buffer_release.link);
 }
+
+struct wlr_output *wlr_output_try_from_ext_image_capture_source_v1(struct wlr_ext_image_capture_source_v1 *source) {
+	if (source->impl == &output_source_impl) {
+		struct wlr_ext_output_image_capture_source_v1 *output_source =
+			(struct wlr_ext_output_image_capture_source_v1*)source;
+		return output_source->output;
+	}
+
+	return NULL;
+}
