@@ -125,6 +125,10 @@ struct sway_view {
 	enum wp_tearing_control_v1_presentation_hint tearing_hint;
 
 	float content_scale;
+
+	struct {
+		bool mapped;
+	} lua;
 };
 
 struct sway_xdg_shell_view {

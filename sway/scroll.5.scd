@@ -2086,15 +2086,41 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	Sets a _cb_func_ callback function for _event_, passing _cb_data_ data to
 	it.
 
-	_event_ can be "view_map" (application's window creation), "view_unmap"
-	(application's window destruction), "view_urgent" (a window gets the
-	urgent attribute set), "view_focus" (a window gets focus), "view_float"
-	(a window becomes floating or goes back to tiled), or "workspace_create"
-	(called when a workspace is created).
+	_event_:
 
-	_cb_func_ is a Lua function with two parameters, _view_ (the view triggering
-	the event) and _data_, the _cb_data_ value passed when creating the
-	callback.
+	view events: _cb_func_ is a Lua function with two parameters, _view_
+	(the view triggering the event) and _data_, the _cb_data_ value passed when
+	creating the callback.
+
+	"view_map": application's window creation.
+
+	"view_unmap": right before an application's window destruction.
+
+	"view_urgent": a window gets the urgent attribute set.
+
+	"view_focus": a window gets focus.
+
+	"view_float" a window becomes floating or goes back to tiled.
+
+	workspace events: _cb_func_ is Lua function with two parameters,_workspace_
+	(the workspace triggering the event) and _data_, the _cb_data_ value passed
+	when creating the callback.
+
+	"workspace_create": called when a workspace is created.
+
+	"workspace_focus": called when focusing a workspace.
+
+	ipc events:
+
+	"ipc_view": called every time an IPC event for a window happens. _cb_func_
+	is Lua function with three parameters:_view_ (the view triggering the event),
+	_change_ (a string with the event name), and _data_, the _cb_data_ value
+	passed when creating the callback.
+
+	"ipc_workspace": called every time an IPC event for a workspace happens.
+	_cb_func_ is Lua function with four parameters:_old_ws_ (the old workspace),
+	_new_ws_ (the new workspace), _change_ (a string with the event name), and
+	_data_, the _cb_data_ value	passed when creating the callback.
 
 	_cb_data_ can be any Lua variable, including a table with multiple values.
 

@@ -1112,6 +1112,15 @@ static void set_workspace(struct sway_seat *seat,
 	ipc_event_workspace(seat->workspace, new_ws, "focus");
 	ipc_event_scroller("workspace", new_ws);
 	seat->workspace = new_ws;
+
+	// Lua callbacks
+	for (int i = 0; i < config->lua.cbs_workspace_focus->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_workspace_focus->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, new_ws);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
 }
 
 void seat_set_raw_focus(struct sway_seat *seat, struct sway_node *node) {

@@ -296,6 +296,16 @@ static void ipc_send_event(const char *json_string, enum ipc_command_type event)
 
 void ipc_event_workspace(struct sway_workspace *old,
 		struct sway_workspace *new, const char *change) {
+	// Lua callbacks
+	for (int i = 0; i < config->lua.cbs_ipc_workspace->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_ipc_workspace->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, old);
+		lua_pushlightuserdata(config->lua.state, new);
+		lua_pushstring(config->lua.state, change);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 4, 0);
+	}
 	if (!ipc_has_event_listeners(IPC_EVENT_WORKSPACE)) {
 		return;
 	}
@@ -322,6 +332,17 @@ void ipc_event_workspace(struct sway_workspace *old,
 }
 
 void ipc_event_window(struct sway_container *window, const char *change) {
+	if (window->view) {
+		// Lua callbacks
+		for (int i = 0; i < config->lua.cbs_ipc_view->length; ++i) {
+			struct sway_lua_closure *closure = config->lua.cbs_ipc_view->items[i];
+			lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+			lua_pushlightuserdata(config->lua.state, window->view);
+			lua_pushstring(config->lua.state, change);
+			lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+			lua_call(config->lua.state, 3, 0);
+		}
+	}
 	if (!ipc_has_event_listeners(IPC_EVENT_WINDOW)) {
 		return;
 	}

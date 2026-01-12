@@ -777,6 +777,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	if (!sway_assert(view->surface == NULL, "cannot map mapped view")) {
 		return;
 	}
+	view->lua.mapped = true;
 	view->surface = wlr_surface;
 	view_populate_pid(view);
 	view->container = container_create(view);
@@ -971,6 +972,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 }
 
 void view_unmap(struct sway_view *view) {
+	view->lua.mapped = false;
 	// Lua callbacks
 	for (int i = 0; i < config->lua.cbs_view_unmap->length; ++i) {
 		struct sway_lua_closure *closure = config->lua.cbs_view_unmap->items[i];

@@ -26,6 +26,9 @@ struct sway_lua {
 	list_t *cbs_view_focus;
 	list_t *cbs_view_float;
 	list_t *cbs_workspace_create;
+	list_t *cbs_workspace_focus;
+	list_t *cbs_ipc_view;
+	list_t *cbs_ipc_workspace;
 };
 
 int luaopen_scroll(lua_State *L);

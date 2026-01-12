@@ -192,11 +192,6 @@ static int scroll_ipc_send(lua_State *L) {
 	return 0;
 }
 
-static bool find_view(struct sway_container *container, void *data) {
-	struct sway_view *view = data;
-	return container->view == view;
-}
-
 static bool find_container(struct sway_container *container, void *data) {
 	struct sway_container *con = data;
 	return container == con;
@@ -358,8 +353,7 @@ static int scroll_view_mapped(lua_State *L) {
 	}
 	struct sway_view *view = lua_touserdata(L, -1);
 	if (view) {
-		struct sway_container *found = root_find_container(find_view, view);
-		if (found) {
+		if (view->lua.mapped) {
 			lua_pushboolean(L, 1);
 			return 1;
 		}
@@ -1388,6 +1382,12 @@ static int scroll_add_callback(lua_State *L) {
 		list_add(config->lua.cbs_view_float, closure);
 	} else if (strcmp(event, "workspace_create") == 0) {
 		list_add(config->lua.cbs_workspace_create, closure);
+	} else if (strcmp(event, "workspace_focus") == 0) {
+		list_add(config->lua.cbs_workspace_focus, closure);
+	} else if (strcmp(event, "ipc_view") == 0) {
+		list_add(config->lua.cbs_ipc_view, closure);
+	} else if (strcmp(event, "ipc_workspace") == 0) {
+		list_add(config->lua.cbs_ipc_workspace, closure);
 	} else {
 		free(closure);
 		lua_pushnil(L);
@@ -1452,6 +1452,33 @@ static int scroll_remove_callback(lua_State *L) {
 	for (int i = 0; i < config->lua.cbs_workspace_create->length; ++i) {
 		if (config->lua.cbs_workspace_create->items[i] == closure) {
 			list_del(config->lua.cbs_workspace_create, i);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+			free(closure);
+			return 0;
+		}
+	}
+	for (int i = 0; i < config->lua.cbs_workspace_focus->length; ++i) {
+		if (config->lua.cbs_workspace_focus->items[i] == closure) {
+			list_del(config->lua.cbs_workspace_focus, i);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+			free(closure);
+			return 0;
+		}
+	}
+	for (int i = 0; i < config->lua.cbs_ipc_view->length; ++i) {
+		if (config->lua.cbs_ipc_view->items[i] == closure) {
+			list_del(config->lua.cbs_ipc_view, i);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+			free(closure);
+			return 0;
+		}
+	}
+	for (int i = 0; i < config->lua.cbs_ipc_workspace->length; ++i) {
+		if (config->lua.cbs_ipc_workspace->items[i] == closure) {
+			list_del(config->lua.cbs_ipc_workspace, i);
 			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
 			free(closure);
