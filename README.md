@@ -249,6 +249,8 @@ export QT_QPA_PLATFORM="wayland;xcb"
 export GDK_BACKEND="wayland,x11"
 export SDL_VIDEODRIVER=wayland
 export CLUTTER_BACKEND=wayland
+# So GTK4 applications work when sending dead keys
+export GTK_IM_MODULE=simple
 
 # XDG desktop variables to set scroll as the desktop
 export XDG_CURRENT_DESKTOP=scroll
