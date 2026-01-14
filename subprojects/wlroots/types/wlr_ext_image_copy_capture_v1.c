@@ -14,6 +14,7 @@
 struct wlr_ext_image_copy_capture_cursor_session_v1 {
 	struct wl_resource *resource;
 	struct wlr_ext_image_capture_source_v1_cursor *source;
+	struct wlr_ext_image_copy_capture_manager_v1 *manager;
 	bool capture_session_created;
 
 	struct {
@@ -28,9 +29,17 @@ struct wlr_ext_image_copy_capture_cursor_session_v1 {
 	struct wl_listener source_update;
 };
 
+static const struct ext_image_copy_capture_manager_v1_interface manager_impl;
 static const struct ext_image_copy_capture_frame_v1_interface frame_impl;
 static const struct ext_image_copy_capture_session_v1_interface session_impl;
 static const struct ext_image_copy_capture_cursor_session_v1_interface cursor_session_impl;
+
+static struct wlr_ext_image_copy_capture_manager_v1 *manager_from_resource(
+		struct wl_resource *resource) {
+	assert(wl_resource_instance_of(resource,
+		&ext_image_copy_capture_manager_v1_interface, &manager_impl));
+	return wl_resource_get_user_data(resource);
+}
 
 static struct wlr_ext_image_copy_capture_frame_v1 *frame_from_resource(
 		struct wl_resource *resource) {
@@ -431,8 +440,7 @@ static void session_handle_resource_destroy(struct wl_resource *resource) {
 }
 
 static void session_create(struct wl_resource *parent_resource, uint32_t new_id,
-		struct wlr_ext_image_capture_source_v1 *source, uint32_t options) {
-	struct wlr_ext_image_copy_capture_manager_v1 *manager = wl_resource_get_user_data(parent_resource);
+		struct wlr_ext_image_capture_source_v1 *source, uint32_t options, struct wlr_ext_image_copy_capture_manager_v1 *manager) {
 	struct wl_client *client = wl_resource_get_client(parent_resource);
 	uint32_t version = wl_resource_get_version(parent_resource);
 	struct wl_resource *session_resource = wl_resource_create(client,
@@ -517,7 +525,7 @@ static void cursor_session_handle_get_capture_session(struct wl_client *client,
 		source = &cursor_session->source->base;
 	}
 
-	session_create(cursor_session_resource, new_id, source, 0);
+	session_create(cursor_session_resource, new_id, source, 0, cursor_session->manager);
 }
 
 static const struct ext_image_copy_capture_cursor_session_v1_interface cursor_session_impl = {
@@ -580,7 +588,7 @@ static void manager_handle_create_session(struct wl_client *client,
 		struct wl_resource *source_resource, uint32_t options) {
 	struct wlr_ext_image_capture_source_v1 *source =
 		wlr_ext_image_capture_source_v1_from_resource(source_resource);
-	session_create(manager_resource, new_id, source, options);
+	session_create(manager_resource, new_id, source, options, manager_from_resource(manager_resource));
 }
 
 static void manager_handle_create_pointer_cursor_session(struct wl_client *client,
@@ -621,6 +629,7 @@ static void manager_handle_create_pointer_cursor_session(struct wl_client *clien
 
 	cursor_session->resource = cursor_session_resource;
 	cursor_session->source = source_cursor;
+	cursor_session->manager = manager_from_resource(manager_resource);
 
 	cursor_session->source_destroy.notify = cursor_session_handle_source_destroy;
 	wl_signal_add(&source_cursor->base.events.destroy, &cursor_session->source_destroy);
