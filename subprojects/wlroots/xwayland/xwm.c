@@ -239,6 +239,7 @@ static struct wlr_xwayland_surface *xwayland_surface_create(
 	wl_signal_init(&surface->events.set_startup_id);
 	wl_signal_init(&surface->events.set_window_type);
 	wl_signal_init(&surface->events.set_hints);
+	wl_signal_init(&surface->events.set_size_hints);
 	wl_signal_init(&surface->events.set_decorations);
 	wl_signal_init(&surface->events.set_strut_partial);
 	wl_signal_init(&surface->events.set_override_redirect);
@@ -601,6 +602,7 @@ static void xwayland_surface_destroy(struct wlr_xwayland_surface *xsurface) {
 	assert(wl_list_empty(&xsurface->events.set_startup_id.listener_list));
 	assert(wl_list_empty(&xsurface->events.set_window_type.listener_list));
 	assert(wl_list_empty(&xsurface->events.set_hints.listener_list));
+	assert(wl_list_empty(&xsurface->events.set_size_hints.listener_list));
 	assert(wl_list_empty(&xsurface->events.set_decorations.listener_list));
 	assert(wl_list_empty(&xsurface->events.set_strut_partial.listener_list));
 	assert(wl_list_empty(&xsurface->events.set_override_redirect.listener_list));
@@ -951,6 +953,8 @@ static void read_surface_normal_hints(struct wlr_xwm *xwm,
 		xsurface->size_hints->max_width = -1;
 		xsurface->size_hints->max_height = -1;
 	}
+
+	wl_signal_emit_mutable(&xsurface->events.set_size_hints, NULL);
 }
 
 #define MWM_HINTS_FLAGS_FIELD 0

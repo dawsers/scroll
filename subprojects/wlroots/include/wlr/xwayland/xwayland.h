@@ -221,6 +221,7 @@ struct wlr_xwayland_surface {
 		struct wl_signal set_startup_id;
 		struct wl_signal set_window_type;
 		struct wl_signal set_hints;
+		struct wl_signal set_size_hints;
 		struct wl_signal set_decorations;
 		struct wl_signal set_strut_partial;
 		struct wl_signal set_override_redirect;
