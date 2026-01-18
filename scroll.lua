@@ -517,24 +517,43 @@ function scroll.root_get_outputs() end
 function scroll.scratchpad_get_containers() end
 
 ---
---- Sets a cb_func callback function for event, passing cb_data data to it.
+--- Sets a cb_func callback function for event, passing cb_data data to
+--- it.
 ---
---- event can be
----   "view_map" (application's window creation),
----   "view_unmap" (application's window destruction),
----   "view_urgent" (a window gets the urgent attribute set),
----   "view_focus" (a window gets focus),
----   "view_float" (a window becomes floating or goes back to tiled),
----   "workspace_create" (called when a workspace is created).
+--- event can be:
 ---
---- cb_func is a Lua function with two parameters:
----   view (the view triggering the event)
----   data (the cb_data value passed when creating the callback)
+--- view events: cb_func is a Lua function with two parameters, view
+--- (the view triggering the event) and data, the cb_data value passed when
+--- creating the callback.
+---
+---   "view_map": application's window creation.
+---   "view_unmap": right before an application's window destruction.
+---   "view_urgent": a window gets the urgent attribute set.
+---   "view_focus": a window gets focus.
+---   "view_float" a window becomes floating or goes back to tiled.
+---
+--- workspace events: cb_func is Lua function with two parameters, workspace
+--- (the workspace triggering the event) and  data , the  cb_data  value passed
+--- when creating the callback.
+---
+---   "workspace_create": called when a workspace is created.
+---   "workspace_focus": called when focusing a workspace.
+---
+--- ipc events:
+---
+---   "ipc_view": called every time an IPC event for a window happens. cb_func
+---     is Lua function with three parameters: view  (the view triggering the event),
+---     change (a string with the event name), and data, the cb_data value
+---     passed when creating the callback.
+---   "ipc_workspace": called every time an IPC event for a workspace happens.
+---     cb_func is Lua function with four parameters: old_ws (the old workspace),
+---     new_ws (the new workspace), change (a string with the event name), and
+---     data, the cb_data value	passed when creating the callback.
 ---
 --- cb_data can be any Lua variable, including a table with multiple values.
 ---
---- This function returns an id you need to store if you want to be able
---- to remove the callback later.
+--- This function returns an id you need to store if you want to be able to
+--- remove the callback later.
 ---
 --- @param event string
 --- @param cb_func function
