@@ -1775,11 +1775,12 @@ static void xwm_handle_net_startup_info_message(struct wlr_xwm *xwm,
 	char *start;
 	size_t buf_len = sizeof(ev->data);
 	if (curr) {
-		curr->msg = realloc(curr->msg, curr->len + buf_len);
-		if (!curr->msg) {
+		char *msg = realloc(curr->msg, curr->len + buf_len);
+		if (!msg) {
 			pending_startup_id_destroy(curr);
 			return;
 		}
+		curr->msg = msg;
 		start = curr->msg + curr->len;
 		curr->len += buf_len;
 	} else {
