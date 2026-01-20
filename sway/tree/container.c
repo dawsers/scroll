@@ -1349,6 +1349,12 @@ void container_fullscreen_disable(struct sway_container *con) {
 		root->fullscreen_global = NULL;
 	}
 
+	// Ensure animation happens by changing the parent's current position too
+	if (con->pending.parent) {
+		con->pending.parent->current.x = con->current.x;
+		con->pending.parent->current.y = con->current.y;
+	}
+
 	// If the container was mapped as fullscreen and set as floating by
 	// criteria, it needs to be reinitialized as floating to get the proper
 	// size and location
