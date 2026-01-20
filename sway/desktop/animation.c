@@ -270,6 +270,55 @@ void animation_path_add_curve(struct sway_animation_path *path,
 	list_add(path->curves, curve);
 }
 
+static struct sway_animation_path *get_path();
+
+bool animation_path_enabled(enum sway_animation_type anim) {
+	if (!animation->config.enabled || config->reloading) {
+		return false;
+	}
+	struct sway_animation_path *path;
+	switch (anim) {
+	case ANIMATION_DISABLED:
+		path = animation->config.anim_disabled;
+		break;
+	case ANIMATION_DEFAULT:
+	default:
+		path = animation->config.anim_default;
+		break;
+	case ANIMATION_WINDOW_OPEN:
+		path = animation->config.window_open;
+		break;
+	case ANIMATION_WINDOW_SIZE:
+		path = animation->config.window_size;
+		break;
+	case ANIMATION_WINDOW_MOVE:
+		path =  animation->config.window_move;
+		break;
+	case ANIMATION_WINDOW_MOVE_FLOAT:
+		path =  animation->config.window_move_float;
+		break;
+	case ANIMATION_WINDOW_FULLSCREEN:
+		path = animation->config.window_fullscreen;
+		break;
+	case ANIMATION_WORKSPACE_SWITCH:
+		path = animation->config.workspace_switch;
+		break;
+	case ANIMATION_OVERVIEW:
+		path = animation->config.overview;
+		break;
+	case ANIMATION_JUMP:
+		path = animation->config.jump;
+		break;
+	}
+	if (!path) {
+		path = animation->config.anim_default;
+	}
+	if (path->enabled) {
+		return true;
+	}
+	return false;
+}
+
 // Set the callbacks for the pending animation
 void animation_set_default_callbacks(struct sway_animation_callbacks *callbacks) {
 	animation->default_callbacks.callback_begin = callbacks->callback_begin;

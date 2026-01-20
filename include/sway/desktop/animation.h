@@ -83,6 +83,8 @@ void animation_path_destroy(struct sway_animation_path *path);
 void animation_path_add_curve(struct sway_animation_path *path,
 	struct sway_animation_curve *curve);
 
+bool animation_path_enabled(enum sway_animation_type anim);
+
 // Animation System create/destroy
 void animation_create();
 void animation_destroy();

@@ -851,7 +851,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	if (old_ws != workspace && old_ws->output &&
 		old_ws->output == workspace->output &&
 		workspace->split.sibling != old_ws &&
-		animation_enabled()) {
+		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
 		animate_workspace_switch(old_ws, workspace);
 	} else {
 		arrange_workspace(workspace);
