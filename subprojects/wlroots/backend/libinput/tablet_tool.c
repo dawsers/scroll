@@ -18,6 +18,16 @@ const struct wlr_tablet_impl libinput_tablet_impl = {
 	.name = "libinput-tablet-tool",
 };
 
+struct libinput_tablet_tool *wlr_libinput_get_tablet_tool_handle(
+		struct wlr_tablet_tool *wlr_tablet_tool) {
+
+	struct tablet_tool *tool =
+		wl_container_of(wlr_tablet_tool, tool, wlr_tool);
+
+	assert(tool);
+	return tool->handle;
+}
+
 void init_device_tablet(struct wlr_libinput_input_device *dev) {
 	const char *name = get_libinput_device_name(dev->handle);
 	struct wlr_tablet *wlr_tablet = &dev->tablet;
