@@ -23,7 +23,7 @@ static xcb_atom_t data_device_manager_dnd_action_to_atom(
 
 static enum wl_data_device_manager_dnd_action
 		data_device_manager_dnd_action_from_atom(struct wlr_xwm *xwm,
-		enum atom_name atom) {
+		xcb_atom_t atom) {
 	if (atom == xwm->atoms[DND_ACTION_COPY] ||
 			atom == xwm->atoms[DND_ACTION_PRIVATE]) {
 		return WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY;
