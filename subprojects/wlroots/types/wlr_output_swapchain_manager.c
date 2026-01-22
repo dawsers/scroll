@@ -108,6 +108,10 @@ static bool manager_output_prepare(struct wlr_output_swapchain_manager_output *m
 
 	int width, height;
 	output_pending_resolution(output, state, &width, &height);
+	if (width == 0 || height == 0) {
+		wlr_log(WLR_DEBUG, "Cannot allocate swapchain for zero resolution (%dx%d)", width, height);
+		return false;
+	}
 
 	uint32_t fmt = output->render_format;
 	if (state->committed & WLR_OUTPUT_STATE_RENDER_FORMAT) {
