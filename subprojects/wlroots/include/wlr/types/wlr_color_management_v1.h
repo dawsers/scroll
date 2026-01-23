@@ -78,7 +78,7 @@ struct wlr_color_manager_v1 {
 		struct wl_list outputs; // wlr_color_management_output_v1.link
 		struct wl_list surface_feedbacks; // wlr_color_management_surface_feedback_v1.link
 
-		uint32_t last_image_desc_identity;
+		uint64_t last_image_desc_identity;
 
 		struct wl_listener display_destroy;
 	} WLR_PRIVATE;

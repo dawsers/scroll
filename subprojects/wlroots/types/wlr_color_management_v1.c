@@ -179,8 +179,16 @@ static void image_desc_create_ready(struct wlr_color_manager_v1 *manager,
 		image_desc, image_desc_handle_resource_destroy);
 
 	// TODO: de-duplicate identity
-	uint32_t identity = ++manager->last_image_desc_identity;
-	wp_image_description_v1_send_ready(image_desc->resource, identity);
+	uint64_t identity = ++manager->last_image_desc_identity;
+	uint32_t identity_hi = identity >> 32;
+	uint32_t identity_lo = (uint32_t)identity;
+
+	uint32_t version = wl_resource_get_version(image_desc->resource);
+	if (version >= WP_IMAGE_DESCRIPTION_V1_READY2_SINCE_VERSION) {
+		wp_image_description_v1_send_ready2(image_desc->resource, identity_hi, identity_lo);
+	} else {
+		wp_image_description_v1_send_ready(image_desc->resource, identity_lo);
+	}
 }
 
 static void image_desc_create_failed(struct wl_resource *parent_resource, uint32_t id,
@@ -975,14 +983,22 @@ void wlr_color_manager_v1_set_surface_preferred_image_description(
 		struct wlr_color_manager_v1 *manager, struct wlr_surface *surface,
 		const struct wlr_image_description_v1_data *data) {
 	// TODO: de-duplicate identity
-	uint32_t identity = ++manager->last_image_desc_identity;
+	uint64_t identity = ++manager->last_image_desc_identity;
+	uint32_t identity_hi = identity >> 32;
+	uint32_t identity_lo = (uint32_t)identity;
 
 	struct wlr_color_management_surface_feedback_v1 *surface_feedback;
 	wl_list_for_each(surface_feedback, &manager->surface_feedbacks, link) {
 		if (surface_feedback->surface == surface) {
 			surface_feedback->data = *data;
-			wp_color_management_surface_feedback_v1_send_preferred_changed(
-				surface_feedback->resource, identity);
+			uint32_t version = wl_resource_get_version(surface_feedback->resource);
+			if (version >= WP_COLOR_MANAGEMENT_SURFACE_FEEDBACK_V1_PREFERRED_CHANGED2_SINCE_VERSION) {
+				wp_color_management_surface_feedback_v1_send_preferred_changed2(
+					surface_feedback->resource, identity_hi, identity_lo);
+			} else {
+				wp_color_management_surface_feedback_v1_send_preferred_changed(
+					surface_feedback->resource, identity_lo);
+			}
 		}
 	}
 }
