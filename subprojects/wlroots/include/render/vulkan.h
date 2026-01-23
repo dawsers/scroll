@@ -434,7 +434,6 @@ struct wlr_vk_frag_shadow_pcr_data {
 
 struct wlr_vk_frag_output_pcr_data {
 	float matrix[4][4]; // only a 3x3 subset is used
-	float luminance_multiplier;
 	float lut_3d_offset;
 	float lut_3d_scale;
 };

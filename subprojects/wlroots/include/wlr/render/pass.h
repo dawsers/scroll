@@ -115,6 +115,8 @@ struct wlr_render_texture_options {
 	enum wlr_color_encoding color_encoding;
 	/* Color range of the source texture */
 	enum wlr_color_range color_range;
+	/* Default: 1.0 */
+	const float *luminance_multiplier;
 
 	/* Wait for a timeline synchronization point before texturing.
 	 *

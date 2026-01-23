@@ -1932,6 +1932,11 @@ struct render_list_entry {
 	double x, y;
 };
 
+static float get_luminance_multiplier(const struct wlr_color_luminances *src_lum,
+		const struct wlr_color_luminances *dst_lum) {
+	return (dst_lum->reference / src_lum->reference) * (src_lum->max / dst_lum->max);
+}
+
 static void scene_entry_render(struct render_list_entry *entry, const struct render_data *data) {
 	struct sway_scene_node *node = entry->node;
 
@@ -2046,6 +2051,13 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			wlr_color_primaries_from_named(&primaries, scene_buffer->primaries);
 		}
 
+		struct wlr_color_luminances src_lum, srgb_lum;
+		wlr_color_transfer_function_get_default_luminance(
+			scene_buffer->transfer_function, &src_lum);
+		wlr_color_transfer_function_get_default_luminance(
+			WLR_COLOR_TRANSFER_FUNCTION_SRGB, &srgb_lum);
+		float luminance_multiplier = get_luminance_multiplier(&src_lum, &srgb_lum);
+
 		bool swap_xy, flip_x, flip_y;
 		query_transform(data->transform, &swap_xy, &flip_x, &flip_y);
 		wlr_render_pass_add_texture(data->render_pass, &(struct wlr_render_texture_options) {
@@ -2068,6 +2080,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			.primaries = scene_buffer->primaries != 0 ? &primaries : NULL,
 			.color_encoding = scene_buffer->color_encoding,
 			.color_range = scene_buffer->color_range,
+			.luminance_multiplier = &luminance_multiplier,
 			.wait_timeline = scene_buffer->wait_timeline,
 			.wait_point = scene_buffer->wait_point,
 		});
@@ -2862,6 +2875,16 @@ static bool scene_output_combine_color_transforms(
 		wlr_color_primaries_from_named(&primaries, img_desc->primaries);
 		float matrix[9];
 		wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
+
+		struct wlr_color_luminances srgb_lum, dst_lum;
+		wlr_color_transfer_function_get_default_luminance(
+			WLR_COLOR_TRANSFER_FUNCTION_SRGB, &srgb_lum);
+		wlr_color_transfer_function_get_default_luminance(img_desc->transfer_function, &dst_lum);
+		float luminance_multiplier = get_luminance_multiplier(&srgb_lum, &dst_lum);
+		for (int i = 0; i < 9; ++i) {
+			matrix[i] *= luminance_multiplier;
+		}
+
 		color_matrix = wlr_color_transform_init_matrix(matrix);
 		inv_eotf = wlr_color_transform_init_linear_to_inverse_eotf(img_desc->transfer_function);
 		if (color_matrix == NULL || inv_eotf == NULL) {

@@ -146,11 +146,6 @@ static VkSemaphore render_pass_wait_sync_file(struct wlr_vk_render_pass *pass,
 	return *sem_ptr;
 }
 
-static float get_luminance_multiplier(const struct wlr_color_luminances *src_lum,
-		const struct wlr_color_luminances *dst_lum) {
-	return (dst_lum->reference / src_lum->reference) * (src_lum->max / dst_lum->max);
-}
-
 static bool unwrap_color_transform(struct wlr_color_transform *transform,
 		float matrix[static 9], enum wlr_color_transfer_function *tf) {
 	if (transform == NULL) {
@@ -248,7 +243,6 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 		}
 
 		struct wlr_vk_frag_output_pcr_data frag_pcr_data = {
-			.luminance_multiplier = 1,
 			.lut_3d_offset = 0.5f / dim,
 			.lut_3d_scale = (float)(dim - 1) / dim,
 		};
@@ -276,12 +270,6 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 				pipeline = render_buffer->two_pass.render_setup->output_pipe_bt1886;
 				break;
 			}
-
-			struct wlr_color_luminances srgb_lum, dst_lum;
-			wlr_color_transfer_function_get_default_luminance(
-				WLR_COLOR_TRANSFER_FUNCTION_SRGB, &srgb_lum);
-			wlr_color_transfer_function_get_default_luminance(tf, &dst_lum);
-			frag_pcr_data.luminance_multiplier = get_luminance_multiplier(&srgb_lum, &dst_lum);
 		}
 		bind_pipeline(pass, pipeline);
 		vkCmdPushConstants(render_cb->vk, renderer->output_pipe_layout,
@@ -885,13 +873,8 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	}
 
 	float luminance_multiplier = 1;
-	if (tf != WLR_COLOR_TRANSFER_FUNCTION_SRGB
-			&& tf != WLR_COLOR_TRANSFER_FUNCTION_GAMMA22) {
-		struct wlr_color_luminances src_lum, srgb_lum;
-		wlr_color_transfer_function_get_default_luminance(tf, &src_lum);
-		wlr_color_transfer_function_get_default_luminance(
-			WLR_COLOR_TRANSFER_FUNCTION_SRGB, &srgb_lum);
-		luminance_multiplier = get_luminance_multiplier(&src_lum, &srgb_lum);
+	if (options->luminance_multiplier != NULL) {
+		luminance_multiplier = *options->luminance_multiplier;
 	}
 
 	struct wlr_vk_frag_texture_pcr_data frag_pcr_data = {

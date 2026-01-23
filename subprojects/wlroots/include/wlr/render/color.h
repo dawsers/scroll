@@ -194,4 +194,10 @@ void wlr_color_primaries_transform_absolute_colorimetric(
 bool wlr_color_transform_compose(struct wlr_color_transform **result,
 	struct wlr_color_transform **transforms, size_t len);
 
+/**
+ * Get default luminances for a transfer function.
+ */
+void wlr_color_transfer_function_get_default_luminance(enum wlr_color_transfer_function tf,
+	struct wlr_color_luminances *lum);
+
 #endif

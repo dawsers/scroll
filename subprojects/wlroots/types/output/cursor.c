@@ -512,6 +512,15 @@ bool output_cursor_refresh_color_transform(struct wlr_output_cursor *output_curs
 	wlr_color_primaries_from_named(&primaries, img_desc->primaries);
 	float matrix[9];
 	wlr_color_primaries_transform_absolute_colorimetric(&primaries_srgb, &primaries, matrix);
+
+	// Source is sRGB, which has reference == max
+	struct wlr_color_luminances dst_lum;
+	wlr_color_transfer_function_get_default_luminance(img_desc->transfer_function, &dst_lum);
+	float luminance_multiplier = dst_lum.reference / dst_lum.max;
+	for (int i = 0; i < 9; ++i) {
+		matrix[i] *= luminance_multiplier;
+	}
+
 	struct wlr_color_transform *transforms[] = {
 		wlr_color_transform_init_matrix(matrix),
 		wlr_color_transform_init_linear_to_inverse_eotf(img_desc->transfer_function),
