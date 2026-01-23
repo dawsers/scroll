@@ -469,8 +469,10 @@ static void image_desc_creator_params_handle_create(struct wl_client *client,
 		return;
 	}
 
-	if (!check_mastering_luminance_range(params_resource, &params->data, params->data.max_cll, "max_cll") ||
-			!check_mastering_luminance_range(params_resource, &params->data, params->data.max_fall, "max_fall")) {
+	uint32_t version = wl_resource_get_version(params_resource);
+	if (version < 2 &&
+			(!check_mastering_luminance_range(params_resource, &params->data, params->data.max_cll, "max_cll") ||
+			!check_mastering_luminance_range(params_resource, &params->data, params->data.max_fall, "max_fall"))) {
 		return;
 	}
 
