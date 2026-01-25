@@ -95,10 +95,6 @@ static void source_render(struct scene_node_source *source) {
 		// TODO: send failure
 		return;
 	}
-
-	struct timespec now;
-	clock_gettime(CLOCK_MONOTONIC, &now);
-	wlr_scene_output_send_frame_done(scene_output, &now);
 }
 
 static void source_start(struct wlr_ext_image_capture_source_v1 *base, bool with_cursors) {
@@ -110,6 +106,10 @@ static void source_start(struct wlr_ext_image_capture_source_v1 *base, bool with
 	}
 
 	source_render(source);
+
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	wlr_scene_output_send_frame_done(source->scene_output, &now);
 }
 
 static void source_stop(struct wlr_ext_image_capture_source_v1 *base) {
@@ -285,7 +285,14 @@ static void source_handle_output_frame(struct wl_listener *listener, void *data)
 		return;
 	}
 
-	source_render(source);
+	// We can only emit frames with damage
+	if (!pixman_region32_empty(&source->scene_output->pending_commit_damage)) {
+		source_render(source);
+	}
+
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	wlr_scene_output_send_frame_done(source->scene_output, &now);
 }
 
 struct wlr_ext_image_capture_source_v1 *wlr_ext_image_capture_source_v1_create_with_scene_node(
