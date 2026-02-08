@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <drm_fourcc.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <wlr/types/wlr_buffer.h>
@@ -2881,5 +2882,20 @@ xcb_connection_t *wlr_xwayland_get_xwm_connection(
 }
 
 void xwm_schedule_flush(struct wlr_xwm *xwm) {
+	struct pollfd pollfd = {
+		.fd = xcb_get_file_descriptor(xwm->xcb_conn),
+		.events = POLLOUT,
+	};
+	if (poll(&pollfd, 1, 0) < 0) {
+		wlr_log(WLR_ERROR, "poll() failed");
+		return;
+	}
+
+	// If we can write immediately, do so
+	if (pollfd.revents & POLLOUT) {
+		xcb_flush(xwm->xcb_conn);
+		return;
+	}
+
 	wl_event_source_fd_update(xwm->event_source, WL_EVENT_READABLE | WL_EVENT_WRITABLE);
 }
