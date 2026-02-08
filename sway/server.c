@@ -79,7 +79,7 @@
 #define SWAY_FOREIGN_TOPLEVEL_LIST_VERSION 1
 #define SWAY_PRESENTATION_VERSION 2
 
-bool allow_unsupported_gpu = true;
+bool unsupported_gpu_detected = false;
 
 #if WLR_HAS_DRM_BACKEND
 static void handle_drm_lease_request(struct wl_listener *listener, void *data) {
@@ -162,25 +162,14 @@ static void detect_proprietary(struct wlr_backend *backend, void *data) {
 		return;
 	}
 
-	bool is_unsupported = false;
 	if (strcmp(version->name, "nvidia-drm") == 0) {
-		is_unsupported = true;
+		unsupported_gpu_detected = true;
 		sway_log(SWAY_ERROR, "!!! Proprietary Nvidia drivers are in use !!!");
-		if (!allow_unsupported_gpu) {
-			sway_log(SWAY_ERROR, "Use Nouveau instead");
-		}
 	}
 
 	if (strcmp(version->name, "evdi") == 0) {
-		is_unsupported = true;
+		unsupported_gpu_detected = true;
 		sway_log(SWAY_ERROR, "!!! Proprietary DisplayLink drivers are in use !!!");
-	}
-
-	if (!allow_unsupported_gpu && is_unsupported) {
-		sway_log(SWAY_ERROR,
-			"Proprietary drivers are NOT supported. To launch scroll anyway, "
-			"launch with --unsupported-gpu and DO NOT report issues.");
-		exit(EXIT_FAILURE);
 	}
 
 	drmFreeVersion(version);
@@ -468,7 +457,7 @@ bool server_init(struct sway_server *server) {
 		enum wp_color_manager_v1_primaries *primaries =
 			wlr_color_manager_v1_primaries_list_from_renderer(server->renderer, &primaries_len);
 		struct wlr_color_manager_v1 *cm = wlr_color_manager_v1_create(
-				server->wl_display, 1, &(struct wlr_color_manager_v1_options){
+				server->wl_display, 2, &(struct wlr_color_manager_v1_options){
 			.features = {
 				.parametric = true,
 				.set_mastering_display_primaries = true,
