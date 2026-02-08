@@ -242,7 +242,7 @@ static void surface_synced_commit(struct wlr_surface_synced *synced) {
 	}
 
 	uint32_t drm_format = DRM_FORMAT_INVALID;
-	if (!color_repr->surface->buffer){
+	if (color_repr->surface->buffer){
 		drm_format = buffer_get_drm_format(&color_repr->surface->buffer->base);
 	}
 	if (drm_format == DRM_FORMAT_INVALID) {
