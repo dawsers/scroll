@@ -173,8 +173,6 @@ static void source_update_buffer_constraints(struct scene_node_source *source,
 }
 
 static bool output_test(struct wlr_output *output, const struct wlr_output_state *state) {
-	struct scene_node_source *source = wl_container_of(output, source, output);
-
 	uint32_t supported =
 		WLR_OUTPUT_STATE_BACKEND_OPTIONAL |
 		WLR_OUTPUT_STATE_BUFFER |
