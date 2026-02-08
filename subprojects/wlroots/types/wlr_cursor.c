@@ -956,7 +956,7 @@ static void handle_tablet_tool_axis(struct wl_listener *listener, void *data) {
 
 static void handle_tablet_tool_button(struct wl_listener *listener,
 		void *data) {
-	struct wlr_tablet_tool_button *event = data;
+	struct wlr_tablet_tool_button_event *event = data;
 	struct wlr_cursor_device *device;
 	device = wl_container_of(listener, device, tablet_tool_button);
 	wl_signal_emit_mutable(&device->cursor->events.tablet_tool_button, event);
