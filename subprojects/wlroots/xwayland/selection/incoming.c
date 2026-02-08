@@ -381,13 +381,15 @@ static bool source_get_targets(struct wlr_xwm_selection *selection,
 				free(mime_type);
 				break;
 			}
-			*mime_type_ptr = mime_type;
 
 			xcb_atom_t *atom_ptr =
 				wl_array_add(mime_types_atoms, sizeof(*atom_ptr));
 			if (atom_ptr == NULL) {
+				mime_types->size -= sizeof(*mime_type_ptr);
+				free(mime_type);
 				break;
 			}
+			*mime_type_ptr = mime_type;
 			*atom_ptr = value[i];
 		}
 	}
