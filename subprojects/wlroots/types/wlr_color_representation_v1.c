@@ -1,13 +1,16 @@
 #include <assert.h>
+#include <drm_fourcc.h>
 #include <stdlib.h>
 
 #include <wlr/render/wlr_renderer.h>
+#include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_color_representation_v1.h>
 #include <wlr/util/addon.h>
 #include <wlr/util/log.h>
 
 #include "color-representation-v1-protocol.h"
+#include "render/pixel_format.h"
 #include "util/mem.h"
 
 #define WP_COLOR_REPRESENTATION_VERSION 1
@@ -230,8 +233,42 @@ static void color_repr_manager_handle_destroy(struct wl_client *client,
 	wl_resource_destroy(resource);
 }
 
+static void surface_synced_commit(struct wlr_surface_synced *synced) {
+	struct wlr_color_representation_v1 *color_repr = wl_container_of(synced, color_repr, synced);
+
+	if (color_repr->current.coefficients == 0 && color_repr->current.range == 0) {
+		return;
+	}
+
+	struct wlr_dmabuf_attributes dmabuf;
+
+	if (!color_repr->surface->buffer ||
+		!wlr_buffer_get_dmabuf(&color_repr->surface->buffer->base, &dmabuf)) {
+		return;
+	}
+
+	bool is_ycbcr = pixel_format_is_ycbcr(dmabuf.format);
+
+	bool is_identity_full =
+		color_repr->current.coefficients == WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_IDENTITY &&
+		color_repr->current.range == WP_COLOR_REPRESENTATION_SURFACE_V1_RANGE_FULL;
+
+	if (is_ycbcr) {
+		if (is_identity_full) {
+			wl_resource_post_error(color_repr->resource,
+				WP_COLOR_REPRESENTATION_SURFACE_V1_ERROR_PIXEL_FORMAT,
+				"unexpected encoding/range for yuv");
+		}
+	} else /* rgb */ {
+		wl_resource_post_error(color_repr->resource,
+				WP_COLOR_REPRESENTATION_SURFACE_V1_ERROR_PIXEL_FORMAT,
+				"unexpected encoding/range for rgb");
+	}
+}
+
 static const struct wlr_surface_synced_impl surface_synced_impl = {
 	.state_size = sizeof(struct wlr_color_representation_v1_surface_state),
+	.commit = surface_synced_commit
 };
 
 static struct wlr_color_representation_v1 *color_repr_from_surface(
@@ -276,6 +313,7 @@ static void color_repr_manager_handle_get_surface(struct wl_client *client,
 	}
 
 	color_repr->manager = manager_from_resource(manager_resource);
+	color_repr->surface = surface;
 
 	if (!wlr_surface_synced_init(&color_repr->synced, surface,
 			&surface_synced_impl, &color_repr->pending, &color_repr->current)) {
