@@ -178,11 +178,7 @@ static void color_repr_handle_set_chroma_location(struct wl_client *client,
 	uint32_t version = wl_resource_get_version(resource);
 	if (!wp_color_representation_surface_v1_chroma_location_is_valid(
 			version, chroma_location)) {
-		wlr_log(WLR_ERROR, "Client sent chroma location which isn't a valid enum value");
-		// TODO: Post actual error once
-		// https://gitlab.freedesktop.org/wayland/wayland-protocols/-/merge_requests/429
-		// is merged and wlroots depends on a new enough wayland-protocols.
-		wl_client_post_implementation_error(resource->client,
+		wl_resource_post_error(resource, WP_COLOR_REPRESENTATION_SURFACE_V1_ERROR_CHROMA_LOCATION,
 			"Chroma location is not a valid enum value");
 		return;
 	}
