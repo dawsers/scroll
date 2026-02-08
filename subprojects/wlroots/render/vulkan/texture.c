@@ -297,7 +297,7 @@ struct wlr_vk_texture_view *vulkan_texture_get_or_create_view(struct wlr_vk_text
 		.components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
 		.components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
 		.components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
-		.components.a = texture->has_alpha || texture->format->is_ycbcr
+		.components.a = texture->has_alpha || vulkan_format_is_ycbcr(texture->format)
 			? VK_COMPONENT_SWIZZLE_IDENTITY
 			: VK_COMPONENT_SWIZZLE_ONE,
 		.subresourceRange = (VkImageSubresourceRange){
@@ -311,7 +311,7 @@ struct wlr_vk_texture_view *vulkan_texture_get_or_create_view(struct wlr_vk_text
 	};
 
 	VkSamplerYcbcrConversionInfo ycbcr_conversion_info;
-	if (texture->format->is_ycbcr) {
+	if (vulkan_format_is_ycbcr(texture->format)) {
 		assert(pipeline_layout->ycbcr.conversion != VK_NULL_HANDLE);
 		ycbcr_conversion_info = (VkSamplerYcbcrConversionInfo){
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO,
@@ -355,7 +355,7 @@ struct wlr_vk_texture_view *vulkan_texture_get_or_create_view(struct wlr_vk_text
 
 static void texture_set_format(struct wlr_vk_texture *texture,
 		const struct wlr_vk_format *format, bool has_mutable_srgb) {
-	assert(!(format->is_ycbcr && has_mutable_srgb));
+	assert(!(vulkan_format_is_ycbcr(format) && has_mutable_srgb));
 
 	texture->format = format;
 	texture->using_mutable_srgb = has_mutable_srgb;
@@ -366,7 +366,7 @@ static void texture_set_format(struct wlr_vk_texture *texture,
 		texture->has_alpha = pixel_format_has_alpha(format->drm);
 	} else {
 		// We don't have format info for multi-planar formats
-		assert(texture->format->is_ycbcr);
+		assert(vulkan_format_is_ycbcr(texture->format));
 	}
 }
 
@@ -378,7 +378,7 @@ static struct wlr_texture *vulkan_texture_from_pixels(
 
 	const struct wlr_vk_format_props *fmt =
 		vulkan_format_props_from_drm(renderer->dev, drm_fmt);
-	if (fmt == NULL || fmt->format.is_ycbcr) {
+	if (fmt == NULL || vulkan_format_is_ycbcr(&fmt->format)) {
 		char *format_name = drmGetFormatName(drm_fmt);
 		wlr_log(WLR_ERROR, "Unsupported pixel format %s (0x%08"PRIX32")",
 			format_name, drm_fmt);

@@ -86,7 +86,6 @@ struct wlr_vk_format {
 	uint32_t drm;
 	VkFormat vk;
 	VkFormat vk_srgb; // sRGB version of the format, or 0 if nonexistent
-	bool is_ycbcr;
 };
 
 extern const VkImageUsageFlags vulkan_render_usage, vulkan_shm_tex_usage, vulkan_dma_tex_usage;
@@ -125,6 +124,7 @@ void vulkan_format_props_query(struct wlr_vk_device *dev,
 const struct wlr_vk_format_modifier_props *vulkan_format_props_find_modifier(
 	const struct wlr_vk_format_props *props, uint64_t mod, bool render);
 void vulkan_format_props_finish(struct wlr_vk_format_props *props);
+bool vulkan_format_is_ycbcr(const struct wlr_vk_format *format);
 
 enum wlr_vk_shader_layout {
 	WLR_VK_SHADER_LAYOUT_STANDARD,

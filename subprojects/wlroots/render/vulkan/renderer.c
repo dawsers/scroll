@@ -1779,8 +1779,8 @@ static bool init_shadow_layouts(struct wlr_vk_renderer *renderer,
 static bool pipeline_layout_key_equals(
 		const struct wlr_vk_pipeline_layout_key *a,
 		const struct wlr_vk_pipeline_layout_key *b) {
-	assert(!a->ycbcr.format || a->ycbcr.format->is_ycbcr);
-	assert(!b->ycbcr.format || b->ycbcr.format->is_ycbcr);
+	assert(!a->ycbcr.format || vulkan_format_is_ycbcr(a->ycbcr.format));
+	assert(!b->ycbcr.format || vulkan_format_is_ycbcr(b->ycbcr.format));
 
 	if (a->shader_layout != b->shader_layout) {
 		return false;

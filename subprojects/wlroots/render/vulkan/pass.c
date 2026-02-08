@@ -822,12 +822,13 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	}
 
 	enum wlr_color_encoding color_encoding = options->color_encoding;
-	if (texture->format->is_ycbcr && color_encoding == WLR_COLOR_ENCODING_NONE) {
+	bool is_ycbcr = vulkan_format_is_ycbcr(texture->format);
+	if (is_ycbcr && color_encoding == WLR_COLOR_ENCODING_NONE) {
 		color_encoding = WLR_COLOR_ENCODING_BT601;
 	}
 
 	enum wlr_color_range color_range = options->color_range;
-	if (texture->format->is_ycbcr && color_range == WLR_COLOR_RANGE_NONE) {
+	if (is_ycbcr && color_range == WLR_COLOR_RANGE_NONE) {
 		color_range = WLR_COLOR_RANGE_LIMITED;
 	}
 
@@ -837,7 +838,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 			.source = WLR_VK_SHADER_SOURCE_TEXTURE,
 			.layout = {
 				.ycbcr = {
-					.format = texture->format->is_ycbcr ? texture->format : NULL,
+					.format = is_ycbcr ? texture->format : NULL,
 					.encoding = color_encoding,
 					.range = color_range,
 				},
