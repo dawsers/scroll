@@ -11,6 +11,7 @@
 
 #include "color-representation-v1-protocol.h"
 #include "render/pixel_format.h"
+#include "types/wlr_buffer.h"
 #include "util/mem.h"
 
 #define WP_COLOR_REPRESENTATION_VERSION 1
@@ -240,14 +241,14 @@ static void surface_synced_commit(struct wlr_surface_synced *synced) {
 		return;
 	}
 
-	struct wlr_dmabuf_attributes dmabuf;
-
-	if (!color_repr->surface->buffer ||
-		!wlr_buffer_get_dmabuf(&color_repr->surface->buffer->base, &dmabuf)) {
+	uint32_t drm_format = DRM_FORMAT_INVALID;
+	if (!color_repr->surface->buffer){
+		drm_format = buffer_get_drm_format(&color_repr->surface->buffer->base);
+	}
+	if (drm_format == DRM_FORMAT_INVALID) {
 		return;
 	}
-
-	bool is_ycbcr = pixel_format_is_ycbcr(dmabuf.format);
+	bool is_ycbcr = pixel_format_is_ycbcr(drm_format);
 
 	bool is_identity_full =
 		color_repr->current.coefficients == WP_COLOR_REPRESENTATION_SURFACE_V1_COEFFICIENTS_IDENTITY &&

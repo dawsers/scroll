@@ -65,4 +65,10 @@ struct wlr_client_buffer *wlr_client_buffer_create(struct wlr_buffer *buffer,
 bool wlr_client_buffer_apply_damage(struct wlr_client_buffer *client_buffer,
 	struct wlr_buffer *next, const pixman_region32_t *damage);
 
+/**
+ * Return the DRM format of the buffer. If this buffer isn't shared
+ * memory or a DMA-BUF, returns DRM_FORMAT_INVALID.
+ */
+uint32_t buffer_get_drm_format(struct wlr_buffer *buffer);
+
 #endif

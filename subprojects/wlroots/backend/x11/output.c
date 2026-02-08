@@ -20,6 +20,7 @@
 
 #include "backend/x11.h"
 #include "util/time.h"
+#include "types/wlr_buffer.h"
 #include "types/wlr_output.h"
 
 static const uint32_t SUPPORTED_OUTPUT_STATE =
@@ -166,15 +167,8 @@ static bool output_test(struct wlr_output *wlr_output,
 
 	if (state->committed & WLR_OUTPUT_STATE_BUFFER) {
 		struct wlr_buffer *buffer = state->buffer;
-		struct wlr_dmabuf_attributes dmabuf_attrs;
-		struct wlr_shm_attributes shm_attrs;
-		uint32_t format = DRM_FORMAT_INVALID;
-		if (wlr_buffer_get_dmabuf(buffer, &dmabuf_attrs)) {
-			format = dmabuf_attrs.format;
-		} else if (wlr_buffer_get_shm(buffer, &shm_attrs)) {
-			format = shm_attrs.format;
-		}
-		if (format != x11->x11_format->drm) {
+
+		if (buffer_get_drm_format(buffer) != x11->x11_format->drm) {
 			wlr_log(WLR_DEBUG, "Unsupported buffer format");
 			return false;
 		}

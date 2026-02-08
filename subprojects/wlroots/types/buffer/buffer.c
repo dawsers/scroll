@@ -109,14 +109,11 @@ bool wlr_buffer_get_shm(struct wlr_buffer *buffer,
 
 bool wlr_buffer_is_opaque(struct wlr_buffer *buffer) {
 	void *data;
-	uint32_t format;
+	uint32_t format = buffer_get_drm_format(buffer);
 	size_t stride;
-	struct wlr_dmabuf_attributes dmabuf;
-	struct wlr_shm_attributes shm;
-	if (wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
-		format = dmabuf.format;
-	} else if (wlr_buffer_get_shm(buffer, &shm)) {
-		format = shm.format;
+
+	if (format != DRM_FORMAT_INVALID) {
+		// pass
 	} else if (wlr_buffer_begin_data_ptr_access(buffer,
 			WLR_BUFFER_DATA_PTR_ACCESS_READ, &data, &format, &stride)) {
 		bool opaque = false;
@@ -134,4 +131,16 @@ bool wlr_buffer_is_opaque(struct wlr_buffer *buffer) {
 	}
 
 	return !pixel_format_has_alpha(format);
+}
+
+uint32_t buffer_get_drm_format(struct wlr_buffer *buffer) {
+	uint32_t format = DRM_FORMAT_INVALID;
+	struct wlr_dmabuf_attributes dmabuf;
+	struct wlr_shm_attributes shm;
+	if (wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
+		format = dmabuf.format;
+	} else if (wlr_buffer_get_shm(buffer, &shm)) {
+		format = shm.format;
+	}
+	return format;
 }
