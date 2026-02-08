@@ -2086,8 +2086,12 @@ static enum scene_direct_scanout_result scene_entry_try_direct_scanout(
 		return SCANOUT_INELIGIBLE;
 	}
 
-	if (buffer->color_encoding != WLR_COLOR_ENCODING_NONE ||
-			buffer->color_range != WLR_COLOR_RANGE_NONE) {
+	bool is_color_repr_none = buffer->color_encoding == WLR_COLOR_ENCODING_NONE &&
+			buffer->color_range == WLR_COLOR_RANGE_NONE;
+	bool is_color_repr_identity_full = buffer->color_encoding == WLR_COLOR_ENCODING_IDENTITY &&
+			buffer->color_range == WLR_COLOR_RANGE_FULL;
+
+	if (!(is_color_repr_none || is_color_repr_identity_full)) {
 		return SCANOUT_INELIGIBLE;
 	}
 

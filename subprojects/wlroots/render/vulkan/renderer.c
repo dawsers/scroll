@@ -2224,8 +2224,8 @@ struct wlr_vk_pipeline_layout *get_or_create_pipeline_layout(
 		};
 		sampler_create_info.pNext = &conversion_info;
 	} else {
-		assert(key->ycbcr.encoding == WLR_COLOR_ENCODING_NONE);
-		assert(key->ycbcr.range == WLR_COLOR_RANGE_NONE);
+		assert(key->ycbcr.encoding == WLR_COLOR_ENCODING_NONE || key->ycbcr.encoding == WLR_COLOR_ENCODING_IDENTITY);
+		assert(key->ycbcr.range == WLR_COLOR_RANGE_NONE || key->ycbcr.range == WLR_COLOR_RANGE_FULL);
 	}
 
 	res = vkCreateSampler(renderer->dev->dev, &sampler_create_info, NULL, &pipeline_layout->sampler);
