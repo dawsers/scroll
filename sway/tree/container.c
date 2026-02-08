@@ -1416,6 +1416,8 @@ void container_set_fullscreen(struct sway_container *con,
 	}
 }
 
+// This is only called for fullscreen_move_focus true follow, so disable
+// src->fullscreen when needed
 void container_pass_fullscreen(struct sway_container *src, struct sway_container *dst) {
 	if (src->pending.fullscreen_mode == dst->pending.fullscreen_mode) {
 		return;
@@ -1433,6 +1435,7 @@ void container_pass_fullscreen(struct sway_container *src, struct sway_container
 		if (src->pending.workspace && src->pending.workspace->fullscreen) {
 			container_fullscreen_disable(src->pending.workspace->fullscreen);
 		}
+		src->fullscreen = false;
 		arrange_root();
 		container_fullscreen_workspace(dst);
 		arrange_root();

@@ -1442,18 +1442,19 @@ static void jump_handle_keyboard_key_end(void *data, bool focus) {
 
 	for (int w = 0; w < specific->workspaces->length; ++w) {
 		struct sway_workspace *workspace = specific->workspaces->items[w];
-		bool tiling = layout_overview_mode(workspace) == OVERVIEW_TILING;
-		// Restore original view
-		layout_overview_toggle(workspace, OVERVIEW_DISABLED);
-		if (!tiling) {
+		if (layout_overview_mode(workspace) != OVERVIEW_TILING) {
 			// Restore floating windows positions
+			// When calling overview, the positions saved will be the ones
+			// already "organized", which are not the initial ones, restore them.
 			for (int i = 0; i < workspace->floating->length; ++i) {
 				struct sway_container *view = workspace->floating->items[i];
-				view->pending.x = view->jump.x;
-				view->pending.y = view->jump.y;
+				view->overview.x = view->jump.x;
+				view->overview.y = view->jump.y;
 				node_set_dirty(&view->node);
 			}
 		}
+		// Restore original view
+		layout_overview_toggle(workspace, OVERVIEW_DISABLED);
 	}
 	root->jumping = false;
 	list_free(specific->workspaces);
@@ -1656,6 +1657,14 @@ static void move_overlapping(list_t *children, struct sway_container *container)
 
 static void organize_floating_windows(struct sway_workspace *workspace) {
 	list_t *children = workspace->floating;
+	// Disable any full screen window
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *con = children->items[i];
+		if (con == workspace->fullscreen) {
+			container_fullscreen_disable(con);
+			arrange_root();
+		}
+	}
 	// Save positions
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *con = children->items[i];
@@ -1683,6 +1692,7 @@ static void organize_floating_windows(struct sway_workspace *workspace) {
 		struct sway_container *con = children->items[i];
 		con->pending.x += offsetx;
 		con->pending.y += offsety;
+		arrange_container(con);
 		node_set_dirty(&con->node);
 	}
 }
@@ -1773,17 +1783,18 @@ static void jump_scratchpad_handle_keyboard_key_end(void *data, bool focus) {
 		container_toggle_jump_decoration(workspace, view, NULL, 0, 0);
 	}
 
-	// Restore original view
-	layout_overview_toggle(workspace, OVERVIEW_DISABLED);
 	// Restore floating windows positions
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *view = workspace->floating->items[i];
-		view->pending.x = view->jump.x;
-		view->pending.y = view->jump.y;
+		view->overview.x = view->jump.x;
+		view->overview.y = view->jump.y;
 		node_set_dirty(&view->node);
 		// And restore scratchpad's NULL workspace
 		view->pending.workspace = NULL;
 	}
+	// Restore original view
+	layout_overview_toggle(workspace, OVERVIEW_DISABLED);
+
 	// Now restore the original floating windows, and enable the focused
 	// scratchpad container
 	workspace->floating = specific->floating;
@@ -1809,6 +1820,12 @@ static void jump_scratchpad_handle_keyboard_key_end(void *data, bool focus) {
 	}
 	if (focus) {
 		root_scratchpad_show(common->focused);
+	} else {
+		struct sway_seat *seat = input_manager_current_seat();
+		struct sway_container *con = seat_get_focused_container(seat);
+		if (con && con->scratchpad) {
+			root_scratchpad_show(con);
+		}
 	}
 	node_set_dirty(&workspace->node);
 
@@ -1950,12 +1967,10 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 		container_toggle_jump_decoration(workspace, view, NULL, 0, 0);
 	}
 
-	// Restore original trailmarked views
-	layout_overview_toggle(workspace, OVERVIEW_DISABLED);
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *view = workspace->floating->items[i];
-		view->pending.x = view->jump.x;
-		view->pending.y = view->jump.y;
+		view->overview.x = view->jump.x;
+		view->overview.y = view->jump.y;
 		node_set_dirty(&view->node);
 		view->pending.workspace = specific->workspaces->items[i];
 		if (view->pending.parent) {
@@ -1963,6 +1978,9 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 		}
 		node_set_dirty(&view->pending.workspace->node);
 	}
+	// Restore original trailmarked views
+	layout_overview_toggle(workspace, OVERVIEW_DISABLED);
+
 	list_free(specific->workspaces);
 	list_free(workspace->floating);
 	workspace->floating = specific->floating;
@@ -1979,6 +1997,11 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 	}
 	if (focus) {
 		struct sway_seat *seat = input_manager_current_seat();
+		struct sway_container * con = seat_get_focused_container(seat);
+		if (common->focused->pending.workspace->fullscreen == con) {
+			container_fullscreen_disable(common->focused->pending.workspace->fullscreen);
+			arrange_root();
+		}
 		seat_set_focus_workspace(seat, common->focused->pending.workspace);
 		seat_set_focus_container(seat, common->focused);
 		sway_scene_node_raise_to_top(&common->focused->scene_tree->node);
@@ -2239,6 +2262,7 @@ void layout_jump_workspaces() {
 
 struct jump_container_specific_data {
 	struct sway_container *container;
+	struct sway_container *fs;
 	bool jumping;
 };
 
@@ -2259,15 +2283,14 @@ static void container_jump(struct jump_data *jump_data) {
 	} else {
 		specific->jumping = true;
 		container->jump.jumping = true;
-		bool disable_fullscreen = false;
 		for (int i = 0; i < container->pending.children->length; ++i) {
 			struct sway_container *con = container->pending.children->items[i];
 			if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
 				container_fullscreen_disable(con);
-				disable_fullscreen = true;
+				specific->fs = con;
 			}
 		}
-		if (disable_fullscreen) {
+		if (specific->fs) {
 			arrange_workspace(workspace);
 		}
 		reorder = layout_modifiers_get_reorder(workspace);
@@ -2330,7 +2353,7 @@ static void jump_container_handle_keyboard_key_end(void *data, bool focus) {
 	if (focus) {
 		struct sway_container *view = specific->container->pending.children->items[common->window_number];
 		if (config->fullscreen_movefocus != FULLSCREEN_MOVEFOCUS_NONE) {
-			if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW || view->fullscreen) {
+			if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW && specific->fs) {
 				container_set_fullscreen(view, FULLSCREEN_WORKSPACE);
 				arrange_workspace(view->pending.workspace);
 			}
@@ -2338,6 +2361,13 @@ static void jump_container_handle_keyboard_key_end(void *data, bool focus) {
 		struct sway_seat *seat = input_manager_current_seat();
 		seat_set_focus_container(seat, view);
 		seat_consider_warp_to_focus(seat);
+	} else {
+		struct sway_seat *seat = input_manager_current_seat();
+		struct sway_container *view = seat_get_focused_container(seat);
+		if (view && view == specific->fs) {
+			container_set_fullscreen(view, FULLSCREEN_WORKSPACE);
+			arrange_workspace(view->pending.workspace);
+		}
 	}
 
 	root->jumping = false;

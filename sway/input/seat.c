@@ -1174,6 +1174,30 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	struct sway_container *container = node->type == N_CONTAINER ?
 		node->sway_container : NULL;
 
+	if (container) {
+		// Deal with full screen
+		struct sway_container *last_container = last_focus && last_focus->type == N_CONTAINER ?
+			last_focus->sway_container : NULL;
+		if (last_container) {
+			enum sway_fullscreen_mode fullscreen_mode = last_container->pending.fullscreen_mode;
+			// Allow fullscreen_movefocus for WORKSPACE type full screen
+			if (fullscreen_mode == FULLSCREEN_WORKSPACE && last_workspace == new_workspace) {
+				if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
+					container_pass_fullscreen(last_container, container);
+				} else {
+					container_fullscreen_disable(last_container);
+					node_set_dirty(&last_container->node);
+				}
+			}
+		}
+		if (container->fullscreen) {
+			container_set_fullscreen(container, FULLSCREEN_WORKSPACE);
+			node_set_dirty(&container->node);
+			node_set_dirty(&new_workspace->node);
+		}
+		arrange_workspace(new_workspace);
+		container_raise_floating(container);
+	}
 	if (container && container->pending.workspace) {
 		if (container->pending.fullscreen_layout == FULLSCREEN_ENABLED &&
 			!layout_scale_enabled(container->pending.workspace)) {

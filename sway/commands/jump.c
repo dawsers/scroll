@@ -52,6 +52,10 @@ struct cmd_results *cmd_jump_labels_keys(int argc, char **argv) {
  *  jump
  */
 struct cmd_results *cmd_jump(int argc, char **argv) {
+	if (root->fullscreen_global) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't run this command while in global fullscreen mode.");
+	}
 	if (!root->outputs->length) {
 		return cmd_results_new(CMD_INVALID,
 				"Can't run this command while there are no outputs connected.");

@@ -1008,6 +1008,7 @@ void view_unmap(struct sway_view *view) {
 
 	struct sway_container *parent = view->container->pending.parent;
 	struct sway_workspace *ws = view->container->pending.workspace;
+	const bool fullscreen = view->container->fullscreen;
 	container_begin_destroy(view->container);
 	if (parent) {
 		container_reap_empty(parent);
@@ -1028,6 +1029,13 @@ void view_unmap(struct sway_view *view) {
 	struct sway_node *node = seat_get_focus(seat);
 	if (node->type == N_WORKSPACE) {
 		output_layer_shell_enable(node->sway_workspace->output, LAYER_SHELL_ALL);
+	} else if (node->type == N_CONTAINER) {
+		struct sway_container *con = node->sway_container;
+		if (con->fullscreen || (fullscreen && config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW)) {
+			container_set_fullscreen(con, FULLSCREEN_WORKSPACE);
+			container_set_fullscreen_container(con, FULLSCREEN_ENABLED);
+			arrange_root();
+		}
 	}
 
 	wl_list_for_each(seat, &server.input->seats, link) {

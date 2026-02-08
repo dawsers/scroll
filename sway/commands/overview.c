@@ -14,6 +14,10 @@
  *  scale_workspace <exact number|increment number|reset|overview>
  */
 struct cmd_results *cmd_scale_workspace(int argc, char **argv) {
+	if (root->fullscreen_global) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't run this command while in global fullscreen mode.");
+	}
 	if (!root->outputs->length) {
 		return cmd_results_new(CMD_INVALID,
 				"Can't run this command while there's no outputs connected.");

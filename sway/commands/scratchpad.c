@@ -9,6 +9,10 @@
 #include "sway/tree/workspace.h"
 
 static struct cmd_results *scratchpad_jump() {
+	if (root->fullscreen_global) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't run this command while in global fullscreen mode.");
+	}
 	if (!root->outputs->length) {
 		return cmd_results_new(CMD_INVALID,
 				"Can't run this command while there's no outputs connected.");
