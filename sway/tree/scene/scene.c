@@ -706,9 +706,12 @@ static struct wlr_box *scene_node_get_workspace_box(struct sway_scene_node *node
 static void scene_node_apply_tiling_visibility(struct sway_scene_node *node,
 		struct wl_list *outputs) {
 	struct wlr_output *wlr_output = scene_node_get_output(node);
+	if (!wlr_output) {
+		return;
+	}
 	struct sway_scene_output *scene_output;
 	wl_list_for_each(scene_output, outputs, link) {
-		if (wlr_output && scene_output->output != wlr_output) {
+		if (scene_output->output->enabled && scene_output->output != wlr_output) {
 			// Substract output from visibility
 			struct wlr_box output_box = {
 				.x = scene_output->x,
