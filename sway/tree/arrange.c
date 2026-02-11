@@ -165,9 +165,9 @@ static void arrange_workspace_split(struct sway_workspace *workspace) {
 	};
 	// Usable area gaps
 	int gap_left = output->usable_area.x;
-	int gap_right = output->usable_area.x + output->usable_area.width - output->width;
+	int gap_right = output->width - (output->usable_area.x + output->usable_area.width);
 	int gap_top = output->usable_area.y;
-	int gap_bottom = output->usable_area.y + output->usable_area.height - output->height;
+	int gap_bottom = output->height - (output->usable_area.y + output->usable_area.height);
 
 	int gap_w = workspace->split.gap / 2;
 	workspace->split.output_area = area;
