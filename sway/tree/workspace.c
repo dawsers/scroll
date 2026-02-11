@@ -752,6 +752,11 @@ static void add_delta_to_pending(struct sway_container *con, double delta) {
 static void select_visible_containers(list_t *containers,
 		struct sway_workspace *workspace, list_t *children,
 		double *min_y, double *max_y) {
+	if (children->length == 0) {
+		*min_y = workspace->y;
+		*max_y = workspace->y + workspace->height;
+		return;
+	}
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *con = children->items[i];
 		if (container_visible(workspace, con)) {
@@ -789,7 +794,28 @@ static void add_delta_to_containers(list_t *containers,
 	}
 }
 
-static void animate_workspace_switch(struct sway_workspace *from, struct sway_workspace *to) {
+static bool workspace_switch_down(struct sway_workspace *from, struct sway_workspace *to) {
+	int f_idx = workspace_get_number(from);
+	int t_idx = workspace_get_number(to);
+	if (f_idx < 0 || t_idx < 0) {
+		const char *f_name = from->name;
+		const char *t_name = to->name;
+		while (f_name && t_name) {
+			if (*f_name == *t_name) {
+				++f_name;
+				++t_name;
+			} else {
+				return *f_name < *t_name;
+			}
+		}
+		return *f_name < *t_name;
+	} else {
+		return f_idx < t_idx;
+	}
+}
+
+static void animate_workspace_switch(struct sway_output *output,
+		struct sway_workspace *from, struct sway_workspace *to) {
 	animation_end();
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	struct workspace_switch_data *data = malloc(sizeof(struct workspace_switch_data));
@@ -804,8 +830,6 @@ static void animate_workspace_switch(struct sway_workspace *from, struct sway_wo
 	root->filters.container_filter = workspace_switch_container_filter;
 	root->filters.container_filter_data = data;
 
-	int from_idx = list_find(from->output->workspaces, from);
-	int to_idx = list_find(from->output->workspaces, to);
 	double min_y_to = DBL_MAX, max_y_to = -DBL_MAX;
 	select_visible_containers(data->to_containers, to, to->tiling, &min_y_to, &max_y_to);
 	if (max_y_to < min_y_to) {
@@ -817,11 +841,11 @@ static void animate_workspace_switch(struct sway_workspace *from, struct sway_wo
 		max_y_from = min_y_from = from->y;
 	}
 	double delta;
-	if (from_idx < to_idx) {
-		delta = from->output->height + max_y_from - (from->y + from->height)
+	if (workspace_switch_down(from, to)) {
+		delta = output->height + max_y_from - (from->y + from->height)
 			+ (from->y - min_y_to);
 	} else {
-		delta = from->output->height + max_y_to - (from->y + from->height)
+		delta = output->height + max_y_to - (from->y + from->height)
 			+ (from->y - min_y_from);
 		delta = -delta;
 	}
@@ -848,11 +872,14 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	seat_set_focus(seat, next);
 
 	// old_ws may not have an output because it is being destroyed if empty
-	if (old_ws != workspace && old_ws->output &&
-		old_ws->output == workspace->output &&
+	if (old_ws != workspace && (
+		(old_ws->output && old_ws->output == workspace->output) ||
+		(old_ws->output && !workspace->output) ||
+		(!old_ws->output && workspace->output)) &&
 		workspace->split.sibling != old_ws &&
 		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
-		animate_workspace_switch(old_ws, workspace);
+		struct sway_output *output = old_ws->output ? old_ws->output : workspace->output;
+		animate_workspace_switch(output, old_ws, workspace);
 	} else {
 		arrange_workspace(workspace);
 	}
