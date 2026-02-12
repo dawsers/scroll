@@ -218,7 +218,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->title->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(title, view_get_title(focused))) {
+			if (!focused || lenient_strcmp(title, view_get_title(focused))) {
 				return false;
 			}
 			break;
@@ -238,7 +238,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->shell->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && strcmp(shell, view_get_shell(focused))) {
+			if (!focused || strcmp(shell, view_get_shell(focused))) {
 				return false;
 			}
 			break;
@@ -258,7 +258,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->app_id->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(app_id, view_get_app_id(focused))) {
+			if (!focused || lenient_strcmp(app_id, view_get_app_id(focused))) {
 				return false;
 			}
 			break;
@@ -278,7 +278,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->sandbox_engine->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(sandbox_engine, view_get_sandbox_engine(focused))) {
+			if (!focused || lenient_strcmp(sandbox_engine, view_get_sandbox_engine(focused))) {
 				return false;
 			}
 			break;
@@ -298,7 +298,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->sandbox_app_id->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(sandbox_app_id, view_get_sandbox_app_id(focused))) {
+			if (!focused || lenient_strcmp(sandbox_app_id, view_get_sandbox_app_id(focused))) {
 				return false;
 			}
 			break;
@@ -318,7 +318,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->sandbox_instance_id->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(sandbox_instance_id, view_get_sandbox_instance_id(focused))) {
+			if (!focused || lenient_strcmp(sandbox_instance_id, view_get_sandbox_instance_id(focused))) {
 				return false;
 			}
 			break;
@@ -338,7 +338,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->tag->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(tag, view_get_tag(focused))) {
+			if (!focused || lenient_strcmp(tag, view_get_tag(focused))) {
 				return false;
 			}
 			break;
@@ -370,7 +370,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->class->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(class, view_get_class(focused))) {
+			if (!focused || lenient_strcmp(class, view_get_class(focused))) {
 				return false;
 			}
 			break;
@@ -390,7 +390,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->instance->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(instance, view_get_instance(focused))) {
+			if (!focused || lenient_strcmp(instance, view_get_instance(focused))) {
 				return false;
 			}
 			break;
@@ -410,7 +410,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->window_role->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused && lenient_strcmp(window_role, view_get_window_role(focused))) {
+			if (!focused || lenient_strcmp(window_role, view_get_window_role(focused))) {
 				return false;
 			}
 			break;
@@ -468,7 +468,7 @@ static bool criteria_matches_view(struct criteria *criteria,
 
 		switch (criteria->workspace->match_type) {
 		case PATTERN_FOCUSED:
-			if (focused &&
+			if (!focused ||
 					strcmp(ws->name, focused->container->pending.workspace->name)) {
 				return false;
 			}
