@@ -459,6 +459,74 @@ static void pretty_print_trails(json_object *i) {
 	printf("\n");
 }
 
+static void pretty_print_binding(json_object *i) {
+	size_t len;
+	json_object *command, *modifiers, *flags, *input_code, *symbol, *input_type,
+		*trigger;
+
+	json_object_object_get_ex(i, "command", &command);
+	printf("  Command: %s\n", json_object_get_string(command));
+
+	json_object_object_get_ex(i, "event_state_mask", &modifiers);
+	if (modifiers) {
+		printf("  Modifiers: [ ");
+		len = json_object_array_length(modifiers);
+		json_object *modifier;
+		for (size_t i = 0; i < len; ++i) {
+			modifier = json_object_array_get_idx(modifiers, i);
+			printf("%s ", json_object_get_string(modifier));
+		}
+		printf("]\n");
+	}
+
+	json_object_object_get_ex(i, "flags", &flags);
+	printf("  Flags: [ ");
+	len = json_object_array_length(flags);
+	json_object *flag;
+	for (size_t i = 0; i < len; ++i) {
+		flag = json_object_array_get_idx(flags, i);
+		printf("%s ", json_object_get_string(flag));
+	}
+	printf("]\n");
+
+	json_object_object_get_ex(i, "input_code", &input_code);
+	if (input_code) {
+		int code = json_object_get_int(input_code);
+		if (code > 0) {
+			printf("  Input Code: %d\n", code);
+		} else {
+			json_object_object_get_ex(i, "symbol", &symbol);
+			printf("  Symbol: %s\n", json_object_get_string(symbol));
+		}
+	}
+
+	json_object_object_get_ex(i, "input_type", &input_type);
+	printf("  Input Type: %s\n", json_object_get_string(input_type));
+
+	json_object_object_get_ex(i, "trigger", &trigger);
+	if (trigger) {
+		printf("  Trigger: %s\n", json_object_get_string(trigger));
+	}
+
+	printf("\n");
+}
+
+static void pretty_print_bindings(json_object *i) {
+	json_object *mode, *bindings, *binding;
+	json_object_object_get_ex(i, "mode", &mode);
+
+	printf("Mode: %s\n", json_object_get_string(mode));
+
+	json_object_object_get_ex(i, "bindings", &bindings);
+	size_t len = json_object_array_length(bindings);
+	for (size_t i = 0; i < len; ++i) {
+		binding = json_object_array_get_idx(bindings, i);
+		pretty_print_binding(binding);
+	}
+
+	printf("\n");
+}
+
 static void pretty_print(int type, json_object *resp) {
 	switch (type) {
 	case IPC_SEND_TICK:
@@ -477,6 +545,9 @@ static void pretty_print(int type, json_object *resp) {
 		return;
 	case IPC_GET_TRAILS:
 		pretty_print_trails(resp);
+		return;
+	case IPC_GET_BINDINGS:
+		pretty_print_bindings(resp);
 		return;
 	case IPC_COMMAND:
 	case IPC_GET_WORKSPACES:
@@ -634,6 +705,8 @@ int main(int argc, char **argv) {
 		type = IPC_GET_TRAILS;
 	} else if (strcasecmp(cmdtype, "get_spaces") == 0) {
 		type = IPC_GET_SPACES;
+	} else if (strcasecmp(cmdtype, "get_bindings") == 0) {
+		type = IPC_GET_BINDINGS;
 	} else {
 		if (quiet) {
 			exit(EXIT_FAILURE);

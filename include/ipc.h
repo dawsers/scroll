@@ -27,6 +27,7 @@ enum ipc_command_type {
 	IPC_GET_SCROLLER = 120,
 	IPC_GET_TRAILS = 121,
 	IPC_GET_SPACES = 122,
+	IPC_GET_BINDINGS = 123,
 
 	// Events sent from sway to clients. Events have the highest bits set.
 	IPC_EVENT_WORKSPACE = ((1<<31) | 0),

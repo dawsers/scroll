@@ -18,5 +18,7 @@ json_object *ipc_json_describe_seat(struct sway_seat *seat);
 json_object *ipc_json_describe_bar_config(struct bar_config *bar);
 json_object *ipc_json_describe_scroller(struct sway_workspace *workspace);
 json_object *ipc_json_describe_trails();
+json_object *ipc_json_describe_binding(struct sway_binding *binding);
+json_object *ipc_json_describe_binding_mode(struct sway_mode *mode);
 
 #endif

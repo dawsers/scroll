@@ -420,77 +420,11 @@ void ipc_event_binding(struct sway_binding *binding) {
 	}
 	sway_log(SWAY_DEBUG, "Sending binding event");
 
-	json_object *json_binding = json_object_new_object();
-	json_object_object_add(json_binding, "command", json_object_new_string(binding->command));
-
-	const char *names[10];
-	int len = get_modifier_names(names, binding->modifiers);
-	json_object *modifiers = json_object_new_array();
-	for (int i = 0; i < len; ++i) {
-		json_object_array_add(modifiers, json_object_new_string(names[i]));
-	}
-	json_object_object_add(json_binding, "event_state_mask", modifiers);
-
-	json_object *input_codes = json_object_new_array();
-	int input_code = 0;
-	json_object *symbols = json_object_new_array();
-	json_object *symbol = NULL;
-
-	switch (binding->type) {
-	case BINDING_KEYCODE:; // bindcode: populate input_codes
-		uint32_t keycode;
-		for (int i = 0; i < binding->keys->length; ++i) {
-			keycode = *(uint32_t *)binding->keys->items[i];
-			json_object_array_add(input_codes, json_object_new_int(keycode));
-			if (i == 0) {
-				input_code = keycode;
-			}
-		}
-		break;
-
-	case BINDING_KEYSYM:
-	case BINDING_MOUSESYM:
-	case BINDING_MOUSECODE:; // bindsym/mouse: populate symbols
-		uint32_t keysym;
-		char buffer[64];
-		for (int i = 0; i < binding->keys->length; ++i) {
-			keysym = *(uint32_t *)binding->keys->items[i];
-			if (keysym >= BTN_LEFT && keysym <= BTN_LEFT + 8) {
-				snprintf(buffer, 64, "button%u", keysym - BTN_LEFT + 1);
-			} else if (xkb_keysym_get_name(keysym, buffer, 64) < 0) {
-				continue;
-			}
-
-			json_object *str = json_object_new_string(buffer);
-			if (i == 0) {
-				// str is owned by both symbol and symbols. Make sure
-				// to bump the ref count.
-				json_object_array_add(symbols, json_object_get(str));
-				symbol = str;
-			} else {
-				json_object_array_add(symbols, str);
-			}
-		}
-		break;
-
-	default:
+	json_object *json_binding = ipc_json_describe_binding(binding);
+	if (!json_binding) {
 		sway_log(SWAY_DEBUG, "Unsupported ipc binding event");
-		json_object_put(input_codes);
-		json_object_put(symbols);
-		json_object_put(json_binding);
 		return; // do not send any event
 	}
-
-	json_object_object_add(json_binding, "input_codes", input_codes);
-	json_object_object_add(json_binding, "input_code", json_object_new_int(input_code));
-	json_object_object_add(json_binding, "symbols", symbols);
-	json_object_object_add(json_binding, "symbol", symbol);
-
-	bool mouse = binding->type == BINDING_MOUSECODE ||
-		binding->type == BINDING_MOUSESYM;
-	json_object_object_add(json_binding, "input_type", mouse
-			? json_object_new_string("mouse")
-			: json_object_new_string("keyboard"));
 
 	json_object *json = json_object_new_object();
 	json_object_object_add(json, "change", json_object_new_string("run"));
@@ -1031,6 +965,15 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 		ipc_send_reply(client, payload_type, json_string,
 			(uint32_t)strlen(json_string));
 		json_object_put(spaces);
+		goto exit_cleanup;
+	}
+
+	case IPC_GET_BINDINGS:
+	{
+		json_object *json_mode = ipc_json_describe_binding_mode(config->current_mode);
+		const char *json_string = json_object_to_json_string(json_mode);
+		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
+		json_object_put(json_mode);
 		goto exit_cleanup;
 	}
 

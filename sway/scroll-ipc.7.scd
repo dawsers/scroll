@@ -93,6 +93,9 @@ supported. *For all replies, any properties not listed are subject to removal.*
 |- 122
 :  GET_SPACES
 :  Get information about spaces
+|- 123
+:  GET_BINDINGS
+:  Get a list with the bindings for the current binding mode
 
 ## 0. RUN_COMMAND
 
@@ -1586,6 +1589,135 @@ An array with the names of the existing spaces.
 ]
 ```
 
+## 122. GET_BINDINGS
+
+*MESSAGE*++
+Retrieve the list of bindings for the current binding mode
+
+*REPLY*++
+An object with the following properties:
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- mode
+:  string
+:  Current binding mode name
+|- bindings
+:  array
+:  An array with all the bindings for mode
+
+The array contains objects with the following properties:
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- command
+:  string
+:  The command associated with the binding
+|- event_state_mask
+:  array
+:  An array of strings that correspond to each modifier key for the binding
+|- flags
+:  array
+:  An array of flags affecting the binding ("release", "locked", "border",
+   "contents", "titlebar", "code", "reload", "inhibited", "norepeat", "exact")
+|- input_code
+:  integer
+:  For keyboard bindcodes, this is the key code for the binding. For mouse
+   bindings, this is the X11 button number, if there is an equivalent. In all
+   other cases, this will be _0_.
+|- symbol
+:  string
+:  For keyboard bindsyms, this is the bindsym for the binding. Otherwise, this
+   will be _null_
+|- input_type
+:  string
+:  The input type that triggered the binding. This is either _keyboard_,
+   _mouse_, _table_mpde_ or _lid_
+|- trigger
+:  string
+:  Only available for switch bindings (_table_mode_ or _lid_): "off", "on" or
+   "toggle"
+
+
+*Example Reply:*
+```
+{
+  "mode": "default",
+  "bindings": [
+    {
+      "command": "kill",
+      "event_state_mask": [
+        "Mod4"
+      ],
+      "flags": [],
+      "input_codes": [],
+      "input_code": 0,
+      "symbols": [
+        "BackSpace"
+      ],
+      "symbol": "BackSpace",
+      "input_type": "keyboard"
+    },
+    {
+      "command": "reload",
+      "event_state_mask": [
+        "Shift",
+        "Mod4"
+      ],
+      "flags": [],
+      "input_codes": [],
+      "input_code": 0,
+      "symbols": [
+        "c"
+      ],
+      "symbol": "c",
+      "input_type": "keyboard"
+    },
+    {
+      "command": "scale_workspace incr -0.05",
+      "event_state_mask": [
+        "Shift",
+        "Mod4"
+      ],
+      "flags": [
+        "border"
+      ],
+      "input_codes": [],
+      "input_code": 0,
+      "symbols": [
+        "SWAY_SCROLL_UP"
+      ],
+      "symbol": "SWAY_SCROLL_UP",
+      "input_type": "mouse"
+    },
+    {
+      "command": "scale_workspace incr 0.05",
+      "event_state_mask": [
+        "Shift",
+        "Mod4"
+      ],
+      "flags": [
+        "border"
+      ],
+      "input_codes": [],
+      "input_code": 0,
+      "symbols": [
+        "SWAY_SCROLL_DOWN"
+      ],
+      "symbol": "SWAY_SCROLL_DOWN",
+      "input_type": "mouse"
+    },
+    {
+      "command": "exec echo \"lid\"",
+      "input_type": "lid",
+      "trigger": "on",
+      "flags": []
+    }
+  ]
+}
+```
 
 # EVENTS
 
