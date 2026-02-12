@@ -1634,7 +1634,7 @@ The array contains objects with the following properties:
 |- input_type
 :  string
 :  The input type that triggered the binding. This is either _keyboard_,
-   _mouse_, _table_mpde_ or _lid_
+   _mouse_, _table_mode_, _lid_, or _keypad_slide_
 |- trigger
 :  string
 :  Only available for switch bindings (_table_mode_ or _lid_): "off", "on" or

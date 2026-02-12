@@ -1595,6 +1595,9 @@ json_object *ipc_json_describe_switch_binding(struct sway_switch_binding *bindin
 	case WLR_SWITCH_TYPE_TABLET_MODE:
 		type = json_object_new_string("tablet_mode");
 		break;
+	case WLR_SWITCH_TYPE_KEYPAD_SLIDE:
+		type = json_object_new_string("keypad_slide");
+		break;
 	}
 	json_object_object_add(json_binding, "input_type", type);
 

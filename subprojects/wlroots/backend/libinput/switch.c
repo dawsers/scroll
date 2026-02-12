@@ -39,7 +39,8 @@ void handle_switch_toggle(struct libinput_event *event,
 		break;
 #if HAVE_LIBINPUT_SWITCH_KEYPAD_SLIDE
 	case LIBINPUT_SWITCH_KEYPAD_SLIDE:
-		return;
+		wlr_event.switch_type = WLR_SWITCH_TYPE_KEYPAD_SLIDE;
+		break;
 #endif
 	}
 	switch (libinput_event_switch_get_switch_state(sevent)) {
