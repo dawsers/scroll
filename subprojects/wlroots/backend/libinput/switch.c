@@ -2,6 +2,7 @@
 #include <libinput.h>
 #include <wlr/interfaces/wlr_switch.h>
 #include "backend/libinput.h"
+#include "config.h"
 
 const struct wlr_switch_impl libinput_switch_impl = {
 	.name = "libinput-switch",
@@ -36,6 +37,10 @@ void handle_switch_toggle(struct libinput_event *event,
 	case LIBINPUT_SWITCH_TABLET_MODE:
 		wlr_event.switch_type = WLR_SWITCH_TYPE_TABLET_MODE;
 		break;
+#if HAVE_LIBINPUT_SWITCH_KEYPAD_SLIDE
+	case LIBINPUT_SWITCH_KEYPAD_SLIDE:
+		return;
+#endif
 	}
 	switch (libinput_event_switch_get_switch_state(sevent)) {
 	case LIBINPUT_SWITCH_STATE_OFF:
