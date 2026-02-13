@@ -970,7 +970,25 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 
 	case IPC_GET_BINDINGS:
 	{
-		json_object *json_mode = ipc_json_describe_binding_mode(config->current_mode);
+		struct sway_mode *mode = NULL;
+		if (strlen(buf) > 0) {
+			for (int i = 0; i < config->modes->length; i++) {
+				struct sway_mode *m = config->modes->items[i];
+				if (strcmp(buf, m->name) == 0) {
+					mode = m;
+					break;
+				}
+			}
+		} else {
+			mode = config->current_mode;
+		}
+		if (!mode) {
+			const char *error = "{ \"success\": false, \"error\": \"No binding mode with that name\" }";
+			ipc_send_reply(client, payload_type, error,
+				(uint32_t)strlen(error));
+			goto exit_cleanup;
+		}
+		json_object *json_mode = ipc_json_describe_binding_mode(mode);
 		const char *json_string = json_object_to_json_string(json_mode);
 		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
 		json_object_put(json_mode);

@@ -512,6 +512,15 @@ static void pretty_print_binding(json_object *i) {
 }
 
 static void pretty_print_bindings(json_object *i) {
+	if (!success_object(i)) {
+		json_object *error;
+		if (!json_object_object_get_ex(i, "error", &error)) {
+			printf("An unknown error occurred");
+		} else {
+			printf("Error: %s\n", json_object_get_string(error));
+		}
+		return;
+	}
 	json_object *mode, *bindings, *binding;
 	json_object_object_get_ex(i, "mode", &mode);
 

@@ -1589,7 +1589,16 @@ An array with the names of the existing spaces.
 ]
 ```
 
-## 122. GET_BINDINGS
+## 122. GET_BINDINGS (WITH A PAYLOAD)
+
+*MESSAGE*++
+When sent with a binding mode name as the payload, it retrieves the list
+of bindings associated with the mode in the payload.
+
+The format and response is the same as GET_BINDINGS without a payload.
+
+
+## 122. GET_BINDINGS (WITHOUT A PAYLOAD)
 
 *MESSAGE*++
 Retrieve the list of bindings for the current binding mode
