@@ -249,3 +249,15 @@ void handle_libinput_event(struct wlr_libinput_backend *backend,
 		break;
 	}
 }
+
+bool button_state_from_libinput(enum libinput_button_state state, enum wlr_button_state *out) {
+	switch (state) {
+	case LIBINPUT_BUTTON_STATE_RELEASED:
+		*out = WLR_BUTTON_RELEASED;
+		return true;
+	case LIBINPUT_BUTTON_STATE_PRESSED:
+		*out = WLR_BUTTON_PRESSED;
+		return true;
+	}
+	return false;
+}
