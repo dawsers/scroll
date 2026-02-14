@@ -1998,7 +1998,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 	if (focus) {
 		struct sway_seat *seat = input_manager_current_seat();
 		struct sway_container * con = seat_get_focused_container(seat);
-		if (common->focused->pending.workspace->fullscreen == con) {
+		if (con && common->focused->pending.workspace->fullscreen == con) {
 			container_fullscreen_disable(common->focused->pending.workspace->fullscreen);
 			arrange_root();
 		}
