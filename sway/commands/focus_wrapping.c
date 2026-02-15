@@ -13,6 +13,8 @@ struct cmd_results *cmd_focus_wrapping(int argc, char **argv) {
 		config->focus_wrapping = WRAP_FORCE;
 	} else if (strcasecmp(argv[0], "workspace") == 0) {
 		config->focus_wrapping = WRAP_WORKSPACE;
+	} else if (strcasecmp(argv[0], "stay") == 0) {
+		config->focus_wrapping = WRAP_STAY;
 	} else if (parse_boolean(argv[0], config->focus_wrapping == WRAP_YES)) {
 		config->focus_wrapping = WRAP_YES;
 	} else {

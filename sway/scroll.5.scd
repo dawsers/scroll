@@ -1300,7 +1300,7 @@ The default colors are:
 	will be set. Default is _focus_. See also *xdg_activation_force* to force
 	activation when clients don't implement the full protocol.
 
-*focus_wrapping* yes|no|force|workspace
+*focus_wrapping* yes|no|force|workspace|stay
 	This option determines what to do when attempting to focus over the edge
 	of a container. If set to _no_, the focused container will retain focus,
 	if there are no other containers in the direction. If set to _yes_, focus
@@ -1309,6 +1309,8 @@ The default colors are:
 	to the opposite edge of the container, even if there are other containers
 	in the direction. If set to _workspace_, focus will wrap like in the _yes_
 	case and additionally wrap when moving outside of workspaces boundaries.
+	If set to _stay_, there will be no wrapping, and the focus container will
+	retain focus even if there are other containers in the direction.
 	Default is _no_.
 
 *font* [pango:]<font>

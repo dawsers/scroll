@@ -179,11 +179,23 @@ static struct sway_node *node_get_in_direction_tiling(
 			if (parent_layout == L_HORIZ) {
 				can_move = true;
 				desired = idx + (dir == DIR_LEFT ? -1 : 1);
+				if (config->focus_wrapping == WRAP_STAY) {
+					if ((dir == DIR_LEFT && idx == 0) ||
+						(dir == DIR_RIGHT && idx == siblings->length - 1)) {
+						return NULL;
+					}
+				}
 			}
 		} else if (dir == DIR_UP || dir == DIR_DOWN) {
 			if (parent_layout == L_VERT) {
 				can_move = true;
 				desired = idx + (dir == DIR_UP ? -1 : 1);
+				if (config->focus_wrapping == WRAP_STAY) {
+					if ((dir == DIR_UP && idx == 0) ||
+						(dir == DIR_DOWN && idx == siblings->length - 1)) {
+						return NULL;
+					}
+				}
 			}
 		} else if (dir == DIR_BEGIN || dir == DIR_END) {
 			// We move focus within this container if the layout mode is the
