@@ -654,8 +654,12 @@ static void workspace_switch_callback_end(void *callback_data) {
 		node_set_dirty(&cdata->container->node);
 	}
 
-	node_set_dirty(&data->from->node);
-	node_set_dirty(&data->to->node);
+	if (data->from->output) {
+		node_set_dirty(&data->from->node);
+	}
+	if (data->to->output) {
+		node_set_dirty(&data->to->node);
+	}
 
 	list_free_items_and_destroy(data->from_containers);
 	list_free_items_and_destroy(data->to_containers);
@@ -752,7 +756,7 @@ static void add_delta_to_pending(struct sway_container *con, double delta) {
 static void select_visible_containers(list_t *containers,
 		struct sway_workspace *workspace, list_t *children,
 		double *min_y, double *max_y) {
-	if (children->length == 0) {
+	if (!workspace->output || children->length == 0) {
 		*min_y = workspace->y;
 		*max_y = workspace->y + workspace->height;
 		return;
@@ -816,6 +820,7 @@ static bool workspace_switch_down(struct sway_workspace *from, struct sway_works
 
 static void animate_workspace_switch(struct sway_output *output,
 		struct sway_workspace *from, struct sway_workspace *to) {
+	bool down = workspace_switch_down(from, to);
 	animation_end();
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	struct workspace_switch_data *data = malloc(sizeof(struct workspace_switch_data));
@@ -841,7 +846,7 @@ static void animate_workspace_switch(struct sway_output *output,
 		max_y_from = min_y_from = from->y;
 	}
 	double delta;
-	if (workspace_switch_down(from, to)) {
+	if (down) {
 		delta = output->height + max_y_from - (from->y + from->height)
 			+ (from->y - min_y_to);
 	} else {
