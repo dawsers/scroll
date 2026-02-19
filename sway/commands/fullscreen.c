@@ -40,7 +40,7 @@ struct cmd_results *cmd_fullscreen_movefocus(int argc, char **argv) {
 					"Expected fullscreen_movefocus <true|false> [follow|nofollow].");
 			}
 		} else {
-			config->fullscreen_movefocus = FULLSCREEN_MOVEFOCUS_FOLLOW;
+			config->fullscreen_movefocus = FULLSCREEN_MOVEFOCUS_NOFOLLOW;
 		}
 	} else {
 		config->fullscreen_movefocus = FULLSCREEN_MOVEFOCUS_NONE;
