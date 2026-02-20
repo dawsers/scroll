@@ -2104,6 +2104,7 @@ int wlr_drm_backend_get_non_master_fd(struct wlr_backend *backend) {
 
 	if (drmIsMaster(fd) && drmDropMaster(fd) < 0) {
 		wlr_log_errno(WLR_ERROR, "Failed to drop master");
+		close(fd);
 		return -1;
 	}
 
