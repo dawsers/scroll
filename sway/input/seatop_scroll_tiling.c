@@ -12,7 +12,7 @@ static void finalize_move(struct sway_seat *seat) {
 	struct seatop_scroll_tiling_event *e = seat->seatop_data;
 
 	struct wlr_cursor *cursor = seat->cursor->cursor;
-	layout_scroll_update(seat, cursor->x - e->x, cursor->y - e->y);
+	layout_scroll_update(seat, cursor->x - e->x, cursor->y - e->y, config->gesture_scroll_sentitivity_mouse);
 
 	layout_scroll_end(seat);
 
@@ -31,7 +31,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	struct seatop_scroll_tiling_event *e = seat->seatop_data;
 	struct wlr_cursor *cursor = seat->cursor->cursor;
 
-	layout_scroll_update(seat, cursor->x - e->x, cursor->y - e->y);
+	layout_scroll_update(seat, cursor->x - e->x, cursor->y - e->y, config->gesture_scroll_sentitivity_mouse);
 	e->x = cursor->x;
 	e->y = cursor->y;
 }

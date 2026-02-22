@@ -205,3 +205,17 @@ struct cmd_results *cmd_gesture_scroll_sensitivity(int argc, char **argv) {
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
+
+/**
+ * Set the sensitivity value for mouse gesture scrolling in config
+ */
+struct cmd_results *cmd_gesture_scroll_sensitivity_mouse(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "gesture_scroll_sensitivity_mouse", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+
+	config->gesture_scroll_sentitivity_mouse = strtof(argv[0], NULL);
+
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}

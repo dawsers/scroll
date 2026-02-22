@@ -1172,7 +1172,7 @@ static void handle_swipe_update(struct sway_seat *seat,
 			event->dx, event->dy, NAN, NAN);
 	} else {
 		if (config->gesture_scroll_enable && event->fingers == config->gesture_scroll_fingers) {
-			layout_scroll_update(seat, event->dx, event->dy);
+			layout_scroll_update(seat, event->dx, event->dy, config->gesture_scroll_sentitivity);
 			return;
 		}
 		// ... otherwise forward to client

@@ -270,6 +270,7 @@ static void config_defaults(struct sway_config *config) {
 	config->gesture_scroll_enable = true;
 	config->gesture_scroll_fingers = 3;
 	config->gesture_scroll_sentitivity = 1.0f;
+	config->gesture_scroll_sentitivity_mouse = 1.0f;
 
 	if (!(config->lua.state = luaL_newstate())) goto cleanup;
 	if (!(config->lua.scripts = create_list())) goto cleanup;

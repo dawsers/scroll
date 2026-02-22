@@ -211,7 +211,14 @@ The following commands may only be used in the configuration file.
 	Default is _3_. Number of fingers assigned to the scrolling gesture.
 
 *gesture_scroll_sensitivity* <number>
-	Default is _1.0_. Increase if you want more sensitivity.
+	Default is _1.0_. Increase if you want more sensitivity when using a swiping
+	device (trackpad). Changing the sign of the sensitivity modifies the
+	scrolling direction: natural vs reverse.
+
+*gesture_scroll_sensitivity_mouse* <number>
+	Default is _1.0_. Increase if you want more sensitivity for layout scrolling
+	gestures using the mouse. Changing the sign of the sensitivity modifies the
+	scrolling direction: natural vs reverse.
 
 *include* <paths...>
 	Include files from _paths_. _paths_ can include either a full path or a

@@ -2684,14 +2684,14 @@ bool layout_scroll_begin(struct sway_seat *seat) {
 	return true;
 }
 
-void layout_scroll_update(struct sway_seat *seat, double dx, double dy) {
+void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity) {
 	struct sway_workspace *workspace = seat->workspace;
 	if (workspace->tiling->length == 0) {
 		return;
 	}
 	double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
-	dx *= config->gesture_scroll_sentitivity * scale;
-	dy *= config->gesture_scroll_sentitivity * scale;
+	dx *= sensitivity * scale;
+	dy *= sensitivity * scale;
 
 	enum sway_layout_direction scrolling_direction;
 	if (fabs(dx) > fabs(dy)) {

@@ -1544,7 +1544,12 @@ radius of the top title bar borders. Default is 0.
 scrolling gesture.
 
 `gesture_scroll_sentitivity`: default is `1.0`. Increase if you want more
-sensitivity.
+sensitivity for swiping devices.
+
+`gesture_scroll_sentitivityi_mouse`: default is `1.0`. Increase if you want more
+sensitivity when scrolling the layout with the mouse.
+
+Negative sensitivities invert the swiping direction (natural vs. reverse).
 
 ### Animation Options
 

@@ -120,6 +120,7 @@ static const struct cmd_handler config_handlers[] = {
 	{ "gesture_scroll_enable", cmd_gesture_scroll_enable },
 	{ "gesture_scroll_fingers", cmd_gesture_scroll_fingers },
 	{ "gesture_scroll_sensitivity", cmd_gesture_scroll_sensitivity },
+	{ "gesture_scroll_sensitivity_mouse", cmd_gesture_scroll_sensitivity_mouse },
 	{ "include", cmd_include },
 	{ "jump_labels_background", cmd_jump_labels_background },
 	{ "jump_labels_color", cmd_jump_labels_color },

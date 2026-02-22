@@ -172,7 +172,7 @@ void layout_jump_trailmark(struct sway_workspace *workspace);
 // no conditions to scroll (total width of windows is smaller than viewport)
 bool layout_scroll_begin(struct sway_seat *seat);
 // Update scrolling swipe gesture
-void layout_scroll_update(struct sway_seat *seat, double dx, double dy);
+void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity);
 // Finish scrolling swipe and return true if scrolling, else false
 bool layout_scroll_end(struct sway_seat *seat);
 
