@@ -386,7 +386,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 			sync_file_fds[0] = sync_file_fd;
 		} else {
 			struct wlr_vk_texture *texture = pass_texture->texture;
-			if (!vulkan_sync_foreign_texture(texture, sync_file_fds)) {
+			if (!vulkan_sync_foreign_texture_acquire(texture, sync_file_fds)) {
 				wlr_log(WLR_ERROR, "Failed to wait for foreign texture DMA-BUF fence");
 				continue;
 			}

@@ -1061,7 +1061,7 @@ static bool buffer_export_sync_file(struct wlr_vk_renderer *renderer, struct wlr
 	return true;
 }
 
-bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
+bool vulkan_sync_foreign_texture_acquire(struct wlr_vk_texture *texture,
 		int sync_file_fds[static WLR_DMABUF_MAX_PLANES]) {
 	return buffer_export_sync_file(texture->renderer, texture->buffer, DMA_BUF_SYNC_READ, sync_file_fds);
 }
