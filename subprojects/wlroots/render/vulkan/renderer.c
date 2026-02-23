@@ -1080,12 +1080,12 @@ static bool buffer_import_sync_file(struct wlr_buffer *buffer, uint32_t flags, i
 	return true;
 }
 
-bool vulkan_sync_render_buffer(struct wlr_vk_renderer *renderer,
-		struct wlr_vk_render_buffer *render_buffer, struct wlr_vk_command_buffer *cb,
-		struct wlr_drm_syncobj_timeline *signal_timeline, uint64_t signal_point) {
+bool vulkan_sync_render_pass_release(struct wlr_vk_renderer *renderer,
+		struct wlr_vk_render_pass *pass) {
 	VkResult res;
+	struct wlr_vk_command_buffer *cb = pass->command_buffer;
 
-	if (!renderer->dev->implicit_sync_interop && signal_timeline == NULL) {
+	if (!renderer->dev->implicit_sync_interop && pass->signal_timeline == NULL) {
 		// We have no choice but to block here sadly
 		return vulkan_wait_command_buffer(cb, renderer);
 	}
@@ -1107,13 +1107,13 @@ bool vulkan_sync_render_buffer(struct wlr_vk_renderer *renderer,
 	}
 
 	bool ok = false;
-	if (signal_timeline != NULL) {
-		if (!wlr_drm_syncobj_timeline_import_sync_file(signal_timeline,
-				signal_point, sync_file_fd)) {
+	if (pass->signal_timeline != NULL) {
+		if (!wlr_drm_syncobj_timeline_import_sync_file(pass->signal_timeline,
+				pass->signal_point, sync_file_fd)) {
 			goto out;
 		}
 	} else {
-		if (!buffer_import_sync_file(render_buffer->wlr_buffer, DMA_BUF_SYNC_WRITE, sync_file_fd)) {
+		if (!buffer_import_sync_file(pass->render_buffer->wlr_buffer, DMA_BUF_SYNC_WRITE, sync_file_fd)) {
 			goto out;
 		}
 	}

@@ -541,9 +541,8 @@ void vulkan_reset_command_buffer(struct wlr_vk_command_buffer *cb);
 bool vulkan_wait_command_buffer(struct wlr_vk_command_buffer *cb,
 	struct wlr_vk_renderer *renderer);
 
-bool vulkan_sync_render_buffer(struct wlr_vk_renderer *renderer,
-	struct wlr_vk_render_buffer *render_buffer, struct wlr_vk_command_buffer *cb,
-	struct wlr_drm_syncobj_timeline *signal_timeline, uint64_t signal_point);
+bool vulkan_sync_render_pass_release(struct wlr_vk_renderer *renderer,
+	struct wlr_vk_render_pass *pass);
 bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
 	int sync_file_fds[static WLR_DMABUF_MAX_PLANES]);
 

@@ -606,8 +606,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 		wl_list_insert(&stage_cb->stage_buffers, &stage_buf->link);
 	}
 
-	if (!vulkan_sync_render_buffer(renderer, render_buffer, render_cb,
-			pass->signal_timeline, pass->signal_point)) {
+	if (!vulkan_sync_render_pass_release(renderer, pass)) {
 		wlr_log(WLR_ERROR, "Failed to sync render buffer");
 	}
 
