@@ -1063,6 +1063,23 @@ bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
 	return true;
 }
 
+static bool buffer_import_sync_file(struct wlr_buffer *buffer, uint32_t flags, int sync_file_fd) {
+	struct wlr_dmabuf_attributes dmabuf = {0};
+	if (!wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
+		wlr_log(WLR_ERROR, "wlr_buffer_get_dmabuf() failed");
+		return false;
+	}
+
+	for (int i = 0; i < dmabuf.n_planes; i++) {
+		if (!dmabuf_import_sync_file(dmabuf.fd[i], flags,
+				sync_file_fd)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool vulkan_sync_render_buffer(struct wlr_vk_renderer *renderer,
 		struct wlr_vk_render_buffer *render_buffer, struct wlr_vk_command_buffer *cb,
 		struct wlr_drm_syncobj_timeline *signal_timeline, uint64_t signal_point) {
@@ -1096,17 +1113,8 @@ bool vulkan_sync_render_buffer(struct wlr_vk_renderer *renderer,
 			goto out;
 		}
 	} else {
-		struct wlr_dmabuf_attributes dmabuf = {0};
-		if (!wlr_buffer_get_dmabuf(render_buffer->wlr_buffer, &dmabuf)) {
-			wlr_log(WLR_ERROR, "wlr_buffer_get_dmabuf failed");
+		if (!buffer_import_sync_file(render_buffer->wlr_buffer, DMA_BUF_SYNC_WRITE, sync_file_fd)) {
 			goto out;
-		}
-
-		for (int i = 0; i < dmabuf.n_planes; i++) {
-			if (!dmabuf_import_sync_file(dmabuf.fd[i], DMA_BUF_SYNC_WRITE,
-					sync_file_fd)) {
-				goto out;
-			}
 		}
 	}
 
