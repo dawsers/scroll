@@ -545,6 +545,8 @@ bool vulkan_sync_render_pass_release(struct wlr_vk_renderer *renderer,
 	struct wlr_vk_render_pass *pass);
 bool vulkan_sync_foreign_texture_acquire(struct wlr_vk_texture *texture,
 	int sync_file_fds[static WLR_DMABUF_MAX_PLANES]);
+bool vulkan_sync_render_buffer_acquire(struct wlr_vk_render_buffer *render_buffer,
+	int sync_file_fds[static WLR_DMABUF_MAX_PLANES]);
 
 bool vulkan_read_pixels(struct wlr_vk_renderer *vk_renderer,
 	VkFormat src_format, VkImage src_image,

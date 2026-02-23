@@ -1066,6 +1066,12 @@ bool vulkan_sync_foreign_texture_acquire(struct wlr_vk_texture *texture,
 	return buffer_export_sync_file(texture->renderer, texture->buffer, DMA_BUF_SYNC_READ, sync_file_fds);
 }
 
+bool vulkan_sync_render_buffer_acquire(struct wlr_vk_render_buffer *render_buffer,
+		int sync_file_fds[static WLR_DMABUF_MAX_PLANES]) {
+	return buffer_export_sync_file(render_buffer->renderer, render_buffer->wlr_buffer,
+		DMA_BUF_SYNC_WRITE, sync_file_fds);
+}
+
 static bool buffer_import_sync_file(struct wlr_buffer *buffer, uint32_t flags, int sync_file_fd) {
 	struct wlr_dmabuf_attributes dmabuf = {0};
 	if (!wlr_buffer_get_dmabuf(buffer, &dmabuf)) {

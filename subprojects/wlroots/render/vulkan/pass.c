@@ -146,6 +146,40 @@ static VkSemaphore render_pass_wait_sync_file(struct wlr_vk_render_pass *pass,
 	return *sem_ptr;
 }
 
+static bool render_pass_wait_render_buffer(struct wlr_vk_render_pass *pass,
+		VkSemaphoreSubmitInfoKHR *render_wait, uint32_t *render_wait_len_ptr) {
+	int sync_file_fds[WLR_DMABUF_MAX_PLANES];
+	for (size_t i = 0; i < WLR_DMABUF_MAX_PLANES; i++) {
+		sync_file_fds[i] = -1;
+	}
+
+	if (!vulkan_sync_render_buffer_acquire(pass->render_buffer, sync_file_fds)) {
+		return false;
+	}
+
+	for (size_t i = 0; i < WLR_DMABUF_MAX_PLANES; i++) {
+		if (sync_file_fds[i] < 0) {
+			continue;
+		}
+
+		VkSemaphore sem = render_pass_wait_sync_file(pass, *render_wait_len_ptr, sync_file_fds[i]);
+		if (sem == VK_NULL_HANDLE) {
+			close(sync_file_fds[i]);
+			continue;
+		}
+
+		render_wait[*render_wait_len_ptr] = (VkSemaphoreSubmitInfoKHR){
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
+			.semaphore = sem,
+			.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR,
+		};
+
+		(*render_wait_len_ptr)++;
+	}
+
+	return true;
+}
+
 static bool unwrap_color_transform(struct wlr_color_transform *transform,
 		float matrix[static 9], enum wlr_color_transfer_function *tf) {
 	if (transform == NULL) {
@@ -308,7 +342,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 	vkCmdEndRenderPass(render_cb->vk);
 
 	size_t pass_textures_len = pass->textures.size / sizeof(struct wlr_vk_render_pass_texture);
-	size_t render_wait_cap = pass_textures_len * WLR_DMABUF_MAX_PLANES;
+	size_t render_wait_cap = (1 + pass_textures_len) * WLR_DMABUF_MAX_PLANES;
 	render_wait = calloc(render_wait_cap, sizeof(*render_wait));
 	if (render_wait == NULL) {
 		wlr_log_errno(WLR_ERROR, "Allocation failed");
@@ -411,6 +445,10 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 
 			render_wait_len++;
 		}
+	}
+
+	if (!render_pass_wait_render_buffer(pass, render_wait, &render_wait_len)) {
+		wlr_log(WLR_ERROR, "Failed to wait for render buffer DMA-BUF fence");
 	}
 
 	// also add acquire/release barriers for the current render buffer
