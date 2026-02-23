@@ -1018,13 +1018,11 @@ static struct wlr_vk_render_buffer *get_render_buffer(
 	return buffer;
 }
 
-bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
-		int sync_file_fds[static WLR_DMABUF_MAX_PLANES]) {
-	struct wlr_vk_renderer *renderer = texture->renderer;
-
+static bool buffer_export_sync_file(struct wlr_vk_renderer *renderer, struct wlr_buffer *buffer,
+		uint32_t flags, int sync_file_fds[static WLR_DMABUF_MAX_PLANES]) {
 	struct wlr_dmabuf_attributes dmabuf = {0};
-	if (!wlr_buffer_get_dmabuf(texture->buffer, &dmabuf)) {
-		wlr_log(WLR_ERROR, "Failed to get texture DMA-BUF");
+	if (!wlr_buffer_get_dmabuf(buffer, &dmabuf)) {
+		wlr_log(WLR_ERROR, "wlr_buffer_get_dmabuf() failed");
 		return false;
 	}
 
@@ -1034,7 +1032,7 @@ bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
 		for (int i = 0; i < dmabuf.n_planes; i++) {
 			struct pollfd pollfd = {
 				.fd = dmabuf.fd[i],
-				.events = POLLIN,
+				.events = (flags & DMA_BUF_SYNC_WRITE) ? POLLOUT : POLLIN,
 			};
 			int timeout_ms = 1000;
 			int ret = poll(&pollfd, 1, timeout_ms);
@@ -1051,7 +1049,7 @@ bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
 	}
 
 	for (int i = 0; i < dmabuf.n_planes; i++) {
-		int sync_file_fd = dmabuf_export_sync_file(dmabuf.fd[i], DMA_BUF_SYNC_READ);
+		int sync_file_fd = dmabuf_export_sync_file(dmabuf.fd[i], flags);
 		if (sync_file_fd < 0) {
 			wlr_log(WLR_ERROR, "Failed to extract DMA-BUF fence");
 			return false;
@@ -1061,6 +1059,11 @@ bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
 	}
 
 	return true;
+}
+
+bool vulkan_sync_foreign_texture(struct wlr_vk_texture *texture,
+		int sync_file_fds[static WLR_DMABUF_MAX_PLANES]) {
+	return buffer_export_sync_file(texture->renderer, texture->buffer, DMA_BUF_SYNC_READ, sync_file_fds);
 }
 
 static bool buffer_import_sync_file(struct wlr_buffer *buffer, uint32_t flags, int sync_file_fd) {
