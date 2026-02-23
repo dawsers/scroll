@@ -1116,6 +1116,13 @@ bool vulkan_sync_render_pass_release(struct wlr_vk_renderer *renderer,
 		if (!buffer_import_sync_file(pass->render_buffer->wlr_buffer, DMA_BUF_SYNC_WRITE, sync_file_fd)) {
 			goto out;
 		}
+
+		struct wlr_vk_render_pass_texture *pass_texture;
+		wl_array_for_each(pass_texture, &pass->textures) {
+			if (!buffer_import_sync_file(pass_texture->texture->buffer, DMA_BUF_SYNC_READ, sync_file_fd)) {
+				goto out;
+			}
+		}
 	}
 
 	ok = true;
