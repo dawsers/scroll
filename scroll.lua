@@ -219,6 +219,14 @@ function scroll.container_get_opacity(container) end
 function scroll.container_get_sticky(container) end
 
 ---
+--- Returns true if the container is in the scratchpad, otherwise false.
+---
+--- @param container userdata
+---
+--- @return boolean
+function scroll.container_get_scratchpad(container) end
+
+---
 --- Returns the value for the container's width fraction.
 --- This value is used to compute the width of the container.
 ---
@@ -515,6 +523,22 @@ function scroll.root_get_outputs() end
 ---
 --- @return userdata[]
 function scroll.scratchpad_get_containers() end
+
+---
+--- Shows container if it is in the scratchpad.
+---
+--- @param container userdata
+---
+--- @return integer
+function scroll.scratchpad_show(container) end
+
+---
+--- Hide container if it is in the scratchpad.
+---
+--- @param container userdata
+---
+--- @return integer
+function scroll.scratchpad_hide(container) end
 
 ---
 --- Sets a cb_func callback function for event, passing cb_data data to

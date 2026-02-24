@@ -648,6 +648,21 @@ static int scroll_container_get_sticky(lua_State *L) {
 	return 1;
 }
 
+static int scroll_container_get_scratchpad(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+	struct sway_container *container = lua_touserdata(L, -1);
+	if (!container || container->node.type != N_CONTAINER) {
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+	lua_pushboolean(L, container->scratchpad);
+	return 1;
+}
+
 static int scroll_container_get_width_fraction(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc == 0) {
@@ -1278,6 +1293,32 @@ static int scroll_scratchpad_get_containers(lua_State *L) {
 	return 1;
 }
 
+static int scroll_scratchpad_show(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		return 0;
+	}
+	struct sway_container *container = lua_touserdata(L, -1);
+	if (!container || container->node.type != N_CONTAINER || !container->scratchpad) {
+		return 0;
+	}
+	root_scratchpad_show(container);
+	return 0;
+}
+
+static int scroll_scratchpad_hide(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		return 0;
+	}
+	struct sway_container *container = lua_touserdata(L, -1);
+	if (!container || container->node.type != N_CONTAINER || !container->scratchpad) {
+		return 0;
+	}
+	root_scratchpad_hide(container);
+	return 0;
+}
+
 static int scroll_output_get_active_workspace(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc == 0) {
@@ -1516,6 +1557,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "container_get_floating", scroll_container_get_floating },
 	{ "container_get_opacity", scroll_container_get_opacity },
 	{ "container_get_sticky", scroll_container_get_sticky },
+	{ "container_get_scratchpad", scroll_container_get_scratchpad },
 	{ "container_get_width_fraction", scroll_container_get_width_fraction },
 	{ "container_get_height_fraction", scroll_container_get_height_fraction },
 	{ "container_get_width", scroll_container_get_width },
@@ -1548,6 +1590,8 @@ static luaL_Reg const scroll_lib[] = {
 	{ "output_get_workspaces", scroll_output_get_workspaces },
 	{ "root_get_outputs", scroll_root_get_outputs },
 	{ "scratchpad_get_containers", scroll_scratchpad_get_containers },
+	{ "scratchpad_show", scroll_scratchpad_show },
+	{ "scratchpad_hide", scroll_scratchpad_hide },
 	{ "add_callback", scroll_add_callback },
 	{ "remove_callback", scroll_remove_callback },
 	{ NULL, NULL }

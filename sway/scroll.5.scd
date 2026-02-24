@@ -1941,6 +1941,9 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 *container_get_sticky(container)*
 	Returns _true_ if the container is sticky, otherwise _false_.
 
+*container_get_scratchpad(container)*
+	Returns _true_ if the container is in the scratchpad, otherwise _false_.
+
 *container_get_width_fraction(container)*
 	Returns the value for the container's width fraction. This value is used
 	to compute the width of the container.
@@ -2091,6 +2094,12 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 *scratchpad_get_containers()*
 	Returns an array with all the containers in the scratchpad.
+
+*scratchpad_show(container)*
+	Show _container_ if it is in the scratchpad.
+
+*scratchpad_hide(container)*
+	Hide _container_ if it is in the scratchpad.
 
 *add_callback(event, cb_func, cb_data)*
 	Sets a _cb_func_ callback function for _event_, passing _cb_data_ data to
