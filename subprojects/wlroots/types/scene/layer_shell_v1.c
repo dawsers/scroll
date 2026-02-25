@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
+#include <wlr/util/edges.h>
 
 static void scene_layer_surface_handle_tree_destroy(
 		struct wl_listener *listener, void *data) {
@@ -21,36 +22,23 @@ static void scene_layer_surface_handle_layer_surface_destroy(
 
 static void layer_surface_exclusive_zone(
 		struct wlr_layer_surface_v1_state *state,
+		enum wlr_edges edge,
 		struct wlr_box *usable_area) {
-	switch (state->anchor) {
-	case ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP:
-	case (ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT):
-		// Anchor top
+	switch (edge) {
+	case WLR_EDGE_NONE:
+		return;
+	case WLR_EDGE_TOP:
 		usable_area->y += state->exclusive_zone + state->margin.top;
 		usable_area->height -= state->exclusive_zone + state->margin.top;
 		break;
-	case ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM:
-	case (ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT):
-		// Anchor bottom
+	case WLR_EDGE_BOTTOM:
 		usable_area->height -= state->exclusive_zone + state->margin.bottom;
 		break;
-	case ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT:
-	case (ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT):
-		// Anchor left
+	case WLR_EDGE_LEFT:
 		usable_area->x += state->exclusive_zone + state->margin.left;
 		usable_area->width -= state->exclusive_zone + state->margin.left;
 		break;
-	case ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT:
-	case (ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
-			ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT):
-		// Anchor right
+	case WLR_EDGE_RIGHT:
 		usable_area->width -= state->exclusive_zone + state->margin.right;
 		break;
 	}
@@ -121,7 +109,8 @@ void wlr_scene_layer_surface_v1_configure(
 	wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
 
 	if (layer_surface->surface->mapped && state->exclusive_zone > 0) {
-		layer_surface_exclusive_zone(state, usable_area);
+		enum wlr_edges edge = wlr_layer_surface_v1_get_exclusive_edge(layer_surface);
+		layer_surface_exclusive_zone(state, edge, usable_area);
 	}
 }
 
