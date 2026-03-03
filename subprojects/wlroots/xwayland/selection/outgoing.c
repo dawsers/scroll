@@ -283,6 +283,8 @@ static bool xwm_selection_send_data(struct wlr_xwm_selection *selection,
 	int p[2];
 	if (pipe(p) == -1) {
 		wlr_log_errno(WLR_ERROR, "pipe() failed");
+		wl_array_release(&transfer->source_data);
+		free(transfer);
 		return false;
 	}
 
