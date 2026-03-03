@@ -188,7 +188,7 @@ void wlr_color_primaries_transform_absolute_colorimetric(
  * Create a simplified / normalized wlr_color_transform pipeline.
  * `transforms` may contain NULL transforms, they will be interpreted as the
  * identity transform, and removed.
- * `*result` may be set to a tranform of a type different from
+ * `*result` may be set to a transform of a type different from
  * `wlr_color_transform_pipeline`, or to NULL if all input transforms are NULL
  */
 bool wlr_color_transform_compose(struct wlr_color_transform **result,

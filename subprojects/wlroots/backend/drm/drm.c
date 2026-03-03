@@ -2139,7 +2139,7 @@ struct wlr_drm_lease *wlr_drm_create_lease(struct wlr_output **outputs,
 		wlr_log(WLR_DEBUG, "Connector %d", conn->id);
 
 		if (!drm_connector_alloc_crtc(conn)) {
-			wlr_log(WLR_ERROR, "Failled to allocate connector CRTC");
+			wlr_log(WLR_ERROR, "Failed to allocate connector CRTC");
 			return NULL;
 		}
 

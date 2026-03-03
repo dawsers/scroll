@@ -1,7 +1,7 @@
 #version 450
 
 // we use a mat4 since it uses the same size as mat3 due to
-// alignment. Easier to deal with (tighly-packed) mat4 though.
+// alignment. Easier to deal with (tightly-packed) mat4 though.
 layout(push_constant, row_major) uniform UBO {
 	mat4 proj;
 	vec2 uv_offset;

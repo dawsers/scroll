@@ -246,7 +246,7 @@ void init_seat_touch(struct wlr_wl_seat *seat) {
 
 	struct wlr_wl_output *output;
 	wl_list_for_each(output, &seat->backend->outputs, link) {
-		/* Multi-output touch not supproted */
+		/* Multi-output touch not supported */
 		seat->wlr_touch.output_name = strdup(output->wlr_output.name);
 		break;
 	}

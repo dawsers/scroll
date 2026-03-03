@@ -189,7 +189,7 @@ void vulkan_texture_destroy(struct wlr_vk_texture *texture) {
 	// when we recorded a command to fill this image _this_ frame,
 	// it has to be executed before the texture can be destroyed.
 	// Add it to the renderer->destroy_textures list, destroying
-	// _after_ the stage command buffer has exectued
+	// _after_ the stage command buffer has executed
 	if (texture->last_used_cb != NULL) {
 		assert(texture->destroy_link.next == NULL); // not already inserted
 		wl_list_insert(&texture->last_used_cb->destroy_textures,

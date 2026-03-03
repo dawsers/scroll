@@ -14,7 +14,7 @@ bool array_realloc(struct wl_array *arr, size_t size) {
 	// If the size is less than 1/4th of the allocation size, we shrink it.
 	// 1/4th is picked to provide hysteresis, without which an array with size
 	// arr->alloc would constantly reallocate if an element is added and then
-	// removed continously.
+	// removed continuously.
 	size_t alloc;
 	if (arr->alloc > 0 && size > arr->alloc / 4) {
 		alloc = arr->alloc;

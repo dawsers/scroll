@@ -47,7 +47,7 @@
 /**
  * A still cursor image.
  *
- * The buffer contains pixels layed out in a packed DRM_FORMAT_ARGB8888 format.
+ * The buffer contains pixels laid out in a packed DRM_FORMAT_ARGB8888 format.
  */
 struct wlr_xcursor_image {
 	uint32_t width; /* actual width */

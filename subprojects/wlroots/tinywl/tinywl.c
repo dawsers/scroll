@@ -614,7 +614,7 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 	struct wlr_output *wlr_output = data;
 
 	/* Configures the output created by the backend to use our allocator
-	 * and our renderer. Must be done once, before commiting the output */
+	 * and our renderer. Must be done once, before committing the output */
 	wlr_output_init_render(wlr_output, server->allocator, server->renderer);
 
 	/* The output may be disabled, switch it on. */
@@ -723,7 +723,7 @@ static void xdg_toplevel_destroy(struct wl_listener *listener, void *data) {
 static void begin_interactive(struct tinywl_toplevel *toplevel,
 		enum tinywl_cursor_mode mode, uint32_t edges) {
 	/* This function sets up an interactive move or resize operation, where the
-	 * compositor stops propegating pointer events to clients and instead
+	 * compositor stops propagating pointer events to clients and instead
 	 * consumes them itself, to move or resize windows. */
 	struct tinywl_server *server = toplevel->server;
 
@@ -906,7 +906,7 @@ int main(int argc, char *argv[]) {
 
 	struct tinywl_server server = {0};
 	/* The Wayland display is managed by libwayland. It handles accepting
-	 * clients from the Unix socket, manging Wayland globals, and so on. */
+	 * clients from the Unix socket, managing Wayland globals, and so on. */
 	server.wl_display = wl_display_create();
 	/* The backend is a wlroots feature which abstracts the underlying input and
 	 * output hardware. The autocreate option will choose the most suitable

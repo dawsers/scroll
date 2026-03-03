@@ -290,7 +290,7 @@ VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd) 
 		log_phdev(&phdev_props);
 
 		if (phdev_props.apiVersion < VK_API_VERSION_1_1) {
-			// NOTE: we could additionaly check whether the
+			// NOTE: we could additionally check whether the
 			// VkPhysicalDeviceProperties2KHR extension is supported but
 			// implementations not supporting 1.1 are unlikely in future
 			continue;

@@ -156,7 +156,7 @@ static void init_dmabuf_formats(struct wlr_egl *egl) {
 		}
 
 		if (modifiers_len == 0) {
-			// Asume the linear layout is supported if the driver doesn't
+			// Assume the linear layout is supported if the driver doesn't
 			// explicitly say otherwise
 			wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt,
 				DRM_FORMAT_MOD_LINEAR);

@@ -78,7 +78,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	if (options->transform != WL_OUTPUT_TRANSFORM_NORMAL ||
 			src_box_transformed.width != dst_box.width ||
 			src_box_transformed.height != dst_box.height) {
-		// Cosinus/sinus values are extact integers for enum wl_output_transform entries
+		// Cosinus/sinus values are exact integers for enum wl_output_transform entries
 		int tr_cos = 1, tr_sin = 0, tr_x = 0, tr_y = 0;
 		switch (options->transform) {
 		case WL_OUTPUT_TRANSFORM_NORMAL:

@@ -234,7 +234,7 @@ struct wlr_vk_render_buffer_out {
 	bool transitioned;
 };
 
-// Renderer-internal represenation of an wlr_buffer imported for rendering.
+// Renderer-internal representation of an wlr_buffer imported for rendering.
 struct wlr_vk_render_buffer {
 	struct wlr_buffer *wlr_buffer;
 	struct wlr_addon addon;

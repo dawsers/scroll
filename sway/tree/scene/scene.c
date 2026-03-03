@@ -3052,7 +3052,7 @@ bool sway_scene_output_build_state(struct sway_scene_output *scene_output,
 		pixman_region32_init(&acc_damage);
 		struct highlight_region *damage, *tmp_damage;
 		wl_list_for_each_safe(damage, tmp_damage, regions, link) {
-			// remove overlaping damage regions
+			// remove overlapping damage regions
 			pixman_region32_subtract(&damage->region, &damage->region, &acc_damage);
 			pixman_region32_union(&acc_damage, &acc_damage, &damage->region);
 
