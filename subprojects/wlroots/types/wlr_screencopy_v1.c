@@ -505,7 +505,7 @@ static void capture_output(struct wl_client *wl_client,
 	wl_resource_set_implementation(frame->resource, &frame_impl, frame,
 		frame_handle_resource_destroy);
 
-	if (output == NULL) {
+	if (output == NULL || !output->enabled) {
 		wl_resource_set_user_data(frame->resource, NULL);
 		zwlr_screencopy_frame_v1_send_failed(frame->resource);
 		free(frame);
@@ -521,10 +521,6 @@ static void capture_output(struct wl_client *wl_client,
 
 	wl_signal_add(&output->events.destroy, &frame->output_destroy);
 	frame->output_destroy.notify = frame_handle_output_destroy;
-
-	if (output == NULL || !output->enabled) {
-		goto error;
-	}
 
 	struct wlr_renderer *renderer = output->renderer;
 	assert(renderer);
