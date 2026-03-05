@@ -110,6 +110,10 @@ static const struct wlr_ext_image_capture_source_v1_interface output_source_impl
 static void source_update_buffer_constraints(struct wlr_ext_output_image_capture_source_v1 *source) {
 	struct wlr_output *output = source->output;
 
+	if (!output->enabled) {
+		return;
+	}
+
 	if (!wlr_output_configure_primary_swapchain(output, NULL, &output->swapchain)) {
 		return;
 	}
@@ -123,7 +127,8 @@ static void source_handle_output_commit(struct wl_listener *listener,
 	struct wlr_ext_output_image_capture_source_v1 *source = wl_container_of(listener, source, output_commit);
 	struct wlr_output_event_commit *event = data;
 
-	if (event->state->committed & (WLR_OUTPUT_STATE_MODE | WLR_OUTPUT_STATE_RENDER_FORMAT)) {
+	if (event->state->committed & (WLR_OUTPUT_STATE_MODE |
+			WLR_OUTPUT_STATE_RENDER_FORMAT | WLR_OUTPUT_STATE_ENABLED)) {
 		source_update_buffer_constraints(source);
 	}
 
