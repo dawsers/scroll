@@ -1299,7 +1299,7 @@ static const struct wlr_output_impl output_impl = {
 	.get_primary_formats = drm_connector_get_primary_formats,
 };
 
-bool wlr_output_is_drm(struct wlr_output *output) {
+bool wlr_output_is_drm(const struct wlr_output *output) {
 	return output->impl == &output_impl;
 }
 

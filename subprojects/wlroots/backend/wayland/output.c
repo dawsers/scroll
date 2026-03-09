@@ -1027,7 +1027,7 @@ static const struct wlr_output_impl output_impl = {
 	.get_primary_formats = output_get_formats,
 };
 
-bool wlr_output_is_wl(struct wlr_output *wlr_output) {
+bool wlr_output_is_wl(const struct wlr_output *wlr_output) {
 	return wlr_output->impl == &output_impl;
 }
 

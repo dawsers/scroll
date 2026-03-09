@@ -106,7 +106,7 @@ static const struct wlr_output_impl output_impl = {
 	.move_cursor = output_move_cursor,
 };
 
-bool wlr_output_is_headless(struct wlr_output *wlr_output) {
+bool wlr_output_is_headless(const struct wlr_output *wlr_output) {
 	return wlr_output->impl == &output_impl;
 }
 

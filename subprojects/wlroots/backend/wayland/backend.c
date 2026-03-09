@@ -577,7 +577,7 @@ static const struct wlr_backend_impl backend_impl = {
 	.get_drm_fd = backend_get_drm_fd,
 };
 
-bool wlr_backend_is_wl(struct wlr_backend *b) {
+bool wlr_backend_is_wl(const struct wlr_backend *b) {
 	return b->impl == &backend_impl;
 }
 

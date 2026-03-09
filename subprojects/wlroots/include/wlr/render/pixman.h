@@ -14,8 +14,8 @@
 
 struct wlr_renderer *wlr_pixman_renderer_create(void);
 
-bool wlr_renderer_is_pixman(struct wlr_renderer *wlr_renderer);
-bool wlr_texture_is_pixman(struct wlr_texture *texture);
+bool wlr_renderer_is_pixman(const struct wlr_renderer *wlr_renderer);
+bool wlr_texture_is_pixman(const struct wlr_texture *texture);
 
 pixman_image_t *wlr_pixman_renderer_get_buffer_image(
     struct wlr_renderer *wlr_renderer, struct wlr_buffer *wlr_buffer);

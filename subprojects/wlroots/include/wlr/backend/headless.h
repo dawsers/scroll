@@ -25,7 +25,7 @@ struct wlr_backend *wlr_headless_backend_create(struct wl_event_loop *loop);
 struct wlr_output *wlr_headless_add_output(struct wlr_backend *backend,
 	unsigned int width, unsigned int height);
 
-bool wlr_backend_is_headless(struct wlr_backend *backend);
-bool wlr_output_is_headless(struct wlr_output *output);
+bool wlr_backend_is_headless(const struct wlr_backend *backend);
+bool wlr_output_is_headless(const struct wlr_output *output);
 
 #endif

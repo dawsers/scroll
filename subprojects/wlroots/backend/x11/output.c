@@ -711,7 +711,7 @@ void handle_x11_configure_notify(struct wlr_x11_output *output,
 	wlr_output_state_finish(&state);
 }
 
-bool wlr_output_is_x11(struct wlr_output *wlr_output) {
+bool wlr_output_is_x11(const struct wlr_output *wlr_output) {
 	return wlr_output->impl == &output_impl;
 }
 

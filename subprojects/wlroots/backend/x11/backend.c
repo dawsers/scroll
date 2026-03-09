@@ -218,7 +218,7 @@ static const struct wlr_backend_impl backend_impl = {
 	.get_drm_fd = backend_get_drm_fd,
 };
 
-bool wlr_backend_is_x11(struct wlr_backend *backend) {
+bool wlr_backend_is_x11(const struct wlr_backend *backend) {
 	return backend->impl == &backend_impl;
 }
 

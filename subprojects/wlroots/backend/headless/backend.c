@@ -81,6 +81,6 @@ struct wlr_backend *wlr_headless_backend_create(struct wl_event_loop *loop) {
 	return &backend->backend;
 }
 
-bool wlr_backend_is_headless(struct wlr_backend *backend) {
+bool wlr_backend_is_headless(const struct wlr_backend *backend) {
 	return backend->impl == &backend_impl;
 }

@@ -39,8 +39,8 @@ struct wlr_drm_lease {
 struct wlr_backend *wlr_drm_backend_create(struct wlr_session *session,
 	struct wlr_device *dev, struct wlr_backend *parent);
 
-bool wlr_backend_is_drm(struct wlr_backend *backend);
-bool wlr_output_is_drm(struct wlr_output *output);
+bool wlr_backend_is_drm(const struct wlr_backend *backend);
+bool wlr_output_is_drm(const struct wlr_output *output);
 
 /**
  * Get the parent DRM backend, if any.

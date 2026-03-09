@@ -46,7 +46,7 @@ struct wlr_output *wlr_wl_output_create_from_surface(struct wlr_backend *backend
 /**
  * Check whether the provided backend is a Wayland backend.
  */
-bool wlr_backend_is_wl(struct wlr_backend *backend);
+bool wlr_backend_is_wl(const struct wlr_backend *backend);
 
 /**
  * Check whether the provided input device is a Wayland input device.
@@ -56,7 +56,7 @@ bool wlr_input_device_is_wl(struct wlr_input_device *device);
 /**
  * Check whether the provided output device is a Wayland output device.
  */
-bool wlr_output_is_wl(struct wlr_output *output);
+bool wlr_output_is_wl(const struct wlr_output *output);
 
 /**
  * Sets the title of a struct wlr_output which is a Wayland toplevel.

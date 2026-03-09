@@ -16,7 +16,7 @@
 
 static const struct wlr_texture_impl texture_impl;
 
-bool wlr_texture_is_gles2(struct wlr_texture *wlr_texture) {
+bool wlr_texture_is_gles2(const struct wlr_texture *wlr_texture) {
 	return wlr_texture->impl == &texture_impl;
 }
 

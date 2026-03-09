@@ -95,7 +95,7 @@ static const struct wlr_backend_impl backend_impl = {
 	.commit = backend_commit,
 };
 
-bool wlr_backend_is_drm(struct wlr_backend *b) {
+bool wlr_backend_is_drm(const struct wlr_backend *b) {
 	return b->impl == &backend_impl;
 }
 

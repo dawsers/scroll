@@ -31,7 +31,7 @@
 static const struct wlr_renderer_impl renderer_impl;
 static const struct wlr_render_timer_impl render_timer_impl;
 
-bool wlr_renderer_is_gles2(struct wlr_renderer *wlr_renderer) {
+bool wlr_renderer_is_gles2(const struct wlr_renderer *wlr_renderer) {
 	return wlr_renderer->impl == &renderer_impl;
 }
 
@@ -42,7 +42,7 @@ struct wlr_gles2_renderer *gles2_get_renderer(
 	return renderer;
 }
 
-bool wlr_render_timer_is_gles2(struct wlr_render_timer *timer) {
+bool wlr_render_timer_is_gles2(const struct wlr_render_timer *timer) {
 	return timer->impl == &render_timer_impl;
 }
 

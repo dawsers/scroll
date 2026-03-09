@@ -249,7 +249,7 @@ struct x11_data_source {
 static const struct wlr_data_source_impl data_source_impl;
 
 bool data_source_is_xwayland(
-		struct wlr_data_source *wlr_source) {
+		const struct wlr_data_source *wlr_source) {
 	return wlr_source->impl == &data_source_impl;
 }
 
@@ -292,7 +292,7 @@ static const struct wlr_primary_selection_source_impl
 	primary_selection_source_impl;
 
 bool primary_selection_source_is_xwayland(
-		struct wlr_primary_selection_source *wlr_source) {
+		const struct wlr_primary_selection_source *wlr_source) {
 	return wlr_source->impl == &primary_selection_source_impl;
 }
 

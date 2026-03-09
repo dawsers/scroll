@@ -155,7 +155,7 @@ static const struct wlr_backend_impl backend_impl = {
 	.destroy = backend_destroy,
 };
 
-bool wlr_backend_is_libinput(struct wlr_backend *b) {
+bool wlr_backend_is_libinput(const struct wlr_backend *b) {
 	return b->impl == &backend_impl;
 }
 

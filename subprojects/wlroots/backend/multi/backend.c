@@ -173,7 +173,7 @@ struct wlr_backend *wlr_multi_backend_create(struct wl_event_loop *loop) {
 	return &backend->backend;
 }
 
-bool wlr_backend_is_multi(struct wlr_backend *b) {
+bool wlr_backend_is_multi(const struct wlr_backend *b) {
 	return b->impl == &backend_impl;
 }
 

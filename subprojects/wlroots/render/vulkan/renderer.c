@@ -48,7 +48,7 @@ static bool default_debug = true;
 
 static const struct wlr_renderer_impl renderer_impl;
 
-bool wlr_renderer_is_vk(struct wlr_renderer *wlr_renderer) {
+bool wlr_renderer_is_vk(const struct wlr_renderer *wlr_renderer) {
 	return wlr_renderer->impl == &renderer_impl;
 }
 

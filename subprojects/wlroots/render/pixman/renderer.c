@@ -12,7 +12,7 @@
 
 static const struct wlr_renderer_impl renderer_impl;
 
-bool wlr_renderer_is_pixman(struct wlr_renderer *wlr_renderer) {
+bool wlr_renderer_is_pixman(const struct wlr_renderer *wlr_renderer) {
 	return wlr_renderer->impl == &renderer_impl;
 }
 
@@ -119,7 +119,7 @@ static struct wlr_pixman_buffer *get_buffer(
 
 static const struct wlr_texture_impl texture_impl;
 
-bool wlr_texture_is_pixman(struct wlr_texture *texture) {
+bool wlr_texture_is_pixman(const struct wlr_texture *texture) {
 	return texture->impl == &texture_impl;
 }
 

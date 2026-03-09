@@ -31,7 +31,7 @@ struct wlr_output *wlr_x11_output_create(struct wlr_backend *backend);
 /**
  * Check whether this backend is an X11 backend.
  */
-bool wlr_backend_is_x11(struct wlr_backend *backend);
+bool wlr_backend_is_x11(const struct wlr_backend *backend);
 
 /**
  * Check whether this input device is an X11 input device.
@@ -41,7 +41,7 @@ bool wlr_input_device_is_x11(struct wlr_input_device *device);
 /**
  * Check whether this output device is an X11 output device.
  */
-bool wlr_output_is_x11(struct wlr_output *output);
+bool wlr_output_is_x11(const struct wlr_output *output);
 
 /**
  * Sets the title of a struct wlr_output which is an X11 window.
