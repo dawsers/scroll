@@ -929,7 +929,7 @@ on the overlaid label.
 
 You can call `jump` from any mode: overview or normal mode.
 
-There are also three special `jump` modes:
+There are also other special `jump` modes:
 
 `jump workspaces` will show you a preview of all the available workspaces on
 their respective monitor. You can use this mode to preview and quickly jump
@@ -945,11 +945,24 @@ of them.
 you can quickly jump to any of them. It is a good substitute for tabs, because
 you also see the content of the windows.
 
+`jump all` will show, for each monitor, all the windows of all the workspaces
+assigned to that monitor, allowing you to quickly focus any window open on any
+workspace.
+
 ``` config
-    bindsym --no-repeat $mod+slash jump
-    bindsym --no-repeat $mod+Shift+slash jump container
-    bindsym --no-repeat $mod+Ctrl+slash jump workspaces
-    bindsym --no-repeat $mod+Alt+slash jump floating
+mode "jump" {
+    bindsym  slash jump; mode default
+    bindsym  c jump container; mode default
+    bindsym  w jump workspaces; mode default
+    bindsym  f jump floating; mode default
+    bindsym  a jump all; mode default
+    bindsym  s scratchpad jump; mode default
+    bindsym  t trailmark jump; mode default
+
+    # Return to default mode
+    bindsym Escape mode "default"
+}
+bindsym  $mod+slash mode "jump"
 ```
 
 You can also click on the item (container, workspace etc.) to exit jump mode

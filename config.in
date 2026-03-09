@@ -272,10 +272,19 @@ bindsym $mod+Shift+backslash mode "wssplit"
     # jump_labels_background #15309eFF
     # jump_labels_scale 0.9
     # jump_labels_keys asdf
-    bindsym --no-repeat $mod+slash jump
-    bindsym --no-repeat $mod+Shift+slash jump container
-    bindsym --no-repeat $mod+Ctrl+slash jump workspaces
-    bindsym --no-repeat $mod+Alt+slash jump floating
+mode "jump" {
+    bindsym  slash jump; mode default
+    bindsym  c jump container; mode default
+    bindsym  w jump workspaces; mode default
+    bindsym  f jump floating; mode default
+    bindsym  a jump all; mode default
+    bindsym  s scratchpad jump; mode default
+    bindsym  t trailmark jump; mode default
+
+    # Return to default mode
+    bindsym Escape mode "default"
+}
+bindsym  $mod+slash mode "jump"
 
     # Content
     bindsym $mod+comma scale_content incr -0.05

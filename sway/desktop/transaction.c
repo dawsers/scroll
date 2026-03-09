@@ -1154,28 +1154,56 @@ static void animate_workspace_floating(struct sway_workspace *ws) {
 	double t, x, y, anim_scale;
 	animation_get_values(&t, &x, &y, &anim_scale);
 
+	double bminx = DBL_MAX, bmaxx = -DBL_MAX, bminy = DBL_MAX, bmaxy = - DBL_MAX;
+	if (layout_scale_enabled(ws)) {
+		for (int i = 0; i < ws->current.floating->length; i++) {
+			struct sway_container *child = ws->current.floating->items[i];
+			if (child->current.fullscreen_mode != FULLSCREEN_NONE) {
+				continue;
+			}
+			animation_update_container(child, ws->width, ws->height, t, x, y, anim_scale);
+			if (child->animation.xt < bminx) {
+				bminx = child->animation.xt;
+			}
+			if (child->animation.xt + child->animation.wt > bmaxx) {
+				bmaxx = child->animation.xt + child->animation.wt;
+			}
+			if (child->animation.yt < bminy) {
+				bminy = child->animation.yt;
+			}
+			if (child->animation.yt + child->animation.ht > bmaxy) {
+				bmaxy = child->animation.yt + child->animation.ht;
+			}
+		}
+	}
 	for (int i = 0; i < ws->current.floating->length; i++) {
 		struct sway_container *child = ws->current.floating->items[i];
-
 		if (child->current.fullscreen_mode != FULLSCREEN_NONE) {
 			continue;
 		}
-
-		animation_update_container(child, ws->width, ws->height, t, x, y, anim_scale);
-
 		if (layout_scale_enabled(ws)) {
+			double x, y;
 			const float scale = layout_scale_get(ws);
-			const double minx = ws->output->lx + 0.5 * ws->output->width * (1.0 - scale);
-			const double miny = ws->output->ly + 0.5 * ws->output->height * (1.0 - scale);
-			const double x = minx + scale * (child->animation.xt - ws->output->lx);
-			const double y = miny + scale * (child->animation.yt - ws->output->ly);
+			if (ws->output->width > scale * (bmaxx - bminx) + 1.0) {
+				// Center floating windows
+				const double minx = ws->output->lx + 0.5 * (ws->output->width - scale * (bmaxx - bminx));
+				x = minx + scale * (child->animation.xt - bminx);
+			} else {
+				x = ws->output->lx + scale * (child->animation.xt - bminx);
+			}
+			if (ws->output->height > scale * (bmaxy - bminy) + 1.0) {
+				// Center floating windows
+				const double miny = ws->output->ly + 0.5 * (ws->output->height - scale * (bmaxy - bminy));
+				y = miny + scale * (child->animation.yt - bminy);
+			} else {
+				y = ws->output->ly + scale * (child->animation.yt - bminy);
+			}
 			sway_scene_node_set_position(&child->scene_tree->node, x, y);
-
 		} else {
+			animation_update_container(child, ws->width, ws->height, t, x, y, anim_scale);
 			sway_scene_node_set_position(&child->scene_tree->node,
 				child->animation.xt, child->animation.yt);
 		}
-
 		animate_container(child, child->animation.wt, child->animation.ht, true, ws->gaps_inner, ws);
 	}
 }

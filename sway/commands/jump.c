@@ -70,6 +70,8 @@ struct cmd_results *cmd_jump(int argc, char **argv) {
 				return cmd_results_new(CMD_INVALID, "No container selected.");
 			}
 			layout_jump_container(con);
+		} else if(strcasecmp(argv[0], "all") == 0) {
+			layout_jump_all();
 		} else if(strcasecmp(argv[0], "floating") == 0) {
 			layout_jump_floating();
 		} else if(strcasecmp(argv[0], "tiling") == 0) {

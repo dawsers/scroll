@@ -126,6 +126,8 @@ struct sway_container {
 		struct sway_text_node *text;
 		int32_t id;
 		bool jumping;
+		struct sway_workspace *workspace;
+		struct sway_container *parent;
 		double x, y;	// original positions for floating windows
 	} jump;
 
