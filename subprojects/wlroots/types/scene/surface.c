@@ -38,7 +38,7 @@ static struct wlr_output *get_surface_frame_pacing_output(struct wlr_surface *su
 	return frame_pacing_output;
 }
 
-static bool get_tf_preference(enum wlr_color_transfer_function tf) {
+static int get_tf_preference(enum wlr_color_transfer_function tf) {
 	switch (tf) {
 	case WLR_COLOR_TRANSFER_FUNCTION_GAMMA22:
 		return 0;
@@ -52,7 +52,7 @@ static bool get_tf_preference(enum wlr_color_transfer_function tf) {
 	abort(); // unreachable
 }
 
-static bool get_primaries_preference(enum wlr_color_named_primaries primaries) {
+static int get_primaries_preference(enum wlr_color_named_primaries primaries) {
 	switch (primaries) {
 	case WLR_COLOR_NAMED_PRIMARIES_SRGB:
 		return 0;
