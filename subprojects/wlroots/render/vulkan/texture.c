@@ -653,7 +653,7 @@ VkImage vulkan_import_dmabuf(struct wlr_vk_renderer *renderer,
 			.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
 		};
 
-		vkGetImageMemoryRequirements2(dev, &memri, &memr);
+		renderer->dev->api.vkGetImageMemoryRequirements2KHR(dev, &memri, &memr);
 		int mem = vulkan_find_mem_type(renderer->dev, 0,
 			memr.memoryRequirements.memoryTypeBits & fdp.memoryTypeBits);
 		if (mem < 0) {
@@ -712,7 +712,7 @@ VkImage vulkan_import_dmabuf(struct wlr_vk_renderer *renderer,
 		}
 	}
 
-	res = vkBindImageMemory2(dev, mem_count, bindi);
+	res = renderer->dev->api.vkBindImageMemory2KHR(dev, mem_count, bindi);
 	if (res != VK_SUCCESS) {
 		wlr_vk_error("vkBindMemory failed", res);
 		goto error_image;

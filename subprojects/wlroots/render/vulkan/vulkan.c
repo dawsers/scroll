@@ -81,21 +81,6 @@ static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT
 }
 
 struct wlr_vk_instance *vulkan_instance_create(bool debug) {
-	// we require vulkan 1.1
-	PFN_vkEnumerateInstanceVersion pfEnumInstanceVersion =
-		(PFN_vkEnumerateInstanceVersion)
-		vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion");
-	if (!pfEnumInstanceVersion) {
-		wlr_log(WLR_ERROR, "wlroots requires vulkan 1.1 which is not available");
-		return NULL;
-	}
-
-	uint32_t ini_version;
-	if (pfEnumInstanceVersion(&ini_version) != VK_SUCCESS ||
-			ini_version < VK_API_VERSION_1_1) {
-		wlr_log(WLR_ERROR, "wlroots requires vulkan 1.1 which is not available");
-		return NULL;
-	}
 
 	uint32_t avail_extc = 0;
 	VkResult res;
@@ -125,7 +110,18 @@ struct wlr_vk_instance *vulkan_instance_create(bool debug) {
 	}
 
 	size_t extensions_len = 0;
-	const char *extensions[1] = {0};
+	const char *extensions[8] = {0};
+	extensions[extensions_len++] = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
+	extensions[extensions_len++] = VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME;
+	extensions[extensions_len++] = VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME;
+
+	for (size_t i = 0; i < extensions_len; i++) {
+		if (!check_extension(avail_ext_props, avail_extc, extensions[i])) {
+			wlr_log(WLR_ERROR, "vulkan: required instance extension %s not found",
+				extensions[i]);
+			goto error;
+		}
+	}
 
 	bool debug_utils_found = false;
 	if (debug && check_extension(avail_ext_props, avail_extc,
@@ -140,7 +136,7 @@ struct wlr_vk_instance *vulkan_instance_create(bool debug) {
 		.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 		.pEngineName = "wlroots",
 		.engineVersion = WLR_VERSION_NUM,
-		.apiVersion = VK_API_VERSION_1_1,
+		.apiVersion = VK_API_VERSION_1_0,
 	};
 
 	VkInstanceCreateInfo instance_info = {
@@ -282,19 +278,9 @@ VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd) 
 	for (uint32_t i = 0; i < num_phdevs; ++i) {
 		VkPhysicalDevice phdev = phdevs[i];
 
-		// check whether device supports vulkan 1.1, needed for
-		// vkGetPhysicalDeviceProperties2
 		VkPhysicalDeviceProperties phdev_props;
 		vkGetPhysicalDeviceProperties(phdev, &phdev_props);
-
 		log_phdev(&phdev_props);
-
-		if (phdev_props.apiVersion < VK_API_VERSION_1_1) {
-			// NOTE: we could additionally check whether the
-			// VkPhysicalDeviceProperties2KHR extension is supported but
-			// implementations not supporting 1.1 are unlikely in future
-			continue;
-		}
 
 		// check for extensions
 		uint32_t avail_extc = 0;
@@ -474,6 +460,12 @@ struct wlr_vk_device *vulkan_device_create(struct wlr_vk_instance *ini,
 	extensions[extensions_len++] = VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME;
 	extensions[extensions_len++] = VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME; // or vulkan 1.2
 	extensions[extensions_len++] = VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME; // or vulkan 1.3
+	extensions[extensions_len++] = VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME; // or vulkan 1.1
+	extensions[extensions_len++] = VK_KHR_BIND_MEMORY_2_EXTENSION_NAME; // or vulkan 1.1
+	extensions[extensions_len++] = VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME; // or vulkan 1.1
+	extensions[extensions_len++] = VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME; // or vulkan 1.1
+	extensions[extensions_len++] = VK_KHR_MAINTENANCE_1_EXTENSION_NAME; // or vulkan 1.1
+	extensions[extensions_len++] = VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME; // or vulkan 1.1
 
 	for (size_t i = 0; i < extensions_len; i++) {
 		if (!check_extension(avail_ext_props, avail_extc, extensions[i])) {
@@ -630,6 +622,10 @@ struct wlr_vk_device *vulkan_device_create(struct wlr_vk_instance *ini,
 	load_device_proc(dev, "vkGetSemaphoreCounterValueKHR",
 		&dev->api.vkGetSemaphoreCounterValueKHR);
 	load_device_proc(dev, "vkQueueSubmit2KHR", &dev->api.vkQueueSubmit2KHR);
+	load_device_proc(dev, "vkBindImageMemory2KHR", &dev->api.vkBindImageMemory2KHR);
+	load_device_proc(dev, "vkCreateSamplerYcbcrConversionKHR", &dev->api.vkCreateSamplerYcbcrConversionKHR);
+	load_device_proc(dev, "vkDestroySamplerYcbcrConversionKHR", &dev->api.vkDestroySamplerYcbcrConversionKHR);
+	load_device_proc(dev, "vkGetImageMemoryRequirements2KHR", &dev->api.vkGetImageMemoryRequirements2KHR);
 
 	if (has_external_semaphore_fd) {
 		load_device_proc(dev, "vkGetSemaphoreFdKHR", &dev->api.vkGetSemaphoreFdKHR);

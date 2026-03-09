@@ -1250,7 +1250,7 @@ static void vulkan_destroy(struct wlr_renderer *wlr_renderer) {
 		vkDestroyPipelineLayout(dev->dev, pipeline_layout->vk, NULL);
 		vkDestroyDescriptorSetLayout(dev->dev, pipeline_layout->ds, NULL);
 		vkDestroySampler(dev->dev, pipeline_layout->sampler, NULL);
-		vkDestroySamplerYcbcrConversion(dev->dev, pipeline_layout->ycbcr.conversion, NULL);
+		renderer->dev->api.vkDestroySamplerYcbcrConversionKHR(dev->dev, pipeline_layout->ycbcr.conversion, NULL);
 		free(pipeline_layout);
 	}
 
@@ -2234,10 +2234,10 @@ struct wlr_vk_pipeline_layout *get_or_create_pipeline_layout(
 			.yChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
 			.chromaFilter = VK_FILTER_LINEAR,
 		};
-		res = vkCreateSamplerYcbcrConversion(renderer->dev->dev,
+		res = renderer->dev->api.vkCreateSamplerYcbcrConversionKHR(renderer->dev->dev,
 			&conversion_create_info, NULL, &pipeline_layout->ycbcr.conversion);
 		if (res != VK_SUCCESS) {
-			wlr_vk_error("vkCreateSamplerYcbcrConversion", res);
+			wlr_vk_error("vkCreateSamplerYcbcrConversionKHR", res);
 			free(pipeline_layout);
 			return NULL;
 		}
