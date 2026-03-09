@@ -1,4 +1,4 @@
-include: https://git.sr.ht/~emersion/dalligi/blob/master/templates/multi.yml
+include: https://gitlab.freedesktop.org/emersion/dalligi/-/raw/master/templates/multi.yml
 alpine:
   extends: .dalligi
   pages: true
