@@ -108,6 +108,13 @@ void wlr_fbox_transform(struct wlr_fbox *dest, const struct wlr_fbox *box,
 #ifdef WLR_USE_UNSTABLE
 
 /**
+ * Checks whether two boxes intersect.
+ *
+ * Returns false if either box is empty.
+ */
+bool wlr_box_intersects(const struct wlr_box *a, const struct wlr_box *b);
+
+/**
  * Returns true if the two boxes are equal, false otherwise.
  */
 bool wlr_box_equal(const struct wlr_box *a, const struct wlr_box *b);

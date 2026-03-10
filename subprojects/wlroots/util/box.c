@@ -102,6 +102,15 @@ bool wlr_box_contains_box(const struct wlr_box *bigger, const struct wlr_box *sm
 		smaller->y + smaller->height <= bigger->y + bigger->height;
 }
 
+bool wlr_box_intersects(const struct wlr_box *a, const struct wlr_box *b) {
+	if (wlr_box_empty(a) || wlr_box_empty(b)) {
+		return false;
+	}
+
+	return a->x < b->x + b->width && b->x < a->x + a->width &&
+		a->y < b->y + b->height && b->y < a->y + a->height;
+}
+
 void wlr_box_transform(struct wlr_box *dest, const struct wlr_box *box,
 		enum wl_output_transform transform, int width, int height) {
 	struct wlr_box src = {0};
