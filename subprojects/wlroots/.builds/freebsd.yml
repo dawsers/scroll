@@ -32,6 +32,9 @@ tasks:
       meson setup build --fatal-meson-warnings -Dauto_features=enabled -Dallocators=gbm
       ninja -C build
       sudo ninja -C build install
+  - test: |
+      cd wlroots
+      meson test -C build --verbose
   - tinywl: |
       cd wlroots/tinywl
       make

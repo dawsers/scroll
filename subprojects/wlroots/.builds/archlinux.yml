@@ -37,6 +37,10 @@ tasks:
   - clang: |
       cd wlroots/build-clang
       ninja
+  - test: |
+      cd wlroots/build-gcc
+      meson test --verbose
+      meson test --benchmark --verbose
   - smoke-test: |
       cd wlroots/build-gcc/tinywl
       sudo modprobe vkms

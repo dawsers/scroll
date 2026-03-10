@@ -35,6 +35,9 @@ tasks:
       cd wlroots
       ninja -C build
       sudo ninja -C build install
+  - test: |
+      cd wlroots
+      meson test -C build --verbose
   - build-features-disabled: |
       cd wlroots
       meson setup build --reconfigure -Dauto_features=disabled
