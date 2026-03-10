@@ -7,5 +7,6 @@ option('backends', type: 'array', choices: ['auto', 'drm', 'libinput', 'x11'], v
 option('allocators', type: 'array', choices: ['auto', 'gbm', 'udmabuf'], value: ['auto'],
 	description: 'Select built-in allocators')
 option('session', type: 'feature', value: 'auto', description: 'Enable session support')
+option('tests', type: 'boolean', value: true, description: 'Build tests and benchmarks')
 option('color-management', type: 'feature', value: 'auto', description: 'Enable support for color management')
 option('libliftoff', type: 'feature', value: 'auto', description: 'Enable support for libliftoff')
