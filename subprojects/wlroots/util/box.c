@@ -4,6 +4,14 @@
 #include <wlr/util/box.h>
 #include <wlr/util/log.h>
 
+static int max(int a, int b) {
+	return a > b ? a : b;
+}
+
+static int min(int a, int b) {
+	return a < b ? a : b;
+}
+
 void wlr_box_closest_point(const struct wlr_box *box, double x, double y,
 		double *dest_x, double *dest_y) {
 	// if box is empty, then it contains no points, so no closest point either
@@ -56,10 +64,10 @@ bool wlr_box_intersection(struct wlr_box *dest, const struct wlr_box *box_a,
 		return false;
 	}
 
-	int x1 = fmax(box_a->x, box_b->x);
-	int y1 = fmax(box_a->y, box_b->y);
-	int x2 = fmin(box_a->x + box_a->width, box_b->x + box_b->width);
-	int y2 = fmin(box_a->y + box_a->height, box_b->y + box_b->height);
+	int x1 = max(box_a->x, box_b->x);
+	int y1 = max(box_a->y, box_b->y);
+	int x2 = min(box_a->x + box_a->width, box_b->x + box_b->width);
+	int y2 = min(box_a->y + box_a->height, box_b->y + box_b->height);
 
 	dest->x = x1;
 	dest->y = y1;
