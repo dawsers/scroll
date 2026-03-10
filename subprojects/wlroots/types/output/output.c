@@ -615,7 +615,7 @@ static bool output_basic_test(struct wlr_output *output,
 		};
 		struct wlr_box dst_box;
 		output_state_get_buffer_dst_box(state, &dst_box);
-		if (!wlr_box_intersection(&output_box, &output_box, &dst_box)) {
+		if (!wlr_box_intersects(&output_box, &dst_box)) {
 			wlr_log(WLR_ERROR, "Primary buffer is entirely off-screen or 0-sized");
 			return false;
 		}

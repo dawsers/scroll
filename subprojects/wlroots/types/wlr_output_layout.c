@@ -317,14 +317,12 @@ bool wlr_output_layout_contains_point(struct wlr_output_layout *layout,
 
 bool wlr_output_layout_intersects(struct wlr_output_layout *layout,
 		struct wlr_output *reference, const struct wlr_box *target_lbox) {
-	struct wlr_box out_box;
-
 	if (reference == NULL) {
 		struct wlr_output_layout_output *l_output;
 		wl_list_for_each(l_output, &layout->outputs, link) {
 			struct wlr_box output_box;
 			output_layout_output_get_box(l_output, &output_box, NULL);
-			if (wlr_box_intersection(&out_box, &output_box, target_lbox)) {
+			if (wlr_box_intersects(&output_box, target_lbox)) {
 				return true;
 			}
 		}
@@ -338,7 +336,7 @@ bool wlr_output_layout_intersects(struct wlr_output_layout *layout,
 
 		struct wlr_box output_box;
 		output_layout_output_get_box(l_output, &output_box, NULL);
-		return wlr_box_intersection(&out_box, &output_box, target_lbox);
+		return wlr_box_intersects(&output_box, target_lbox);
 	}
 }
 

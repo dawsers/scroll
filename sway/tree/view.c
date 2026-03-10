@@ -1251,9 +1251,9 @@ bool view_is_fully_visible(struct sway_view *view) {
 	for (int i = 0; i < workspace->floating->length; ++ i) {
 		struct sway_container *con = workspace->floating->items[i];
 		if (i > idx) {
-			struct wlr_box box, intersection;
+			struct wlr_box box;
 			container_get_box(con, &box);
-			if (wlr_box_intersection(&intersection, &box_c, &box)) {
+			if (wlr_box_intersects(&box_c, &box)) {
 				return false;
 			}
 		}

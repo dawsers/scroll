@@ -159,9 +159,8 @@ static void output_cursor_update_visible(struct wlr_output_cursor *cursor) {
 	struct wlr_box cursor_box;
 	output_cursor_get_box(cursor, &cursor_box);
 
-	struct wlr_box intersection;
 	cursor->visible =
-		wlr_box_intersection(&intersection, &output_box, &cursor_box);
+		wlr_box_intersects(&output_box, &cursor_box);
 }
 
 static bool output_pick_cursor_format(struct wlr_output *output,

@@ -238,7 +238,7 @@ static bool _scene_nodes_in_box(struct wlr_scene_node *node, struct wlr_box *box
 		struct wlr_box node_box = { .x = lx, .y = ly };
 		scene_node_get_size(node, &node_box.width, &node_box.height);
 
-		if (wlr_box_intersection(&node_box, &node_box, box) &&
+		if (wlr_box_intersects(&node_box, box) &&
 				iterator(node, lx, ly, user_data)) {
 			return true;
 		}
@@ -2673,8 +2673,7 @@ static void scene_output_for_each_scene_buffer(const struct wlr_box *output_box,
 		struct wlr_box node_box = { .x = lx, .y = ly };
 		scene_node_get_size(node, &node_box.width, &node_box.height);
 
-		struct wlr_box intersection;
-		if (wlr_box_intersection(&intersection, output_box, &node_box)) {
+		if (wlr_box_intersects(output_box, &node_box)) {
 			struct wlr_scene_buffer *scene_buffer =
 				wlr_scene_buffer_from_node(node);
 			user_iterator(scene_buffer, lx, ly, user_data);
