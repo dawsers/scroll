@@ -115,6 +115,7 @@ static void handle_x11_event(struct wlr_x11_backend *x11,
 		handle_x11_error(x11, ev);
 		break;
 	}
+	case XCB_DESTROY_NOTIFY:
 	case XCB_UNMAP_NOTIFY:
 	case XCB_MAP_NOTIFY:
 		break;
