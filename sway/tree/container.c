@@ -1088,6 +1088,7 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
 		lua_call(config->lua.state, 2, 0);
 	}
+	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 }
 
 void container_set_geometry_from_content(struct sway_container *con) {

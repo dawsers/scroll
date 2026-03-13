@@ -342,6 +342,34 @@ struct sway_animation_callbacks *animation_get_callbacks() {
 	return &animation->pending.callbacks;
 }
 
+#if 0
+const char *animation_get_type(struct sway_animation_path *path) {
+	if (path == animation->config.anim_disabled) {
+		return "disabled";
+	} else if (path == animation->config.anim_default) {
+		return "default";
+	} else if (path == animation->config.window_open) {
+		return "window_open";
+	} else if (path == animation->config.window_size) {
+		return "window_size";
+	} else if (path == animation->config.window_move) {
+		return "window_move";
+	} else if (path == animation->config.window_move_float) {
+		return "window_move_float";
+	} else if (path == animation->config.window_fullscreen) {
+		return "window_fullscreen";
+	} else if (path == animation->config.workspace_switch) {
+		return "workspace_switch";
+	} else if (path == animation->config.overview) {
+		return "overview";
+	} else if (path == animation->config.jump) {
+		return "jump";
+	} else {
+		return "invalid";
+	}
+}
+#endif
+
 // Set the type of the pending animation
 void animation_set_type(enum sway_animation_type anim) {
 	switch (anim) {

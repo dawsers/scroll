@@ -1646,6 +1646,17 @@ void config_default_animation_callbacks() {
 	animation_set_default_callbacks(&callbacks);
 }
 
+static bool server_requested_transaction(struct sway_transaction *transaction) {
+	for (int i = 0; i < transaction->instructions->length; ++i) {
+		struct sway_transaction_instruction *instruction =
+			transaction->instructions->items[i];
+		if (instruction->server_request) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static void transaction_commit_pending(void);
 
 static void transaction_progress(void) {
@@ -1655,11 +1666,18 @@ static void transaction_progress(void) {
 	if (server.queued_transaction->num_waiting > 0) {
 		return;
 	}
-	set_animation_data(server.queued_transaction);
+	bool server_request = server_requested_transaction(server.queued_transaction);
+	if (server_request) {
+		set_animation_data(server.queued_transaction);
+	}
 	transaction_apply(server.queued_transaction);
-	animation_end();
+	if (server_request) {
+		animation_end();
+	}
 	arrange_root(root);
-	animation_begin();
+	if (server_request) {
+		animation_begin();
+	}
 	cursor_rebase_all();
 	transaction_destroy(server.queued_transaction);
 	server.queued_transaction = NULL;
@@ -1931,8 +1949,10 @@ static void _transaction_commit_dirty(bool server_request) {
 	}
 	server.dirty_nodes->length = 0;
 
-	// Save states to animation variables and old_content
-	save_animation_variables();
+	if (server_request) {
+		// Save states to animation variables and old_content
+		save_animation_variables();
+	}
 
 	transaction_commit_pending();
 }
