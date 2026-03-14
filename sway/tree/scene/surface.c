@@ -94,12 +94,42 @@ static void handle_scene_buffer_outputs_update(
 		struct wl_listener *listener, void *data) {
 	struct sway_scene_surface *surface =
 		wl_container_of(listener, surface, outputs_update);
+	struct sway_scene_outputs_update_event *event = data;
 	struct sway_scene *scene = scene_node_get_root(&surface->buffer->node);
 
 	// If the surface is no longer visible on any output, keep the last sent
 	// preferred configuration to avoid unnecessary redraws
-	if (wl_list_empty(&surface->surface->current_outputs)) {
+	if (event->size == 0) {
 		return;
+	}
+
+	// To avoid sending redundant leave/enter events when a surface is hidden and then shown
+	// without moving to a different output the following policy is implemented:
+	//
+	// 1. When a surface transitions from being visible on >0 outputs to being visible on 0 outputs
+	//    don't send any leave events.
+	//
+	// 2. When a surface transitions from being visible on 0 outputs to being visible on >0 outputs
+	//    send leave events for all entered outputs on which the surface is no longer visible as
+	//    well as enter events for any outputs not already entered.
+	struct wlr_surface_output *entered_output, *tmp;
+	wl_list_for_each_safe(entered_output, tmp, &surface->surface->current_outputs, link) {
+		bool active = false;
+		for (size_t i = 0; i < event->size; i++) {
+			if (entered_output->output == event->active[i]->output) {
+				active = true;
+				break;
+			}
+		}
+		if (!active) {
+			wlr_surface_send_leave(surface->surface, entered_output->output);
+		}
+	}
+
+	for (size_t i = 0; i < event->size; i++) {
+		// This function internally checks if an enter event was already sent for the output
+		// to avoid sending redundant events.
+		wlr_surface_send_enter(surface->surface, event->active[i]->output);
 	}
 
 	double scale = get_surface_preferred_buffer_scale(surface->surface);
@@ -112,24 +142,6 @@ static void handle_scene_buffer_outputs_update(
 		wlr_color_manager_v1_set_surface_preferred_image_description(scene->color_manager_v1,
 			surface->surface, &img_desc);
 	}
-}
-
-static void handle_scene_buffer_output_enter(
-		struct wl_listener *listener, void *data) {
-	struct sway_scene_surface *surface =
-		wl_container_of(listener, surface, output_enter);
-	struct sway_scene_output *output = data;
-
-	wlr_surface_send_enter(surface->surface, output->output);
-}
-
-static void handle_scene_buffer_output_leave(
-		struct wl_listener *listener, void *data) {
-	struct sway_scene_surface *surface =
-		wl_container_of(listener, surface, output_leave);
-	struct sway_scene_output *output = data;
-
-	wlr_surface_send_leave(surface->surface, output->output);
 }
 
 static void handle_scene_buffer_output_sample(
@@ -408,8 +420,6 @@ static void surface_addon_destroy(struct wlr_addon *addon) {
 	wlr_addon_finish(&surface->addon);
 
 	wl_list_remove(&surface->outputs_update.link);
-	wl_list_remove(&surface->output_enter.link);
-	wl_list_remove(&surface->output_leave.link);
 	wl_list_remove(&surface->output_sample.link);
 	wl_list_remove(&surface->frame_done.link);
 	wl_list_remove(&surface->surface_destroy.link);
@@ -454,12 +464,6 @@ struct sway_scene_surface *sway_scene_surface_create(struct sway_scene_tree *par
 
 	surface->outputs_update.notify = handle_scene_buffer_outputs_update;
 	wl_signal_add(&scene_buffer->events.outputs_update, &surface->outputs_update);
-
-	surface->output_enter.notify = handle_scene_buffer_output_enter;
-	wl_signal_add(&scene_buffer->events.output_enter, &surface->output_enter);
-
-	surface->output_leave.notify = handle_scene_buffer_output_leave;
-	wl_signal_add(&scene_buffer->events.output_leave, &surface->output_leave);
 
 	surface->output_sample.notify = handle_scene_buffer_output_sample;
 	wl_signal_add(&scene_buffer->events.output_sample, &surface->output_sample);

@@ -131,8 +131,6 @@ struct wlr_scene_surface {
 		struct wlr_addon addon;
 
 		struct wl_listener outputs_update;
-		struct wl_listener output_enter;
-		struct wl_listener output_leave;
 		struct wl_listener output_sample;
 		struct wl_listener frame_done;
 		struct wl_listener surface_destroy;
@@ -171,8 +169,6 @@ struct wlr_scene_buffer {
 
 	struct {
 		struct wl_signal outputs_update; // struct wlr_scene_outputs_update_event
-		struct wl_signal output_enter; // struct wlr_scene_output
-		struct wl_signal output_leave; // struct wlr_scene_output
 		struct wl_signal output_sample; // struct wlr_scene_output_sample_event
 		struct wl_signal frame_done; // struct wlr_scene_frame_done_event
 	} events;

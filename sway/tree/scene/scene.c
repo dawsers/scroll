@@ -136,24 +136,11 @@ void sway_scene_node_destroy(struct sway_scene_node *node) {
 	if (node->type == SWAY_SCENE_NODE_BUFFER) {
 		struct sway_scene_buffer *scene_buffer = sway_scene_buffer_from_node(node);
 
-		uint64_t active = scene_buffer->active_outputs;
-		if (active) {
-			struct sway_scene_output *scene_output;
-			wl_list_for_each(scene_output, &scene->outputs, link) {
-				if (active & (1ull << scene_output->index)) {
-					wl_signal_emit_mutable(&scene_buffer->events.output_leave,
-						scene_output);
-				}
-			}
-		}
-
 		scene_buffer_set_buffer(scene_buffer, NULL);
 		scene_buffer_set_texture(scene_buffer, NULL);
 		pixman_region32_fini(&scene_buffer->opaque_region);
 		wlr_drm_syncobj_timeline_unref(scene_buffer->wait_timeline);
 
-		assert(wl_list_empty(&scene_buffer->events.output_leave.listener_list));
-		assert(wl_list_empty(&scene_buffer->events.output_enter.listener_list));
 		assert(wl_list_empty(&scene_buffer->events.outputs_update.listener_list));
 		assert(wl_list_empty(&scene_buffer->events.output_sample.listener_list));
 		assert(wl_list_empty(&scene_buffer->events.frame_done.listener_list));
@@ -543,22 +530,6 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 			(struct wlr_linux_dmabuf_feedback_v1_init_options){0};
 	}
 
-	uint64_t old_active = scene_buffer->active_outputs;
-	scene_buffer->active_outputs = active_outputs;
-
-	struct sway_scene_output *scene_output;
-	wl_list_for_each(scene_output, outputs, link) {
-		uint64_t mask = 1ull << scene_output->index;
-		bool intersects = active_outputs & mask;
-		bool intersects_before = old_active & mask;
-
-		if (intersects && !intersects_before) {
-			wl_signal_emit_mutable(&scene_buffer->events.output_enter, scene_output);
-		} else if (!intersects && intersects_before) {
-			wl_signal_emit_mutable(&scene_buffer->events.output_leave, scene_output);
-		}
-	}
-
 	if (!scene_buffer->primary_output) {
 		// When no output contains a big enough fraction of the buffer, it means
 		// the primary output has been disconnected or we are exiting.
@@ -566,7 +537,7 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 	}
 
 	// Skip output update event if nothing was updated
-	if (old_active == active_outputs &&
+	if (scene_buffer->active_outputs == active_outputs &&
 			(!force || ((1ull << force->index) & ~active_outputs)) &&
 			old_primary_output == scene_buffer->primary_output) {
 		return;
@@ -579,6 +550,7 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 	};
 
 	size_t i = 0;
+	struct sway_scene_output *scene_output;
 	wl_list_for_each(scene_output, outputs, link) {
 		if (~active_outputs & (1ull << scene_output->index)) {
 			continue;
@@ -588,6 +560,7 @@ static void update_node_update_outputs(struct sway_scene_node *node,
 		outputs_array[i++] = scene_output;
 	}
 
+	scene_buffer->active_outputs = active_outputs;
 	wl_signal_emit_mutable(&scene_buffer->events.outputs_update, &event);
 }
 
@@ -1229,8 +1202,6 @@ struct sway_scene_buffer *sway_scene_buffer_create(struct sway_scene_tree *paren
 	scene_node_init(&scene_buffer->node, SWAY_SCENE_NODE_BUFFER, parent);
 
 	wl_signal_init(&scene_buffer->events.outputs_update);
-	wl_signal_init(&scene_buffer->events.output_enter);
-	wl_signal_init(&scene_buffer->events.output_leave);
 	wl_signal_init(&scene_buffer->events.output_sample);
 	wl_signal_init(&scene_buffer->events.frame_done);
 
