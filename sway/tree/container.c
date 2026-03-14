@@ -1022,6 +1022,11 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		return;
 	}
 
+	// If there is a container in full screen mode in this workspace, disable FS
+	if (container->pending.workspace && container->pending.workspace->fullscreen) {
+		container_set_fullscreen(container->pending.workspace->fullscreen, FULLSCREEN_NONE);
+	}
+
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_workspace *workspace = container->pending.workspace;
 	struct sway_container *focus = seat_get_focused_container(seat);
