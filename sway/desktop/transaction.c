@@ -1109,6 +1109,8 @@ static void animate_fullscreen(struct sway_scene_tree *tree,
 	view_reconfigure(fs->view);
 }
 
+static void animate_workspace_floating(struct sway_workspace *ws);
+
 static void arrange_workspace_floating(struct sway_workspace *ws) {
 	enum sway_layout_overview mode = layout_overview_mode(ws);
 	if (mode == OVERVIEW_ALL || mode == OVERVIEW_FLOATING) {
@@ -1145,6 +1147,11 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 
 		arrange_container(floater, true, ws->gaps_inner, ws);
 	}
+
+	// Make sure new floating window nodes are initialized in a correct
+	// position in case timed frames are already in flight, or they would
+	// render with incorrect geometry until the animation starts.
+	animate_workspace_floating(ws);
 }
 
 static void animate_workspace_floating(struct sway_workspace *ws) {
