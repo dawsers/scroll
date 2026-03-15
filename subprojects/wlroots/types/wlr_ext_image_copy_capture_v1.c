@@ -518,14 +518,16 @@ static void cursor_session_handle_get_capture_session(struct wl_client *client,
 		return;
 	}
 
-	cursor_session->capture_session_created = true;
-
+	struct wlr_ext_image_copy_capture_manager_v1 *manager = NULL;
 	struct wlr_ext_image_capture_source_v1 *source = NULL;
+
 	if (cursor_session != NULL) {
+		manager = cursor_session->manager;
+		cursor_session->capture_session_created = true;
 		source = &cursor_session->source->base;
 	}
 
-	session_create(cursor_session_resource, new_id, source, 0, cursor_session->manager);
+	session_create(cursor_session_resource, new_id, source, 0, manager);
 }
 
 static const struct ext_image_copy_capture_cursor_session_v1_interface cursor_session_impl = {
