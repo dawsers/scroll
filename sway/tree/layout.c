@@ -606,22 +606,23 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	// Create a container and add view
 	enum sway_container_layout mode = layout_get_type(workspace) == L_HORIZ ? L_VERT : L_HORIZ;
 	struct sway_container *parent = layout_wrap_into_container(view, mode);
+	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
 	// Set the container and view width/height
 	if (view->width_fraction <= 0.0) {
 		view->width_fraction = layout_get_default_width(workspace);
 		// Start the animation from the center of the workspace
 		view->current.x = workspace->x + 0.5 * workspace->width;
-		view->pending.x = view->current.x;
+		view->pending.x = workspace->x + scale * workspace->gaps_inner;
 		parent->current.x = view->current.x;
-		parent->pending.x = view->current.x;
+		parent->pending.x = view->pending.x;
 	}
 	parent->width_fraction = view->width_fraction;
 	if (view->height_fraction <= 0.0) {
 		view->height_fraction = layout_get_default_height(workspace);
 		view->current.y = workspace->y + 0.5 * workspace->height;
-		view->pending.y = view->current.y;
+		view->pending.y = workspace->y + scale * workspace->gaps_inner;
 		parent->current.y = view->current.y;
-		parent->pending.y = view->current.y;
+		parent->pending.y = view->pending.y;
 	}
 	parent->height_fraction = view->height_fraction;
 	// Insert the container
