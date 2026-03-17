@@ -1044,6 +1044,13 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		}
 		container_floating_set_default_size(container);
 		container_floating_resize_and_center(container);
+
+		// Save new toggle_size sizes in case container was toggled
+		container->toggle_size.x = container->pending.x;
+		container->toggle_size.y = container->pending.y;
+		container->toggle_size.width = container->pending.width;
+		container->toggle_size.height = container->pending.height;
+
 		if (old_parent) {
 			if (set_focus) {
 				seat_set_raw_focus(seat, &old_parent->node);
@@ -1070,6 +1077,8 @@ void container_set_floating(struct sway_container *container, bool enable) {
 	container_end_mouse_operation(container);
 
 	ipc_event_window(container, "floating");
+
+	layout_toggle_size_change_focus(&container->node, container, workspace);
 
 	// Lua callbacks
 	for (int i = 0; i < config->lua.cbs_view_float->length; ++i) {

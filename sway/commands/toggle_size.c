@@ -16,9 +16,6 @@ static const double EPSILON = 0.0001;
 static struct cmd_results *toggle_size(enum sway_toggle_size mode, double width_fraction,
 		double height_fraction) {
 	struct sway_container * current = config->handler_context.container;
-	if (current && container_is_floating(current)) {
-		return cmd_results_new(CMD_INVALID, "Cannot toggle_size floating containers");
-	}
 	struct sway_workspace *workspace = config->handler_context.workspace;
 	enum sway_toggle_size old_mode = layout_toggle_size_mode(workspace);
 	double old_width = layout_toggle_size_width_fraction(workspace);
@@ -74,9 +71,6 @@ struct cmd_results *cmd_toggle_size(int argc, char **argv) {
 		struct sway_container * current = config->handler_context.container;
 		if (!current) {
 			return cmd_results_new(CMD_INVALID, "toggle_size this needs an active container");
-		}
-		if (container_is_floating(current)) {
-			return cmd_results_new(CMD_INVALID, "Cannot toggle_size floating containers");
 		}
 		animation_set_type(ANIMATION_WINDOW_SIZE);
 		layout_toggle_size_container(current, width_fraction, height_fraction);

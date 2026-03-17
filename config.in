@@ -63,6 +63,7 @@ set $menu wmenu-run
 # Read `man 5 scroll-input` for more information about this section.
 
 ### Windows defaults
+#default_border csd
 default_border pixel 2
 gaps inner 4
 gaps outer 20
@@ -97,6 +98,7 @@ layout_heights [0.33333333 0.5 0.666666667 1.0]
 # focus_wrapping no
 # focus_on_window_activation focus
 # xdg_activation_force false
+# scratchpad_minimize false
 
 # Animations
 animations {

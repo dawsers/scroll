@@ -172,6 +172,7 @@ struct sway_container {
 		enum sway_toggle_size_state state;
 		double saved_width_fraction;
 		double saved_height_fraction;
+		double x, y, width, height;	// for floating containers
 	} toggle_size;
 
 	// Animation variables

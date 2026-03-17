@@ -3933,17 +3933,38 @@ double layout_toggle_size_height_fraction(struct sway_workspace *workspace) {
 }
 
 static void push_sizes(struct sway_container *container) {
+	if (container_is_floating(container)) {
+		container->toggle_size.x = container->pending.x;
+		container->toggle_size.y = container->pending.y;
+		container->toggle_size.width = container->pending.width;
+		container->toggle_size.height = container->pending.height;
+	}
 	container->toggle_size.saved_width_fraction = container->width_fraction;
 	container->toggle_size.saved_height_fraction = container->height_fraction;
 }
 
 static void pop_sizes(struct sway_container *container) {
+	if (container_is_floating(container)) {
+		container->pending.x = container->toggle_size.x;
+		container->pending.y = container->toggle_size.y;
+		container->pending.width = container->toggle_size.width;
+		container->pending.height = container->toggle_size.height;
+	}
 	container->width_fraction = container->toggle_size.saved_width_fraction;
 	container->height_fraction = container->toggle_size.saved_height_fraction;
 }
 
 static void set_sizes(struct sway_container *container, double width_fraction,
 		double height_fraction) {
+	if (container_is_floating(container)) {
+		struct sway_workspace *workspace = container->pending.workspace;
+		if (workspace) {
+			container->pending.width = workspace->width * width_fraction;
+			container->pending.height = workspace->height * height_fraction;
+			container->pending.x = workspace->x + 0.5 * (workspace->width - container->pending.width);
+			container->pending.y = workspace->y + 0.5 * (workspace->height - container->pending.height);
+		}
+	}
 	container->width_fraction = width_fraction;
 	container->height_fraction = height_fraction;
 }

@@ -18,6 +18,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/xdg_decoration.h"
+#include "sway/desktop/animation.h"
 
 static struct sway_xdg_popup *popup_create(
 	struct wlr_xdg_popup *wlr_popup, struct sway_view *view,
@@ -302,7 +303,8 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 		}
 		// XXX: https://github.com/swaywm/sway/issues/2176
 		wlr_xdg_surface_schedule_configure(xdg_surface);
-		uint32_t caps = WLR_XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN;
+		uint32_t caps = WLR_XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN |
+			WLR_XDG_TOPLEVEL_WM_CAPABILITIES_MAXIMIZE;
 		if (config->scratchpad_minimize) {
 			caps |= WLR_XDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE;
 		}
@@ -395,6 +397,11 @@ static void handle_request_maximize(struct wl_listener *listener, void *data) {
 		return;
 	}
 	wlr_xdg_surface_schedule_configure(toplevel->base);
+
+	struct sway_container *container = xdg_shell_view->view.container;
+	animation_set_type(ANIMATION_WINDOW_SIZE);
+	layout_toggle_size_container(container, 1.0, 1.0);
+	transaction_commit_dirty();
 }
 
 static void handle_request_minimize(struct wl_listener *listener, void *data) {
