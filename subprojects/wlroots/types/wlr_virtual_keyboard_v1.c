@@ -15,7 +15,7 @@ static const struct wlr_keyboard_impl keyboard_impl = {
 
 static const struct zwp_virtual_keyboard_v1_interface virtual_keyboard_impl;
 
-static struct wlr_virtual_keyboard_v1 *virtual_keyboard_from_resource(
+struct wlr_virtual_keyboard_v1 *wlr_virtual_keyboard_v1_from_resource(
 		struct wl_resource *resource) {
 	assert(wl_resource_instance_of(resource,
 	   &zwp_virtual_keyboard_v1_interface, &virtual_keyboard_impl));
@@ -39,7 +39,7 @@ static void virtual_keyboard_keymap(struct wl_client *client,
 		struct wl_resource *resource, uint32_t format, int32_t fd,
 		uint32_t size) {
 	struct wlr_virtual_keyboard_v1 *keyboard =
-		virtual_keyboard_from_resource(resource);
+		wlr_virtual_keyboard_v1_from_resource(resource);
 	if (keyboard == NULL) {
 		return;
 	}
@@ -76,7 +76,7 @@ static void virtual_keyboard_key(struct wl_client *client,
 		struct wl_resource *resource, uint32_t time, uint32_t key,
 		uint32_t state) {
 	struct wlr_virtual_keyboard_v1 *keyboard =
-		virtual_keyboard_from_resource(resource);
+		wlr_virtual_keyboard_v1_from_resource(resource);
 	if (keyboard == NULL) {
 		return;
 	}
@@ -99,7 +99,7 @@ static void virtual_keyboard_modifiers(struct wl_client *client,
 		struct wl_resource *resource, uint32_t mods_depressed,
 		uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
 	struct wlr_virtual_keyboard_v1 *keyboard =
-		virtual_keyboard_from_resource(resource);
+		wlr_virtual_keyboard_v1_from_resource(resource);
 	if (keyboard == NULL) {
 		return;
 	}
@@ -115,7 +115,7 @@ static void virtual_keyboard_modifiers(struct wl_client *client,
 
 static void virtual_keyboard_destroy_resource(struct wl_resource *resource) {
 	struct wlr_virtual_keyboard_v1 *keyboard =
-		virtual_keyboard_from_resource(resource);
+		wlr_virtual_keyboard_v1_from_resource(resource);
 	if (keyboard == NULL) {
 		return;
 	}

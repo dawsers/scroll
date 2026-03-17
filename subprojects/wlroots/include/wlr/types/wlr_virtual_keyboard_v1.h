@@ -38,6 +38,16 @@ struct wlr_virtual_keyboard_v1 {
 struct wlr_virtual_keyboard_manager_v1* wlr_virtual_keyboard_manager_v1_create(
 	struct wl_display *display);
 
+/**
+ * Get the struct wlr_virtual_keyboard_v1 corresponding to a zwp_virtual_keyboard_v1 resource.
+ *
+ * Asserts that the resource is a valid zwp_virtual_keyboard_v1 resource created by wlroots.
+ *
+ * Returns NULL if the resource is inert.
+ */
+struct wlr_virtual_keyboard_v1 *wlr_virtual_keyboard_v1_from_resource(
+		struct wl_resource *resource);
+
 struct wlr_virtual_keyboard_v1 *wlr_input_device_get_virtual_keyboard(
 	struct wlr_input_device *wlr_dev);
 
