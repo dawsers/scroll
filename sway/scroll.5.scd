@@ -260,12 +260,12 @@ The following commands may only be used in the configuration file.
 	window in the workspace, it will be maximized, unless you explicitly resize
 	it.
 
-*swaybg_command* <command>
-	Executes custom background _command_. Default is _swaybg_. Refer to
-	*scroll-output*(5) for more information.
-
-	It can be disabled by setting the command to a single dash:
-	_swaybg\_command -_
+*scratchpad_minimize* <true|false>
+	Default value is _false_. If _true_, minimizing a window through its CSD
+	decoration or a taskbar, will send it to the scratchpad. When un-minimizing
+	it from a taskbar, it will be inserted again into the tiling layout, until
+	then, it will be like any other window in the scratchpad, with the same
+	features and supporting the same commands.
 
 *scrollnag_command* <command>
 	Executes custom command for _scrollnag_. Default is _scrollnag_. Additional
@@ -276,6 +276,13 @@ The following commands may only be used in the configuration file.
 
 	It can be disabled by setting the command to a single dash:
 	_scrollnag\_command -_
+
+*swaybg_command* <command>
+	Executes custom background _command_. Default is _swaybg_. Refer to
+	*scroll-output*(5) for more information.
+
+	It can be disabled by setting the command to a single dash:
+	_swaybg\_command -_
 
 *workspace_layout* default|horizontal|vertical
 	Specifies the initial layout for new containers in an empty workspace.
@@ -1246,7 +1253,7 @@ The default colors are:
 :  #0c0c0c
 
 
-*default_border* normal|none|pixel [<n>]
+*default_border* normal|none|pixel|csd [<n>]
 	Set default border style for new tiled windows. Config reload won't affect
 	existing windows, only newly created ones after the reload.
 
@@ -1271,7 +1278,7 @@ The default colors are:
 	_dim_color_: Color used to dim the content when the window is not in focus.
 		Default is #00000040.
 
-*default_floating_border* normal|none|pixel [<n>]
+*default_floating_border* normal|none|pixel|csd [<n>]
 	Set default border style for new floating windows. This only applies to
 	windows that are spawned in floating mode, not windows that become floating
 	afterwards.

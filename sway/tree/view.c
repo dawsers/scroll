@@ -768,7 +768,43 @@ static void handle_foreign_destroy(
 	wl_list_remove(&view->foreign_activate_request.link);
 	wl_list_remove(&view->foreign_fullscreen_request.link);
 	wl_list_remove(&view->foreign_close_request.link);
+	if (config->scratchpad_minimize) {
+		wl_list_remove(&view->foreign_minimize.link);
+	}
 	wl_list_remove(&view->foreign_destroy.link);
+}
+
+static void handle_foreign_minimize(
+		struct wl_listener *listener, void *data) {
+	struct sway_view *view = wl_container_of(
+			listener, view, foreign_minimize);
+	struct wlr_foreign_toplevel_handle_v1_minimized_event *event = data;
+	struct sway_container *container = view->container;
+	if (!container->pending.workspace) {
+		while (container->pending.parent) {
+			container = container->pending.parent;
+		}
+	}
+	if(event->minimized) {
+		if (container->pending.workspace) {
+			struct sway_workspace *workspace = container->pending.workspace;
+			if (!container->scratchpad) {
+				root_scratchpad_add_container(container, NULL);
+			} else {
+				root_scratchpad_hide(container);
+			}
+			arrange_workspace(workspace);
+			transaction_commit_dirty();
+		}
+	} else if(container->scratchpad) {
+		root_scratchpad_show(container);
+		struct sway_workspace *workspace = container->pending.workspace;
+		if (workspace) {
+			container_set_floating(container, false);
+			arrange_workspace(workspace);
+			transaction_commit_dirty();
+		}
+	}
 }
 
 void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
@@ -856,6 +892,11 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view->foreign_destroy.notify = handle_foreign_destroy;
 	wl_signal_add(&view->foreign_toplevel->events.destroy,
 			&view->foreign_destroy);
+	if (config->scratchpad_minimize) {
+		view->foreign_minimize.notify = handle_foreign_minimize;
+		wl_signal_add(&view->foreign_toplevel->events.request_minimize,
+				&view->foreign_minimize);
+	}
 
 	struct sway_container *container = view->container;
 	layout_add_view(ws, target_sibling, container);
@@ -888,6 +929,9 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	} else {
 		view->container->pending.border = config->border;
 		view->container->pending.border_thickness = config->border_thickness;
+		if (view->container->pending.border == B_CSD) {
+			view_set_csd_from_server(view, true);
+		}
 		view_set_tiled(view, true);
 	}
 

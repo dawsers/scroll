@@ -621,6 +621,7 @@ struct sway_config {
 	bool workspace_next_on_output_create_empty;
 	bool xwayland_output_scale;
 	bool xdg_activation_force;
+	bool scratchpad_minimize;
 	bool gesture_scroll_enable;
 	uint32_t gesture_scroll_fingers;
 	float gesture_scroll_sentitivity;

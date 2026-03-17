@@ -302,8 +302,11 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 		}
 		// XXX: https://github.com/swaywm/sway/issues/2176
 		wlr_xdg_surface_schedule_configure(xdg_surface);
-		wlr_xdg_toplevel_set_wm_capabilities(view->wlr_xdg_toplevel,
-			WLR_XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN);
+		uint32_t caps = WLR_XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN;
+		if (config->scratchpad_minimize) {
+			caps |= WLR_XDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE;
+		}
+		wlr_xdg_toplevel_set_wm_capabilities(view->wlr_xdg_toplevel, caps);
 		// TODO: wlr_xdg_toplevel_set_bounds()
 		return;
 	}
@@ -394,6 +397,27 @@ static void handle_request_maximize(struct wl_listener *listener, void *data) {
 	wlr_xdg_surface_schedule_configure(toplevel->base);
 }
 
+static void handle_request_minimize(struct wl_listener *listener, void *data) {
+	struct sway_xdg_shell_view *xdg_shell_view =
+		wl_container_of(listener, xdg_shell_view, request_minimize);
+	struct sway_container *container = xdg_shell_view->view.container;
+	if (!container->pending.workspace) {
+		while (container->pending.parent) {
+			container = container->pending.parent;
+		}
+	}
+	if (container->pending.workspace) {
+		struct sway_workspace *workspace = container->pending.workspace;
+		if (!container->scratchpad) {
+			root_scratchpad_add_container(container, NULL);
+		} else {
+			root_scratchpad_hide(container);
+		}
+		arrange_workspace(workspace);
+		transaction_commit_dirty();
+	}
+}
+
 static void handle_request_fullscreen(struct wl_listener *listener, void *data) {
 	struct sway_xdg_shell_view *xdg_shell_view =
 		wl_container_of(listener, xdg_shell_view, request_fullscreen);
@@ -467,6 +491,9 @@ static void handle_unmap(struct wl_listener *listener, void *data) {
 
 	wl_list_remove(&xdg_shell_view->new_popup.link);
 	wl_list_remove(&xdg_shell_view->request_maximize.link);
+	if (xdg_shell_view->request_minimize.notify) {
+		wl_list_remove(&xdg_shell_view->request_minimize.link);
+	}
 	wl_list_remove(&xdg_shell_view->request_fullscreen.link);
 	wl_list_remove(&xdg_shell_view->request_move.link);
 	wl_list_remove(&xdg_shell_view->request_resize.link);
@@ -512,6 +539,12 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	xdg_shell_view->request_maximize.notify = handle_request_maximize;
 	wl_signal_add(&toplevel->events.request_maximize,
 			&xdg_shell_view->request_maximize);
+
+	if (config->scratchpad_minimize) {
+		xdg_shell_view->request_minimize.notify = handle_request_minimize;
+		wl_signal_add(&toplevel->events.request_minimize,
+				&xdg_shell_view->request_minimize);
+	}
 
 	xdg_shell_view->request_fullscreen.notify = handle_request_fullscreen;
 	wl_signal_add(&toplevel->events.request_fullscreen,

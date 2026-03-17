@@ -196,6 +196,7 @@ sway_cmd cmd_resize;
 sway_cmd cmd_scale_content;
 sway_cmd cmd_scale_workspace;
 sway_cmd cmd_scratchpad;
+sway_cmd cmd_scratchpad_minimize;
 sway_cmd cmd_seamless_mouse;
 sway_cmd cmd_selection;
 sway_cmd cmd_send_shortcut;

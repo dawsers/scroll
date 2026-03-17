@@ -44,6 +44,8 @@ supports some added features:
 * For ultra-wide displays, you can split a workspace in two and show them both
   at the same time (`workspace split` command).
 
+* Optionally, minimize windows to scratchpad.
+
 For more videos explaining the different features, check the
 [TUTORIAL](https://github.com/dawsers/scroll/blob/master/TUTORIAL.md).
 
@@ -517,7 +519,7 @@ In this section we will configure some of the most common options for
 # xdg_activation_force false
 ```
 
-### configuring Animations
+### Configuring Animations
 
 The next section defines which animations will be used by *scroll*. For more
 details about animations, check the manual or read [this](#animation-options)
@@ -1504,6 +1506,12 @@ screen window in the tiling layout that scrolls with the rest. See the
 whenever there is a single tiling window in the workspace, it will be
 maximized, unless you explicitly resize	it.
 
+`scratchpad_minimize`: Default value is `false`. If `true`, minimizing a window
+through its CSD decoration or a taskbar, will send it to the scratchpad. When
+un-minimizing it from a taskbar, it will be inserted again into the tiling
+layout, until then, it will be like any other window in the scratchpad, with
+the same features and supporting the same commands.
+
 `workspace_next_on_output_create_empty <true|false>`: The default is `true`.
 If `true`, when calling `workspace next_on_output`,	if the current workspace
 is the last one, it will create a new workspace	instead	of wrapping to the
@@ -1947,13 +1955,15 @@ each one of them:
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,
-`workspace_next_on_output_create_empty`, `xwayland_output_scale`
+`scratchpad_minimize`, `workspace_next_on_output_create_empty`,
+`xwayland_output_scale`
 
 ### Runtime Only Commands
 
 `align`, `animations_enable`, `cycle_size`, `decoration`, `fit_size`,
 `focus begin/end`, `fullscreen application|layout`, `jump`, `layout_transpose`,
-`move beginning|end nomode`, `pin`, `scale_content`, `scale_workspace`,
+`move beginning|end nomode`, `pin`, `resize` for floating windows,
+`scale_content`, `scale_workspace`,
 `scratchpad jump`, `selection`, `set_mode`, `set_size`, `space`,
 `toggle_size`, `trail`, `trailmark`
 
@@ -1962,7 +1972,8 @@ each one of them:
 Colors for pinned and selected containers. Indicator changes to show next
 insertion location.
 
-`default_decoration`, `focus_follows_mouse full`,
+`default_decoration`, `default_border csd`, `default_floating_border csd`,
+`focus_follows_mouse full`, `focus_wrapping stay`,
 `fullscreen_on_request default|layout`, `titlebar_border_radius`,
 `kill focused|unfocused|all`, `send_shortcut`, `workspace swap`,
 `workspace split`, `xdg_activation_force`
@@ -1977,9 +1988,9 @@ Colors: `scroller`
 
 ### IPC Protocol
 
-commands: `GET_SCROLLER`, `GET_TRAILS`, `GET_SPACES`
+commands: `GET_SCROLLER`, `GET_TRAILS`, `GET_SPACES`, `GET_BINDINGS`
 
-events: `scroller`, `trails`
+events: `scroller`, `trails`, `lua`
 
 `fully_visible` attribute for windows
 

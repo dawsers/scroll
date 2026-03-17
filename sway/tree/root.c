@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/util/transform.h>
 #include "sway/desktop/transaction.h"
@@ -93,6 +94,15 @@ void root_destroy(struct sway_root *root) {
 	free(root);
 }
 
+static void root_scratchpad_set_minimize(struct sway_container *con, bool minimize) {
+	if (con->view) {
+		struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel = con->view->foreign_toplevel;
+		if (foreign_toplevel) {
+			wlr_foreign_toplevel_handle_v1_set_minimized(foreign_toplevel, minimize);
+		}
+	}
+}
+
 static void set_container_transform(struct sway_workspace *ws,
 			struct sway_container *con) {
 	struct sway_output *output = ws->output;
@@ -150,6 +160,10 @@ void root_scratchpad_add_container(struct sway_container *con, struct sway_works
 		seat_set_focus(seat, new_focus);
 	}
 
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, true);
+	}
+
 	ipc_event_window(con, "move");
 }
 
@@ -198,6 +212,10 @@ void root_scratchpad_show(struct sway_container *con) {
 	}
 	workspace_add_floating(new_ws, con);
 
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, false);
+	}
+
 	if (new_ws->output) {
 		struct wlr_box output_box;
 		output_get_box(new_ws->output, &output_box);
@@ -227,6 +245,10 @@ void root_scratchpad_hide(struct sway_container *con) {
 
 	if (!con->pending.workspace) {
 		return;
+	}
+
+	if (config->scratchpad_minimize) {
+		root_scratchpad_set_minimize(con, true);
 	}
 
 	set_container_transform(con->pending.workspace, con);

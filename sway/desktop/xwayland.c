@@ -732,6 +732,39 @@ static void handle_request_minimize(struct wl_listener *listener, void *data) {
 	}
 
 	struct wlr_xwayland_minimize_event *e = data;
+	if (config->scratchpad_minimize) {
+		struct sway_container *container = view->container;
+		if (!container->pending.workspace) {
+			while (container->pending.parent) {
+				container = container->pending.parent;
+			}
+		}
+		if(e->minimize) {
+			if (container->pending.workspace) {
+				struct sway_workspace *workspace = container->pending.workspace;
+				if (!container->scratchpad) {
+					root_scratchpad_add_container(container, NULL);
+				} else {
+					root_scratchpad_hide(container);
+				}
+				arrange_workspace(workspace);
+				transaction_commit_dirty();
+				return;
+			}
+		} else {
+			if(container->scratchpad) {
+				root_scratchpad_show(container);
+				struct sway_workspace *workspace = container->pending.workspace;
+				if (workspace) {
+					container_set_floating(container, false);
+					arrange_workspace(workspace);
+					transaction_commit_dirty();
+					return;
+				}
+			}
+		}
+	}
+
 	struct sway_seat *seat = input_manager_current_seat();
 	bool focused = seat_get_focus(seat) == &view->container->node;
 	wlr_xwayland_surface_set_minimized(xsurface, !focused && e->minimize);
