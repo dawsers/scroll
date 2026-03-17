@@ -113,21 +113,24 @@ static void virtual_keyboard_modifiers(struct wl_client *client,
 		mods_depressed, mods_latched, mods_locked, group);
 }
 
-static void virtual_keyboard_destroy_resource(struct wl_resource *resource) {
-	struct wlr_virtual_keyboard_v1 *keyboard =
-		wlr_virtual_keyboard_v1_from_resource(resource);
-	if (keyboard == NULL) {
-		return;
-	}
-
-	wlr_keyboard_finish(&keyboard->keyboard);
-
-	wl_resource_set_user_data(keyboard->resource, NULL);
-	wl_list_remove(&keyboard->link);
-	free(keyboard);
+static void virtual_keyboard_destroy(struct wlr_virtual_keyboard_v1 *virtual_keyboard) {
+	wlr_keyboard_finish(&virtual_keyboard->keyboard);
+	wl_resource_set_user_data(virtual_keyboard->resource, NULL);
+	wl_list_remove(&virtual_keyboard->seat_destroy.link);
+	wl_list_remove(&virtual_keyboard->link);
+	free(virtual_keyboard);
 }
 
-static void virtual_keyboard_destroy(struct wl_client *client,
+static void virtual_keyboard_destroy_resource(struct wl_resource *resource) {
+	struct wlr_virtual_keyboard_v1 *virtual_keyboard =
+		wlr_virtual_keyboard_v1_from_resource(resource);
+	if (virtual_keyboard == NULL) {
+		return;
+	}
+	virtual_keyboard_destroy(virtual_keyboard);
+}
+
+static void virtual_keyboard_handle_destroy(struct wl_client *client,
 		struct wl_resource *resource) {
 	wl_resource_destroy(resource);
 }
@@ -136,7 +139,7 @@ static const struct zwp_virtual_keyboard_v1_interface virtual_keyboard_impl = {
 	.keymap = virtual_keyboard_keymap,
 	.key = virtual_keyboard_key,
 	.modifiers = virtual_keyboard_modifiers,
-	.destroy = virtual_keyboard_destroy,
+	.destroy = virtual_keyboard_handle_destroy,
 };
 
 static const struct zwp_virtual_keyboard_manager_v1_interface manager_impl;
@@ -146,6 +149,13 @@ static struct wlr_virtual_keyboard_manager_v1 *manager_from_resource(
 	assert(wl_resource_instance_of(resource,
 		&zwp_virtual_keyboard_manager_v1_interface, &manager_impl));
 	return wl_resource_get_user_data(resource);
+}
+
+static void virtual_keyboard_handle_seat_destroy(struct wl_listener *listener,
+		void *data) {
+	struct wlr_virtual_keyboard_v1 *virtual_keyboard = wl_container_of(listener, virtual_keyboard,
+		seat_destroy);
+	virtual_keyboard_destroy(virtual_keyboard);
 }
 
 static void virtual_keyboard_manager_create_virtual_keyboard(
@@ -180,6 +190,9 @@ static void virtual_keyboard_manager_create_virtual_keyboard(
 	virtual_keyboard->resource = keyboard_resource;
 	virtual_keyboard->seat = seat_client->seat;
 	wl_resource_set_user_data(keyboard_resource, virtual_keyboard);
+
+	wl_signal_add(&seat_client->events.destroy, &virtual_keyboard->seat_destroy);
+	virtual_keyboard->seat_destroy.notify = virtual_keyboard_handle_seat_destroy;
 
 	wl_list_insert(&manager->virtual_keyboards, &virtual_keyboard->link);
 

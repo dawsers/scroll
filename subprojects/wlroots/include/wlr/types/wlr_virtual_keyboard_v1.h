@@ -33,6 +33,10 @@ struct wlr_virtual_keyboard_v1 {
 	bool has_keymap;
 
 	struct wl_list link; // wlr_virtual_keyboard_manager_v1.virtual_keyboards
+
+	struct {
+		struct wl_listener seat_destroy;
+	} WLR_PRIVATE;
 };
 
 struct wlr_virtual_keyboard_manager_v1* wlr_virtual_keyboard_manager_v1_create(
