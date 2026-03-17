@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <drm_fourcc.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -484,6 +485,62 @@ static void set_plane_props(struct atomic *atom, struct wlr_drm_backend *drm,
 	atomic_add(atom, id, props->crtc_h, dst_box->height);
 }
 
+static void set_color_encoding_and_range(struct atomic *atom,
+		struct wlr_drm_backend *drm, struct wlr_drm_plane *plane,
+		enum wlr_color_encoding encoding, enum wlr_color_range range) {
+	uint32_t id = plane->id;
+	const struct wlr_drm_plane_props *props = &plane->props;
+
+	uint32_t color_encoding;
+	switch (encoding) {
+	case WLR_COLOR_ENCODING_NONE:
+	case WLR_COLOR_ENCODING_BT601:
+		color_encoding = WLR_DRM_COLOR_YCBCR_BT601;
+		break;
+	case WLR_COLOR_ENCODING_BT709:
+		color_encoding = WLR_DRM_COLOR_YCBCR_BT709;
+		break;
+	case WLR_COLOR_ENCODING_BT2020:
+		color_encoding = WLR_DRM_COLOR_YCBCR_BT2020;
+		break;
+	default:
+		wlr_log(WLR_DEBUG, "Unsupported color encoding %d", encoding);
+		atom->failed = true;
+		return;
+	}
+
+	if (props->color_encoding) {
+		atomic_add(atom, id, props->color_encoding, color_encoding);
+	} else {
+		wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_ENCODING property",
+			id);
+		atom->failed = true;
+		return;
+	}
+
+	uint32_t color_range;
+	switch (range) {
+	case WLR_COLOR_RANGE_NONE:
+	case WLR_COLOR_RANGE_LIMITED:
+		color_range = WLR_DRM_COLOR_YCBCR_LIMITED_RANGE;
+		break;
+	case WLR_COLOR_RANGE_FULL:
+		color_range = WLR_DRM_COLOR_YCBCR_FULL_RANGE;
+		break;
+	default:
+		assert(0); // Unreachable
+	}
+
+	if (props->color_range) {
+		atomic_add(atom, id, props->color_range, color_range);
+	} else {
+		wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_RANGE property",
+			id);
+		atom->failed = true;
+		return;
+	}
+}
+
 static bool supports_cursor_hotspots(const struct wlr_drm_plane *plane) {
 	return plane->props.hotspot_x && plane->props.hotspot_y;
 }
@@ -550,6 +607,10 @@ static void atomic_connector_add(struct atomic *atom,
 
 		set_plane_props(atom, drm, crtc->primary, state->primary_fb, crtc->id,
 			&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
+		if (state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION) {
+			set_color_encoding_and_range(atom, drm, crtc->primary,
+				state->base->color_encoding, state->base->color_range);
+		}
 		if (crtc->primary->props.fb_damage_clips != 0) {
 			atomic_add(atom, crtc->primary->id,
 				crtc->primary->props.fb_damage_clips, state->fb_damage_clips);
