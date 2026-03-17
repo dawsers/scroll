@@ -65,6 +65,22 @@ struct wlr_drm_plane_props {
 	uint32_t hotspot_x;
 	uint32_t hotspot_y;
 	uint32_t in_fence_fd;
+
+	uint32_t color_encoding; // Not guaranteed to exist
+	uint32_t color_range; // Not guaranteed to exist
+};
+
+// Equivalent to wlr_drm_color_encoding defined in the kernel (but not exported)
+enum wlr_drm_color_encoding {
+	WLR_DRM_COLOR_YCBCR_BT601,
+	WLR_DRM_COLOR_YCBCR_BT709,
+	WLR_DRM_COLOR_YCBCR_BT2020,
+};
+
+// Equivalent to wlr_drm_color_range defined in the kernel (but not exported)
+enum wlr_drm_color_range {
+	WLR_DRM_COLOR_YCBCR_FULL_RANGE,
+	WLR_DRM_COLOR_YCBCR_LIMITED_RANGE,
 };
 
 bool get_drm_connector_props(int fd, uint32_t id,
