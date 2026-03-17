@@ -2057,15 +2057,6 @@ static enum scene_direct_scanout_result scene_entry_try_direct_scanout(
 		return SCANOUT_INELIGIBLE;
 	}
 
-	bool is_color_repr_none = buffer->color_encoding == WLR_COLOR_ENCODING_NONE &&
-			buffer->color_range == WLR_COLOR_RANGE_NONE;
-	bool is_color_repr_identity_full = buffer->color_encoding == WLR_COLOR_ENCODING_IDENTITY &&
-			buffer->color_range == WLR_COLOR_RANGE_FULL;
-
-	if (!(is_color_repr_none || is_color_repr_identity_full)) {
-		return SCANOUT_INELIGIBLE;
-	}
-
 	// We want to ensure optimal buffer selection, but as direct-scanout can be enabled and disabled
 	// on a frame-by-frame basis, we wait for a few frames to send the new format recommendations.
 	// Maybe we should only send feedback in this case if tests fail.
@@ -2107,6 +2098,18 @@ static enum scene_direct_scanout_result scene_entry_try_direct_scanout(
 	if (buffer->wait_timeline != NULL) {
 		wlr_output_state_set_wait_timeline(&pending, buffer->wait_timeline, buffer->wait_point);
 	}
+
+	if (buffer->color_encoding == WLR_COLOR_ENCODING_IDENTITY &&
+			buffer->color_range == WLR_COLOR_RANGE_FULL) {
+		// IDENTITY+FULL (used for RGB formats) is equivalent to no color
+		// representation being set at all.
+		wlr_output_state_set_color_encoding_and_range(&pending,
+			WLR_COLOR_ENCODING_NONE, WLR_COLOR_RANGE_NONE);
+	} else {
+		wlr_output_state_set_color_encoding_and_range(&pending,
+			buffer->color_encoding, buffer->color_range);
+	}
+
 	if (!wlr_output_test_state(scene_output->output, &pending)) {
 		wlr_output_state_finish(&pending);
 		return SCANOUT_CANDIDATE;
