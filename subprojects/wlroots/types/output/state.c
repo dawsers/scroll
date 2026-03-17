@@ -141,6 +141,14 @@ bool wlr_output_state_set_image_description(struct wlr_output_state *state,
 	return true;
 }
 
+void wlr_output_state_set_color_encoding_and_range(
+		struct wlr_output_state *state,
+		enum wlr_color_encoding encoding, enum wlr_color_range range) {
+	state->committed |= WLR_OUTPUT_STATE_COLOR_REPRESENTATION;
+	state->color_encoding = encoding;
+	state->color_range = range;
+}
+
 bool wlr_output_state_copy(struct wlr_output_state *dst,
 		const struct wlr_output_state *src) {
 	struct wlr_output_state copy = *src;
