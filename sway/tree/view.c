@@ -768,7 +768,7 @@ static void handle_foreign_destroy(
 	wl_list_remove(&view->foreign_activate_request.link);
 	wl_list_remove(&view->foreign_fullscreen_request.link);
 	wl_list_remove(&view->foreign_close_request.link);
-	if (config->scratchpad_minimize) {
+	if (view->foreign_minimize.notify) {
 		wl_list_remove(&view->foreign_minimize.link);
 	}
 	wl_list_remove(&view->foreign_destroy.link);
