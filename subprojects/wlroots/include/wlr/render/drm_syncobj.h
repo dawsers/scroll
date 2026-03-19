@@ -91,6 +91,10 @@ bool wlr_drm_syncobj_timeline_transfer(struct wlr_drm_syncobj_timeline *dst,
 bool wlr_drm_syncobj_timeline_check(struct wlr_drm_syncobj_timeline *timeline,
 	uint64_t point, uint32_t flags, bool *result);
 /**
+ * Signals a timeline point.
+ */
+bool wlr_drm_syncobj_timeline_signal(struct wlr_drm_syncobj_timeline *timeline, uint64_t point);
+/**
  * Asynchronously wait for a timeline point.
  *
  * See wlr_drm_syncobj_timeline_check() for a definition of flags.

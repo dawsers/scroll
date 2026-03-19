@@ -177,6 +177,14 @@ bool wlr_drm_syncobj_timeline_check(struct wlr_drm_syncobj_timeline *timeline,
 	return true;
 }
 
+bool wlr_drm_syncobj_timeline_signal(struct wlr_drm_syncobj_timeline *timeline, uint64_t point) {
+	if (drmSyncobjTimelineSignal(timeline->drm_fd, &timeline->handle, &point, 1) != 0) {
+		wlr_log(WLR_ERROR, "drmSyncobjTimelineSignal() failed");
+		return false;
+	}
+	return true;
+}
+
 static int handle_eventfd_ready(int ev_fd, uint32_t mask, void *data) {
 	struct wlr_drm_syncobj_timeline_waiter *waiter = data;
 

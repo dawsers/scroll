@@ -475,11 +475,7 @@ struct release_signaller {
 static void release_signaller_handle_buffer_release(struct wl_listener *listener, void *data) {
 	struct release_signaller *signaller = wl_container_of(listener, signaller, buffer_release);
 
-	if (drmSyncobjTimelineSignal(signaller->timeline->drm_fd, &signaller->timeline->handle,
-			&signaller->point, 1) != 0) {
-		wlr_log(WLR_ERROR, "drmSyncobjTimelineSignal() failed");
-	}
-
+	wlr_drm_syncobj_timeline_signal(signaller->timeline, signaller->point);
 	wlr_drm_syncobj_timeline_unref(signaller->timeline);
 	wl_list_remove(&signaller->buffer_release.link);
 	free(signaller);
