@@ -19,8 +19,11 @@ struct wlr_linux_drm_syncobj_surface_v1_state {
 	struct wlr_drm_syncobj_timeline *acquire_timeline;
 	uint64_t acquire_point;
 
-	struct wlr_drm_syncobj_timeline *release_timeline;
-	uint64_t release_point;
+	struct {
+		struct wlr_drm_syncobj_timeline *release_timeline;
+		uint64_t release_point;
+		struct wlr_drm_syncobj_merger *release_merger;
+	} WLR_PRIVATE;
 };
 
 struct wlr_linux_drm_syncobj_manager_v1 {
@@ -54,5 +57,20 @@ struct wlr_linux_drm_syncobj_surface_v1_state *wlr_linux_drm_syncobj_v1_get_surf
  */
 bool wlr_linux_drm_syncobj_v1_state_signal_release_with_buffer(
 	struct wlr_linux_drm_syncobj_surface_v1_state *state, struct wlr_buffer *buffer);
+
+/**
+ * Register a release point for buffer usage.
+ *
+ * This function may be called multiple times for the same commit. The client's
+ * release point will be signalled when all registered points are signalled, and
+ * a new buffer has been committed.
+ *
+ * Because the given release point may not be materialized, a wl_event_loop must
+ * be supplied to schedule a wait internally, if needed
+ */
+bool wlr_linux_drm_syncobj_v1_state_add_release_point(
+	struct wlr_linux_drm_syncobj_surface_v1_state *state,
+	struct wlr_drm_syncobj_timeline *release_timeline, uint64_t release_point,
+	struct wl_event_loop *event_loop);
 
 #endif
