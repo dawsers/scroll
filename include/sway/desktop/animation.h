@@ -102,8 +102,9 @@ struct sway_animation_config *animation_get_config();
 // Set the pending animation
 void animation_set_type(enum sway_animation_type anim);
 
-// Starts the pending animation
-void animation_begin();
+// Starts the pending animation if pending is true, otherwise reuse the
+// current path (for client-side transactions)
+void animation_begin(bool pending);
 
 // Ends the current animation
 void animation_end();

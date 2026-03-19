@@ -1674,17 +1674,11 @@ static void transaction_progress(void) {
 		return;
 	}
 	bool server_request = server_requested_transaction(server.queued_transaction);
-	if (server_request) {
-		set_animation_data(server.queued_transaction);
-	}
+	set_animation_data(server.queued_transaction);
 	transaction_apply(server.queued_transaction);
-	if (server_request) {
-		animation_end();
-	}
+	animation_end();
 	arrange_root(root);
-	if (server_request) {
-		animation_begin();
-	}
+	animation_begin(server_request);
 	cursor_rebase_all();
 	transaction_destroy(server.queued_transaction);
 	server.queued_transaction = NULL;
@@ -1956,10 +1950,7 @@ static void _transaction_commit_dirty(bool server_request) {
 	}
 	server.dirty_nodes->length = 0;
 
-	if (server_request) {
-		// Save states to animation variables and old_content
-		save_animation_variables();
-	}
+	save_animation_variables();
 
 	transaction_commit_pending();
 }
