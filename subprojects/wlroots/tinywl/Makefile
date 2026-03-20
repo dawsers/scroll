@@ -1,6 +1,6 @@
 PKG_CONFIG?=pkg-config
 
-PKGS="wlroots-0.20" wayland-server xkbcommon
+PKGS="wlroots-0.21" wayland-server xkbcommon
 CFLAGS_PKG_CONFIG!=$(PKG_CONFIG) --cflags $(PKGS)
 CFLAGS+=$(CFLAGS_PKG_CONFIG)
 LIBS!=$(PKG_CONFIG) --libs $(PKGS)
