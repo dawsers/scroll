@@ -352,10 +352,6 @@ static bool add_connector(drmModeAtomicReq *req,
 			liftoff_layer_set_property(crtc->liftoff_composition_layer,
 				"IN_FENCE_FD", state->primary_in_fence_fd);
 		}
-		if (state->base->committed & WLR_OUTPUT_STATE_SIGNAL_TIMELINE) {
-			ok = ok && add_prop(req, crtc->id, crtc->props.out_fence_ptr,
-				(uintptr_t)&state->out_fence_fd);
-		}
 
 		if (state->base->committed & WLR_OUTPUT_STATE_LAYERS) {
 			for (size_t i = 0; i < state->base->layers_len; i++) {

@@ -669,7 +669,6 @@ static void drm_connector_state_init(struct wlr_drm_connector_state *state,
 		.base = base,
 		.active = output_pending_enabled(&conn->output, base),
 		.primary_in_fence_fd = -1,
-		.out_fence_fd = -1,
 	};
 
 	struct wlr_output_mode *mode = conn->output.current_mode;
