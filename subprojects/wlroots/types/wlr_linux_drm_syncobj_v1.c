@@ -182,6 +182,10 @@ static void surface_synced_commit(struct wlr_surface_synced *synced) {
 		return;
 	}
 
+	if (surface->current.release_timeline == NULL) {
+		return;
+	}
+
 	surface->current.release_merger = wlr_drm_syncobj_merger_create(
 		surface->current.release_timeline, surface->current.release_point);
 }
