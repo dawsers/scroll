@@ -368,7 +368,17 @@ static void drm_plane_finish_surface(struct wlr_drm_plane *plane) {
 	}
 
 	drm_fb_clear(&plane->queued_fb);
+	if (plane->queued_release_timeline != NULL) {
+		wlr_drm_syncobj_timeline_signal(plane->queued_release_timeline, plane->queued_release_point);
+		wlr_drm_syncobj_timeline_unref(plane->queued_release_timeline);
+		plane->queued_release_timeline = NULL;
+	}
 	drm_fb_clear(&plane->current_fb);
+	if (plane->current_release_timeline != NULL) {
+		wlr_drm_syncobj_timeline_signal(plane->current_release_timeline, plane->current_release_point);
+		wlr_drm_syncobj_timeline_unref(plane->current_release_timeline);
+		plane->current_release_timeline = NULL;
+	}
 
 	finish_drm_surface(&plane->mgpu_surf);
 }
@@ -557,6 +567,18 @@ static void drm_connector_apply_commit(const struct wlr_drm_connector_state *sta
 	struct wlr_drm_crtc *crtc = conn->crtc;
 
 	drm_fb_copy(&crtc->primary->queued_fb, state->primary_fb);
+	if (crtc->primary->queued_release_timeline != NULL) {
+		wlr_drm_syncobj_timeline_signal(crtc->primary->queued_release_timeline, crtc->primary->queued_release_point);
+		wlr_drm_syncobj_timeline_unref(crtc->primary->queued_release_timeline);
+	}
+	if (state->base->signal_timeline != NULL) {
+		crtc->primary->queued_release_timeline = wlr_drm_syncobj_timeline_ref(state->base->signal_timeline);
+		crtc->primary->queued_release_point = state->base->signal_point;
+	} else {
+		crtc->primary->queued_release_timeline = NULL;
+		crtc->primary->queued_release_point = 0;
+	}
+
 	crtc->primary->viewport = state->primary_viewport;
 	if (crtc->cursor != NULL) {
 		drm_fb_copy(&crtc->cursor->queued_fb, state->cursor_fb);
@@ -2019,6 +2041,14 @@ static void handle_page_flip(int fd, unsigned seq,
 	struct wlr_drm_plane *plane = conn->crtc->primary;
 	if (plane->queued_fb) {
 		drm_fb_move(&plane->current_fb, &plane->queued_fb);
+		if (plane->current_release_timeline != NULL) {
+			wlr_drm_syncobj_timeline_signal(plane->current_release_timeline, plane->current_release_point);
+			wlr_drm_syncobj_timeline_unref(plane->current_release_timeline);
+		}
+		plane->current_release_timeline = plane->queued_release_timeline;
+		plane->current_release_point = plane->queued_release_point;
+		plane->queued_release_timeline = NULL;
+		plane->queued_release_point = 0;
 	}
 	if (conn->crtc->cursor && conn->crtc->cursor->queued_fb) {
 		drm_fb_move(&conn->crtc->cursor->current_fb,

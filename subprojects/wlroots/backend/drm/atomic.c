@@ -426,8 +426,13 @@ void drm_atomic_connector_apply_commit(struct wlr_drm_connector_state *state) {
 	}
 	if (state->out_fence_fd >= 0) {
 		// TODO: error handling
-		wlr_drm_syncobj_timeline_import_sync_file(state->base->signal_timeline,
-			state->base->signal_point, state->out_fence_fd);
+		if (crtc->primary->current_release_timeline != NULL) {
+			wlr_drm_syncobj_timeline_import_sync_file(crtc->primary->current_release_timeline,
+				crtc->primary->current_release_point, state->out_fence_fd);
+			wlr_drm_syncobj_timeline_unref(crtc->primary->current_release_timeline);
+			crtc->primary->current_release_timeline = NULL;
+			crtc->primary->current_release_point = 0;
+		}
 		close(state->out_fence_fd);
 	}
 

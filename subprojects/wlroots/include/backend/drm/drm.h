@@ -29,8 +29,12 @@ struct wlr_drm_plane {
 
 	/* Buffer submitted to the kernel, will be presented on next vblank */
 	struct wlr_drm_fb *queued_fb;
+	struct wlr_drm_syncobj_timeline *queued_release_timeline;
+	uint64_t queued_release_point;
 	/* Buffer currently displayed on screen */
 	struct wlr_drm_fb *current_fb;
+	struct wlr_drm_syncobj_timeline *current_release_timeline;
+	uint64_t current_release_point;
 	/* Viewport belonging to the last committed fb */
 	struct wlr_drm_viewport viewport;
 
