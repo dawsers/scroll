@@ -74,6 +74,41 @@ static float decode_cie1931_coord(int32_t raw) {
 	return (float)raw / (1000 * 1000);
 }
 
+static bool cie1931_xy_equal(const struct wlr_color_cie1931_xy *a,
+		const struct wlr_color_cie1931_xy *b) {
+	return a->x == b->x && a->y == b->y;
+}
+
+static bool primaries_equal(const struct wlr_color_primaries *a,
+		const struct wlr_color_primaries *b) {
+	return cie1931_xy_equal(&a->red, &b->red) &&
+		cie1931_xy_equal(&a->green, &b->green) &&
+		cie1931_xy_equal(&a->blue, &b->blue) &&
+		cie1931_xy_equal(&a->white, &b->white);
+}
+
+static bool img_desc_data_equal(const struct wlr_image_description_v1_data *a,
+		const struct wlr_image_description_v1_data *b) {
+	if (a->tf_named != b->tf_named ||
+			a->primaries_named != b->primaries_named ||
+			a->has_mastering_display_primaries != b->has_mastering_display_primaries ||
+			a->has_mastering_luminance != b->has_mastering_luminance ||
+			a->max_cll != b->max_cll ||
+			a->max_fall != b->max_fall) {
+		return false;
+	}
+	if (a->has_mastering_display_primaries &&
+			!primaries_equal(&a->mastering_display_primaries, &b->mastering_display_primaries)) {
+		return false;
+	}
+	if (a->has_mastering_luminance &&
+			(a->mastering_luminance.min != b->mastering_luminance.min ||
+				a->mastering_luminance.max != b->mastering_luminance.max)) {
+		return false;
+	}
+	return true;
+}
+
 static const struct wp_image_description_v1_interface image_desc_impl;
 
 static struct wlr_image_description_v1 *image_desc_from_resource(struct wl_resource *resource) {
@@ -1002,7 +1037,8 @@ void wlr_color_manager_v1_set_surface_preferred_image_description(
 
 	struct wlr_color_management_surface_feedback_v1 *surface_feedback;
 	wl_list_for_each(surface_feedback, &manager->surface_feedbacks, link) {
-		if (surface_feedback->surface != surface) {
+		if (surface_feedback->surface != surface ||
+				img_desc_data_equal(&surface_feedback->data, data)) {
 			continue;
 		}
 		surface_feedback->data = *data;
