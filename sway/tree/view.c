@@ -1512,7 +1512,9 @@ bool view_is_content_scaled(struct sway_view *view) {
 }
 
 static void container_get_borders(struct sway_container *container, int *border_horiz, int *border_vert) {
-	if (container->pending.border == B_NONE) {
+	if (container->pending.border == B_NONE ||
+		container->pending.fullscreen_mode != FULLSCREEN_NONE||
+		container->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
 		*border_horiz = *border_vert = 0;
 		return;
 	}
