@@ -120,10 +120,6 @@ paru -S sway-scroll-git
 `sway-scroll`. Please uninstall it and install `sway-scroll` if you want the
 stable version.
 
-### Fedora Linux
-
-Thanks to @mecattaf, [scroll stable is also available on the Fedora Copr](https://copr.fedorainfracloud.org/coprs/scrollwm/packages/).
-
 ### NixOS
 
 Thanks to @AsahiRocks for creating a nix flake of scroll stable in his repository,
