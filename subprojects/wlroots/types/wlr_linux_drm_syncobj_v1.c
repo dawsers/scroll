@@ -171,23 +171,20 @@ static void surface_synced_move_state(void *_dst, void *_src) {
 	}
 	surface_synced_finish_state(dst);
 	*dst = *src;
+	dst->committed = true;
 	*src = (struct wlr_linux_drm_syncobj_surface_v1_state){0};
 }
 
 static void surface_synced_commit(struct wlr_surface_synced *synced) {
 	struct wlr_linux_drm_syncobj_surface_v1 *surface = wl_container_of(synced, surface, synced);
 
-	if (surface->current.release_merger != NULL) {
-		// ignore commits that did not attach a buffer
-		return;
-	}
-
-	if (surface->current.release_timeline == NULL) {
+	if (!surface->current.committed) {
 		return;
 	}
 
 	surface->current.release_merger = wlr_drm_syncobj_merger_create(
 		surface->current.release_timeline, surface->current.release_point);
+	surface->current.committed = false;
 }
 
 
@@ -511,7 +508,7 @@ static void release_signaller_handle_buffer_release(struct wl_listener *listener
 bool wlr_linux_drm_syncobj_v1_state_signal_release_with_buffer(
 		struct wlr_linux_drm_syncobj_surface_v1_state *state, struct wlr_buffer *buffer) {
 	assert(buffer->n_locks > 0);
-	if (state->release_timeline == NULL) {
+	if (state->release_merger == NULL) {
 		// This can happen if an existing surface with a buffer has a
 		// syncobj_surface_v1_state created but no new buffer with release
 		// timeline committed.
@@ -534,6 +531,12 @@ bool wlr_linux_drm_syncobj_v1_state_add_release_point(
 		struct wlr_linux_drm_syncobj_surface_v1_state *state,
 		struct wlr_drm_syncobj_timeline *release_timeline, uint64_t release_point,
 		struct wl_event_loop *event_loop) {
+	if (state->release_merger == NULL) {
+		// This can happen if an existing surface with a buffer has a
+		// syncobj_surface_v1_state created but no new buffer with release
+		// timeline committed.
+		return true;
+	}
 	return wlr_drm_syncobj_merger_add(state->release_merger,
 		release_timeline, release_point, event_loop);
 }

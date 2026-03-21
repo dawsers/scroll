@@ -20,6 +20,7 @@ struct wlr_linux_drm_syncobj_surface_v1_state {
 	uint64_t acquire_point;
 
 	struct {
+		bool committed;
 		struct wlr_drm_syncobj_timeline *release_timeline;
 		uint64_t release_point;
 		struct wlr_drm_syncobj_merger *release_merger;
