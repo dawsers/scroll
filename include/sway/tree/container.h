@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <wlr/types/wlr_compositor.h>
 #include "list.h"
-#include "sway/tree/scene.h"
+#include <wlr/types/wlr_scene.h>
 #include "sway/tree/node.h"
 
 struct sway_view;
@@ -104,24 +104,24 @@ struct sway_container {
 	struct sway_node node;
 	struct sway_view *view;
 
-	struct sway_scene_tree *scene_tree;
+	struct wlr_scene_tree *scene_tree;
 
 	struct {
-		struct sway_scene_tree *tree;
+		struct wlr_scene_tree *tree;
 
 		struct sway_text_node *title_text;
 		struct sway_text_node *marks_text;
 	} title_bar;
 
 	struct {
-		struct sway_scene_tree *tree;
-		struct sway_scene_decoration *full;
+		struct wlr_scene_tree *tree;
+		struct wlr_scene_decoration *full;
 	} decoration;
 
-	struct sway_scene_shadow *shadow;
+	struct wlr_scene_shadow *shadow;
 
 	struct {
-		struct sway_scene_tree *tree;
+		struct wlr_scene_tree *tree;
 
 		struct sway_text_node *text;
 		int32_t id;
@@ -131,8 +131,8 @@ struct sway_container {
 		double x, y;	// original positions for floating windows
 	} jump;
 
-	struct sway_scene_tree *content_tree;
-	struct sway_scene_buffer *output_handler;
+	struct wlr_scene_tree *content_tree;
+	struct wlr_scene_buffer *output_handler;
 
 	struct wl_listener outputs_update;
 	struct wl_listener output_handler_destroy;

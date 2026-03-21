@@ -6,6 +6,7 @@
 #include <wlr/util/addon.h>
 #include "types/wlr_scene.h"
 
+extern struct wlr_scene_callbacks scene_cbs;
 /**
  * A tree for a surface and all of its child sub-surfaces.
  *
@@ -68,9 +69,17 @@ static struct wlr_scene_subsurface_tree *subsurface_tree_from_subsurface(
 static bool subsurface_tree_reconfigure_clip(
 		struct wlr_scene_subsurface_tree *subsurface_tree) {
 	if (subsurface_tree->parent) {
+		// The coordinates of the node are in logical space (we set them using
+		// sway_scene_node_set_position() earlier). But clipping happens in
+		// surface space, so we need to undo it if there is content scaling.
+		double scale;
+		scene_cbs.node_get_parent_total_scale(&subsurface_tree->tree->node, &scale);
+		if (scale < 0.0f) {
+			scale = 1.0f;
+		}
 		subsurface_tree->clip = (struct wlr_box){
-			.x = subsurface_tree->parent->clip.x - subsurface_tree->tree->node.x,
-			.y = subsurface_tree->parent->clip.y - subsurface_tree->tree->node.y,
+			.x = subsurface_tree->parent->clip.x - round(subsurface_tree->tree->node.x / scale),
+			.y = subsurface_tree->parent->clip.y - round(subsurface_tree->tree->node.y / scale),
 			.width = subsurface_tree->parent->clip.width,
 			.height = subsurface_tree->parent->clip.height,
 		};

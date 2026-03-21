@@ -3,9 +3,10 @@
 
 #include <wlr/types/wlr_keyboard_shortcuts_inhibit_v1.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
-#include "sway/tree/scene.h"
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_touch.h>
+#include <wlr/types/wlr_tablet_tool.h>
 #include <wlr/util/edges.h>
 #include "sway/config.h"
 #include "sway/input/input-manager.h"
@@ -13,6 +14,7 @@
 #include "sway/input/text_input.h"
 
 struct sway_seat;
+struct sway_container;
 
 // Return true if the callback handled the button event, otherwise false.
 typedef bool (*sway_seat_button_cb_fn)(struct sway_seat *seat, uint32_t time_msec,
@@ -95,8 +97,8 @@ struct sway_seat {
 	//     - drag icon 1
 	//     - drag icon 2
 	//   - seatop specific stuff
-	struct sway_scene_tree *scene_tree;
-	struct sway_scene_tree *drag_icons;
+	struct wlr_scene_tree *scene_tree;
+	struct wlr_scene_tree *drag_icons;
 
 	bool has_focus;
 	struct wl_list focus_stack; // list of containers in focus order

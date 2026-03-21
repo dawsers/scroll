@@ -3,7 +3,7 @@
 #include <wayland-server-core.h>
 #include <wlr/config.h>
 #include <wlr/types/wlr_compositor.h>
-#include "sway/tree/scene.h"
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_tearing_control_v1.h>
 #include "sway/config.h"
 #if WLR_HAS_XWAYLAND
@@ -66,11 +66,11 @@ struct sway_view {
 	enum sway_view_type type;
 	const struct sway_view_impl *impl;
 
-	struct sway_scene_tree *scene_tree;
-	struct sway_scene_tree *content_tree;
-	struct sway_scene_tree *saved_surface_tree;
+	struct wlr_scene_tree *scene_tree;
+	struct wlr_scene_tree *content_tree;
+	struct wlr_scene_tree *saved_surface_tree;
 
-	struct sway_scene *image_capture_scene;
+	struct wlr_scene *image_capture_scene;
 	struct wlr_ext_image_capture_source_v1 *image_capture_source;
 
 	struct sway_container *container; // NULL if unmapped and transactions finished
@@ -135,7 +135,7 @@ struct sway_view {
 struct sway_xdg_shell_view {
 	struct sway_view view;
 
-	struct sway_scene_tree *image_capture_tree;
+	struct wlr_scene_tree *image_capture_tree;
 	char *tag;
 
 	struct wl_listener commit;
@@ -155,9 +155,9 @@ struct sway_xdg_shell_view {
 struct sway_xwayland_view {
 	struct sway_view view;
 
-	struct sway_scene_tree *surface_tree;
+	struct wlr_scene_tree *surface_tree;
 
-	struct sway_scene_surface *image_capture_scene_surface;
+	struct wlr_scene_surface *image_capture_scene_surface;
 
 	struct wl_listener commit;
 	struct wl_listener request_move;
@@ -187,7 +187,7 @@ struct sway_xwayland_view {
 struct sway_xwayland_unmanaged {
 	struct wlr_xwayland_surface *wlr_xwayland_surface;
 
-	struct sway_scene_surface *surface_scene;
+	struct wlr_scene_surface *surface_scene;
 
 	struct wl_listener request_activate;
 	struct wl_listener request_configure;
@@ -203,7 +203,7 @@ struct sway_xwayland_unmanaged {
 #endif
 
 struct sway_popup_desc {
-	struct sway_scene_node *relative;
+	struct wlr_scene_node *relative;
 	struct sway_view *view;
 };
 
@@ -211,10 +211,10 @@ struct sway_xdg_popup {
 	struct sway_view *view;
 	struct wlr_xdg_popup *wlr_xdg_popup;
 
-	struct sway_scene_tree *scene_tree;
-	struct sway_scene_tree *xdg_surface_tree;
+	struct wlr_scene_tree *scene_tree;
+	struct wlr_scene_tree *xdg_surface_tree;
 
-	struct sway_scene_tree *image_capture_tree;
+	struct wlr_scene_tree *image_capture_tree;
 
 	struct sway_popup_desc desc;
 

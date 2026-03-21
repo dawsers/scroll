@@ -34,7 +34,7 @@ struct scene_node_source_frame_event {
 
 static size_t last_output_num = 0;
 
-static void _get_scene_node_extents(struct wlr_scene_node *node, struct wlr_box *box, int lx, int ly) {
+static void _get_scene_node_extents(struct wlr_scene_node *node, struct wlr_box *box, double lx, double ly) {
 	switch (node->type) {
 	case WLR_SCENE_NODE_TREE:;
 		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
@@ -44,9 +44,17 @@ static void _get_scene_node_extents(struct wlr_scene_node *node, struct wlr_box 
 		}
 		break;
 	case WLR_SCENE_NODE_RECT:
-	case WLR_SCENE_NODE_BUFFER:;
-		struct wlr_box node_box = { .x = lx, .y = ly };
-		scene_node_get_size(node, &node_box.width, &node_box.height);
+	case WLR_SCENE_NODE_BUFFER:
+	case WLR_SCENE_NODE_DECORATION:
+	case WLR_SCENE_NODE_SHADOW:;
+		double width, height;
+		scene_node_get_size(node, &width, &height);
+		struct wlr_box node_box = {
+			.x = round(lx),
+			.y = round(ly),
+			.width = round(lx + width) - round(lx),
+			.height = round(ly + height) - round(ly)
+		};
 
 		if (node_box.x < box->x) {
 			box->x = node_box.x;
@@ -66,7 +74,7 @@ static void _get_scene_node_extents(struct wlr_scene_node *node, struct wlr_box 
 
 static void get_scene_node_extents(struct wlr_scene_node *node, struct wlr_box *box) {
 	*box = (struct wlr_box){ .x = INT_MAX, .y = INT_MAX };
-	int lx = 0, ly = 0;
+	double lx = 0, ly = 0;
 	wlr_scene_node_coords(node, &lx, &ly);
 	_get_scene_node_extents(node, box, lx, ly);
 }

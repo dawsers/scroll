@@ -5,8 +5,8 @@
 #include <wlr/config.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/render/wlr_texture.h>
+#include <wlr/types/wlr_scene.h>
 #include "sway/tree/container.h"
-#include "sway/tree/scene.h"
 #include "sway/tree/node.h"
 #include "list.h"
 
@@ -34,33 +34,33 @@ struct sway_root {
 	// 	- fullscreen stuff
 	// 	- seat stuff
 	// 	- ext_session_lock
-	struct sway_scene *root_scene;
+	struct wlr_scene *root_scene;
 
 	// since sway_scene nodes can't be orphaned and must always
 	// have a parent, use this staging scene_tree so that a
 	// node always have a valid parent. Nothing in this
 	// staging node will be visible.
-	struct sway_scene_tree *staging;
+	struct wlr_scene_tree *staging;
 
 	// tree containing all layers the compositor will render. Cursor handling
 	// will end up iterating this tree.
-	struct sway_scene_tree *layer_tree;
+	struct wlr_scene_tree *layer_tree;
 
 	struct {
-		struct sway_scene_tree *shell_background;
-		struct sway_scene_tree *shell_bottom;
-		struct sway_scene_tree *tiling;
-		struct sway_scene_tree *floating;
-		struct sway_scene_tree *shell_top;
-		struct sway_scene_tree *fullscreen;
-		struct sway_scene_tree *fullscreen_global;
+		struct wlr_scene_tree *shell_background;
+		struct wlr_scene_tree *shell_bottom;
+		struct wlr_scene_tree *tiling;
+		struct wlr_scene_tree *floating;
+		struct wlr_scene_tree *shell_top;
+		struct wlr_scene_tree *fullscreen;
+		struct wlr_scene_tree *fullscreen_global;
 #if WLR_HAS_XWAYLAND
-		struct sway_scene_tree *unmanaged;
+		struct wlr_scene_tree *unmanaged;
 #endif
-		struct sway_scene_tree *shell_overlay;
-		struct sway_scene_tree *popup;
-		struct sway_scene_tree *seat;
-		struct sway_scene_tree *session_lock;
+		struct wlr_scene_tree *shell_overlay;
+		struct wlr_scene_tree *popup;
+		struct wlr_scene_tree *seat;
+		struct wlr_scene_tree *session_lock;
 	} layers;
 
 	// Includes disabled outputs

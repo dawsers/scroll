@@ -11,7 +11,7 @@ struct scene_descriptor {
 static const struct wlr_addon_interface addon_interface;
 
 static struct scene_descriptor *scene_node_get_descriptor(
-		struct sway_scene_node *node, enum sway_scene_descriptor_type type) {
+		struct wlr_scene_node *node, enum sway_scene_descriptor_type type) {
 	struct wlr_addon *addon = wlr_addon_find(&node->addons, (void *)type, &addon_interface);
 	if (!addon) {
 		return NULL;
@@ -26,7 +26,7 @@ static void descriptor_destroy(struct scene_descriptor *desc) {
 	free(desc);
 }
 
-void *scene_descriptor_try_get(struct sway_scene_node *node,
+void *scene_descriptor_try_get(struct wlr_scene_node *node,
 		enum sway_scene_descriptor_type type) {
 	struct scene_descriptor *desc = scene_node_get_descriptor(node, type);
 	if (!desc) {
@@ -36,7 +36,7 @@ void *scene_descriptor_try_get(struct sway_scene_node *node,
 	return desc->data;
 }
 
-void scene_descriptor_destroy(struct sway_scene_node *node,
+void scene_descriptor_destroy(struct wlr_scene_node *node,
 		enum sway_scene_descriptor_type type) {
 	struct scene_descriptor *desc = scene_node_get_descriptor(node, type);
 	if (!desc) {
@@ -55,7 +55,7 @@ static const struct wlr_addon_interface addon_interface = {
 	.destroy = addon_handle_destroy,
 };
 
-bool scene_descriptor_assign(struct sway_scene_node *node,
+bool scene_descriptor_assign(struct wlr_scene_node *node,
 		enum sway_scene_descriptor_type type, void *data) {
 	struct scene_descriptor *desc = calloc(1, sizeof(*desc));
 	if (!desc) {

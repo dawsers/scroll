@@ -4,6 +4,7 @@
 #include <wlr/config.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_ext_foreign_toplevel_list_v1.h>
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
@@ -34,7 +35,6 @@
 #include "sway/tree/container.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
-#include "sway/tree/scene.h"
 #include "sway/config.h"
 #include "sway/xdg_decoration.h"
 #include "sway/desktop/animation.h"
@@ -52,7 +52,7 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 		goto err;
 	}
 
-	view->image_capture_scene = sway_scene_create();
+	view->image_capture_scene = wlr_scene_create();
 	if (view->image_capture_scene == NULL) {
 		goto err;
 	}
@@ -68,7 +68,7 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 	return true;
 
 err:
-	sway_scene_node_destroy(&view->scene_tree->node);
+	wlr_scene_node_destroy(&view->scene_tree->node);
 	return false;
 }
 
@@ -89,8 +89,8 @@ void view_destroy(struct sway_view *view) {
 	list_free(view->executed_criteria);
 
 	view_assign_ctx(view, NULL);
-	sway_scene_node_destroy(&view->image_capture_scene->tree.node);
-	sway_scene_node_destroy(&view->scene_tree->node);
+	wlr_scene_node_destroy(&view->image_capture_scene->tree.node);
+	wlr_scene_node_destroy(&view->scene_tree->node);
 	if (view->impl->destroy) {
 		view->impl->destroy(view);
 	} else {
@@ -1119,9 +1119,9 @@ void view_center_and_clip_surface(struct sway_view *view) {
 		double y = fmax(0, 0.5 * (con->current.content_height - view->geometry.height));
 		clip_to_geometry = !view->xdg_decoration;
 
-		sway_scene_node_set_position(&view->content_tree->node, x, y);
+		wlr_scene_node_set_position(&view->content_tree->node, x, y);
 	} else {
-		sway_scene_node_set_position(&view->content_tree->node, 0, 0);
+		wlr_scene_node_set_position(&view->content_tree->node, 0, 0);
 	}
 
 	// only make sure to clip the content if there is content to clip
@@ -1135,7 +1135,7 @@ void view_center_and_clip_surface(struct sway_view *view) {
 				.height = round(con->current.content_height),
 			};
 		}
-		sway_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
+		wlr_scene_subsurface_tree_set_clip(&con->view->content_tree->node, &clip);
 	}
 }
 
@@ -1356,33 +1356,33 @@ void view_remove_saved_buffer(struct sway_view *view) {
 		return;
 	}
 
-	sway_scene_node_destroy(&view->saved_surface_tree->node);
+	wlr_scene_node_destroy(&view->saved_surface_tree->node);
 	view->saved_surface_tree = NULL;
-	sway_scene_node_set_enabled(&view->content_tree->node, true);
+	wlr_scene_node_set_enabled(&view->content_tree->node, true);
 }
 
-static void view_save_buffer_iterator(struct sway_scene_buffer *buffer,
+static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *data) {
-	struct sway_scene_tree *tree = data;
+	struct wlr_scene_tree *tree = data;
 
-	struct sway_scene_buffer *sbuf = sway_scene_buffer_create(tree, NULL);
+	struct wlr_scene_buffer *sbuf = wlr_scene_buffer_create(tree, NULL);
 	if (!sbuf) {
 		sway_log(SWAY_ERROR, "Could not allocate a scene buffer when saving a surface");
 		return;
 	}
 
-	sway_scene_buffer_set_dest_size(sbuf,
+	wlr_scene_buffer_set_dest_size(sbuf,
 		buffer->dst_width, buffer->dst_height);
-	sway_scene_buffer_set_radius(sbuf, buffer->radius_top, buffer->radius_bottom);
-	sway_scene_buffer_set_opaque_region(sbuf, &buffer->opaque_region);
-	sway_scene_buffer_set_opacity(sbuf, buffer->opacity);
-	sway_scene_buffer_set_filter_mode(sbuf, buffer->filter_mode);
-	sway_scene_buffer_set_transfer_function(sbuf, buffer->transfer_function);
-	sway_scene_buffer_set_primaries(sbuf, buffer->primaries);
-	sway_scene_buffer_set_source_box(sbuf, &buffer->src_box);
-	sway_scene_node_set_position(&sbuf->node, sx, sy);
-	sway_scene_buffer_set_transform(sbuf, buffer->transform);
-	sway_scene_buffer_set_buffer(sbuf, buffer->buffer);
+	wlr_scene_buffer_set_radius(sbuf, buffer->radius_top, buffer->radius_bottom);
+	wlr_scene_buffer_set_opaque_region(sbuf, &buffer->opaque_region);
+	wlr_scene_buffer_set_opacity(sbuf, buffer->opacity);
+	wlr_scene_buffer_set_filter_mode(sbuf, buffer->filter_mode);
+	wlr_scene_buffer_set_transfer_function(sbuf, buffer->transfer_function);
+	wlr_scene_buffer_set_primaries(sbuf, buffer->primaries);
+	wlr_scene_buffer_set_source_box(sbuf, &buffer->src_box);
+	wlr_scene_node_set_position(&sbuf->node, sx, sy);
+	wlr_scene_buffer_set_transform(sbuf, buffer->transform);
+	wlr_scene_buffer_set_buffer(sbuf, buffer->buffer);
 }
 
 void view_save_buffer(struct sway_view *view) {
@@ -1390,7 +1390,7 @@ void view_save_buffer(struct sway_view *view) {
 		view_remove_saved_buffer(view);
 	}
 
-	view->saved_surface_tree = sway_scene_tree_create(view->scene_tree);
+	view->saved_surface_tree = wlr_scene_tree_create(view->scene_tree);
 	if (!view->saved_surface_tree) {
 		sway_log(SWAY_ERROR, "Could not allocate a scene tree node when saving a surface");
 		return;
@@ -1398,13 +1398,13 @@ void view_save_buffer(struct sway_view *view) {
 
 	// Enable and disable the saved surface tree like so to atomitaclly update
 	// the tree. This will prevent over damaging or other weirdness.
-	sway_scene_node_set_enabled(&view->saved_surface_tree->node, false);
+	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
 
-	sway_scene_node_for_each_buffer(&view->content_tree->node,
+	wlr_scene_node_for_each_buffer(&view->content_tree->node,
 		view_save_buffer_iterator, view->saved_surface_tree);
 
-	sway_scene_node_set_enabled(&view->content_tree->node, false);
-	sway_scene_node_set_enabled(&view->saved_surface_tree->node, true);
+	wlr_scene_node_set_enabled(&view->content_tree->node, false);
+	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, true);
 }
 
 bool view_is_transient_for(struct sway_view *child,
@@ -1426,10 +1426,10 @@ bool view_can_tear(struct sway_view *view) {
 	return false;
 }
 
-static void send_frame_done_iterator(struct sway_scene_buffer *scene_buffer,
+static void send_frame_done_iterator(struct wlr_scene_buffer *scene_buffer,
 		int x, int y, void *data) {
 	struct timespec *when = data;
-	struct sway_scene_surface *scene_surface = sway_scene_surface_try_from_buffer(scene_buffer);
+	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(scene_buffer);
 	if (scene_surface == NULL) {
 		return;
 	}
@@ -1440,9 +1440,9 @@ void view_send_frame_done(struct sway_view *view) {
 	struct timespec when;
 	clock_gettime(CLOCK_MONOTONIC, &when);
 
-	struct sway_scene_node *node;
+	struct wlr_scene_node *node;
 	wl_list_for_each(node, &view->content_tree->children, link) {
-		sway_scene_node_for_each_buffer(node, send_frame_done_iterator, &when);
+		wlr_scene_node_for_each_buffer(node, send_frame_done_iterator, &when);
 	}
 }
 
@@ -1584,7 +1584,7 @@ static void clip_view(struct sway_view *view) {
 			.width = MAX(1, round(wt / content_scale)),
 			.height = MAX(1, round(ht / content_scale))
 		};
-		sway_scene_subsurface_tree_set_clip(&view->content_tree->node, &clip);
+		wlr_scene_subsurface_tree_set_clip(&view->content_tree->node, &clip);
 	} else {
 		bool clip_to_geometry = true;
 
@@ -1598,22 +1598,22 @@ static void clip_view(struct sway_view *view) {
 				.width = round(view->container->pending.content_width),
 				.height = round(view->container->pending.content_height)
 			};
-			sway_scene_subsurface_tree_set_clip(&view->content_tree->node, &clip);
+			wlr_scene_subsurface_tree_set_clip(&view->content_tree->node, &clip);
 		}
 	}
 }
 
-static void view_reconfigure_iterator(struct sway_scene_buffer *buffer,
+static void view_reconfigure_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *user_data) {
-	struct sway_scene_surface *scene_surface = sway_scene_surface_try_from_buffer(buffer);
-	sway_scene_surface_reconfigure(scene_surface);
+	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
+	wlr_scene_surface_reconfigure(scene_surface);
 }
 
 void view_reconfigure(struct sway_view *view) {
 	if (!view) {
 		return;
 	}
-	sway_scene_node_for_each_buffer(&view->content_tree->node,
+	wlr_scene_node_for_each_buffer(&view->content_tree->node,
 		view_reconfigure_iterator, NULL);
 
 	clip_view(view);

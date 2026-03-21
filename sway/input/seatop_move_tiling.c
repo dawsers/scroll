@@ -22,12 +22,12 @@ struct seatop_move_tiling_event {
 	double ref_lx, ref_ly; // cursor's x/y at start of op
 	bool threshold_reached;
 	bool insert_after_target;
-	struct sway_scene_rect *indicator_rect;
+	struct wlr_scene_rect *indicator_rect;
 };
 
 static void handle_end(struct sway_seat *seat) {
 	struct seatop_move_tiling_event *e = seat->seatop_data;
-	sway_scene_node_destroy(&e->indicator_rect->node);
+	wlr_scene_node_destroy(&e->indicator_rect->node);
 	e->indicator_rect = NULL;
 }
 
@@ -49,15 +49,15 @@ static void handle_motion_prethreshold(struct sway_seat *seat) {
 
 	// If the threshold has been exceeded, start the actual drag
 	if ((cx - sx) * (cx - sx) + (cy - sy) * (cy - sy) > threshold) {
-		sway_scene_node_set_enabled(&e->indicator_rect->node, true);
+		wlr_scene_node_set_enabled(&e->indicator_rect->node, true);
 		e->threshold_reached = true;
 		cursor_set_image(seat->cursor, "grab", NULL);
 	}
 }
 
 static void update_indicator(struct seatop_move_tiling_event *e, struct wlr_box *box) {
-	sway_scene_node_set_position(&e->indicator_rect->node, box->x, box->y);
-	sway_scene_rect_set_size(e->indicator_rect, box->width, box->height);
+	wlr_scene_node_set_position(&e->indicator_rect->node, box->x, box->y);
+	wlr_scene_rect_set_size(e->indicator_rect, box->width, box->height);
 }
 
 static void handle_motion_postthreshold(struct sway_seat *seat) {
@@ -266,7 +266,7 @@ void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
 		indicator[2] * .5,
 		indicator[3] * .5,
 	};
-	e->indicator_rect = sway_scene_rect_create(seat->scene_tree, 0, 0, color);
+	e->indicator_rect = wlr_scene_rect_create(seat->scene_tree, 0, 0, color);
 	if (!e->indicator_rect) {
 		free(e);
 		return;

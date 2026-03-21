@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wayland-server-core.h>
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_output.h>
@@ -16,7 +17,6 @@
 #include "sway/layers.h"
 #include "sway/output.h"
 #include "sway/server.h"
-#include "sway/tree/scene.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/workspace.h"
 
@@ -54,8 +54,8 @@ struct wlr_layer_surface_v1 *toplevel_layer_surface_from_surface(
 }
 
 static void arrange_surface(struct sway_output *output, const struct wlr_box *full_area,
-		struct wlr_box *usable_area, struct sway_scene_tree *tree, bool exclusive) {
-	struct sway_scene_node *node;
+		struct wlr_box *usable_area, struct wlr_scene_tree *tree, bool exclusive) {
+	struct wlr_scene_node *node;
 	wl_list_for_each(node, &tree->children, link) {
 		struct sway_layer_surface *surface = scene_descriptor_try_get(node,
 			SWAY_SCENE_DESC_LAYER_SHELL);
@@ -72,7 +72,7 @@ static void arrange_surface(struct sway_output *output, const struct wlr_box *fu
 			continue;
 		}
 
-		sway_scene_layer_surface_v1_configure(surface->scene, full_area, usable_area);
+		wlr_scene_layer_surface_v1_configure(surface->scene, full_area, usable_area);
 	}
 }
 
@@ -101,12 +101,12 @@ void arrange_layers(struct sway_output *output) {
 	}
 
 	// Find topmost keyboard interactive layer, if such a layer exists
-	struct sway_scene_tree *layers_above_shell[] = {
+	struct wlr_scene_tree *layers_above_shell[] = {
 		output->layers.shell_overlay,
 		output->layers.shell_top,
 	};
 	size_t nlayers = sizeof(layers_above_shell) / sizeof(layers_above_shell[0]);
-	struct sway_scene_node *node;
+	struct wlr_scene_node *node;
 	struct sway_layer_surface *topmost = NULL;
 	for (size_t i = 0; i < nlayers; ++i) {
 		wl_list_for_each_reverse(node,
@@ -138,7 +138,7 @@ void arrange_layers(struct sway_output *output) {
 	}
 }
 
-static struct sway_scene_tree *sway_layer_get_scene(struct sway_output *output,
+static struct wlr_scene_tree *sway_layer_get_scene(struct sway_output *output,
 		enum zwlr_layer_shell_v1_layer type) {
 	switch (type) {
 	case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
@@ -156,14 +156,14 @@ static struct sway_scene_tree *sway_layer_get_scene(struct sway_output *output,
 }
 
 static struct sway_layer_surface *sway_layer_surface_create(
-		struct sway_scene_layer_surface_v1 *scene) {
+		struct wlr_scene_layer_surface_v1 *scene) {
 	struct sway_layer_surface *surface = calloc(1, sizeof(*surface));
 	if (!surface) {
 		sway_log(SWAY_ERROR, "Could not allocate a scene_layer surface");
 		return NULL;
 	}
 
-	struct sway_scene_tree *popups = sway_scene_tree_create(root->layers.popup);
+	struct wlr_scene_tree *popups = wlr_scene_tree_create(root->layers.popup);
 	if (!popups) {
 		sway_log(SWAY_ERROR, "Could not allocate a scene_layer popup node");
 		free(surface);
@@ -175,7 +175,7 @@ static struct sway_layer_surface *sway_layer_surface_create(
 	if (!scene_descriptor_assign(&popups->node,
 			SWAY_SCENE_DESC_POPUP, &surface->desc)) {
 		sway_log(SWAY_ERROR, "Failed to allocate a popup scene descriptor");
-		sway_scene_node_destroy(&popups->node);
+		wlr_scene_node_destroy(&popups->node);
 		free(surface);
 		return NULL;
 	}
@@ -197,7 +197,7 @@ static struct sway_layer_surface *find_mapped_layer_by_client(
 			continue;
 		}
 		// For now we'll only check the overlay layer
-		struct sway_scene_node *node;
+		struct wlr_scene_node *node;
 		wl_list_for_each (node, &output->layers.shell_overlay->children, link) {
 			struct sway_layer_surface *surface = scene_descriptor_try_get(node,
 				SWAY_SCENE_DESC_LAYER_SHELL);
@@ -242,7 +242,7 @@ static void handle_node_destroy(struct wl_listener *listener, void *data) {
 		transaction_commit_dirty();
 	}
 
-	sway_scene_node_destroy(&layer->popups->node);
+	wlr_scene_node_destroy(&layer->popups->node);
 
 	wl_list_remove(&layer->map.link);
 	wl_list_remove(&layer->unmap.link);
@@ -264,9 +264,9 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	uint32_t committed = layer_surface->current.committed;
 	if (layer_surface->initialized && committed & WLR_LAYER_SURFACE_V1_STATE_LAYER) {
 		enum zwlr_layer_shell_v1_layer layer_type = layer_surface->current.layer;
-		struct sway_scene_tree *output_layer = sway_layer_get_scene(
+		struct wlr_scene_tree *output_layer = sway_layer_get_scene(
 			surface->output, layer_type);
-		sway_scene_node_reparent(&surface->scene->tree->node, output_layer);
+		wlr_scene_node_reparent(&surface->scene->tree->node, output_layer);
 	}
 
 	if (layer_surface->initial_commit || committed || layer_surface->surface->mapped != surface->mapped) {
@@ -336,7 +336,7 @@ static void popup_unconstrain(struct sway_layer_popup *popup) {
 	}
 
 	double lx, ly;
-	sway_scene_node_coords(&popup->toplevel->scene->tree->node, &lx, &ly);
+	wlr_scene_node_coords(&popup->toplevel->scene->tree->node, &lx, &ly);
 
 	// the output box expressed in the coordinate system of the toplevel parent
 	// of the popup
@@ -365,7 +365,7 @@ static void popup_handle_reposition(struct wl_listener *listener, void *data) {
 static void popup_handle_new_popup(struct wl_listener *listener, void *data);
 
 static struct sway_layer_popup *create_popup(struct wlr_xdg_popup *wlr_popup,
-		struct sway_layer_surface *toplevel, struct sway_scene_tree *parent) {
+		struct sway_layer_surface *toplevel, struct wlr_scene_tree *parent) {
 	struct sway_layer_popup *popup = calloc(1, sizeof(*popup));
 	if (popup == NULL) {
 		return NULL;
@@ -373,7 +373,7 @@ static struct sway_layer_popup *create_popup(struct wlr_xdg_popup *wlr_popup,
 
 	popup->toplevel = toplevel;
 	popup->wlr_popup = wlr_popup;
-	popup->scene = sway_scene_xdg_surface_create(parent,
+	popup->scene = wlr_scene_xdg_surface_create(parent,
 		wlr_popup->base);
 
 	if (!popup->scene) {
@@ -447,10 +447,10 @@ void handle_layer_shell_surface(struct wl_listener *listener, void *data) {
 	struct sway_output *output = layer_surface->output->data;
 
 	enum zwlr_layer_shell_v1_layer layer_type = layer_surface->pending.layer;
-	struct sway_scene_tree *output_layer = sway_layer_get_scene(
+	struct wlr_scene_tree *output_layer = sway_layer_get_scene(
 		output, layer_type);
-	struct sway_scene_layer_surface_v1 *scene_surface =
-		sway_scene_layer_surface_v1_create(output_layer, layer_surface);
+	struct wlr_scene_layer_surface_v1 *scene_surface =
+		wlr_scene_layer_surface_v1_create(output_layer, layer_surface);
 	if (!scene_surface) {
 		sway_log(SWAY_ERROR, "Could not allocate a layer_surface_v1");
 		return;

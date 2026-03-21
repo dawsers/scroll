@@ -44,7 +44,7 @@ static const struct wlr_buffer_impl cairo_buffer_impl = {
 };
 
 struct text_buffer {
-	struct sway_scene_buffer *buffer_node;
+	struct wlr_scene_buffer *buffer_node;
 	char *text;
 	struct sway_text_node props;
 
@@ -71,7 +71,7 @@ static void render_backing_buffer(struct text_buffer *buffer) {
 	}
 
 	if (buffer->props.max_width == 0) {
-		sway_scene_buffer_set_buffer(buffer->buffer_node, NULL);
+		wlr_scene_buffer_set_buffer(buffer->buffer_node, NULL);
 		return;
 	}
 
@@ -134,7 +134,7 @@ static void render_backing_buffer(struct text_buffer *buffer) {
 	cairo_buffer->surface = surface;
 	cairo_buffer->cairo = cairo;
 
-	sway_scene_buffer_set_buffer(buffer->buffer_node, &cairo_buffer->base);
+	wlr_scene_buffer_set_buffer(buffer->buffer_node, &cairo_buffer->base);
 	wlr_buffer_drop(&cairo_buffer->base);
 
 	pixman_region32_t opaque;
@@ -143,7 +143,7 @@ static void render_backing_buffer(struct text_buffer *buffer) {
 		pixman_region32_union_rect(&opaque, &opaque, 0, 0,
 			get_text_width(&buffer->props), buffer->props.height);
 	}
-	sway_scene_buffer_set_opaque_region(buffer->buffer_node, &opaque);
+	wlr_scene_buffer_set_opaque_region(buffer->buffer_node, &opaque);
 	pixman_region32_fini(&opaque);
 
 err:
@@ -153,13 +153,13 @@ err:
 
 static void handle_outputs_update(struct wl_listener *listener, void *data) {
 	struct text_buffer *buffer = wl_container_of(listener, buffer, outputs_update);
-	struct sway_scene_outputs_update_event *event = data;
+	struct wlr_scene_outputs_update_event *event = data;
 
 	float scale = 0;
 	enum wl_output_subpixel subpixel = WL_OUTPUT_SUBPIXEL_UNKNOWN;
 
 	for (size_t i = 0; i < event->size; i++) {
-		struct sway_scene_output *output = event->active[i];
+		struct wlr_scene_output *output = event->active[i];
 		if (subpixel == WL_OUTPUT_SUBPIXEL_UNKNOWN) {
 			subpixel = output->output->subpixel;
 		} else if (subpixel != output->output->subpixel) {
@@ -213,20 +213,20 @@ static void text_calc_size(struct text_buffer *buffer) {
 	get_text_size(c, config->font_description, &props->width, NULL,
 		&props->baseline, 1, props->pango_markup, "%s", buffer->text);
 
-	sway_scene_buffer_set_dest_size(buffer->buffer_node,
+	wlr_scene_buffer_set_dest_size(buffer->buffer_node,
 		get_text_width(props), props->height);
 out:
 	cairo_destroy(c);
 }
 
-struct sway_text_node *sway_text_node_create(struct sway_scene_tree *parent,
+struct sway_text_node *sway_text_node_create(struct wlr_scene_tree *parent,
 		char *text, float color[4], bool pango_markup) {
 	struct text_buffer *buffer = calloc(1, sizeof(*buffer));
 	if (!buffer) {
 		return NULL;
 	}
 
-	struct sway_scene_buffer *node = sway_scene_buffer_create(parent, NULL);
+	struct wlr_scene_buffer *node = wlr_scene_buffer_create(parent, NULL);
 	if (!node) {
 		free(buffer);
 		return NULL;
@@ -238,7 +238,7 @@ struct sway_text_node *sway_text_node_create(struct sway_scene_tree *parent,
 	buffer->text = strdup(text);
 	if (!buffer->text) {
 		free(buffer);
-		sway_scene_node_destroy(&node->node);
+		wlr_scene_node_destroy(&node->node);
 		return NULL;
 	}
 
@@ -293,7 +293,7 @@ void sway_text_node_set_max_width(struct sway_text_node *node, int max_width) {
 		return;
 	}
 	buffer->props.max_width = max_width;
-	sway_scene_buffer_set_dest_size(buffer->buffer_node,
+	wlr_scene_buffer_set_dest_size(buffer->buffer_node,
 		get_text_width(&buffer->props), buffer->props.height);
 	render_backing_buffer(buffer);
 }
@@ -310,7 +310,7 @@ void sway_text_node_set_background(struct sway_text_node *node, float background
 void sway_text_node_scale(struct sway_text_node *node, double scale) {
 	struct text_buffer *buffer = wl_container_of(node, buffer, props);
 	buffer->content_scale = scale;
-	sway_scene_buffer_set_dest_size(buffer->buffer_node,
+	wlr_scene_buffer_set_dest_size(buffer->buffer_node,
 		get_text_width(&buffer->props) * scale, buffer->props.height * scale);
 	render_backing_buffer(buffer);
 }

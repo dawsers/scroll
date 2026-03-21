@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/util/transform.h>
@@ -9,7 +10,6 @@
 #include "sway/ipc-server.h"
 #include "sway/output.h"
 #include "sway/scene_descriptor.h"
-#include "sway/tree/scene.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
@@ -17,6 +17,8 @@
 #include "list.h"
 #include "log.h"
 #include "util.h"
+
+extern const struct wlr_scene_callbacks scroll_scene_cbs;
 
 struct sway_root *root;
 
@@ -27,7 +29,8 @@ struct sway_root *root_create(struct wl_display *wl_display) {
 		return NULL;
 	}
 
-	struct sway_scene *root_scene = sway_scene_create();
+	wlr_scene_set_callbacks(&scroll_scene_cbs);
+	struct wlr_scene *root_scene = wlr_scene_create();
 	if (!root_scene) {
 		sway_log(SWAY_ERROR, "Unable to allocate root scene node");
 		free(root);
@@ -62,12 +65,12 @@ struct sway_root *root_create(struct wl_display *wl_display) {
 	}
 
 	if (failed) {
-		sway_scene_node_destroy(&root_scene->tree.node);
+		wlr_scene_node_destroy(&root_scene->tree.node);
 		free(root);
 		return NULL;
 	}
 
-	sway_scene_node_set_enabled(&root->staging->node, false);
+	wlr_scene_node_set_enabled(&root->staging->node, false);
 
 	root->output_layout = wlr_output_layout_create(wl_display);
 	wl_list_init(&root->all_outputs);
@@ -90,7 +93,7 @@ void root_destroy(struct sway_root *root) {
 	list_free(root->scratchpad);
 	list_free(root->non_desktop_outputs);
 	list_free(root->outputs);
-	sway_scene_node_destroy(&root->root_scene->tree.node);
+	wlr_scene_node_destroy(&root->root_scene->tree.node);
 	free(root);
 }
 

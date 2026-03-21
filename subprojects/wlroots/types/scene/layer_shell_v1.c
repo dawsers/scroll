@@ -138,6 +138,9 @@ struct wlr_scene_layer_surface_v1 *wlr_scene_layer_surface_v1_create(
 		free(scene_layer_surface);
 		return NULL;
 	}
+	if (layer_surface->pending.layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+		scene_layer_surface->tree->node.info.background = true;
+	}
 
 	scene_layer_surface->tree_destroy.notify =
 		scene_layer_surface_handle_tree_destroy;

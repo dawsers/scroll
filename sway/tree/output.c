@@ -87,18 +87,18 @@ static void restore_workspaces(struct sway_output *output) {
 }
 
 static void destroy_scene_layers(struct sway_output *output) {
-	sway_scene_node_destroy(&output->fullscreen_background->node);
+	wlr_scene_node_destroy(&output->fullscreen_background->node);
 
 	scene_node_disown_children(output->layers.tiling);
 	scene_node_disown_children(output->layers.fullscreen);
 
-	sway_scene_node_destroy(&output->layers.shell_background->node);
-	sway_scene_node_destroy(&output->layers.shell_bottom->node);
-	sway_scene_node_destroy(&output->layers.tiling->node);
-	sway_scene_node_destroy(&output->layers.fullscreen->node);
-	sway_scene_node_destroy(&output->layers.shell_top->node);
-	sway_scene_node_destroy(&output->layers.shell_overlay->node);
-	sway_scene_node_destroy(&output->layers.session_lock->node);
+	wlr_scene_node_destroy(&output->layers.shell_background->node);
+	wlr_scene_node_destroy(&output->layers.shell_bottom->node);
+	wlr_scene_node_destroy(&output->layers.tiling->node);
+	wlr_scene_node_destroy(&output->layers.fullscreen->node);
+	wlr_scene_node_destroy(&output->layers.shell_top->node);
+	wlr_scene_node_destroy(&output->layers.shell_overlay->node);
+	wlr_scene_node_destroy(&output->layers.session_lock->node);
 }
 
 struct sway_output *output_create(struct wlr_output *wlr_output) {
@@ -118,7 +118,7 @@ struct sway_output *output_create(struct wlr_output *wlr_output) {
 	output->layer_shell_mask = LAYER_SHELL_ALL;
 
 	if (!failed) {
-		output->fullscreen_background = sway_scene_rect_create(
+		output->fullscreen_background = wlr_scene_rect_create(
 			output->layers.fullscreen, 0, 0, (float[4]){0.f, 0.f, 0.f, 1.f});
 
 		if (!output->fullscreen_background) {
@@ -129,7 +129,7 @@ struct sway_output *output_create(struct wlr_output *wlr_output) {
 
 	if (failed) {
 		destroy_scene_layers(output);
-		sway_scene_output_destroy(output->scene_output);
+		wlr_scene_output_destroy(output->scene_output);
 		free(output);
 		return NULL;
 	}

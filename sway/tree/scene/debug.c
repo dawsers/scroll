@@ -1,10 +1,10 @@
 #include "debug.h"
 #include "log.h"
-#include "sway/tree/scene.h"
+#include <wlr/types/wlr_scene.h>
 #include "sway/tree/view.h"
 #include "sway/scene_descriptor.h"
 
-void scene_node_debug_print_info(struct sway_scene_node *node, int x, int y) {
+void scene_node_debug_print_info(struct wlr_scene_node *node, int x, int y) {
 	bool enabled = true;
 	if (enabled) {
 		static const char *names[3] = { "TREE", "RECT", "BUFFER" };

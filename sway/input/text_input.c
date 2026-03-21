@@ -133,7 +133,7 @@ static void constrain_popup(struct sway_input_popup *popup) {
 
 	struct wlr_box parent = {0};
 	double px, py;
-	sway_scene_node_coords(&popup->desc.relative->parent->node, &px, &py);
+	wlr_scene_node_coords(&popup->desc.relative->parent->node, &px, &py);
 	parent.x = round(px);
 	parent.y = round(py);
 
@@ -189,7 +189,7 @@ static void constrain_popup(struct sway_input_popup *popup) {
 		y = y1 - popup_height;
 	}
 
-	sway_scene_node_set_position(popup->desc.relative, x - parent.x - geo.x, y - parent.y - geo.y);
+	wlr_scene_node_set_position(popup->desc.relative, x - parent.x - geo.x, y - parent.y - geo.y);
 	if (cursor_rect) {
 		struct wlr_box box = {
 			.x = x1 - x,
@@ -202,7 +202,7 @@ static void constrain_popup(struct sway_input_popup *popup) {
 	}
 
 	if (popup->scene_tree) {
-		sway_scene_node_set_position(&popup->scene_tree->node, x - geo.x, y - geo.y);
+		wlr_scene_node_set_position(&popup->scene_tree->node, x - geo.x, y - geo.y);
 	}
 }
 
@@ -379,13 +379,13 @@ static void input_popup_set_focus(struct sway_input_popup *popup,
 
 	if (popup->desc.relative) {
 		scene_descriptor_destroy(&popup->scene_tree->node, SWAY_SCENE_DESC_POPUP);
-		sway_scene_node_destroy(popup->desc.relative);
+		wlr_scene_node_destroy(popup->desc.relative);
 		popup->desc.relative = NULL;
 	}
 
 	if (surface == NULL) {
 		wl_list_init(&popup->focused_surface_unmap.link);
-		sway_scene_node_set_enabled(&popup->scene_tree->node, false);
+		wlr_scene_node_set_enabled(&popup->scene_tree->node, false);
 		return;
 	}
 
@@ -394,7 +394,7 @@ static void input_popup_set_focus(struct sway_input_popup *popup,
 	struct wlr_session_lock_surface_v1 *lock_surface =
 		wlr_session_lock_surface_v1_try_from_wlr_surface(surface);
 
-	struct sway_scene_tree *relative_parent;
+	struct wlr_scene_tree *relative_parent;
 	if (layer_surface) {
 		wl_signal_add(&layer_surface->surface->events.unmap,
 			&popup->focused_surface_unmap);
@@ -441,24 +441,24 @@ static void input_popup_set_focus(struct sway_input_popup *popup,
 		popup->desc.view = view;
 	}
 
-	struct sway_scene_tree *relative = sway_scene_tree_create(relative_parent);
+	struct wlr_scene_tree *relative = wlr_scene_tree_create(relative_parent);
 
 	popup->desc.relative = &relative->node;
 	if (!scene_descriptor_assign(&popup->scene_tree->node,
 			SWAY_SCENE_DESC_POPUP, &popup->desc)) {
-		sway_scene_node_destroy(&popup->scene_tree->node);
+		wlr_scene_node_destroy(&popup->scene_tree->node);
 		popup->scene_tree = NULL;
 		return;
 	}
 
 	constrain_popup(popup);
-	sway_scene_node_set_enabled(&popup->scene_tree->node, true);
+	wlr_scene_node_set_enabled(&popup->scene_tree->node, true);
 }
 
 static void handle_im_popup_destroy(struct wl_listener *listener, void *data) {
 	struct sway_input_popup *popup =
 		wl_container_of(listener, popup, popup_destroy);
-	sway_scene_node_destroy(&popup->scene_tree->node);
+	wlr_scene_node_destroy(&popup->scene_tree->node);
 	wl_list_remove(&popup->focused_surface_unmap.link);
 	wl_list_remove(&popup->popup_surface_commit.link);
 	wl_list_remove(&popup->popup_surface_map.link);
@@ -520,17 +520,17 @@ static void handle_im_new_popup_surface(struct wl_listener *listener,
 	popup->popup_surface = data;
 	popup->popup_surface->data = popup;
 
-	popup->scene_tree = sway_scene_tree_create(root->layers.popup);
+	popup->scene_tree = wlr_scene_tree_create(root->layers.popup);
 	if (!popup->scene_tree) {
 		sway_log(SWAY_ERROR, "Failed to allocate scene tree");
 		free(popup);
 		return;
 	}
 
-	if (!sway_scene_subsurface_tree_create(popup->scene_tree,
+	if (!wlr_scene_subsurface_tree_create(popup->scene_tree,
 			popup->popup_surface->surface)) {
 		sway_log(SWAY_ERROR, "Failed to allocate subsurface tree");
-		sway_scene_node_destroy(&popup->scene_tree->node);
+		wlr_scene_node_destroy(&popup->scene_tree->node);
 		free(popup);
 		return;
 	}

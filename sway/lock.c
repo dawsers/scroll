@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <wlr/types/wlr_session_lock_v1.h>
+#include <wlr/types/wlr_scene.h>
 #include "log.h"
 #include "sway/input/cursor.h"
 #include "sway/input/keyboard.h"
@@ -8,11 +9,10 @@
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/lock.h"
-#include "sway/tree/scene.h"
 
 struct sway_session_lock_output {
-	struct sway_scene_tree *tree;
-	struct sway_scene_rect *background;
+	struct wlr_scene_tree *tree;
+	struct wlr_scene_rect *background;
 	struct sway_session_lock *lock;
 
 	struct sway_output *output;
@@ -82,7 +82,7 @@ static void lock_output_reconfigure(struct sway_session_lock_output *output) {
 	int width = output->output->width;
 	int height = output->output->height;
 
-	sway_scene_rect_set_size(output->background, width, height);
+	wlr_scene_rect_set_size(output->background, width, height);
 
 	if (output->surface) {
 		wlr_session_lock_surface_v1_configure(output->surface, width, height);
@@ -119,7 +119,7 @@ static void handle_new_surface(struct wl_listener *listener, void *data) {
 
 	lock_output->surface = lock_surface;
 
-	sway_scene_subsurface_tree_create(lock_output->tree, lock_surface->surface);
+	wlr_scene_subsurface_tree_create(lock_output->tree, lock_surface->surface);
 
 	lock_output->surface_destroy.notify = handle_surface_destroy;
 	wl_signal_add(&lock_surface->events.destroy, &lock_output->surface_destroy);
@@ -156,14 +156,14 @@ static struct sway_session_lock_output *session_lock_output_create(
 		return NULL;
 	}
 
-	struct sway_scene_tree *tree = sway_scene_tree_create(output->layers.session_lock);
+	struct wlr_scene_tree *tree = wlr_scene_tree_create(output->layers.session_lock);
 	if (!tree) {
 		sway_log(SWAY_ERROR, "failed to allocate a session lock output scene tree");
 		free(lock_output);
 		return NULL;
 	}
 
-	struct sway_scene_rect *background = sway_scene_rect_create(tree, 0, 0, (float[4]){
+	struct wlr_scene_rect *background = wlr_scene_rect_create(tree, 0, 0, (float[4]){
 		lock->abandoned ? 1.f : 0.f,
 		0.f,
 		0.f,
@@ -171,7 +171,7 @@ static struct sway_session_lock_output *session_lock_output_create(
 	});
 	if (!background) {
 		sway_log(SWAY_ERROR, "failed to allocate a session lock output scene background");
-		sway_scene_node_destroy(&tree->node);
+		wlr_scene_node_destroy(&tree->node);
 		free(lock_output);
 		return NULL;
 	}
@@ -195,7 +195,7 @@ static void sway_session_lock_destroy(struct sway_session_lock* lock) {
 	struct sway_session_lock_output *lock_output, *tmp_lock_output;
 	wl_list_for_each_safe(lock_output, tmp_lock_output, &lock->outputs, link) {
 		// destroying the node will also destroy the whole lock output
-		sway_scene_node_destroy(&lock_output->tree->node);
+		wlr_scene_node_destroy(&lock_output->tree->node);
 	}
 
 	if (server.session_lock.lock == lock) {
@@ -245,7 +245,7 @@ static void handle_abandon(struct wl_listener *listener, void *data) {
 
 	struct sway_session_lock_output *lock_output;
 	wl_list_for_each(lock_output, &lock->outputs, link) {
-		sway_scene_rect_set_color(lock_output->background,
+		wlr_scene_rect_set_color(lock_output->background,
 			(float[4]){ 1.f, 0.f, 0.f, 1.f });
 	}
 

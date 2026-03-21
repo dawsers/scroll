@@ -344,7 +344,7 @@ int main(int argc, char **argv) {
 	init_signals();
 
 	if (server.linux_dmabuf_v1) {
-		sway_scene_set_linux_dmabuf_v1(root->root_scene, server.linux_dmabuf_v1);
+		wlr_scene_set_linux_dmabuf_v1(root->root_scene, server.linux_dmabuf_v1);
 	}
 
 	if (validate) {

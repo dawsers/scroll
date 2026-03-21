@@ -80,9 +80,9 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 	ws->jump.tree = alloc_scene_tree(root->staging, &failed);
 
 	if (failed) {
-		sway_scene_node_destroy(&ws->layers.tiling->node);
-		sway_scene_node_destroy(&ws->layers.fullscreen->node);
-		sway_scene_node_destroy(&ws->jump.tree->node);
+		wlr_scene_node_destroy(&ws->layers.tiling->node);
+		wlr_scene_node_destroy(&ws->layers.fullscreen->node);
+		wlr_scene_node_destroy(&ws->jump.tree->node);
 		free(ws);
 		return NULL;
 	}
@@ -166,9 +166,9 @@ void workspace_destroy(struct sway_workspace *workspace) {
 	scene_node_disown_children(workspace->layers.tiling);
 	scene_node_disown_children(workspace->layers.fullscreen);
 	scene_node_disown_children(workspace->jump.tree);
-	sway_scene_node_destroy(&workspace->layers.tiling->node);
-	sway_scene_node_destroy(&workspace->layers.fullscreen->node);
-	sway_scene_node_destroy(&workspace->jump.tree->node);
+	wlr_scene_node_destroy(&workspace->layers.tiling->node);
+	wlr_scene_node_destroy(&workspace->layers.fullscreen->node);
+	wlr_scene_node_destroy(&workspace->jump.tree->node);
 
 	free(workspace->name);
 	free(workspace->representation);

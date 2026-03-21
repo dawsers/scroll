@@ -3,9 +3,9 @@
 
 #include <stdbool.h>
 #include "sway/config.h"
+#include <wlr/types/wlr_scene.h>
 #include "sway/tree/layout.h"
 #include "sway/tree/container.h"
-#include "sway/tree/scene.h"
 #include "sway/tree/node.h"
 
 enum sway_workspace_split {
@@ -36,8 +36,8 @@ struct sway_workspace {
 	struct sway_node node;
 
 	struct {
-		struct sway_scene_tree *tiling;
-		struct sway_scene_tree *fullscreen;
+		struct wlr_scene_tree *tiling;
+		struct wlr_scene_tree *fullscreen;
 	} layers;
 
 	struct sway_container *fullscreen;
@@ -63,7 +63,7 @@ struct sway_workspace {
 		double x, y;
 		double width, height;
 		double scale;
-		struct sway_scene_tree *tree;
+		struct wlr_scene_tree *tree;
 		struct sway_text_node *text;
 	} jump;
 

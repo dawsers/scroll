@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <time.h>
 #include <strings.h>
-#include "sway/tree/scene.h"
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_cursor_shape_v1.h>
 #include <wlr/types/wlr_pointer.h>
@@ -27,7 +27,6 @@
 #include "sway/output.h"
 #include "sway/scene_descriptor.h"
 #include "sway/server.h"
-#include "sway/tree/scene.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
@@ -42,11 +41,11 @@
 struct sway_node *node_at_coords(
 		struct sway_seat *seat, double lx, double ly,
 		struct wlr_surface **surface, double *sx, double *sy) {
-	struct sway_scene_node *scene_node = NULL;
+	struct wlr_scene_node *scene_node = NULL;
 
-	struct sway_scene_node *node;
+	struct wlr_scene_node *node;
 	wl_list_for_each_reverse(node, &root->layer_tree->children, link) {
-		struct sway_scene_tree *layer = sway_scene_tree_from_node(node);
+		struct wlr_scene_tree *layer = wlr_scene_tree_from_node(node);
 
 		bool non_interactive = scene_descriptor_try_get(&layer->node,
 			SWAY_SCENE_DESC_NON_INTERACTIVE);
@@ -54,7 +53,7 @@ struct sway_node *node_at_coords(
 			continue;
 		}
 
-		scene_node = sway_scene_node_at(&layer->node, lx, ly, sx, sy);
+		scene_node = wlr_scene_node_at(&layer->node, lx, ly, sx, sy);
 		if (scene_node) {
 			break;
 		}
@@ -62,11 +61,11 @@ struct sway_node *node_at_coords(
 
 	if (scene_node) {
 		// determine what wlr_surface we clicked on
-		if (scene_node->type == SWAY_SCENE_NODE_BUFFER) {
-			struct sway_scene_buffer *scene_buffer =
-				sway_scene_buffer_from_node(scene_node);
-			struct sway_scene_surface *scene_surface =
-				sway_scene_surface_try_from_buffer(scene_buffer);
+		if (scene_node->type == WLR_SCENE_NODE_BUFFER) {
+			struct wlr_scene_buffer *scene_buffer =
+				wlr_scene_buffer_from_node(scene_node);
+			struct wlr_scene_surface *scene_surface =
+				wlr_scene_surface_try_from_buffer(scene_buffer);
 
 			if (scene_surface) {
 				*surface = scene_surface->surface;
@@ -74,7 +73,7 @@ struct sway_node *node_at_coords(
 		}
 
 		// determine what container we clicked on
-		struct sway_scene_node *current = scene_node;
+		struct wlr_scene_node *current = scene_node;
 		while (true) {
 			struct sway_container *con = scene_descriptor_try_get(current,
 				SWAY_SCENE_DESC_CONTAINER);
@@ -96,7 +95,7 @@ struct sway_node *node_at_coords(
 			}
 
 			if (con && (!con->view || con->view->surface)) {
-				// Verify cursor is really inside the container. sway_scene_node_at()
+				// Verify cursor is really inside the container. wlr_scene_node_at()
 				// may send false positives because it uses the size of the buffer
 				// but the coordinates are displaced by the border
 				double x, y, width, height;

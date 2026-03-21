@@ -31,7 +31,7 @@ static void handle_outputs_update(
 		struct wl_listener *listener, void *data) {
 	struct sway_container *con = wl_container_of(
 			listener, con, outputs_update);
-	struct sway_scene_outputs_update_event *event = data;
+	struct wlr_scene_outputs_update_event *event = data;
 
 	struct wlr_foreign_toplevel_handle_v1 *toplevel = con->view->foreign_toplevel;
 	if (toplevel) {
@@ -39,7 +39,7 @@ static void handle_outputs_update(
 		wl_list_for_each_safe(toplevel_output, tmp, &toplevel->outputs, link) {
 			bool active = false;
 			for (size_t i = 0; i < event->size; i++) {
-				struct sway_scene_output *scene_output = event->active[i];
+				struct wlr_scene_output *scene_output = event->active[i];
 				if (scene_output->output == toplevel_output->output) {
 					active = true;
 					break;
@@ -52,7 +52,7 @@ static void handle_outputs_update(
 		}
 
 		for (size_t i = 0; i < event->size; i++) {
-			struct sway_scene_output *scene_output = event->active[i];
+			struct wlr_scene_output *scene_output = event->active[i];
 			wlr_foreign_toplevel_handle_v1_output_enter(toplevel, scene_output->output);
 		}
 	}
@@ -67,11 +67,11 @@ static void handle_destroy(
 }
 
 static bool handle_point_accepts_input(
-		struct sway_scene_buffer *buffer, double *x, double *y) {
+		struct wlr_scene_buffer *buffer, double *x, double *y) {
 	return false;
 }
 
-static struct sway_scene_decoration *alloc_decoration_node(struct sway_scene_tree *parent,
+static struct wlr_scene_decoration *alloc_decoration_node(struct wlr_scene_tree *parent,
 		struct sway_view *view, bool *failed) {
 	if (*failed) {
 		return NULL;
@@ -79,9 +79,9 @@ static struct sway_scene_decoration *alloc_decoration_node(struct sway_scene_tre
 
 	// just pass in random values. These will be overwritten when
 	// they need to be used.
-	struct sway_scene_decoration *decoration = sway_scene_decoration_create(parent, view, 0, 0);
+	struct wlr_scene_decoration *decoration = wlr_scene_decoration_create(parent, view, 0, 0);
 	if (!decoration) {
-		sway_log(SWAY_ERROR, "Failed to allocate a sway_scene_decoration");
+		sway_log(SWAY_ERROR, "Failed to allocate a wlr_scene_decoration");
 		*failed = true;
 	}
 	if (!failed && !scene_descriptor_assign(&decoration->node,
@@ -121,18 +121,18 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->jump.text = NULL;
 	c->jump.tree = alloc_scene_tree(c->scene_tree, &failed);
-	sway_scene_node_set_enabled(&c->jump.tree->node, false);
+	wlr_scene_node_set_enabled(&c->jump.tree->node, false);
 	c->jump.id = -1;
 
 	if (view) {
 		// only containers with views can have borders
 		c->decoration.full = alloc_decoration_node(c->decoration.tree, view, &failed);
-		c->shadow = sway_scene_shadow_create(c->decoration.tree, c->decoration.full);
-		sway_scene_node_set_enabled(&c->shadow->node, false);
+		c->shadow = wlr_scene_shadow_create(c->decoration.tree, c->decoration.full);
+		wlr_scene_node_set_enabled(&c->shadow->node, false);
 		// We set the title bar at the top and the shadow at the bottom
-		sway_scene_node_lower_to_bottom(&c->shadow->node);
-		sway_scene_node_raise_to_top(&c->title_bar.tree->node);
-		c->output_handler = sway_scene_buffer_create(c->decoration.tree, NULL);
+		wlr_scene_node_lower_to_bottom(&c->shadow->node);
+		wlr_scene_node_raise_to_top(&c->title_bar.tree->node);
+		c->output_handler = wlr_scene_buffer_create(c->decoration.tree, NULL);
 		if (!c->output_handler) {
 			sway_log(SWAY_ERROR, "Failed to allocate a scene node");
 			failed = true;
@@ -155,7 +155,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	}
 
 	if (failed) {
-		sway_scene_node_destroy(&c->scene_tree->node);
+		wlr_scene_node_destroy(&c->scene_tree->node);
 		free(c);
 		return NULL;
 	}
@@ -266,7 +266,7 @@ static bool container_is_current_floating(struct sway_container *container) {
 }
 
 // scene border wants premultiplied colors
-static void scene_border_set_colors(struct sway_scene_decoration *decoration,
+static void scene_border_set_colors(struct wlr_scene_decoration *decoration,
 		const float top[4], const float bottom[4], const float left[4],
 		const float right[4], float opacity) {
 	const float pre_top[] = {
@@ -294,7 +294,7 @@ static void scene_border_set_colors(struct sway_scene_decoration *decoration,
 		right[3] * opacity,
 	};
 
-	sway_scene_decoration_set_border_color(decoration, pre_top, pre_bottom, pre_left, pre_right);
+	wlr_scene_decoration_set_border_color(decoration, pre_top, pre_bottom, pre_left, pre_right);
 }
 
 void container_update(struct sway_container *con) {
@@ -345,10 +345,10 @@ void container_update(struct sway_container *con) {
 				con->pending.decoration.dim_color_b,
 				con->pending.decoration.dim_color_a
 			};
-			sway_scene_decoration_set_dimming(con->decoration.full, con->pending.decoration.dim, color);
+			wlr_scene_decoration_set_dimming(con->decoration.full, con->pending.decoration.dim, color);
 		} else {
 			float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			sway_scene_decoration_set_dimming(con->decoration.full, false, color);
+			wlr_scene_decoration_set_dimming(con->decoration.full, false, color);
 		}
 	}
 
@@ -368,7 +368,7 @@ void container_update(struct sway_container *con) {
 			colors->background[2] * colors->background[3] * alpha,
 			colors->background[3] * alpha,
 		};
-		sway_scene_decoration_set_title_bar_color(con->decoration.full, premultiplied);
+		wlr_scene_decoration_set_title_bar_color(con->decoration.full, premultiplied);
 	}
 }
 
@@ -411,7 +411,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 		alloc_width = MAX(alloc_width, 0);
 
 		sway_text_node_set_max_width(node, round(alloc_width));
-		sway_scene_node_set_position(node->node,
+		wlr_scene_node_set_position(node->node,
 			scale * h_padding, scale * (height - node->height) * 0.5);
 		sway_text_node_scale(node, scale);
 	}
@@ -435,7 +435,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 		alloc_width = MAX(alloc_width, 0);
 
 		sway_text_node_set_max_width(node, round(alloc_width));
-		sway_scene_node_set_position(node->node,
+		wlr_scene_node_set_position(node->node,
 			scale * h_padding, scale * (height - node->height) * 0.5);
 		sway_text_node_scale(node, scale);
 	}
@@ -444,7 +444,7 @@ void container_arrange_title_bar(struct sway_container *con) {
 		return;
 	}
 
-	sway_scene_decoration_set_title_bar(con->decoration.full, true, scale * height, scale * config->titlebar_border_radius);
+	wlr_scene_decoration_set_title_bar(con->decoration.full, true, scale * height, scale * config->titlebar_border_radius);
 
 	container_update(con);
 }
@@ -480,7 +480,7 @@ void container_update_marks(struct sway_container *con) {
 
 	if (!buffer) {
 		if (con->title_bar.marks_text) {
-			sway_scene_node_destroy(con->title_bar.marks_text->node);
+			wlr_scene_node_destroy(con->title_bar.marks_text->node);
 			con->title_bar.marks_text = NULL;
 		}
 	} else if (!con->title_bar.marks_text) {
@@ -504,7 +504,7 @@ void container_update_title_bar(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 
 	if (con->title_bar.title_text) {
-		sway_scene_node_destroy(con->title_bar.title_text->node);
+		wlr_scene_node_destroy(con->title_bar.title_text->node);
 		con->title_bar.title_text = NULL;
 	}
 
@@ -514,7 +514,7 @@ void container_update_title_bar(struct sway_container *con) {
 	// we always have to remake these text buffers completely for text font
 	// changes etc...
 	if (con->title_bar.marks_text) {
-		sway_scene_node_destroy(con->title_bar.marks_text->node);
+		wlr_scene_node_destroy(con->title_bar.marks_text->node);
 		con->title_bar.marks_text = NULL;
 	}
 
@@ -541,14 +541,14 @@ void container_destroy(struct sway_container *con) {
 
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;
-		sway_scene_node_destroy(&con->output_handler->node);
+		wlr_scene_node_destroy(&con->output_handler->node);
 		if (con->view->destroying) {
 			view_destroy(con->view);
 		}
 	}
 
 	scene_node_disown_children(con->content_tree);
-	sway_scene_node_destroy(&con->scene_tree->node);
+	wlr_scene_node_destroy(&con->scene_tree->node);
 	free(con);
 }
 
@@ -1876,7 +1876,7 @@ void container_raise_floating(struct sway_container *con) {
 		// it's okay to just raise the scene directly instead of waiting
 		// for the transaction to go through. We won't be reconfiguring
 		// surfaces
-		sway_scene_node_raise_to_top(&floater->scene_tree->node);
+		wlr_scene_node_raise_to_top(&floater->scene_tree->node);
 
 		list_move_to_end(floater->pending.workspace->floating, floater);
 		node_set_dirty(&floater->pending.workspace->node);

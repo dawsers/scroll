@@ -5,7 +5,7 @@
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_damage_ring.h>
 #include <wlr/types/wlr_output.h>
-#include "sway/tree/scene.h"
+#include <wlr/types/wlr_scene.h>
 #include "config.h"
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
@@ -32,13 +32,13 @@ struct sway_output {
 	struct sway_node node;
 
 	struct {
-		struct sway_scene_tree *shell_background;
-		struct sway_scene_tree *shell_bottom;
-		struct sway_scene_tree *tiling;
-		struct sway_scene_tree *fullscreen;
-		struct sway_scene_tree *shell_top;
-		struct sway_scene_tree *shell_overlay;
-		struct sway_scene_tree *session_lock;
+		struct wlr_scene_tree *shell_background;
+		struct wlr_scene_tree *shell_bottom;
+		struct wlr_scene_tree *tiling;
+		struct wlr_scene_tree *fullscreen;
+		struct wlr_scene_tree *shell_top;
+		struct wlr_scene_tree *shell_overlay;
+		struct wlr_scene_tree *session_lock;
 	} layers;
 
 	uint32_t layer_shell_mask;	// enabled/disabled layer shell layers
@@ -48,10 +48,10 @@ struct sway_output {
 	// solid color in order to conform to the wayland protocol. This rect
 	// ensures that when looking through a surface, all that will be seen
 	// is black.
-	struct sway_scene_rect *fullscreen_background;
+	struct wlr_scene_rect *fullscreen_background;
 
 	struct wlr_output *wlr_output;
-	struct sway_scene_output *scene_output;
+	struct wlr_scene_output *scene_output;
 	struct sway_server *server;
 	struct wl_list link;
 
@@ -106,7 +106,7 @@ struct sway_output *output_get_in_direction(struct sway_output *reference,
 		enum wlr_direction direction);
 
 void output_configure_scene(struct sway_output *output,
-	struct sway_scene_node *node, float opacity);
+	struct wlr_scene_node *node, float opacity);
 
 void output_add_workspace(struct sway_output *output,
 		struct sway_workspace *workspace);

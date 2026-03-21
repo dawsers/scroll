@@ -337,7 +337,7 @@ void layout_overview_workspaces_toggle() {
 				double gapy = (uheight - rows * scale * height) / (rows + 1);
 				for (int c = 0; c < cols; ++c) {
 					struct sway_workspace *child = output->current.workspaces->items[j++];
-					sway_scene_node_reparent(&child->jump.tree->node, output->layers.shell_overlay);
+					wlr_scene_node_reparent(&child->jump.tree->node, output->layers.shell_overlay);
 					child->layout.fullscreen = child->fullscreen;
 					child->jump.x = round(left + gapx + c * (scale * width + gapx));
 					child->jump.y = round(top + gapy + r * (scale * height + gapy));
@@ -359,7 +359,7 @@ void layout_overview_workspaces_toggle() {
 		} else {
 			for (int j = 0; j < output->current.workspaces->length; ++j) {
 				struct sway_workspace *child = output->current.workspaces->items[j];
-				sway_scene_node_reparent(&child->jump.tree->node, root->staging);
+				wlr_scene_node_reparent(&child->jump.tree->node, root->staging);
 				child->layers.tiling->node.info.workspace = NULL;
 				node_set_dirty(&child->node);
 				if (child->layout.fullscreen) {
@@ -1315,7 +1315,7 @@ static void container_toggle_jump_decoration(double wscale,
 		struct sway_container *con, char *text,	double width, double height) {
 	if (!text) {
 		if (con->jump.text) {
-			sway_scene_node_destroy(con->jump.text->node);
+			wlr_scene_node_destroy(con->jump.text->node);
 			con->jump.text = NULL;
 		}
 		return;
@@ -1331,8 +1331,8 @@ static void container_toggle_jump_decoration(double wscale,
 	sway_text_node_scale(con->jump.text, jscale * scale * wscale);
 	int x = 0.5 * wscale * (width - con->jump.text->width * jscale * scale);
 	int y = 0.5 * wscale * (height - con->jump.text->height * jscale * scale);
-	sway_scene_node_set_position(&con->jump.tree->node, x, y);
-	sway_scene_node_set_enabled(&con->jump.tree->node, true);
+	wlr_scene_node_set_position(&con->jump.tree->node, x, y);
+	wlr_scene_node_set_enabled(&con->jump.tree->node, true);
 	node_set_dirty(&con->node);
 }
 
@@ -1436,7 +1436,7 @@ static void jump_handle_keyboard_key_end(void *data, bool focus) {
 		struct sway_seat *seat = input_manager_current_seat();
 		seat_set_focus_container(seat, focused);
 		if (layout_overview_mode(focused->pending.workspace) != OVERVIEW_TILING) {
-			sway_scene_node_raise_to_top(&focused->scene_tree->node);
+			wlr_scene_node_raise_to_top(&focused->scene_tree->node);
 		}
 		seat_consider_warp_to_focus(seat);
 	}
@@ -1510,7 +1510,7 @@ static bool jump_handle_button(struct sway_seat *seat, uint32_t time_msec,
 	struct jump_common_data *common = jump_data->common;
 	if (state == WL_POINTER_BUTTON_STATE_PRESSED && button == BTN_LEFT) {
 		struct sway_container *con = seat_get_focused_container(seat);
-		sway_scene_node_raise_to_top(&con->scene_tree->node);
+		wlr_scene_node_raise_to_top(&con->scene_tree->node);
 		common->keyboard_key_end(data, false);
 		return true;
 	}
@@ -1802,7 +1802,7 @@ static void jump_scratchpad_handle_keyboard_key_end(void *data, bool focus) {
 			}
 		} else {
 			// Re-enable the non-scratchpad floating windows in the scene graph
-			sway_scene_node_reparent(&view->scene_tree->node, root->layers.floating);
+			wlr_scene_node_reparent(&view->scene_tree->node, root->layers.floating);
 		}
 	}
 	if (focus) {
@@ -1904,7 +1904,7 @@ void layout_jump_scratchpad(struct sway_workspace *workspace) {
 		struct sway_container *view = workspace->floating->items[i];
 		view->pending.workspace = NULL;
 		if (!view->scratchpad) {
-			sway_scene_node_reparent(&view->scene_tree->node, root->staging);
+			wlr_scene_node_reparent(&view->scene_tree->node, root->staging);
 		}
 	}
 
@@ -1981,7 +1981,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 		view->pending.workspace = workspace;
 		if (!layout_trails_trailmarked(view->view)) {
 			// Re-enable the non-trailmarked floating windows in the scene graph
-			sway_scene_node_reparent(&view->scene_tree->node, root->layers.floating);
+			wlr_scene_node_reparent(&view->scene_tree->node, root->layers.floating);
 		}
 	}
 	if (focus) {
@@ -1993,7 +1993,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 		}
 		seat_set_focus_workspace(seat, common->focused->pending.workspace);
 		seat_set_focus_container(seat, common->focused);
-		sway_scene_node_raise_to_top(&common->focused->scene_tree->node);
+		wlr_scene_node_raise_to_top(&common->focused->scene_tree->node);
 		seat_consider_warp_to_focus(seat);
 	}
 	node_set_dirty(&workspace->node);
@@ -2057,7 +2057,7 @@ void layout_jump_trailmark(struct sway_workspace *workspace) {
 		struct sway_container *view = workspace->floating->items[i];
 		if (!layout_trails_trailmarked(view->view)) {
 			view->pending.workspace = NULL;
-			sway_scene_node_reparent(&view->scene_tree->node, root->staging);
+			wlr_scene_node_reparent(&view->scene_tree->node, root->staging);
 		}
 	}
 
@@ -2179,7 +2179,7 @@ static void jump_all_handle_keyboard_key_end(void *data, bool focus) {
 		}
 		seat_set_focus_workspace(seat, common->focused->pending.workspace);
 		seat_set_focus_container(seat, common->focused);
-		sway_scene_node_raise_to_top(&common->focused->scene_tree->node);
+		wlr_scene_node_raise_to_top(&common->focused->scene_tree->node);
 		seat_consider_warp_to_focus(seat);
 	}
 
@@ -2378,7 +2378,7 @@ void layout_jump_all() {
 static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *text) {
 	if (!text) {
 		if (ws->jump.text) {
-			sway_scene_node_destroy(ws->jump.text->node);
+			wlr_scene_node_destroy(ws->jump.text->node);
 			ws->jump.text = NULL;
 		}
 		return;
@@ -2399,8 +2399,8 @@ static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *te
 	int y = ws->jump.y + 0.5 * (ws->jump.height - ws->jump.text->height * jscale * scale * wscale * oscale);
 	x /= oscale;
 	y /= oscale;
-	sway_scene_node_set_position(&ws->jump.tree->node, x, y);
-	sway_scene_node_set_enabled(&ws->jump.tree->node, true);
+	wlr_scene_node_set_position(&ws->jump.tree->node, x, y);
+	wlr_scene_node_set_enabled(&ws->jump.tree->node, true);
 }
 
 static void jump_workspaces_handle_keyboard_key_end(void *data, bool focus) {
@@ -2556,7 +2556,7 @@ static void container_jump(struct jump_data *jump_data) {
 			for (int i = 0; i < container->pending.children->length; ++i) {
 				struct sway_container *con = container->pending.children->items[i];
 				con->pending.y = y;
-				sway_scene_node_raise_to_top(&con->scene_tree->node);
+				wlr_scene_node_raise_to_top(&con->scene_tree->node);
 				y += con->pending.height / height * workspace->height;
 			}
 			for (int i = 0; i < container->pending.children->length; ++i) {
@@ -2576,7 +2576,7 @@ static void container_jump(struct jump_data *jump_data) {
 			for (int i = 0; i < container->pending.children->length; ++i) {
 				struct sway_container *con = container->pending.children->items[i];
 				con->pending.x = x;
-				sway_scene_node_raise_to_top(&con->scene_tree->node);
+				wlr_scene_node_raise_to_top(&con->scene_tree->node);
 				x += con->pending.width / width * workspace->width;
 			}
 			for (int i = 0; i < container->pending.children->length; ++i) {

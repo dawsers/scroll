@@ -241,16 +241,8 @@ sway_sources = files(
 	'tree/output.c',
 	'tree/layout.c',
 	'tree/space.c',
-	'tree/scene/scene.c',
-	'tree/scene/surface.c',
-	'tree/scene/subsurface_tree.c',
-	'tree/scene/drag_icon.c',
-	'tree/scene/layer_shell_v1.c',
-	'tree/scene/output_layout.c',
-	'tree/scene/xdg_shell.c',
+	'tree/scene.c',
 	'tree/scene/debug.c',
-	'tree/scene/output.c',
-	'tree/scene/ext_image_capture_source_v1.c',
 
 	'protocol/xdg_output_v1.c',
 )

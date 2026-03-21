@@ -1144,14 +1144,14 @@ static bool apply_resolved_output_configs(struct matched_output_config *configs,
 		struct wlr_backend_output_state *backend_state = &states[idx];
 		struct config_output_state *config_state = &config_states[idx];
 
-		struct sway_scene_output_state_options opts = {
+		struct wlr_scene_output_state_options opts = {
 			.swapchain = wlr_output_swapchain_manager_get_swapchain(
 				&swapchain_mgr, backend_state->output),
 			.color_transform = config_state->color_transform,
 		};
-		struct sway_scene_output *scene_output = cfg->output->scene_output;
+		struct wlr_scene_output *scene_output = cfg->output->scene_output;
 		struct wlr_output_state *state = &backend_state->base;
-		if (!sway_scene_output_build_state(scene_output, state, &opts)) {
+		if (!wlr_scene_output_build_state(scene_output, state, &opts)) {
 			sway_log(SWAY_ERROR, "Building output state for '%s' failed",
 				backend_state->output->name);
 			goto out;

@@ -160,27 +160,27 @@ bool node_has_ancestor(struct sway_node *node, struct sway_node *ancestor) {
 	return false;
 }
 
-void scene_node_disown_children(struct sway_scene_tree *tree) {
+void scene_node_disown_children(struct wlr_scene_tree *tree) {
 	// this function can be called as part of destruction code that will be invoked
 	// upon an allocation failure. Let's not crash on NULL due to an allocation error.
 	if (!tree) {
 		return;
 	}
 
-	struct sway_scene_node *child, *tmp_child;
+	struct wlr_scene_node *child, *tmp_child;
 	wl_list_for_each_safe(child, tmp_child, &tree->children, link) {
-		sway_scene_node_reparent(child, root->staging);
+		wlr_scene_node_reparent(child, root->staging);
 	}
 }
 
-struct sway_scene_tree *alloc_scene_tree(struct sway_scene_tree *parent,
+struct wlr_scene_tree *alloc_scene_tree(struct wlr_scene_tree *parent,
 		bool *failed) {
 	// fallthrough
 	if (*failed) {
 		return NULL;
 	}
 
-	struct sway_scene_tree *tree = sway_scene_tree_create(parent);
+	struct wlr_scene_tree *tree = wlr_scene_tree_create(parent);
 	if (!tree) {
 		sway_log(SWAY_ERROR, "Failed to allocate a scene node");
 		*failed = true;

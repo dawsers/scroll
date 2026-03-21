@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <wayland-server-core.h>
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_xdg_activation_v1.h>
@@ -17,7 +18,6 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/server.h"
-#include "sway/tree/scene.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 
@@ -132,7 +132,7 @@ static void unmanaged_handle_set_geometry(struct wl_listener *listener, void *da
 
 	double x, y;
 	get_node_coords(xsurface, &x, &y);
-	sway_scene_node_set_position(&surface->surface_scene->buffer->node, x, y);
+	wlr_scene_node_set_position(&surface->surface_scene->buffer->node, x, y);
 }
 
 static void unmanaged_handle_map(struct wl_listener *listener, void *data) {
@@ -140,7 +140,7 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data) {
 		wl_container_of(listener, surface, map);
 	struct wlr_xwayland_surface *xsurface = surface->wlr_xwayland_surface;
 
-	surface->surface_scene = sway_scene_surface_create(root->layers.unmanaged,
+	surface->surface_scene = wlr_scene_surface_create(root->layers.unmanaged,
 		xsurface->surface);
 
 	if (surface->surface_scene) {
@@ -149,7 +149,7 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data) {
 		double x, y;
 		get_node_coords(xsurface, &x, &y);
 
-		sway_scene_node_set_position(&surface->surface_scene->buffer->node,
+		wlr_scene_node_set_position(&surface->surface_scene->buffer->node,
 			round(x), round(y));
 
 		wl_signal_add(&xsurface->events.set_geometry, &surface->set_geometry);
@@ -172,7 +172,7 @@ static void unmanaged_handle_unmap(struct wl_listener *listener, void *data) {
 	if (surface->surface_scene) {
 		wl_list_remove(&surface->set_geometry.link);
 
-		sway_scene_node_destroy(&surface->surface_scene->buffer->node);
+		wlr_scene_node_destroy(&surface->surface_scene->buffer->node);
 		surface->surface_scene = NULL;
 	}
 
@@ -598,11 +598,11 @@ static void handle_unmap(struct wl_listener *listener, void *data) {
 	wl_list_remove(&xwayland_view->commit.link);
 	wl_list_remove(&xwayland_view->surface_tree_destroy.link);
 
-	sway_scene_node_destroy(&xwayland_view->image_capture_scene_surface->buffer->node);
+	wlr_scene_node_destroy(&xwayland_view->image_capture_scene_surface->buffer->node);
 	xwayland_view->image_capture_scene_surface = NULL;
 
 	if (xwayland_view->surface_tree) {
-		sway_scene_node_destroy(&xwayland_view->surface_tree->node);
+		wlr_scene_node_destroy(&xwayland_view->surface_tree->node);
 		xwayland_view->surface_tree = NULL;
 	}
 
@@ -634,7 +634,7 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	// Put it back into the tree
 	view_map(view, xsurface->surface, xsurface->fullscreen, NULL, false);
 
-	xwayland_view->surface_tree = sway_scene_subsurface_tree_create(
+	xwayland_view->surface_tree = wlr_scene_subsurface_tree_create(
 		xwayland_view->view.content_tree, xsurface->surface);
 
 	if (xwayland_view->surface_tree) {
@@ -644,7 +644,7 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	}
 
 	xwayland_view->image_capture_scene_surface =
-		sway_scene_surface_create(&xwayland_view->view.image_capture_scene->tree, xsurface->surface);
+		wlr_scene_surface_create(&xwayland_view->view.image_capture_scene->tree, xsurface->surface);
 
 	transaction_commit_dirty();
 }

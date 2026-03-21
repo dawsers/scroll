@@ -62,7 +62,6 @@
 #include "sway/server.h"
 #include "sway/input/cursor.h"
 #include "sway/tree/root.h"
-#include "sway/ext_image_capture_source_v1.h"
 #include "sway/desktop/animation.h"
 
 #if WLR_HAS_XWAYLAND
@@ -231,7 +230,7 @@ static void handle_new_foreign_toplevel_capture_request(struct wl_listener *list
 	struct sway_view *view = request->toplevel_handle->data;
 
 	if (view->image_capture_source == NULL) {
-		view->image_capture_source = sway_ext_image_capture_source_v1_create_with_scene_node(
+		view->image_capture_source = wlr_ext_image_capture_source_v1_create_with_scene_node(
 			&view->image_capture_scene->tree.node, server.wl_event_loop, server.allocator, server.renderer);
 		if (view->image_capture_source == NULL) {
 			return;
@@ -300,7 +299,7 @@ bool server_init(struct sway_server *server) {
 
 	server->gamma_control_manager_v1 =
 		wlr_gamma_control_manager_v1_create(server->wl_display);
-	sway_scene_set_gamma_control_manager_v1(root->root_scene,
+	wlr_scene_set_gamma_control_manager_v1(root->root_scene,
 		server->gamma_control_manager_v1);
 
 	server->new_output.notify = handle_new_output;
@@ -471,7 +470,7 @@ bool server_init(struct sway_server *server) {
 		});
 		free(transfer_functions);
 		free(primaries);
-		sway_scene_set_color_manager_v1(root->root_scene, cm);
+		wlr_scene_set_color_manager_v1(root->root_scene, cm);
 	}
 
 	wlr_color_representation_manager_v1_create_with_renderer(

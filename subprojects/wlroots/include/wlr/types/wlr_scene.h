@@ -52,21 +52,62 @@ typedef bool (*wlr_scene_buffer_point_accepts_input_func_t)(
 typedef void (*wlr_scene_buffer_iterator_func_t)(
 	struct wlr_scene_buffer *buffer, int sx, int sy, void *user_data);
 
+struct wlr_scene_node_at_data {
+	double lx, ly;
+	double rx, ry;
+	struct wlr_scene_node *node;
+};
+
+struct wlr_scene_workspace_data {
+	double x, y;
+	double width, height;
+	double scale;
+};
+
+struct wlr_scene_view_data {
+	double total_scale;
+	double wscale, hscale;
+	float radius_top, radius_bottom;
+};
+
+/* Implemented by the compositor */
+struct wlr_scene_callbacks {
+	bool (*fullscreen_global_enabled)(void);
+	bool (*overview_workspaces_enabled)(void);
+	bool (*node_at)(struct wlr_scene_node *node, double lx, double ly,
+			struct wlr_scene_node_at_data *data);
+	bool (*workspace_data)(struct wlr_scene_node *node, struct wlr_scene_workspace_data *data);
+	bool (*view_data)(struct wlr_surface *surface, struct wlr_scene_view_data *data);
+	bool (*node_get_parent_total_scale)(struct wlr_scene_node *node, double *scale);
+	void (*animate)(struct wlr_output *output);
+};
+
 enum wlr_scene_node_type {
 	WLR_SCENE_NODE_TREE,
 	WLR_SCENE_NODE_RECT,
 	WLR_SCENE_NODE_BUFFER,
+	WLR_SCENE_NODE_DECORATION,
+	WLR_SCENE_NODE_SHADOW,
+};
+
+struct wlr_scene_node_info {
+	double scale;			// scale for everything below
+	struct wlr_output *wlr_output;	// wlr_output the node belongs to (if tiled, otherwise NULL)
+	void *workspace;
+	struct wlr_box *output_box;
+	bool background;	// bakground layer shell, usually the wallpaper
 };
 
 /** A node is an object in the scene. */
 struct wlr_scene_node {
 	enum wlr_scene_node_type type;
 	struct wlr_scene_tree *parent;
+	struct wlr_scene_tree *old_parent;  // for full screen focusing
 
 	struct wl_list link; // wlr_scene_tree.children
 
 	bool enabled;
-	int x, y; // relative to parent
+	double x, y; // relative to parent
 
 	struct {
 		struct wl_signal destroy;
@@ -79,6 +120,8 @@ struct wlr_scene_node {
 	struct {
 		pixman_region32_t visible;
 	} WLR_PRIVATE;
+
+	struct wlr_scene_node_info info;
 };
 
 enum wlr_scene_debug_damage_option {
@@ -141,7 +184,37 @@ struct wlr_scene_surface {
 /** A scene-graph node displaying a solid-colored rectangle */
 struct wlr_scene_rect {
 	struct wlr_scene_node node;
-	int width, height;
+	double width, height;
+	float color[4];
+};
+
+struct wlr_scene_decoration {
+	struct wlr_scene_node node;
+	void *view;
+	struct wlr_object *wlr_object;
+	double width, height;
+	bool title_bar;
+	double title_bar_height;
+	double title_bar_border_radius;
+	float title_bar_color[4];
+	bool border;
+	double border_radius;
+	double border_width;
+	float border_top_color[4], border_bottom_color[4], border_left_color[4], border_right_color[4];
+	bool dim;
+	float dim_color[4];
+};
+
+struct wlr_scene_shadow {
+	struct wlr_scene_node node;
+	struct wlr_scene_decoration *decoration;
+	struct wlr_object *wlr_object;
+	double width, height;
+	bool enabled;
+	bool dynamic;
+	double size;
+	double blur;
+	double offset[2];
 	float color[4];
 };
 
@@ -188,7 +261,7 @@ struct wlr_scene_buffer {
 	float opacity;
 	enum wlr_scale_filter_mode filter_mode;
 	struct wlr_fbox src_box;
-	int dst_width, dst_height;
+	double dst_width, dst_height;
 	enum wl_output_transform transform;
 	pixman_region32_t opaque_region;
 	enum wlr_color_transfer_function transfer_function;
@@ -217,6 +290,10 @@ struct wlr_scene_buffer {
 		// as {R, G, B, A} where the max value of each component is UINT32_MAX
 		uint32_t single_pixel_buffer_color[4];
 	} WLR_PRIVATE;
+
+	// Radii of the two top and two bottom corners
+	float radius_top;
+	float radius_bottom;
 };
 
 /** A viewport for an output in the scene-graph */
@@ -301,7 +378,7 @@ void wlr_scene_node_set_enabled(struct wlr_scene_node *node, bool enabled);
 /**
  * Set the position of the node relative to its parent.
  */
-void wlr_scene_node_set_position(struct wlr_scene_node *node, int x, int y);
+void wlr_scene_node_set_position(struct wlr_scene_node *node, double x, double y);
 /**
  * Move the node right above the specified sibling.
  * Asserts that node and sibling are distinct and share the same parent.
@@ -332,7 +409,7 @@ void wlr_scene_node_reparent(struct wlr_scene_node *node,
  *
  * True is returned if the node and all of its ancestors are enabled.
  */
-bool wlr_scene_node_coords(struct wlr_scene_node *node, int *lx, int *ly);
+bool wlr_scene_node_coords(struct wlr_scene_node *node, double *lx, double *ly);
 /**
  * Call `iterator` on each buffer in the scene-graph, with the buffer's
  * position in layout coordinates. The function is called from root to leaves
@@ -350,12 +427,27 @@ struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
 	double lx, double ly, double *nx, double *ny);
 
 /**
+ * Return the output that owns this node (if tiled, otherwise NULL)
+*/
+struct wlr_output *wlr_scene_node_info_get_output(struct wlr_scene_node *node);
+
+/**
+ * Return the workspace box info from this node (NULL if it doesn't have one)
+*/
+struct wlr_box *wlr_scene_node_info_get_workspace_box(struct wlr_scene_node *node);
+
+/**
  * Create a new scene-graph.
  *
  * The graph is also a struct wlr_scene_node. Associated resources can be
  * destroyed through wlr_scene_node_destroy().
  */
 struct wlr_scene *wlr_scene_create(void);
+
+/*
+ * Set wlr_scene callbacks
+ */
+void wlr_scene_set_callbacks(const struct wlr_scene_callbacks *callbacks);
 
 /**
  * Handles linux_dmabuf_v1 feedback for all surfaces in the scene.
@@ -435,6 +527,12 @@ struct wlr_scene_tree *wlr_scene_tree_from_node(struct wlr_scene_node *node);
 struct wlr_scene_rect *wlr_scene_rect_from_node(struct wlr_scene_node *node);
 
 /**
+ * If this node represents a wlr_scene_decoration, that decoration will be returned. It
+ * is not legal to feed a node that does not represent a wlr_scene_decoration.
+ */
+struct wlr_scene_decoration *wlr_scene_decoration_from_node(struct wlr_scene_node *node);
+
+/**
  * If this buffer is backed by a surface, then the struct wlr_scene_surface is
  * returned. If not, NULL will be returned.
  */
@@ -453,12 +551,12 @@ void wlr_scene_surface_send_frame_done(struct wlr_scene_surface *scene_surface,
  * The color argument must be a premultiplied color value.
  */
 struct wlr_scene_rect *wlr_scene_rect_create(struct wlr_scene_tree *parent,
-		int width, int height, const float color[static 4]);
+		double width, double height, const float color[static 4]);
 
 /**
  * Change the width and height of an existing rectangle node.
  */
-void wlr_scene_rect_set_size(struct wlr_scene_rect *rect, int width, int height);
+void wlr_scene_rect_set_size(struct wlr_scene_rect *rect, double width, double height);
 
 /**
  * Change the color of an existing rectangle node.
@@ -466,6 +564,69 @@ void wlr_scene_rect_set_size(struct wlr_scene_rect *rect, int width, int height)
  * The color argument must be a premultiplied color value.
  */
 void wlr_scene_rect_set_color(struct wlr_scene_rect *rect, const float color[static 4]);
+
+/**
+ * Add a decoration node for a view to the scene-graph.
+ */
+struct wlr_scene_decoration *wlr_scene_decoration_create(struct wlr_scene_tree *parent,
+		void *view, double width, double height);
+
+/**
+ * Change the width and height of an existing decoration node.
+ */
+void wlr_scene_decoration_set_size(struct wlr_scene_decoration *deco, double width, double height);
+
+/**
+ * Add a border to an existing decoration node with the given colors.
+ *
+ * The color argument must be a premultiplied color value.
+ */
+void wlr_scene_decoration_set_border_color(struct wlr_scene_decoration *deco,
+	const float border_top[static 4], const float border_bottom[static 4],
+	const float border_left[static 4], const float border_right[static 4]);
+
+/**
+ * Change the radius of an existing decoration node.
+ */
+void wlr_scene_decoration_set_border_radius(struct wlr_scene_decoration *deco, double radius);
+
+/**
+ * Change the width of the border of an existing decoration node.
+ */
+void wlr_scene_decoration_set_border_width(struct wlr_scene_decoration *deco, double width);
+
+/**
+ * Add a title bar to an existing decoration node with the given height and border radius.
+ */
+void wlr_scene_decoration_set_title_bar(struct wlr_scene_decoration *deco, bool enable,
+		double height, double border_radius);
+
+/**
+ * Set the color of the title bar of an existing decoration node.
+ * The color argument must be a premultiplied color value.
+ */
+void wlr_scene_decoration_set_title_bar_color(struct wlr_scene_decoration *deco,
+	const float color[static 4]);
+
+/**
+ * Dims the view for an existing decoration node.
+ * The color argument must be a premultiplied color value.
+ */
+void wlr_scene_decoration_set_dimming(struct wlr_scene_decoration *deco,
+	bool dim, const float color[static 4]);
+
+/**
+ * Add a shadow node for a view to the scene graph
+ */
+struct wlr_scene_shadow *wlr_scene_shadow_create(struct wlr_scene_tree *parent,
+		struct wlr_scene_decoration *decoration);
+
+/**
+ * Change the shadow properties for an existing shadow node.
+ */
+void wlr_scene_shadow_set_properties(struct wlr_scene_shadow *shadow,
+	double width, double height, bool enabled, bool dynamic,
+	double size, double blur, const double offset[static 2], float color[4]);
 
 /**
  * Add a node displaying a buffer to the scene-graph.
@@ -538,7 +699,13 @@ void wlr_scene_buffer_set_source_box(struct wlr_scene_buffer *scene_buffer,
  * destination size is zero.
  */
 void wlr_scene_buffer_set_dest_size(struct wlr_scene_buffer *scene_buffer,
-	int width, int height);
+	double width, double height);
+
+/**
+ * Sets the two top and two bottom radii for the buffer.
+ */
+void wlr_scene_buffer_set_radius(struct wlr_scene_buffer *scene_buffer,
+	float radius_top, float radius_bottom);
 
 /**
  * Set a transform which will be applied to the buffer.
@@ -737,4 +904,5 @@ void wlr_scene_layer_surface_v1_configure(
 struct wlr_scene_tree *wlr_scene_drag_icon_create(
 	struct wlr_scene_tree *parent, struct wlr_drag_icon *drag_icon);
 
+void wlr_scene_surface_reconfigure(struct wlr_scene_surface *scene_surface);
 #endif
