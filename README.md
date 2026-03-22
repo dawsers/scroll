@@ -123,7 +123,9 @@ stable version.
 ### NixOS
 
 Thanks to @AsahiRocks for creating a nix flake of scroll stable in his repository,
-[here](https://github.com/AsahiRocks/scroll-flake)
+[here](https://github.com/AsahiRocks/scroll-flake). This repository has been
+archived. If anybody decides to provide a working nix flake, please contact me
+so I can update this README. Thank you.
 
 ### Artix Linux and Arch-derived Distributions not Using `systemd`
 
