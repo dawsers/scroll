@@ -1364,3 +1364,40 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 	ipc_event_workspace(NULL, first, "move");
 	ipc_event_workspace(NULL, second, "move");
 }
+
+void workspace_move_to_output(struct sway_workspace *workspace,
+		struct sway_output *output) {
+	if (workspace->output == output) {
+		return;
+	}
+	if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+		workspace_split_reset(workspace);
+	}
+	struct sway_output *old_output = workspace->output;
+	workspace_detach(workspace);
+	struct sway_workspace *new_output_old_ws =
+		output_get_active_workspace(output);
+	if (!sway_assert(new_output_old_ws, "Expected output to have a workspace")) {
+		return;
+	}
+
+	output_add_workspace(output, workspace);
+
+	// If moving the last workspace from the old output, create a new workspace
+	// on the old output
+	struct sway_seat *seat = config->handler_context.seat;
+	if (old_output->workspaces->length == 0) {
+		char *ws_name = workspace_next_name(old_output->wlr_output->name);
+		struct sway_workspace *ws = workspace_create(old_output, ws_name);
+		free(ws_name);
+		seat_set_raw_focus(seat, &ws->node);
+	}
+
+	workspace_consider_destroy(new_output_old_ws);
+
+	output_sort_workspaces(output);
+	struct sway_node *focus = seat_get_focus_inactive(seat, &workspace->node);
+	seat_set_focus(seat, focus);
+	workspace_output_raise_priority(workspace, old_output, output);
+	ipc_event_workspace(NULL, workspace, "move");
+}

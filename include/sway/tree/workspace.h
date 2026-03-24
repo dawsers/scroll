@@ -185,4 +185,7 @@ struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspac
 void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 		bool name_only);
 
+void workspace_move_to_output(struct sway_workspace *workspace,
+		struct sway_output *output);
+
 #endif
