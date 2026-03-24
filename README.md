@@ -2000,3 +2000,7 @@ events: `scroller`, `trails`, `lua`
 ### scrollnag
 
 `--edge center`, `--width`
+
+## Links
+
+[![Hypercommit](https://img.shields.io/badge/Hypercommit-DB2475)](https://hypercommit.com/scroll)
