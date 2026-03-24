@@ -62,6 +62,7 @@
 #include "sway/server.h"
 #include "sway/input/cursor.h"
 #include "sway/tree/root.h"
+#include "sway/tree/workspace.h"
 #include "sway/desktop/animation.h"
 
 #if WLR_HAS_XWAYLAND
@@ -378,6 +379,7 @@ bool server_init(struct sway_server *server) {
 		wlr_foreign_toplevel_manager_v1_create(server->wl_display);
 
 	sway_session_lock_init();
+	sway_ext_workspace_init();
 
 #if WLR_HAS_DRM_BACKEND
 	server->drm_lease_manager=
@@ -544,6 +546,7 @@ void server_fini(struct sway_server *server) {
 	wl_list_remove(&server->xdg_toplevel_tag_manager_v1_set_tag.link);
 	wl_list_remove(&server->request_set_cursor_shape.link);
 	wl_list_remove(&server->new_foreign_toplevel_capture_request.link);
+	wl_list_remove(&server->workspace_manager_v1_commit.link);
 	input_manager_finish(server->input);
 
 	// TODO: free sway-specific resources
