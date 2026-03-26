@@ -556,17 +556,17 @@ struct wlr_vk_device *vulkan_device_create(struct wlr_vk_instance *ini,
 		.pQueuePriorities = &prio,
 	};
 
-	VkDeviceQueueGlobalPriorityCreateInfoKHR global_priority;
+	VkDeviceQueueGlobalPriorityCreateInfoEXT global_priority;
 	bool has_global_priority = check_extension(avail_ext_props, avail_extc,
-		VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME);
+		VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME);
 	if (has_global_priority) {
 		// If global priorities are supported, request a high-priority context
-		global_priority = (VkDeviceQueueGlobalPriorityCreateInfoKHR){
-			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR,
-			.globalPriority = VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR,
+		global_priority = (VkDeviceQueueGlobalPriorityCreateInfoEXT){
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT,
+			.globalPriority = VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT,
 		};
 		qinfo.pNext = &global_priority;
-		extensions[extensions_len++] = VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME;
+		extensions[extensions_len++] = VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME;
 		wlr_log(WLR_DEBUG, "Requesting a high-priority device queue");
 	} else {
 		wlr_log(WLR_DEBUG, "Global priorities are not supported, "
