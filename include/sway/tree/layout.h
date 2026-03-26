@@ -158,8 +158,6 @@ void layout_drag_container_to_container(struct sway_container *container, struct
 
 bool layout_move_container(struct sway_container *container, enum sway_layout_direction dir, bool nomode);
 
-void layout_toggle_pin(struct sway_scroller *layout);
-
 void layout_jump();
 void layout_jump_workspaces();
 void layout_jump_container(struct sway_container *container);
