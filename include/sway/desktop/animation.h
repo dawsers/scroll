@@ -112,6 +112,11 @@ void animation_end();
 // Animates one frame for output
 void animation_animate(struct wlr_output *output);
 
+// Returns the output currently being animated, or NULL if not in a
+// per-output animation call. Used by callbacks to scope work to a
+// single output instead of processing all outputs.
+struct wlr_output *animation_get_current_output(void);
+
 // Is an animation enabled?
 bool animation_enabled();
 

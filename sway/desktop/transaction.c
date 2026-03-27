@@ -1455,13 +1455,25 @@ static void animate_root(struct sway_root *root) {
 	if (fs) {
 		animate_fullscreen(root->layers.fullscreen_global, fs, NULL);
 	} else {
-		for (int i = 0; i < root->outputs->length; i++) {
-			struct sway_output *output = root->outputs->items[i];
-			if (!output->enabled || !output->wlr_output->enabled ||
-				!root->filters.output_filter(output, root->filters.output_filter_data)) {
-				continue;
+		// When called from a per-output render path, only animate the
+		// output currently being rendered. This avoids O(N²) work where
+		// each output's render re-animates all other outputs.
+		struct wlr_output *cur = animation_get_current_output();
+		if (cur && cur->data) {
+			struct sway_output *output = cur->data;
+			if (output->enabled && output->wlr_output->enabled &&
+				root->filters.output_filter(output, root->filters.output_filter_data)) {
+				animate_output(output);
 			}
-			animate_output(output);
+		} else {
+			for (int i = 0; i < root->outputs->length; i++) {
+				struct sway_output *output = root->outputs->items[i];
+				if (!output->enabled || !output->wlr_output->enabled ||
+					!root->filters.output_filter(output, root->filters.output_filter_data)) {
+					continue;
+				}
+				animate_output(output);
+			}
 		}
 	}
 	arrange_popups(root->layers.popup);
