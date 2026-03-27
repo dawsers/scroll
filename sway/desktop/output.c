@@ -20,6 +20,7 @@
 #include <wlr/util/transform.h>
 #include "log.h"
 #include "sway/config.h"
+#include "sway/desktop/animation.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
@@ -322,6 +323,13 @@ static int output_repaint_timer_handler(void *data) {
 
 	if (!wlr_output_commit_state(output->wlr_output, &pending)) {
 		sway_log(SWAY_ERROR, "Page-flip failed on output %s", output->wlr_output->name);
+	} else if (animation_animating(output->wlr_output)) {
+		// During animation, schedule the next frame directly from the
+		// vblank-driven render path instead of relying solely on the
+		// independent 16ms animation timer. This keeps animation frames
+		// synchronized with the display's actual refresh rate and avoids
+		// timer/vblank phase drift that causes periodic micro-freezes.
+		wlr_output_schedule_frame(output->wlr_output);
 	}
 	wlr_output_state_finish(&pending);
 	return 0;

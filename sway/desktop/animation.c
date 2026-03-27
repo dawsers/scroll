@@ -141,6 +141,10 @@ struct sway_animation {
 	uint32_t id;
 
 	list_t *outputs;
+	// The output currently being rendered. When set, animation callbacks
+	// should only process this output instead of looping all outputs.
+	// NULL when called from a non-per-output path (e.g. disabled animations).
+	struct wlr_output *current_output;
 	enum sway_animation_enabled enabled;
 	struct {
 		struct sway_animation_path *path;
@@ -495,6 +499,10 @@ bool animation_enabled() {
 	}
 }
 
+struct wlr_output *animation_get_current_output(void) {
+	return animation ? animation->current_output : NULL;
+}
+
 bool animation_animating(struct wlr_output *output) {
 	if (animation->enabled == ANIMATION_ENABLED_NO) {
 		return false;
@@ -640,7 +648,11 @@ void animation_animate(struct wlr_output *output) {
 	root->filters.output_filter = animation_output_filter;
 	root->filters.output_filter_data = NULL;
 
+	// Set current output so callback_step only processes this output
+	// instead of looping all animating outputs (avoids N² work)
+	animation->current_output = output;
 	animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
+	animation->current_output = NULL;
 
 	// Restore old filters
 	root->filters.output_filter = old_filter;
