@@ -8,7 +8,6 @@
 static const struct cmd_handler animations_config_handlers[] = {
 	{ "default", animations_cmd_default },
 	{ "enabled", animations_cmd_enabled },
-	{ "frequency_ms", animations_cmd_frequency },
 	{ "jump", animations_cmd_jump },
 	{ "overview", animations_cmd_overview },
 	{ "style", animations_cmd_style },
@@ -54,17 +53,6 @@ struct cmd_results *animations_cmd_style(int argc, char **argv) {
 	} else {
 		return cmd_results_new(CMD_INVALID, "Expected 'animations style <clip|scale>' ");
 	}
-	return cmd_results_new(CMD_SUCCESS, NULL);
-}
-
-struct cmd_results *animations_cmd_frequency(int argc, char **argv) {
-	struct cmd_results *error = NULL;
-	if ((error = checkarg(argc, "frequency_ms", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-
-	struct sway_animation_config *config = animation_get_config();
-	config->frequency_ms = strtol(argv[0], NULL, 10);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 

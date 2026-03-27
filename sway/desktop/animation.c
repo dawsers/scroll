@@ -137,7 +137,6 @@ struct sway_animation {
 	bool animating;
 	struct timespec start;
 	double time;
-	struct wl_event_source *timer;
 	uint32_t id;
 
 	list_t *outputs;
@@ -168,7 +167,6 @@ void animation_create() {
 	}
 	animation = calloc(1, sizeof(struct sway_animation));
 
-	animation->config.frequency_ms = 16; // ~60 Hz
 	animation->config.enabled = true;
 	animation->config.style = ANIM_STYLE_SCALE;
 	animation->config.anim_disabled = animation_path_create(false);
@@ -201,9 +199,6 @@ void animation_create() {
 
 void animation_destroy() {
 	if (animation) {
-		if (root && animation->timer) {
-			wl_event_source_remove(animation->timer);
-		}
 		if (animation->outputs) {
 			list_free(animation->outputs);
 		}
@@ -480,14 +475,6 @@ static bool is_animating() {
 	return true;
 }
 
-static int timer_callback(void *data) {
-	struct sway_animation *animation = data;
-	if (animation->animating) {
-		schedule_frames();
-		wl_event_source_timer_update(animation->timer, animation->config.frequency_ms);
-	}
-	return 0;
-}
 
 // Is an animation enabled?
 bool animation_enabled() {
@@ -556,10 +543,6 @@ static void stop_animation() {
 	if (animation->animating) {
 		animation->animating = false;
 		animation->id++;
-		if (animation->timer) {
-			wl_event_source_remove(animation->timer);
-			animation->timer = NULL;
-		}
 		if (animation->current.callbacks.callback_end) {
 			animation->current.callbacks.callback_end(animation->current.callbacks.callback_end_data);
 		}
@@ -586,16 +569,6 @@ void animation_begin() {
 			animation->current.callbacks.callback_begin(animation->current.callbacks.callback_begin_data);
 		}
 		schedule_frames();
-		if (animation->timer) {
-			wl_event_source_remove(animation->timer);
-		}
-		animation->timer = wl_event_loop_add_timer(server.wl_event_loop,
-			timer_callback, animation);
-		if (animation->timer) {
-			wl_event_source_timer_update(animation->timer, animation->config.frequency_ms);
-		} else {
-			sway_log_errno(SWAY_ERROR, "Unable to create animation timer");
-		}
 		return;
 	}
 	animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);

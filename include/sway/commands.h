@@ -363,7 +363,6 @@ sway_cmd cmd_ipc_event_cmd;
 
 sway_cmd animations_cmd_enabled;
 sway_cmd animations_cmd_default;
-sway_cmd animations_cmd_frequency;
 sway_cmd animations_cmd_style;
 sway_cmd animations_cmd_window_fullscreen;
 sway_cmd animations_cmd_window_open;

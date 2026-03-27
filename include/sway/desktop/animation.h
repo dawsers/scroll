@@ -33,7 +33,6 @@ enum sway_animation_type {
  */
 struct sway_animation_config {
 	bool enabled;
-	uint32_t frequency_ms;
 	enum sway_animation_style style;
 	struct sway_animation_path *anim_disabled;
 	struct sway_animation_path *anim_default;

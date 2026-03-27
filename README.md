@@ -1575,12 +1575,6 @@ called `animations`. Within that block there are several options allowed:
 
 `enabled`: (boolean) default is `yes`. Enables/disables animations globally.
 
-`frequency_ms`: (integer) default is `16`. Number of milliseconds for each
-animation step. The default is approximately the refresh rate of a monitor
-that works at 60 Hz. If you need smoother animations, reduce this value. Use
-with caution to avoid crashes or performance issues. The default should work
-for most cases unless you have a very high refresh rate monitor.
-
 `style <clip|scale>`: Default is `clip`. `clip` keeps the resolution of
 the client and clips the container while animating. This leads to a part
 of the container showing the background when resizing containers to a
