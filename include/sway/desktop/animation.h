@@ -104,7 +104,7 @@ void animation_set_type(enum sway_animation_type anim);
 
 // Starts the pending animation if pending is true, otherwise reuse the
 // current path (for client-side transactions)
-void animation_begin(bool pending);
+void animation_begin();
 
 // Ends the current animation
 void animation_end();

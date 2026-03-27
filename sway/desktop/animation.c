@@ -562,16 +562,12 @@ void animation_end() {
 	stop_animation();
 }
 
-// Begin the pending animation if pending is true, otherwise reuse the current
-// one (for client-side transactions)
-void animation_begin(bool pending) {
+void animation_begin() {
 	stop_animation();
-	if (pending) {
-		animation->current.path = animation->pending.path;
-		animation->current.callbacks = animation->pending.callbacks;
-		animation->pending.path = animation->config.anim_default;
-		animation->pending.callbacks = animation->default_callbacks;
-	}
+	animation->current.path = animation->pending.path;
+	animation->current.callbacks = animation->pending.callbacks;
+	animation->pending.path = animation->config.anim_default;
+	animation->pending.callbacks = animation->default_callbacks;
 	struct sway_animation_path *path = get_path();
 	if (path) {
 		animation_reset_path(path);
