@@ -1455,7 +1455,6 @@ static void animate_root(struct sway_root *root) {
 	if (fs) {
 		animate_fullscreen(root->layers.fullscreen_global, fs, NULL);
 	} else {
-#if 0
 		// When called from a per-output render path, only animate the
 		// output currently being rendered. This avoids O(N²) work where
 		// each output's render re-animates all other outputs.
@@ -1467,7 +1466,6 @@ static void animate_root(struct sway_root *root) {
 				animate_output(output);
 			}
 		} else {
-#endif
 			for (int i = 0; i < root->outputs->length; i++) {
 				struct sway_output *output = root->outputs->items[i];
 				if (!output->enabled || !output->wlr_output->enabled ||
@@ -1476,9 +1474,7 @@ static void animate_root(struct sway_root *root) {
 				}
 				animate_output(output);
 			}
-#if 0
 		}
-#endif
 	}
 	arrange_popups(root->layers.popup);
 }

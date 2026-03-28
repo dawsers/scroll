@@ -133,6 +133,11 @@ enum sway_animation_enabled {
 	ANIMATION_ENABLED_NO,
 };
 
+struct sway_animation_output {
+	struct wlr_output *output;
+	enum sway_animation_enabled enabled;
+};
+
 struct sway_animation {
 	bool animating;
 	struct timespec start;
@@ -144,7 +149,6 @@ struct sway_animation {
 	// should only process this output instead of looping all outputs.
 	// NULL when called from a non-per-output path (e.g. disabled animations).
 	struct wlr_output *current_output;
-	enum sway_animation_enabled enabled;
 	struct {
 		struct sway_animation_path *path;
 		struct sway_animation_callbacks callbacks;
@@ -200,7 +204,7 @@ void animation_create() {
 void animation_destroy() {
 	if (animation) {
 		if (animation->outputs) {
-			list_free(animation->outputs);
+			list_free_items_and_destroy(animation->outputs);
 		}
 		if (animation->config.jump) {
 			animation_path_destroy(animation->config.jump);
@@ -242,7 +246,13 @@ struct sway_animation_config *animation_get_config() {
 }
 
 static int get_animating_index(struct wlr_output *output) {
-	return list_find(animation->outputs, output);
+	for (int i = 0; i < animation->outputs->length; ++i) {
+		struct sway_animation_output *o = animation->outputs->items[i];
+		if (o->output == output) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 struct sway_animation_path *animation_path_create(bool enabled) {
@@ -469,10 +479,16 @@ static void schedule_frames() {
 }
 
 static bool is_animating() {
-	if (animation->enabled == ANIMATION_ENABLED_NO || animation->outputs->length == 0) {
+	if (animation->outputs->length == 0) {
 		return false;
 	}
-	return true;
+	for (int i = 0; i < animation->outputs->length; ++i) {
+		struct sway_animation_output *o = animation->outputs->items[i];
+		if (o->enabled != ANIMATION_ENABLED_NO){
+			return true;
+		}
+	}
+	return false;
 }
 
 
@@ -491,20 +507,25 @@ struct wlr_output *animation_get_current_output(void) {
 }
 
 bool animation_animating(struct wlr_output *output) {
-	if (animation->enabled == ANIMATION_ENABLED_NO) {
-		return false;
-	}
 	if (output->data && animation->id != ((struct sway_output *)output->data)->animation_id) {
 		return false;
 	}
-	int idx = get_animating_index(output);
-	return idx >= 0;
+	for (int i = 0; i < animation->outputs->length; ++i) {
+		struct sway_animation_output *o = animation->outputs->items[i];
+		if (o->output == output) {
+			return o->enabled != ANIMATION_ENABLED_NO;
+		}
+	}
+	return false;
 }
 
 void animation_add_output(struct wlr_output *output) {
 	int idx = get_animating_index(output);
 	if (idx < 0) {
-		list_add(animation->outputs, output);
+		struct sway_animation_output *o = calloc(1, sizeof(struct sway_animation_output));
+		o->output = output;
+		o->enabled = ANIMATION_ENABLED_UNKNOWN;
+		list_add(animation->outputs, o);
 	}
 }
 
@@ -513,29 +534,41 @@ void animation_add_all_outputs() {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
 		if (output->enabled && output->wlr_output->enabled) {
-			list_add(animation->outputs, output->wlr_output);
+			struct sway_animation_output *o = calloc(1, sizeof(struct sway_animation_output));
+			o->output = output->wlr_output;
+			o->enabled = ANIMATION_ENABLED_UNKNOWN;
+			list_add(animation->outputs, o);
 		}
 	}
 }
 
 void animation_reset_outputs() {
 	if (animation->outputs) {
+		for (int i = 0; i < animation->outputs->length; ++i) {
+			struct sway_animation_output *o = animation->outputs->items[i];
+			free(o);
+		}
 		list_reset(animation->outputs);
 	}
 }
 
 void animation_set_animation_enabled(bool enable) {
-	switch (animation->enabled) {
-	case ANIMATION_ENABLED_UNKNOWN:
-		animation->enabled = enable ? ANIMATION_ENABLED_YES : ANIMATION_ENABLED_NO;
-		break;
-	case ANIMATION_ENABLED_YES:
-		break;
-	case ANIMATION_ENABLED_NO:
-		if (enable) {
-			animation->enabled = ANIMATION_ENABLED_YES;
+	for (int i = 0; i < animation->outputs->length; ++i) {
+		struct sway_animation_output *o = animation->outputs->items[i];
+		if (animation->current_output == NULL || o->output == animation->current_output) {
+			switch (o->enabled) {
+			case ANIMATION_ENABLED_UNKNOWN:
+				o->enabled = enable ? ANIMATION_ENABLED_YES : ANIMATION_ENABLED_NO;
+				break;
+			case ANIMATION_ENABLED_YES:
+				break;
+			case ANIMATION_ENABLED_NO:
+				if (enable) {
+					o->enabled = ANIMATION_ENABLED_YES;
+				}
+				break;
+			}
 		}
-		break;
 	}
 }
 
@@ -547,6 +580,7 @@ static void stop_animation() {
 			animation->current.callbacks.callback_end(animation->current.callbacks.callback_end_data);
 		}
 	}
+	animation->current_output = NULL;
 }
 
 void animation_end() {
@@ -563,7 +597,6 @@ void animation_begin() {
 	if (path) {
 		animation_reset_path(path);
 		animation->animating = true;
-		animation->enabled = ANIMATION_ENABLED_UNKNOWN;
 		clock_gettime(CLOCK_MONOTONIC, &animation->start);
 		if (animation->current.callbacks.callback_begin) {
 			animation->current.callbacks.callback_begin(animation->current.callbacks.callback_begin_data);
@@ -575,7 +608,13 @@ void animation_begin() {
 }
 
 static bool animation_output_filter(struct sway_output *output, void *data) {
-	return list_find(animation->outputs, output->wlr_output) >= 0;
+	for (int i = 0; i < animation->outputs->length; ++i) {
+		struct sway_animation_output *o = animation->outputs->items[i];
+		if (o->output == output->wlr_output) {
+			return true;
+		}
+	}
+	return false;
 }
 
 // Returns true if the animation path ended
@@ -634,6 +673,7 @@ void animation_animate(struct wlr_output *output) {
 	if (ended) {
 		int idx = get_animating_index(output);
 		if (idx >= 0) {
+			free(animation->outputs->items[idx]);
 			list_del(animation->outputs, idx);
 		}
 	}
