@@ -949,15 +949,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	container_update_representation(container);
 
 	if (fullscreen) {
-		switch (config->fullscreen_on_request) {
-		case FULLSCREEN_REQUEST_DEFAULT:
-		default:
-			container_set_fullscreen(container, FULLSCREEN_WORKSPACE);
-			break;
-		case FULLSCREEN_REQUEST_LAYOUT:
-			container_set_fullscreen_layout(container, FULLSCREEN_ENABLED);
-			break;
-		}
+		container_handle_fullscreen_request(container, fullscreen);
 	}
 	if (container->pending.workspace) {
 		arrange_workspace(container->pending.workspace);
