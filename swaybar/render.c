@@ -522,18 +522,58 @@ static uint32_t predict_scroller_item_length(cairo_t *cairo,
 	return width;
 }
 
+static const char *get_scroll_mode_symbol(struct swaybar *bar) {
+		if (bar->scroll_mode == NULL) {
+			return " ";
+		} else if (!strcmp(bar->scroll_mode, "horizontal")) {
+			return "-";
+		} else if (!strcmp(bar->scroll_mode, "vertical")) {
+			return "|";
+		} else {
+			return " ";
+		}
+}
+
+static const char *get_scroll_insert_symbol(struct swaybar *bar) {
+		if (bar->scroll_insert == NULL) {
+			return " ";
+		} else if (!strcmp(bar->scroll_insert, "after")) {
+			return "→";
+		} else if (!strcmp(bar->scroll_insert, "before")) {
+			return "←";
+		} else if (!strcmp(bar->scroll_insert, "end")) {
+			return "⇥";
+		} else if (!strcmp(bar->scroll_insert, "beginning")) {
+			return "⇤";
+		} else {
+			return " ";
+		}
+}
+
+static const char *get_scroll_reorder_symbol(struct swaybar *bar) {
+		if (bar->scroll_reorder == NULL) {
+			return " ";
+		} else if (!strcmp(bar->scroll_reorder, "auto")) {
+			return "🅰";
+		} else if (!strcmp(bar->scroll_reorder, "lazy")) {
+			return "✋";
+		} else {
+			return " ";
+		}
+}
+
 static uint32_t predict_scroller_indicator_length(cairo_t *cairo,
 		struct swaybar_output *output) {
 	uint32_t width = 0;
 	struct swaybar_config *config = output->bar->config;
 	if (config->scroller_indicator) {
 		const char *strs[] = {
-			output->bar->scroll_mode,
-			output->bar->scroll_insert,
+			get_scroll_mode_symbol(output->bar),
+			get_scroll_insert_symbol(output->bar),
 			output->bar->scroll_focus ? "" : "",
 			output->bar->scroll_center_horizontal ? "" : " ",
 			output->bar->scroll_center_vertical ? "󰉠" : " ",
-			output->bar->scroll_reorder,
+			get_scroll_reorder_symbol(output->bar),
 			output->bar->scroll_overview ? "🐦" : " ",
 			output->bar->scroll_scaled ? "S" : " "
 		};
@@ -786,12 +826,12 @@ static uint32_t render_scroller_indicator(struct render_context *ctx,
 	uint32_t max_height = 0;
 	struct swaybar_config *config = output->bar->config;
 	const char *strs[] = {
-		output->bar->scroll_mode,
-		output->bar->scroll_insert,
+		get_scroll_mode_symbol(output->bar),
+		get_scroll_insert_symbol(output->bar),
 		output->bar->scroll_focus ? "" : "",
 		output->bar->scroll_center_horizontal ? "" : " ",
 		output->bar->scroll_center_vertical ? "󰉠" : " ",
-		output->bar->scroll_reorder,
+		get_scroll_reorder_symbol(output->bar),
 		output->bar->scroll_overview ? "🐦" : " ",
 		output->bar->scroll_scaled ? "S" : " "
 	};
