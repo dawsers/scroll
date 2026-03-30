@@ -472,7 +472,7 @@ VkCommandBuffer vulkan_record_stage_cb(struct wlr_vk_renderer *renderer);
 
 // Submits the current stage command buffer and waits until it has
 // finished execution.
-bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer);
+bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer, int wait_sync_file_fd);
 
 struct wlr_vk_render_pass_texture {
 	struct wlr_vk_texture *texture;
@@ -544,6 +544,8 @@ uint64_t vulkan_end_command_buffer(struct wlr_vk_command_buffer *cb,
 void vulkan_reset_command_buffer(struct wlr_vk_command_buffer *cb);
 bool vulkan_wait_command_buffer(struct wlr_vk_command_buffer *cb,
 	struct wlr_vk_renderer *renderer);
+VkSemaphore vulkan_command_buffer_wait_sync_file(struct wlr_vk_renderer *renderer,
+	struct wlr_vk_command_buffer *render_cb, size_t sem_index, int sync_file_fd);
 
 bool vulkan_sync_render_pass_release(struct wlr_vk_renderer *renderer,
 	struct wlr_vk_render_pass *pass);
@@ -556,7 +558,8 @@ bool vulkan_read_pixels(struct wlr_vk_renderer *vk_renderer,
 	VkFormat src_format, VkImage src_image,
 	uint32_t drm_format, uint32_t stride,
 	uint32_t width, uint32_t height, uint32_t src_x, uint32_t src_y,
-	uint32_t dst_x, uint32_t dst_y, void *data);
+	uint32_t dst_x, uint32_t dst_y, void *data,
+	struct wlr_drm_syncobj_timeline *wait_timeline, uint64_t wait_point);
 
 // State (e.g. image texture) associated with a surface.
 struct wlr_vk_texture {

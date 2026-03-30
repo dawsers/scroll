@@ -37,6 +37,8 @@ struct wlr_texture_read_pixels_options {
 	uint32_t dst_x, dst_y;
 	/** Source box of the texture to read from. If empty, the full texture is assumed. */
 	const struct wlr_box src_box;
+	struct wlr_drm_syncobj_timeline *wait_timeline;
+	uint64_t wait_point;
 };
 
 bool wlr_texture_read_pixels(struct wlr_texture *texture,

@@ -409,7 +409,52 @@ VkCommandBuffer vulkan_record_stage_cb(struct wlr_vk_renderer *renderer) {
 	return renderer->stage.cb->vk;
 }
 
-bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer) {
+VkSemaphore vulkan_command_buffer_wait_sync_file(struct wlr_vk_renderer *renderer,
+		struct wlr_vk_command_buffer *render_cb, size_t sem_index, int sync_file_fd) {
+	VkResult res;
+
+	VkSemaphore *wait_semaphores = render_cb->wait_semaphores.data;
+	size_t wait_semaphores_len = render_cb->wait_semaphores.size / sizeof(wait_semaphores[0]);
+
+	VkSemaphore *sem_ptr;
+	if (sem_index >= wait_semaphores_len) {
+		sem_ptr = wl_array_add(&render_cb->wait_semaphores, sizeof(*sem_ptr));
+		if (sem_ptr == NULL) {
+			return VK_NULL_HANDLE;
+		}
+		*sem_ptr = VK_NULL_HANDLE;
+	} else {
+		sem_ptr = &wait_semaphores[sem_index];
+	}
+
+	if (*sem_ptr == VK_NULL_HANDLE) {
+		VkSemaphoreCreateInfo semaphore_info = {
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+		};
+		res = vkCreateSemaphore(renderer->dev->dev, &semaphore_info, NULL, sem_ptr);
+		if (res != VK_SUCCESS) {
+			wlr_vk_error("vkCreateSemaphore", res);
+			return VK_NULL_HANDLE;
+		}
+	}
+
+	VkImportSemaphoreFdInfoKHR import_info = {
+		.sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
+		.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+		.flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
+		.semaphore = *sem_ptr,
+		.fd = sync_file_fd,
+	};
+	res = renderer->dev->api.vkImportSemaphoreFdKHR(renderer->dev->dev, &import_info);
+	if (res != VK_SUCCESS) {
+		wlr_vk_error("vkImportSemaphoreFdKHR", res);
+		return VK_NULL_HANDLE;
+	}
+
+	return *sem_ptr;
+}
+
+bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer, int wait_sync_file_fd) {
 	if (renderer->stage.cb == NULL) {
 		return false;
 	}
@@ -419,9 +464,12 @@ bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer) {
 
 	uint64_t timeline_point = vulkan_end_command_buffer(cb, renderer);
 	if (timeline_point == 0) {
+		close(wait_sync_file_fd);
 		return false;
 	}
 
+	VkSemaphore wait_semaphore;
+	VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 	VkTimelineSemaphoreSubmitInfoKHR timeline_submit_info = {
 		.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR,
 		.signalSemaphoreValueCount = 1,
@@ -435,6 +483,18 @@ bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer) {
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = &renderer->timeline_semaphore,
 	};
+
+	if (wait_sync_file_fd != -1) {
+		wait_semaphore = vulkan_command_buffer_wait_sync_file(renderer, cb, 0, wait_sync_file_fd);
+		if (wait_semaphore == VK_NULL_HANDLE) {
+			close(wait_sync_file_fd);
+			return false;
+		}
+		submit_info.waitSemaphoreCount = 1;
+		submit_info.pWaitSemaphores = &wait_semaphore;
+		submit_info.pWaitDstStageMask = &wait_stage;
+	}
+
 	VkResult res = vkQueueSubmit(renderer->dev->queue, 1, &submit_info, VK_NULL_HANDLE);
 	if (res != VK_SUCCESS) {
 		wlr_vk_error("vkQueueSubmit", res);
@@ -1280,7 +1340,8 @@ bool vulkan_read_pixels(struct wlr_vk_renderer *vk_renderer,
 		VkFormat src_format, VkImage src_image,
 		uint32_t drm_format, uint32_t stride,
 		uint32_t width, uint32_t height, uint32_t src_x, uint32_t src_y,
-		uint32_t dst_x, uint32_t dst_y, void *data) {
+		uint32_t dst_x, uint32_t dst_y, void *data,
+		struct wlr_drm_syncobj_timeline *wait_timeline, uint64_t wait_point) {
 	VkDevice dev = vk_renderer->dev->dev;
 
 	const struct wlr_pixel_format_info *pixel_format_info = drm_get_pixel_format_info(drm_format);
@@ -1466,7 +1527,17 @@ bool vulkan_read_pixels(struct wlr_vk_renderer *vk_renderer,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_ACCESS_MEMORY_READ_BIT);
 
-	if (!vulkan_submit_stage_wait(vk_renderer)) {
+	int wait_sync_file_fd = -1;
+	if (wait_timeline != NULL) {
+		wait_sync_file_fd = wlr_drm_syncobj_timeline_export_sync_file(wait_timeline, wait_point);
+		if (wait_sync_file_fd < 0) {
+			wlr_log(WLR_ERROR, "Failed to export wait timeline point as sync_file");
+			return false;
+		}
+	}
+
+	if (!vulkan_submit_stage_wait(vk_renderer, wait_sync_file_fd)) {
+		close(wait_sync_file_fd);
 		return false;
 	}
 

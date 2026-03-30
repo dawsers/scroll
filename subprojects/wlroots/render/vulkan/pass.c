@@ -99,53 +99,6 @@ static void render_pass_destroy(struct wlr_vk_render_pass *pass) {
 	free(pass);
 }
 
-static VkSemaphore render_pass_wait_sync_file(struct wlr_vk_render_pass *pass,
-		size_t sem_index, int sync_file_fd) {
-	struct wlr_vk_renderer *renderer = pass->renderer;
-	struct wlr_vk_command_buffer *render_cb = pass->command_buffer;
-	VkResult res;
-
-	VkSemaphore *wait_semaphores = render_cb->wait_semaphores.data;
-	size_t wait_semaphores_len = render_cb->wait_semaphores.size / sizeof(wait_semaphores[0]);
-
-	VkSemaphore *sem_ptr;
-	if (sem_index >= wait_semaphores_len) {
-		sem_ptr = wl_array_add(&render_cb->wait_semaphores, sizeof(*sem_ptr));
-		if (sem_ptr == NULL) {
-			return VK_NULL_HANDLE;
-		}
-		*sem_ptr = VK_NULL_HANDLE;
-	} else {
-		sem_ptr = &wait_semaphores[sem_index];
-	}
-
-	if (*sem_ptr == VK_NULL_HANDLE) {
-		VkSemaphoreCreateInfo semaphore_info = {
-			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-		};
-		res = vkCreateSemaphore(renderer->dev->dev, &semaphore_info, NULL, sem_ptr);
-		if (res != VK_SUCCESS) {
-			wlr_vk_error("vkCreateSemaphore", res);
-			return VK_NULL_HANDLE;
-		}
-	}
-
-	VkImportSemaphoreFdInfoKHR import_info = {
-		.sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
-		.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
-		.flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
-		.semaphore = *sem_ptr,
-		.fd = sync_file_fd,
-	};
-	res = renderer->dev->api.vkImportSemaphoreFdKHR(renderer->dev->dev, &import_info);
-	if (res != VK_SUCCESS) {
-		wlr_vk_error("vkImportSemaphoreFdKHR", res);
-		return VK_NULL_HANDLE;
-	}
-
-	return *sem_ptr;
-}
-
 static bool render_pass_wait_render_buffer(struct wlr_vk_render_pass *pass,
 		VkSemaphoreSubmitInfoKHR *render_wait, uint32_t *render_wait_len_ptr) {
 	int sync_file_fds[WLR_DMABUF_MAX_PLANES];
@@ -162,7 +115,8 @@ static bool render_pass_wait_render_buffer(struct wlr_vk_render_pass *pass,
 			continue;
 		}
 
-		VkSemaphore sem = render_pass_wait_sync_file(pass, *render_wait_len_ptr, sync_file_fds[i]);
+		VkSemaphore sem = vulkan_command_buffer_wait_sync_file(pass->renderer,
+			pass->command_buffer, *render_wait_len_ptr, sync_file_fds[i]);
 		if (sem == VK_NULL_HANDLE) {
 			close(sync_file_fds[i]);
 			continue;
@@ -431,7 +385,8 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 				continue;
 			}
 
-			VkSemaphore sem = render_pass_wait_sync_file(pass, render_wait_len, sync_file_fds[i]);
+			VkSemaphore sem = vulkan_command_buffer_wait_sync_file(renderer, render_cb,
+				render_wait_len, sync_file_fds[i]);
 			if (sem == VK_NULL_HANDLE) {
 				close(sync_file_fds[i]);
 				continue;

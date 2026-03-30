@@ -238,7 +238,8 @@ static bool vulkan_texture_read_pixels(struct wlr_texture *wlr_texture,
 	void *p = wlr_texture_read_pixel_options_get_data(options);
 
 	return vulkan_read_pixels(texture->renderer, texture->format->vk, texture->image,
-		options->format, options->stride, src.width, src.height, src.x, src.y, 0, 0, p);
+		options->format, options->stride, src.width, src.height, src.x, src.y, 0, 0, p,
+		options->wait_timeline, options->wait_point);
 }
 
 static uint32_t vulkan_texture_preferred_read_format(struct wlr_texture *wlr_texture) {

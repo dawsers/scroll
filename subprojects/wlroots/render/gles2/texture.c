@@ -4,8 +4,10 @@
 #include <GLES2/gl2ext.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <wayland-server-protocol.h>
 #include <wayland-util.h>
+#include <wlr/render/drm_syncobj.h>
 #include <wlr/render/egl.h>
 #include <wlr/render/interface.h>
 #include <wlr/render/wlr_texture.h>
@@ -199,6 +201,27 @@ static bool gles2_texture_read_pixels(struct wlr_texture *wlr_texture,
 
 	if (!gles2_texture_bind(texture)) {
 		return false;
+	}
+
+	if (options->wait_timeline != NULL) {
+		int sync_file_fd =
+			wlr_drm_syncobj_timeline_export_sync_file(options->wait_timeline, options->wait_point);
+		if (sync_file_fd < 0) {
+			return false;
+		}
+
+		struct wlr_gles2_renderer *renderer = texture->renderer;
+		EGLSyncKHR sync = wlr_egl_create_sync(renderer->egl, sync_file_fd);
+		close(sync_file_fd);
+		if (sync == EGL_NO_SYNC_KHR) {
+			return false;
+		}
+
+		bool ok = wlr_egl_wait_sync(renderer->egl, sync);
+		wlr_egl_destroy_sync(renderer->egl, sync);
+		if (!ok) {
+			return false;
+		}
 	}
 
 	// Make sure any pending drawing is finished before we try to read it
