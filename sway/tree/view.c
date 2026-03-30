@@ -1104,7 +1104,7 @@ void view_center_and_clip_surface(struct sway_view *view) {
 
 	bool clip_to_geometry = true;
 
-	if (container_is_floating(con)) {
+	if (container_is_floating(con) || con->pending.fullscreen_mode != FULLSCREEN_NONE) {
 		// We always center the current coordinates rather than the next, as the
 		// geometry immediately affects the currently active rendering.
 		double x = fmax(0, 0.5 * (con->current.content_width - view->geometry.width));
