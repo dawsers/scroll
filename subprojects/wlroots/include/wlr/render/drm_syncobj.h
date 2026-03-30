@@ -97,7 +97,11 @@ bool wlr_drm_syncobj_timeline_signal(struct wlr_drm_syncobj_timeline *timeline, 
 /**
  * Asynchronously wait for a timeline point.
  *
- * See wlr_drm_syncobj_timeline_check() for a definition of flags.
+ * Flags can be:
+ *
+ * - 0 to wait for the point to be signalled
+ * - DRM_SYNCOBJ_WAIT_FLAGS_WAIT_AVAILABLE to only wait for a fence to
+ *   materialize
  *
  * A callback must be provided that will be invoked when the waiter has finished.
  */
