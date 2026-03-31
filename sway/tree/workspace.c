@@ -902,8 +902,6 @@ static void select_visible_containers(list_t *containers,
 		struct sway_workspace *workspace, list_t *children,
 		double *min_y, double *max_y) {
 	if (!workspace->output || children->length == 0) {
-		*min_y = workspace->y;
-		*max_y = workspace->y + workspace->height;
 		return;
 	}
 	for (int i = 0; i < children->length; ++i) {
@@ -980,12 +978,12 @@ static void animate_workspace_switch(struct sway_output *output,
 	root->filters.container_filter = workspace_switch_container_filter;
 	root->filters.container_filter_data = data;
 
-	double min_y_to = DBL_MAX, max_y_to = -DBL_MAX;
+	double min_y_to = to->y, max_y_to = to->y + to->height;
 	select_visible_containers(data->to_containers, to, to->tiling, &min_y_to, &max_y_to);
 	if (max_y_to < min_y_to) {
 		max_y_to = min_y_to = to->y;
 	}
-	double min_y_from = DBL_MAX, max_y_from = -DBL_MAX;
+	double min_y_from = from->y, max_y_from = from->y + from->height;
 	select_visible_containers(data->from_containers, from, from->tiling, &min_y_from, &max_y_from);
 	if (max_y_from < min_y_from) {
 		max_y_from = min_y_from = from->y;
