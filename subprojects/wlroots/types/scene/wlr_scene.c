@@ -1897,7 +1897,6 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 	pixman_region32_init(&render_region);
 	pixman_region32_copy(&render_region, &node->visible);
 	pixman_region32_translate(&render_region, -data->logical.x, -data->logical.y);
-	logical_to_buffer_coords(&render_region, data, true);
 	if (workspace) {
 		scale_region(&render_region, scale, false);
 		pixman_region32_translate(&render_region, dx, dy);
@@ -1905,6 +1904,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 		pixman_region32_intersect_rect(&render_region, &render_region, dx, dy,
 			workspace_data.width, workspace_data.height);
 	}
+	logical_to_buffer_coords(&render_region, data, true);
 	pixman_region32_intersect(&render_region, &render_region, &data->damage);
 	if (pixman_region32_empty(&render_region)) {
 		pixman_region32_fini(&render_region);
@@ -1918,26 +1918,25 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 		.y = y,
 	};
 	scene_node_get_size(node, &dst_fbox.width, &dst_fbox.height);
-	transform_output_box(&dst_fbox, data);
-
-	pixman_region32_t opaque;
-	pixman_region32_init(&opaque);
-	scene_node_opaque_region(node, x, y, &opaque);
-	logical_to_buffer_coords(&opaque, data, false);
-	if (workspace) {
-		scale_region(&opaque, scale, false);
-		pixman_region32_translate(&opaque, dx, dy);
-		pixman_region32_intersect_rect(&opaque, &opaque, dx, dy,
-			workspace_data.width, workspace_data.height);
-	}
-	pixman_region32_subtract(&opaque, &render_region, &opaque);
-
 	if (workspace) {
 		dst_fbox.x = ceil(dst_fbox.x * scale + dx);
 		dst_fbox.y = ceil(dst_fbox.y * scale + dy);
 		dst_fbox.width = ceil(dst_fbox.width * scale);
 		dst_fbox.height = ceil(dst_fbox.height * scale);
 	}
+	transform_output_box(&dst_fbox, data);
+
+	pixman_region32_t opaque;
+	pixman_region32_init(&opaque);
+	scene_node_opaque_region(node, x, y, &opaque);
+	if (workspace) {
+		scale_region(&opaque, scale, false);
+		pixman_region32_translate(&opaque, dx, dy);
+		pixman_region32_intersect_rect(&opaque, &opaque, dx, dy,
+			workspace_data.width, workspace_data.height);
+	}
+	logical_to_buffer_coords(&opaque, data, false);
+	pixman_region32_subtract(&opaque, &render_region, &opaque);
 
 	struct wlr_box dst_box = {
 		.x = round(dst_fbox.x),

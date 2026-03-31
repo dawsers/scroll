@@ -312,18 +312,15 @@ void layout_overview_workspaces_toggle() {
 	for (int i = 0; i < root->outputs->length; i++) {
 		struct sway_output *output = root->outputs->items[i];
 		if (layout_overview_workspaces_enabled()) {
-			struct wlr_box *usable_area = &output->usable_area;
-			float oscale = output->wlr_output->scale;
-			double left = round(usable_area->x * oscale);
-			double top = round(usable_area->y * oscale);
-			double uwidth = round(usable_area->width * oscale);
-			double uheight = round(usable_area->height * oscale);
-			int width = output->wlr_output->width;
-			int height = output->wlr_output->height;
+			const struct wlr_box *usable_area = &output->usable_area;
+			const double left = usable_area->x;
+			const double top = usable_area->y;
+			const double width = usable_area->width;
+			const double height = usable_area->height;
 			const int length = output->current.workspaces->length;
 			const int rows = ceil(sqrt(length));
-			const double scale = fmin((uwidth - workspaces_gap * (rows + 1)) / (rows * width),
-				(uheight - workspaces_gap * (rows + 1)) / (rows * height));
+			const double scale = fmin((width - workspaces_gap * (rows + 1)) / (rows * width),
+				(height - workspaces_gap * (rows + 1)) / (rows * height));
 			const int per_row = length / rows;
 			int remain = length % rows;
 			int j = 0;
@@ -333,8 +330,8 @@ void layout_overview_workspaces_toggle() {
 					++cols;
 					remain--;
 				}
-				double gapx = (uwidth - cols * scale * width) / (cols + 1);
-				double gapy = (uheight - rows * scale * height) / (rows + 1);
+				const double gapx = (width - cols * scale * width) / (cols + 1);
+				const double gapy = (height - rows * scale * height) / (rows + 1);
 				for (int c = 0; c < cols; ++c) {
 					struct sway_workspace *child = output->current.workspaces->items[j++];
 					wlr_scene_node_reparent(&child->jump.tree->node, output->layers.shell_overlay);
@@ -2392,13 +2389,10 @@ static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *te
 	double jscale = config->jump_labels_scale;
 	double scale = fmin((double) ws->width / ws->jump.text->width,
 		(double) ws->height / ws->jump.text->height);
-	const double oscale = ws->output->wlr_output->scale;
 	const double wscale = ws->jump.scale;
 	sway_text_node_scale(ws->jump.text, jscale * scale * wscale);
-	int x = ws->jump.x + 0.5 * (ws->jump.width - ws->jump.text->width * jscale * scale * wscale * oscale);
-	int y = ws->jump.y + 0.5 * (ws->jump.height - ws->jump.text->height * jscale * scale * wscale * oscale);
-	x /= oscale;
-	y /= oscale;
+	int x = ws->jump.x + 0.5 * (ws->jump.width - ws->jump.text->width * jscale * scale * wscale);
+	int y = ws->jump.y + 0.5 * (ws->jump.height - ws->jump.text->height * jscale * scale * wscale);
 	wlr_scene_node_set_position(&ws->jump.tree->node, x, y);
 	wlr_scene_node_set_enabled(&ws->jump.tree->node, true);
 }
