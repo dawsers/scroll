@@ -315,12 +315,12 @@ void layout_overview_workspaces_toggle() {
 			const struct wlr_box *usable_area = &output->usable_area;
 			const double left = usable_area->x;
 			const double top = usable_area->y;
-			const double width = usable_area->width;
-			const double height = usable_area->height;
+			const double width = output->width;
+			const double height = output->height;
 			const int length = output->current.workspaces->length;
 			const int rows = ceil(sqrt(length));
-			const double scale = fmin((width - workspaces_gap * (rows + 1)) / (rows * width),
-				(height - workspaces_gap * (rows + 1)) / (rows * height));
+			const double scale = fmin((usable_area->width - workspaces_gap * (rows + 1)) / (rows * width),
+				(usable_area->height - workspaces_gap * (rows + 1)) / (rows * height));
 			const int per_row = length / rows;
 			int remain = length % rows;
 			int j = 0;
@@ -330,8 +330,8 @@ void layout_overview_workspaces_toggle() {
 					++cols;
 					remain--;
 				}
-				const double gapx = (width - cols * scale * width) / (cols + 1);
-				const double gapy = (height - rows * scale * height) / (rows + 1);
+				const double gapx = (usable_area->width - cols * scale * width) / (cols + 1);
+				const double gapy = (usable_area->height - rows * scale * height) / (rows + 1);
 				for (int c = 0; c < cols; ++c) {
 					struct sway_workspace *child = output->current.workspaces->items[j++];
 					wlr_scene_node_reparent(&child->jump.tree->node, output->layers.shell_overlay);
