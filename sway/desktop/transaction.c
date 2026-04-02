@@ -1147,11 +1147,6 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 
 		arrange_container(floater, true, ws->gaps_inner, ws);
 	}
-
-	// Make sure new floating window nodes are initialized in a correct
-	// position in case timed frames are already in flight, or they would
-	// render with incorrect geometry until the animation starts.
-	animate_workspace_floating(ws);
 }
 
 static void animate_workspace_floating(struct sway_workspace *ws) {
