@@ -1146,6 +1146,8 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 		wlr_scene_node_set_enabled(&floater->decoration.tree->node, true);
 
 		arrange_container(floater, true, ws->gaps_inner, ws);
+		wlr_scene_node_set_position(&floater->scene_tree->node,
+				floater->animation.x0, floater->animation.y0);
 	}
 }
 
