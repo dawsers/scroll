@@ -346,6 +346,13 @@ void output_add_workspace(struct sway_output *output,
 		wlr_ext_workspace_handle_v1_set_group(workspace->ext_workspace,
 			workspace->output->ext_workspace_group);
 	}
+
+	if (layout_overview_workspaces_enabled()) {
+		// Re-do workspaces overview when adding a workspace
+		layout_overview_workspaces_toggle();
+		layout_overview_workspaces_toggle();
+	}
+
 	node_set_dirty(&output->node);
 	node_set_dirty(&workspace->node);
 }
