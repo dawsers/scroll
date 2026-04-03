@@ -1038,6 +1038,9 @@ bool workspace_is_visible(struct sway_workspace *ws) {
 	if (ws->node.destroying) {
 		return false;
 	}
+	if (layout_overview_workspaces_enabled()) {
+		return true;
+	}
 	struct sway_workspace *workspace = output_get_active_workspace(ws->output);
 	if (workspace == ws) {
 		return true;
@@ -1231,6 +1234,9 @@ void workspace_add_floating(struct sway_workspace *workspace,
 	}
 	list_add(workspace->floating, con);
 	con->pending.workspace = workspace;
+	if (layout_overview_workspaces_enabled()) {
+		con->scene_tree->node.info.workspace = workspace;
+	}
 	container_for_each_child(con, set_workspace, NULL);
 	container_handle_fullscreen_reparent(con);
 	node_set_dirty(&workspace->node);

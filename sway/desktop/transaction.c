@@ -1109,8 +1109,6 @@ static void animate_fullscreen(struct wlr_scene_tree *tree,
 	view_reconfigure(fs->view);
 }
 
-static void animate_workspace_floating(struct sway_workspace *ws);
-
 static void arrange_workspace_floating(struct sway_workspace *ws) {
 	enum sway_layout_overview mode = layout_overview_mode(ws);
 	if (mode == OVERVIEW_ALL || mode == OVERVIEW_FLOATING) {
@@ -1152,6 +1150,14 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 }
 
 static void animate_workspace_floating(struct sway_workspace *ws) {
+	// If the workspaces overview is enabled, make sure floating windows only
+	// show in the output corresponding to their workspace.
+	if (layout_overview_workspaces_enabled()) {
+		root->layers.floating->node.info.wlr_output = ws->output->wlr_output;
+	} else {
+		root->layers.floating->node.info.wlr_output = NULL;
+	}
+
 	if (ws->current.floating->length == 0) {
 		return;
 	}

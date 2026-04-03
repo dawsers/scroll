@@ -302,7 +302,7 @@ enum sway_layout_overview layout_overview_mode(struct sway_workspace *workspace)
 }
 
 bool layout_overview_workspaces_enabled() {
-	return root->overview;
+	return root ? root->overview : false;
 }
 
 static const int workspaces_gap = 20;
@@ -371,6 +371,60 @@ void layout_overview_workspaces_toggle() {
 		}
 		output_damage_whole(output);
 	}
+}
+
+bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspace, double *lx, double *ly) {
+	if (!layout_overview_workspaces_enabled()) {
+		return true;
+	}
+	for (int i = 0; i < root->outputs->length; i++) {
+		struct sway_output *output = root->outputs->items[i];
+		const double x = *lx - output->lx;
+		const double y = *ly - output->ly;
+		for (int j = 0; j < output->current.workspaces->length; ++j) {
+			struct sway_workspace *child = output->current.workspaces->items[j];
+			if (x >= child->jump.x && x < child->jump.x + child->jump.width &&
+				y >= child->jump.y && y < child->jump.y + child->jump.height) {
+				const double rx = (x - child->jump.x) / child->jump.width * output->width;
+				const double ry = (y - child->jump.y) / child->jump.height * output->height;
+				*lx = rx + output->lx;
+				*ly = ry + output->ly;
+				*workspace = child;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+// Map a global point (for example cursor) to a point in the local coordinate system of
+// the workspace in overview mode
+void layout_overview_workspaces_global_to_local(struct sway_workspace *workspace, double *x, double *y) {
+	if (!workspace || !workspace->output) {
+		return;
+	}
+	struct sway_output *output = workspace->output;
+	const double lx = *x - output->lx;
+	const double ly = *y - output->ly;
+	const double rx = workspace->jump.x + lx / output->width * workspace->jump.width;
+	const double ry = workspace->jump.y + ly / output->height * workspace->jump.height;
+	*x = rx + output->lx;
+	*y = ry + output->ly;
+}
+
+// Map a local point (for example container vertex or transformed cursor) to a point
+// in the global coordinate system of the workspace
+void layout_overview_workspaces_local_to_global(struct sway_workspace *workspace, double *x, double *y) {
+	if (!workspace || !workspace->output) {
+		return;
+	}
+	struct sway_output *output = workspace->output;
+	const double lx = *x - output->lx;
+	const double ly = *y - output->ly;
+	const double rx = (lx - workspace->jump.x) / workspace->jump.width * output->width;
+	const double ry = (ly - workspace->jump.y) / workspace->jump.height * output->height;
+	*x = rx + output->lx;
+	*y = ry + output->ly;
 }
 
 void layout_scale_set(struct sway_workspace *workspace, double scale) {
@@ -1515,7 +1569,7 @@ static bool jump_handle_button(struct sway_seat *seat, uint32_t time_msec,
 }
 
 void layout_jump() {
-	if (root->jumping) {
+	if (root->jumping || layout_overview_workspaces_enabled()) {
 		return;
 	}
 	struct jump_data *jump_data = calloc(1, sizeof(struct jump_data));
@@ -1680,7 +1734,7 @@ static void organize_floating_windows(struct sway_workspace *workspace) {
 }
 
 void layout_jump_floating() {
-	if (root->jumping) {
+	if (root->jumping || layout_overview_workspaces_enabled()) {
 		return;
 	}
 	struct jump_data *jump_data = calloc(1, sizeof(struct jump_data));
@@ -1885,7 +1939,7 @@ static bool jump_scratchpad_handle_button(struct sway_seat *seat, uint32_t time_
 }
 
 void layout_jump_scratchpad(struct sway_workspace *workspace) {
-	if (root->scratchpad->length == 0 || root->jumping) {
+	if (root->scratchpad->length == 0 || root->jumping || layout_overview_workspaces_enabled()) {
 		return;
 	}
 	struct jump_data *jump_data = calloc(1, sizeof(struct jump_data));
@@ -2028,7 +2082,7 @@ static bool trailmarks_container_filter(struct sway_workspace *workspace,
 }
 
 void layout_jump_trailmark(struct sway_workspace *workspace) {
-	if (!workspace || root->jumping) {
+	if (!workspace || root->jumping || layout_overview_workspaces_enabled()) {
 		return;
 	}
 	// Similarly to jump scratchpad, disable any floating windows in the current
@@ -2243,7 +2297,7 @@ static void jump_all_for_each_container(struct sway_container *container, void *
 }
 
 void layout_jump_all() {
-	if (root->jumping) {
+	if (root->jumping || layout_overview_workspaces_enabled()) {
 		return;
 	}
 	// Similarly to trailmark jump, make all the windows of workspaces
@@ -2458,7 +2512,7 @@ static bool jump_workspaces_handle_button(struct sway_seat *seat, uint32_t time_
 }
 
 void layout_jump_workspaces() {
-	if (root->jumping) {
+	if (root->jumping || layout_overview_workspaces_enabled()) {
 		return;
 	}
 	layout_overview_workspaces_toggle();

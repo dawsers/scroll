@@ -56,6 +56,7 @@ struct wlr_scene_node_at_data {
 	double lx, ly;
 	double rx, ry;
 	struct wlr_scene_node *node;
+	void *data;
 };
 
 struct wlr_scene_workspace_data {
@@ -424,7 +425,7 @@ void wlr_scene_node_for_each_buffer(struct wlr_scene_node *node,
  * returned node, or NULL if no node is found at that location.
  */
 struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
-	double lx, double ly, double *nx, double *ny);
+	double lx, double ly, double *nx, double *ny, void *data);
 
 /**
  * Return the output that owns this node (if tiled, otherwise NULL)

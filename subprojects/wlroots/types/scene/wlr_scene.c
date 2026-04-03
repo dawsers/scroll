@@ -32,6 +32,8 @@
 #define DMABUF_FEEDBACK_DEBOUNCE_FRAMES  30
 #define HIGHLIGHT_DAMAGE_FADEOUT_TIME   250
 
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+
 struct wlr_scene_tree *wlr_scene_tree_from_node(struct wlr_scene_node *node) {
 	assert(node->type == WLR_SCENE_NODE_TREE);
 	struct wlr_scene_tree *tree = wl_container_of(node, tree, node);
@@ -1783,19 +1785,13 @@ void wlr_scene_node_for_each_buffer(struct wlr_scene_node *node,
 	scene_node_for_each_scene_buffer(node, 0, 0, user_iterator, user_data);
 }
 
-struct node_at_data {
-	double lx, ly;
-	double rx, ry;
-	struct wlr_scene_node *node;
-};
-
 static bool scene_node_at_iterator(struct wlr_scene_node *node,
 		double lx, double ly, void *data) {
 	return scene_cbs.node_at(node, lx, ly, data);
 }
 
 struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
-		double lx, double ly, double *nx, double *ny) {
+		double lx, double ly, double *nx, double *ny, void *data) {
 	struct wlr_box box = {
 		.x = floor(lx),
 		.y = floor(ly),
@@ -1803,19 +1799,20 @@ struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
 		.height = 1
 	};
 
-	struct node_at_data data = {
+	struct wlr_scene_node_at_data node_data = {
 		.lx = lx,
-		.ly = ly
+		.ly = ly,
+		.data = data,
 	};
 
-	if (scene_nodes_in_box(node, &box, scene_node_at_iterator, &data)) {
+	if (scene_nodes_in_box(node, &box, scene_node_at_iterator, &node_data)) {
 		if (nx) {
-			*nx = data.rx;
+			*nx = node_data.rx;
 		}
 		if (ny) {
-			*ny = data.ry;
+			*ny = node_data.ry;
 		}
-		return data.node;
+		return node_data.node;
 	}
 
 	return NULL;
@@ -2011,8 +2008,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			.swap_xy = swap_xy,
 			.flip_x = flip_x,
 			.flip_y = flip_y,
-			.radius_top = round(scene_buffer->radius_top * data->scale),
-			.radius_bottom = round(scene_buffer->radius_bottom * data->scale),
+			.radius_top = round(scene_buffer->radius_top * data->scale * scale),
+			.radius_bottom = round(scene_buffer->radius_bottom * data->scale * scale),
 			.texture = texture,
 			.src_box = scene_buffer->src_box,
 			.dst_box = dst_box,
@@ -2063,8 +2060,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			.flip_y = flip_y,
 			.object = object,
 			.border = scene_decoration->border,
-			.border_radius = round(scene_decoration->border_radius * data->scale),
-			.border_width = round(scene_decoration->border_width * data->scale),
+			.border_radius = round(scene_decoration->border_radius * data->scale * scale),
+			.border_width = MAX(1.0, round(scene_decoration->border_width * data->scale * scale)),
 			.border_top_color = {
 				.r = scene_decoration->border_top_color[0],
 				.g = scene_decoration->border_top_color[1],
@@ -2090,8 +2087,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 				.a = scene_decoration->border_right_color[3],
 			},
 			.title_bar = scene_decoration->title_bar,
-			.title_bar_height = scene_decoration->title_bar_height * data->scale,
-			.title_bar_border_radius = scene_decoration->title_bar_border_radius * data->scale,
+			.title_bar_height = scene_decoration->title_bar_height * data->scale * scale,
+			.title_bar_border_radius = scene_decoration->title_bar_border_radius * data->scale * scale,
 			.title_bar_color = {
 				.r = scene_decoration->title_bar_color[0],
 				.g = scene_decoration->title_bar_color[1],
@@ -2123,8 +2120,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 			.flip_y = flip_y,
 			.radius_top = round((scene_shadow->decoration->title_bar ?
 				scene_shadow->decoration->title_bar_border_radius :
-				scene_shadow->decoration->border_radius) * data->scale),
-			.radius_bottom = round(scene_shadow->decoration->border_radius * data->scale),
+				scene_shadow->decoration->border_radius) * data->scale * scale),
+			.radius_bottom = round(scene_shadow->decoration->border_radius * data->scale * scale),
 			.enabled = scene_shadow->enabled,
 			.blur = scene_shadow->blur,
 			.color = {
@@ -2938,6 +2935,9 @@ bool wlr_scene_output_build_state(struct wlr_scene_output *scene_output,
 		if (scene_output->gamma_lut_color_transform != NULL) {
 			render_gamma_lut = true;
 		}
+	}
+	if (scene_cbs.overview_workspaces_enabled()) {
+		scene_output_damage_whole(scene_output);
 	}
 
 	struct render_data render_data = {

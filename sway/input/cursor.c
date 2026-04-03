@@ -41,6 +41,13 @@
 struct sway_node *node_at_coords(
 		struct sway_seat *seat, double lx, double ly,
 		struct wlr_surface **surface, double *sx, double *sy) {
+	struct sway_workspace *workspace = NULL;
+	if (layout_overview_workspaces_enabled()) {
+		if(!layout_overview_workspaces_map_coordinates(&workspace, &lx, &ly)) {
+			return NULL;
+		}
+	}
+
 	struct wlr_scene_node *scene_node = NULL;
 
 	struct wlr_scene_node *node;
@@ -53,7 +60,7 @@ struct sway_node *node_at_coords(
 			continue;
 		}
 
-		scene_node = wlr_scene_node_at(&layer->node, lx, ly, sx, sy);
+		scene_node = wlr_scene_node_at(&layer->node, lx, ly, sx, sy, workspace);
 		if (scene_node) {
 			break;
 		}

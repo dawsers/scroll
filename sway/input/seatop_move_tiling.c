@@ -80,7 +80,15 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 		e->target_edge = WLR_EDGE_NONE;
 
 		struct wlr_box drop_box;
-		workspace_get_box(node->sway_workspace, &drop_box);
+		if (layout_overview_workspaces_enabled()) {
+			struct sway_output *output = node->sway_workspace->output;
+			drop_box.x = output->lx + node->sway_workspace->jump.x;
+			drop_box.y = output->ly + node->sway_workspace->jump.y;
+			drop_box.width = node->sway_workspace->jump.width;
+			drop_box.height = node->sway_workspace->jump.height;
+		} else {
+			workspace_get_box(node->sway_workspace, &drop_box);
+		}
 		update_indicator(e, &drop_box);
 		return;
 	}
@@ -146,17 +154,21 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	int thresh_bottom = node_box.y + node_box.height - drop_layout_border;
 	int thresh_left = node_box.x + drop_layout_border;
 	int thresh_right = node_box.x + node_box.width - drop_layout_border;
-	if (cursor->cursor->y < thresh_top) {
+	// Map transformed cursor to real workspace
+	double cx = cursor->cursor->x;
+	double cy = cursor->cursor->y;
+	layout_overview_workspaces_local_to_global(workspace, &cx, &cy);
+	if (cy < thresh_top) {
 		edge = WLR_EDGE_TOP;
 		box.height = drop_layout_border;
-	} else if (cursor->cursor->y > thresh_bottom) {
+	} else if (cy > thresh_bottom) {
 		edge = WLR_EDGE_BOTTOM;
 		box.y = box.y + box.height - drop_layout_border;
 		box.height = drop_layout_border;
-	} else if (cursor->cursor->x < thresh_left) {
+	} else if (cx < thresh_left) {
 		edge = WLR_EDGE_LEFT;
 		box.width = drop_layout_border;
-	} else if (cursor->cursor->x > thresh_right) {
+	} else if (cx > thresh_right) {
 		edge = WLR_EDGE_RIGHT;
 		box.x = box.x + box.width - drop_layout_border;
 		box.width = drop_layout_border;
@@ -170,6 +182,15 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	}
 	e->target_node = &con->node;
 	e->target_edge = edge;
+	if (layout_overview_workspaces_enabled()) {
+		double x = box.x;
+		double y = box.y;
+		layout_overview_workspaces_global_to_local(workspace, &x, &y);
+		box.x = round(x);
+		box.y = round(y);
+		box.height *= workspace->jump.scale;
+		box.width *= workspace->jump.scale;
+	}
 	update_indicator(e, &box);
 	// Set focus on container so we can scroll the view
 	seat_set_focus(seat, node);

@@ -685,11 +685,15 @@ set|plus|minus|toggle <amount>
 	If you want to have Xwayland windows at 1:1 physical monitor scale, read
 	about the option *xwayland_output_scale*.
 
-*scale_workspace* <exact number|increment number|reset|overview>
+*scale_workspace* <exact number|increment number|reset|overview|workspaces>
 	This command will scale the workspace to an _exact_ scale, or
-	incrementally by a delta value. If you want a useful automatic scale, use
-	the _overview_ argument which will fit all the windows of the workspace
-	in the current viewport.
+	incrementally by a delta value.
+
+	_overview_ will use an automatic scale that fits all the windows of the
+	workspace in the current viewport.
+
+	_workspaces_ will also scale automatically and show a global overview where
+	each output renders all	its workspaces.
 
 	You will still be able to interact with the windows normally (change focus,
 	move windows, create or destroy them, type in them etc.). Use it as a way

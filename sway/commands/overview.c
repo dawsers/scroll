@@ -68,12 +68,16 @@ struct cmd_results *cmd_scale_workspace(int argc, char **argv) {
 		if (!root->jumping) {
 			layout_overview_toggle(workspace, OVERVIEW_ALL);
 		}
+	} else if (strcasecmp(argv[0], "workspaces") == 0) {
+		if (!root->jumping) {
+			layout_overview_workspaces_toggle();
+		}
 	} else {
 		fail = 1;
 	}
 
 	if (fail) {
-		const char usage[] = "Expected 'scale_workspace <exact number|increment number|reset|overview>'";
+		const char usage[] = "Expected 'scale_workspace <exact number|increment number|reset|overview|workspaces>'";
 		return cmd_results_new(CMD_INVALID, "%s", usage);
 	}
 	return cmd_results_new(CMD_SUCCESS, NULL);

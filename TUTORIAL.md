@@ -252,8 +252,15 @@ When you have too many windows in a workspace, it can be hard to know where
 things are. `scale_workspace overview` helps with that by creating a bird's eye view
 of the whole workspace.
 
+`scale_workspaces workspaces` creates an overview mode where *scroll* renders
+all the workspaces for each monitor.
+
+You can work normally when in either overview mode, and drag windows between
+workspaces too.
+
 ``` config
     bindsym --no-repeat $mod+tab scale_workspace overview
+    bindsym --no-repeat $mod+Shift+tab scale_workspace workspaces
 ```
 
 [Overview](https://github.com/user-attachments/assets/618fa129-f3db-4970-8dff-4d2ed7ed5ae2)
@@ -270,27 +277,36 @@ workspace.
 1. Assign key bindings to `jump`, for this tutorial:
 
 ``` config
-    bindsym --no-repeat $mod+slash jump
-    bindsym --no-repeat $mod+Shift+slash jump container
-    bindsym --no-repeat $mod+Ctrl+slash jump workspaces
-    bindsym --no-repeat $mod+Alt+slash jump floating
+mode "jump" {
+    bindsym  slash jump; mode default
+    bindsym  c jump container; mode default
+    bindsym  w jump workspaces; mode default
+    bindsym  f jump floating; mode default
+    bindsym  a jump all; mode default
+    bindsym  s scratchpad jump; mode default
+    bindsym  t trailmark jump; mode default
+
+    # Return to default mode
+    bindsym Escape mode "default"
+}
+bindsym  $mod+slash mode "jump"
 ```
 
-2. Pressing your `mod` key and `/` will show an overview of your windows on
+2. Pressing your `mod` key and `/` followed by `/` will show an overview of your windows on
    each monitor.
 3. Now press the numbers shown on the overlay for the window you want to change
    focus to, or click on it.
 4. `jump` will exit, and the focus will be on the window you selected.
 
-If instead you press `mod`, `Ctrl` and `/`, you will see a bird's eye view of
+If instead you press `mod`, `/` and `w`, you will see a bird's eye view of
 all your workspaces. Pressing a combination of keys, like in the example
 above, will take you to the chosen workspace.
 
 If your focus is on a column with more than one window, you can press `mod`,
-`Shift` and `/`, and you will get a jump overview of only all the windows in that
+`/` and `c`, and you will get a jump overview of only all the windows in that
 column instead.
 
-If you use floating windows, `mod+Alt+/` will show you an overview of
+If you use floating windows, `mod+/` followed by `f` will show you an overview of
 all your floating windows without overlaps, so you can select one even if it
 was hidden behind.
 

@@ -2,6 +2,7 @@
 #include "sway/desktop/transaction.h"
 #include "sway/input/cursor.h"
 #include "sway/input/seat.h"
+#include "sway/tree/layout.h"
 
 struct seatop_move_floating_event {
 	struct sway_container *con;
@@ -37,7 +38,12 @@ static void handle_tablet_tool_tip(struct sway_seat *seat,
 static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	struct seatop_move_floating_event *e = seat->seatop_data;
 	struct wlr_cursor *cursor = seat->cursor->cursor;
-	container_floating_move_to(e->con, cursor->x - e->dx, cursor->y - e->dy);
+	double cx = cursor->x;
+	double cy = cursor->y;
+	if (layout_overview_workspaces_enabled() && e->con->pending.workspace) {
+		layout_overview_workspaces_local_to_global(e->con->pending.workspace, &cx, &cy);
+	}
+	container_floating_move_to(e->con, cx - e->dx, cy - e->dy);
 	transaction_commit_dirty();
 }
 
@@ -65,9 +71,14 @@ void seatop_begin_move_floating(struct sway_seat *seat,
 	if (!e) {
 		return;
 	}
+	double cx = cursor->cursor->x;
+	double cy = cursor->cursor->y;
+	if (layout_overview_workspaces_enabled() && con->pending.workspace) {
+		layout_overview_workspaces_local_to_global(con->pending.workspace, &cx, &cy);
+	}
 	e->con = con;
-	e->dx = cursor->cursor->x - con->pending.x;
-	e->dy = cursor->cursor->y - con->pending.y;
+	e->dx = cx - con->pending.x;
+	e->dy = cy - con->pending.y;
 
 	seat->seatop_impl = &seatop_impl;
 	seat->seatop_data = e;

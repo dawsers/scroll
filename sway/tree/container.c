@@ -1051,6 +1051,10 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		container->toggle_size.width = container->pending.width;
 		container->toggle_size.height = container->pending.height;
 
+		if (layout_overview_workspaces_enabled()) {
+			container->scene_tree->node.info.workspace = workspace;
+		}
+
 		if (old_parent) {
 			if (set_focus) {
 				seat_set_raw_focus(seat, &old_parent->node);
@@ -1060,6 +1064,9 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		}
 	} else {
 		// Returning to tiled
+		if (layout_overview_workspaces_enabled()) {
+			container->scene_tree->node.info.workspace = NULL;
+		}
 		if (container->scratchpad) {
 			root_scratchpad_remove_container(container);
 		}
@@ -1162,6 +1169,9 @@ void container_floating_translate(struct sway_container *con,
 struct sway_output *container_floating_find_output(struct sway_container *con) {
 	double center_x = con->pending.x + con->pending.width / 2;
 	double center_y = con->pending.y + con->pending.height / 2;
+	if (layout_overview_workspaces_enabled()) {
+		layout_overview_workspaces_global_to_local(con->pending.workspace, &center_x, &center_y);
+	}
 	struct sway_output *closest_output = NULL;
 	double closest_distance = DBL_MAX;
 	for (int i = 0; i < root->outputs->length; ++i) {
@@ -1171,10 +1181,6 @@ struct sway_output *container_floating_find_output(struct sway_container *con) {
 		output_get_box(output, &output_box);
 		wlr_box_closest_point(&output_box, center_x, center_y,
 				&closest_x, &closest_y);
-		if (center_x == closest_x && center_y == closest_y) {
-			// The center of the floating container is on this output
-			return output;
-		}
 		double x_dist = closest_x - center_x;
 		double y_dist = closest_y - center_y;
 		double distance = x_dist * x_dist + y_dist * y_dist;
@@ -1184,6 +1190,35 @@ struct sway_output *container_floating_find_output(struct sway_container *con) {
 		}
 	}
 	return closest_output;
+}
+
+static struct sway_workspace *container_floating_find_workspace(struct sway_output *output,
+		struct sway_container *con) {
+	double center_x = con->pending.x + con->pending.width / 2;
+	double center_y = con->pending.y + con->pending.height / 2;
+	layout_overview_workspaces_global_to_local(con->pending.workspace, &center_x, &center_y);
+	struct sway_workspace *closest_workspace = NULL;
+	double closest_distance = DBL_MAX;
+	double closest_x, closest_y;
+	for (int j = 0; j < output->workspaces->length; ++j) {
+		struct sway_workspace *workspace = output->workspaces->items[j];
+		struct wlr_box workspace_box = {
+			.x = output->lx + workspace->jump.x,
+			.y = output->ly + workspace->jump.y,
+			.width = workspace->jump.width,
+			.height = workspace->jump.height
+		};
+		wlr_box_closest_point(&workspace_box, center_x, center_y,
+			&closest_x, &closest_y);
+		double x_dist = closest_x - center_x;
+		double y_dist = closest_y - center_y;
+		double distance = x_dist * x_dist + y_dist * y_dist;
+		if (distance < closest_distance) {
+			closest_workspace = workspace;
+			closest_distance = distance;
+		}
+	}
+	return closest_workspace;
 }
 
 void container_floating_move_to(struct sway_container *con,
@@ -1201,9 +1236,28 @@ void container_floating_move_to(struct sway_container *con,
 	if (!sway_assert(new_output, "Unable to find any output")) {
 		return;
 	}
-	struct sway_workspace *new_workspace =
-		output_get_active_workspace(new_output);
+	struct sway_workspace *new_workspace;
+	if (layout_overview_workspaces_enabled()) {
+		new_workspace = container_floating_find_workspace(new_output, con);
+		if (!sway_assert(new_workspace, "Unable to find any workspace")) {
+			return;
+		}
+	} else {
+		new_workspace =	output_get_active_workspace(new_output);
+	}
 	if (new_workspace && old_workspace != new_workspace) {
+		if (layout_overview_workspaces_enabled()) {
+			//  Modify container position relative to new closest workspace
+			double x = con->pending.x;
+			double y = con->pending.y;
+			layout_overview_workspaces_global_to_local(old_workspace, &x, &y);
+			layout_overview_workspaces_local_to_global(new_workspace, &x, &y);
+			container_floating_translate(con, x - con->pending.x, y - con->pending.y);
+			// Modify container->current to be relative to the new workspace, so the
+			// animation starts from the right place
+			layout_overview_workspaces_global_to_local(old_workspace, &con->current.x, &con->current.y);
+			layout_overview_workspaces_local_to_global(new_workspace, &con->current.x, &con->current.y);
+		}
 		container_detach(con);
 		workspace_add_floating(new_workspace, con);
 		arrange_workspace(old_workspace);
@@ -1212,8 +1266,16 @@ void container_floating_move_to(struct sway_container *con,
 		// update its transform.
 		if (con->scratchpad) {
 			struct wlr_box output_box;
-			output_get_box(new_output, &output_box);
+			output_get_box(new_workspace->output, &output_box);
 			con->transform = output_box;
+		}
+		if (layout_overview_workspaces_enabled()) {
+			struct sway_seat *seat = input_manager_current_seat();
+			struct sway_node *next = seat_get_focus_inactive(seat, &new_workspace->node);
+			if (next == NULL) {
+				next = &new_workspace->node;
+			}
+			seat_set_focus(seat, next);
 		}
 		workspace_detect_urgent(old_workspace);
 		workspace_detect_urgent(new_workspace);
@@ -1393,7 +1455,8 @@ void container_set_fullscreen(struct sway_container *con,
 		con->fullscreen = false;
 		break;
 	case FULLSCREEN_WORKSPACE:
-		if (workspace && layout_overview_mode(workspace) == OVERVIEW_DISABLED) {
+		if (workspace && layout_overview_mode(workspace) == OVERVIEW_DISABLED &&
+			!layout_overview_workspaces_enabled()) {
 			if (root->fullscreen_global) {
 				container_fullscreen_disable(root->fullscreen_global);
 			}
@@ -1404,7 +1467,8 @@ void container_set_fullscreen(struct sway_container *con,
 		}
 		break;
 	case FULLSCREEN_GLOBAL:
-		if (workspace && layout_overview_mode(workspace) == OVERVIEW_DISABLED) {
+		if (workspace && layout_overview_mode(workspace) == OVERVIEW_DISABLED &&
+			!layout_overview_workspaces_enabled()) {
 			if (root->fullscreen_global) {
 				container_fullscreen_disable(root->fullscreen_global);
 			}

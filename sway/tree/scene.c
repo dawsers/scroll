@@ -11,8 +11,10 @@ static bool scene_fullscreen_global_enabled() {
 }
 
 static bool scene_overview_workspaces_enabled() {
-	return layout_overview_workspaces_enabled();	
+	return layout_overview_workspaces_enabled();
 }
+
+static void *scene_node_get_workspace(struct wlr_scene_node *node);
 
 static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 		struct wlr_scene_node_at_data *data) {
@@ -22,6 +24,10 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 		if (output && wlr_output != output->wlr_output) {
 			return false;
 		}
+	}
+	struct sway_workspace *workspace = scene_node_get_workspace(node);
+	if (workspace && data->data && workspace != data->data) {
+		return false;
 	}
 	struct wlr_box *box = wlr_scene_node_info_get_workspace_box(node);
 	if (box) {

@@ -31,49 +31,6 @@ struct seatop_default_event {
 /*-----------------------------------------\
  * Functions shared by multiple callbacks  /
  *---------------------------------------*/
-
-/**
- * Determine if the edge of the given container is on the edge of the
- * workspace/output.
- */
-static bool edge_is_external(struct sway_container *cont, enum wlr_edges edge) {
-	enum sway_container_layout layout = L_NONE;
-	switch (edge) {
-	case WLR_EDGE_TOP:
-	case WLR_EDGE_BOTTOM:
-		layout = L_VERT;
-		break;
-	case WLR_EDGE_LEFT:
-	case WLR_EDGE_RIGHT:
-		layout = L_HORIZ;
-		break;
-	case WLR_EDGE_NONE:
-		sway_assert(false, "Never reached");
-		return false;
-	}
-
-	// Iterate the parents until we find one with the layout we want,
-	// then check if the child has siblings between it and the edge.
-	while (cont) {
-		if (container_parent_layout(cont) == layout) {
-			list_t *siblings = container_get_siblings(cont);
-			if (!siblings) {
-				return false;
-			}
-			int index = list_find(siblings, cont);
-			if (index > 0 && (edge == WLR_EDGE_LEFT || edge == WLR_EDGE_TOP)) {
-				return false;
-			}
-			if (index < siblings->length - 1 &&
-					(edge == WLR_EDGE_RIGHT || edge == WLR_EDGE_BOTTOM)) {
-				return false;
-			}
-		}
-		cont = cont->pending.parent;
-	}
-	return true;
-}
-
 static enum wlr_edges find_edge(struct sway_container *cont,
 		struct wlr_surface *surface, struct sway_cursor *cursor) {
 	if (!cont->view || (surface && cont->view->surface != surface)) {
@@ -87,17 +44,23 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 		return WLR_EDGE_NONE;
 	}
 
+	double cx = cursor->cursor->x;
+	double cy = cursor->cursor->y;
+	if (layout_overview_workspaces_enabled()) {
+		layout_overview_workspaces_local_to_global(cont->pending.workspace, &cx, &cy);
+	}
+	float scale = layout_scale_enabled(cont->pending.workspace) ? layout_scale_get(cont->pending.workspace) : 1.0f;
 	enum wlr_edges edge = 0;
-	if (cursor->cursor->x < cont->pending.x + cont->pending.border_thickness) {
+	if (cx < cont->pending.x + MAX(1, scale * cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_LEFT;
 	}
-	if (cursor->cursor->y < cont->pending.y + cont->pending.border_thickness) {
+	if (cy < cont->pending.y + MAX(1, scale *cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_TOP;
 	}
-	if (cursor->cursor->x >= cont->pending.x + cont->pending.width - cont->pending.border_thickness) {
+	if (cx >= cont->pending.x + scale * (cont->pending.width - cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_RIGHT;
 	}
-	if (cursor->cursor->y >= cont->pending.y + cont->pending.height - cont->pending.border_thickness) {
+	if (cy >= cont->pending.y + scale * (cont->pending.height - cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_BOTTOM;
 	}
 
@@ -111,9 +74,6 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 enum wlr_edges find_resize_edge(struct sway_container *cont,
 		struct wlr_surface *surface, struct sway_cursor *cursor) {
 	enum wlr_edges edge = find_edge(cont, surface, cursor);
-	if (edge && !container_is_floating(cont) && edge_is_external(cont, edge)) {
-		return WLR_EDGE_NONE;
-	}
 	return edge;
 }
 
@@ -602,8 +562,6 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 		// and if it is, we only change focus if clicked or FOLLOWS_ALWAYS.
 		struct sway_container *container = hovered_node->sway_container;
 		struct sway_workspace *ws = container->pending.workspace;
-		const double cx = seat->cursor->cursor->x;
-		const double cy = seat->cursor->cursor->y;
 		// Check if the hovered_node is fully wihin the viewport if FOLLOWS_FULL
 		bool valid_focus = true;
 		if (config->focus_follows_mouse == FOLLOWS_FULL && !container_is_floating(container)) {
@@ -614,6 +572,11 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 				container->pending.y + container->pending.height * scale > ws->y + ws->height) {
 				valid_focus = false;
 			}
+		}
+		double cx = seat->cursor->cursor->x;
+		double cy = seat->cursor->cursor->y;
+		if (layout_overview_workspaces_enabled()) {
+			layout_overview_workspaces_local_to_global(ws, &cx, &cy);
 		}
 		bool in_gaps = cx < ws->x || cx > ws->x + ws->width || cy < ws->y || cy > ws->y + ws->height ?
 			true : false;
