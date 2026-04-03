@@ -167,7 +167,21 @@ struct sway_node *node_at_coords(
 		return NULL;
 	}
 
-	struct sway_workspace *ws = output_get_active_workspace(output);
+	struct sway_workspace *ws = NULL;
+	if (layout_overview_workspaces_enabled()) {
+		const double x = lx - output->lx;
+		const double y = ly - output->ly;
+		for (int j = 0; j < output->workspaces->length; ++j) {
+			struct sway_workspace *child = output->workspaces->items[j];
+			if (x >= child->jump.x && x < child->jump.x + child->jump.width &&
+				y >= child->jump.y && y < child->jump.y + child->jump.height) {
+				ws = child;
+				break;
+			}
+		}
+	} else {
+		ws = output_get_active_workspace(output);
+	}
 	if (!ws) {
 		return NULL;
 	}

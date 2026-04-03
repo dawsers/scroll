@@ -157,7 +157,9 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	// Map transformed cursor to real workspace
 	double cx = cursor->cursor->x;
 	double cy = cursor->cursor->y;
-	layout_overview_workspaces_local_to_global(workspace, &cx, &cy);
+	if (layout_overview_workspaces_enabled()) {
+		layout_overview_workspaces_local_to_global(workspace, &cx, &cy);
+	}
 	if (cy < thresh_top) {
 		edge = WLR_EDGE_TOP;
 		box.height = drop_layout_border;

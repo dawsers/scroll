@@ -381,8 +381,8 @@ bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspac
 		struct sway_output *output = root->outputs->items[i];
 		const double x = *lx - output->lx;
 		const double y = *ly - output->ly;
-		for (int j = 0; j < output->current.workspaces->length; ++j) {
-			struct sway_workspace *child = output->current.workspaces->items[j];
+		for (int j = 0; j < output->workspaces->length; ++j) {
+			struct sway_workspace *child = output->workspaces->items[j];
 			if (x >= child->jump.x && x < child->jump.x + child->jump.width &&
 				y >= child->jump.y && y < child->jump.y + child->jump.height) {
 				const double rx = (x - child->jump.x) / child->jump.width * output->width;
