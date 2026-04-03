@@ -277,6 +277,12 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 
 	layout_init(ws);
 
+	if (layout_overview_workspaces_enabled()) {
+		// Re-do workspaces overview when creating a new workspace
+		layout_overview_workspaces_toggle();
+		layout_overview_workspaces_toggle();
+	}
+
 	// Lua callbacks
 	for (int i = 0; i < config->lua.cbs_workspace_create->length; ++i) {
 		struct sway_lua_closure *closure = config->lua.cbs_workspace_create->items[i];
@@ -1198,6 +1204,12 @@ void workspace_detach(struct sway_workspace *workspace) {
 
 	node_set_dirty(&workspace->node);
 	node_set_dirty(&output->node);
+
+	if (layout_overview_workspaces_enabled()) {
+		// Re-do workspaces overview when detaching a workspace
+		layout_overview_workspaces_toggle();
+		layout_overview_workspaces_toggle();
+	}
 }
 
 struct sway_container *workspace_add_tiling(struct sway_workspace *workspace,

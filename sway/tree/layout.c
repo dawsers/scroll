@@ -317,7 +317,7 @@ void layout_overview_workspaces_toggle() {
 			const double top = usable_area->y;
 			const double width = output->width;
 			const double height = output->height;
-			const int length = output->current.workspaces->length;
+			const int length = output->workspaces->length;
 			const int rows = ceil(sqrt(length));
 			const double scale = fmin((usable_area->width - workspaces_gap * (rows + 1)) / (rows * width),
 				(usable_area->height - workspaces_gap * (rows + 1)) / (rows * height));
@@ -333,7 +333,7 @@ void layout_overview_workspaces_toggle() {
 				const double gapx = (usable_area->width - cols * scale * width) / (cols + 1);
 				const double gapy = (usable_area->height - rows * scale * height) / (rows + 1);
 				for (int c = 0; c < cols; ++c) {
-					struct sway_workspace *child = output->current.workspaces->items[j++];
+					struct sway_workspace *child = output->workspaces->items[j++];
 					wlr_scene_node_reparent(&child->jump.tree->node, output->layers.shell_overlay);
 					child->layout.fullscreen = child->fullscreen;
 					child->jump.x = round(left + gapx + c * (scale * width + gapx));
@@ -354,8 +354,8 @@ void layout_overview_workspaces_toggle() {
 				}
 			}
 		} else {
-			for (int j = 0; j < output->current.workspaces->length; ++j) {
-				struct sway_workspace *child = output->current.workspaces->items[j];
+			for (int j = 0; j < output->workspaces->length; ++j) {
+				struct sway_workspace *child = output->workspaces->items[j];
 				wlr_scene_node_reparent(&child->jump.tree->node, root->staging);
 				child->layers.tiling->node.info.workspace = NULL;
 				node_set_dirty(&child->node);
