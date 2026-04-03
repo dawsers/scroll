@@ -159,6 +159,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 
 		switch (options->filter_mode) {
 		case WLR_SCALE_FILTER_BILINEAR:
+			pixman_image_set_repeat(texture->image, PIXMAN_REPEAT_PAD);
 			pixman_image_set_filter(texture->image, PIXMAN_FILTER_BILINEAR, NULL, 0);
 			break;
 		case WLR_SCALE_FILTER_NEAREST:
