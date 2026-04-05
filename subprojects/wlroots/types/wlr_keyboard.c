@@ -84,6 +84,16 @@ void wlr_keyboard_notify_modifiers(struct wlr_keyboard *keyboard,
 		uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
 		uint32_t group) {
 	if (keyboard->xkb_state == NULL) {
+		if (keyboard->modifiers.depressed != mods_depressed ||
+				keyboard->modifiers.latched != mods_latched ||
+				keyboard->modifiers.locked != mods_locked ||
+				keyboard->modifiers.group != group) {
+			keyboard->modifiers.depressed = mods_depressed;
+			keyboard->modifiers.latched = mods_latched;
+			keyboard->modifiers.locked = mods_locked;
+			keyboard->modifiers.group = group;
+			wl_signal_emit_mutable(&keyboard->events.modifiers, keyboard);
+		}
 		return;
 	}
 	xkb_state_update_mask(keyboard->xkb_state, mods_depressed, mods_latched,
