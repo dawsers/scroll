@@ -252,7 +252,7 @@ When you have too many windows in a workspace, it can be hard to know where
 things are. `scale_workspace overview` helps with that by creating a bird's eye view
 of the whole workspace.
 
-`scale_workspaces workspaces` creates an overview mode where *scroll* renders
+`scale_workspace workspaces` creates an overview mode where *scroll* renders
 all the workspaces for each monitor.
 
 You can work normally when in either overview mode, and drag windows between
