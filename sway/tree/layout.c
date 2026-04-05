@@ -305,8 +305,6 @@ bool layout_overview_workspaces_enabled() {
 	return root ? root->overview : false;
 }
 
-static const int workspaces_gap = 20;
-
 static void workspace_name_decoration(struct sway_workspace *ws, bool enable) {
 	if (!enable) {
 		if (ws->jump.name) {
@@ -322,10 +320,10 @@ static void workspace_name_decoration(struct sway_workspace *ws, bool enable) {
 	}
 	sway_text_node_set_background(ws->jump.name, config->workspace_labels_background);
 	double scale = fmin((double) ws->width / ws->jump.name->width,
-		(double) workspaces_gap / ws->jump.name->height);
+		(double) config->workspace_labels_height / ws->jump.name->height);
 	sway_text_node_scale(ws->jump.name, scale);
 	int x = ws->jump.x + 0.5 * (ws->jump.width - ws->jump.name->width * scale);
-	int y = ws->jump.y - workspaces_gap;
+	int y = ws->jump.y - config->workspace_labels_height;
 	wlr_scene_node_set_position(&ws->jump.name_tree->node, x, y);
 	wlr_scene_node_set_enabled(&ws->jump.name_tree->node, true);
 }
@@ -342,8 +340,8 @@ void layout_overview_workspaces_toggle() {
 			const double height = output->height;
 			const int length = output->workspaces->length;
 			const int rows = ceil(sqrt(length));
-			const double scale = fmin((usable_area->width - workspaces_gap * (rows + 1)) / (rows * width),
-				(usable_area->height - workspaces_gap * (rows + 1)) / (rows * height));
+			const double scale = fmin((usable_area->width - config->workspace_labels_height * (rows + 1)) / (rows * width),
+				(usable_area->height - config->workspace_labels_height * (rows + 1)) / (rows * height));
 			const int per_row = length / rows;
 			int remain = length % rows;
 			int j = 0;

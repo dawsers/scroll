@@ -1482,6 +1482,9 @@ labels.
 `workspace_labels_background`: default is  `#00000000`. Color of the background
 of the workspace name labels.
 
+`workspace_labels_height`: default is 30. Height of the workspace name labels,
+and equal to the gap between workspaces.
+
 ### General Options
 
 `align_reset_auto`: default is `yes` (`true`). If `true`, every time you
@@ -1971,6 +1974,7 @@ each one of them:
 `jump_labels_keys`, `jump_labels_scale`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,
 `scratchpad_minimize`, `workspace_labels_background`, `workspace_labels_color`,
+`workspace_labels_height`
 `workspace_next_on_output_create_empty`, `xwayland_output_scale`
 
 ### Runtime Only Commands

@@ -137,6 +137,7 @@ static const struct cmd_handler config_handlers[] = {
 	{ "swaybg_command", cmd_swaybg_command },
 	{ "workspace_labels_background", cmd_workspace_labels_background },
 	{ "workspace_labels_color", cmd_workspace_labels_color },
+	{ "workspace_labels_height", cmd_workspace_labels_height },
 	{ "workspace_layout", cmd_workspace_layout },
 	{ "workspace_next_on_output_create_empty", cmd_workspace_next_on_output_create_empty },
 	{ "xwayland", cmd_xwayland },

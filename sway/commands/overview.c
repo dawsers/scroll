@@ -28,6 +28,20 @@ struct cmd_results *cmd_workspace_labels_background(int argc, char **argv) {
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
+struct cmd_results *cmd_workspace_labels_height(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "workspace_labels_height", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	char *inv;
+	int value = strtol(argv[0], &inv, 10);
+	if (*inv != '\0' || value < 10) {
+		return cmd_results_new(CMD_FAILURE, "workspace_labels_height: Invalid size specified");
+	}
+	config->workspace_labels_height = value;
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
 /*
  *  We can set the scale, modify or reset it.
  *  If we call overview, it will toggle overview mode:

@@ -299,6 +299,10 @@ The following commands may only be used in the configuration file.
 *workspace_labels_color* <color>
 	Default is _#A54242FF_. Color of the workspace name labels.
 
+*workspace_labels_height* <integer>
+	Default is _30_. Height of the workspace name labels, equal to the gap
+	between workspaces in _scale_workspace workspaces_ mode.
+
 *workspace_layout* default|horizontal|vertical
 	Specifies the initial layout for new containers in an empty workspace.
 

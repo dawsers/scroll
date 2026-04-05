@@ -615,6 +615,7 @@ struct sway_config {
 	list_t *jump_labels_keys_text;
 	float workspace_labels_color[4];
 	float workspace_labels_background[4];
+	int workspace_labels_height;
 	enum sway_fullscreen_movefocus fullscreen_movefocus;
 	enum sway_fullscreen_request_mode fullscreen_on_request;
 	bool align_reset_auto;
