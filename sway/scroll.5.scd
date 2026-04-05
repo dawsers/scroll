@@ -2119,7 +2119,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	(the view triggering the event) and _data_, the _cb_data_ value passed when
 	creating the callback.
 
-	"view_map": application's window creation.
+	"view_map": application's window creation, before it gets focus.
 
 	"view_unmap": right before an application's window destruction.
 
@@ -2180,6 +2180,8 @@ it with height 0.33333. When you close the neovim window, the terminal is
 also automatically closed.
 
 ```
+local scroll = require("scroll")
+
 local id_map
 local id_unmap
 local data = {}
@@ -2187,7 +2189,8 @@ local data = {}
 local on_create = function (cbview, cbdata)
   if scroll.view_get_app_id(cbview) == "kitty" then
     cbdata.view = cbview
-    scroll.command(nil, "set_size v 0.33333333; move left nomode")
+    local container = scroll.view_get_container(cbview)
+    scroll.command(container, "set_size v 0.33333333; move left nomode")
   end
   scroll.remove_callback(id_map)
 end

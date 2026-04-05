@@ -955,6 +955,17 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		arrange_workspace(container->pending.workspace);
 	}
 
+	view_execute_criteria(view);
+
+	// Lua callbacks
+	for (int i = 0; i < config->lua.cbs_view_map->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_view_map->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, view);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+
 	if (!fullscreen && ws && ws->fullscreen) {
 		if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
 			container_pass_fullscreen(ws->fullscreen, view->container);
@@ -991,17 +1002,6 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, app_id);
 	} else if ((class = view_get_class(view)) != NULL) {
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
-	}
-
-	view_execute_criteria(view);
-
-	// Lua callbacks
-	for (int i = 0; i < config->lua.cbs_view_map->length; ++i) {
-		struct sway_lua_closure *closure = config->lua.cbs_view_map->items[i];
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
-		lua_pushlightuserdata(config->lua.state, view);
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
 	}
 
 	animation_set_type(ANIMATION_WINDOW_OPEN);
