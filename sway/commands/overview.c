@@ -4,6 +4,29 @@
 #include <strings.h>
 #include "sway/commands.h"
 #include "sway/tree/workspace.h"
+#include "util.h"
+
+struct cmd_results *cmd_workspace_labels_color(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "workspace_labels_color", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	uint32_t color;
+	parse_color(argv[0], &color);
+	color_to_rgba(config->workspace_labels_color, color);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_workspace_labels_background(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "workspace_labels_background", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	uint32_t color;
+	parse_color(argv[0], &color);
+	color_to_rgba(config->workspace_labels_background, color);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
 
 /*
  *  We can set the scale, modify or reset it.

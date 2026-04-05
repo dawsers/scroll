@@ -64,8 +64,10 @@ struct sway_workspace {
 		double x, y;
 		double width, height;
 		double scale;
-		struct wlr_scene_tree *tree;
+		struct wlr_scene_tree *text_tree;
 		struct sway_text_node *text;
+		struct wlr_scene_tree *name_tree;
+		struct sway_text_node *name;
 	} jump;
 
 	struct {

@@ -277,6 +277,13 @@ The following commands may only be used in the configuration file.
 	It can be disabled by setting the command to a single dash:
 	_swaybg\_command -_
 
+*workspace_labels_background* <color>
+	Default is _#00000000_ (transparent). Color of the background of the
+	workspace name labels.
+
+*workspace_labels_color* <color>
+	Default is _#A54242FF_. Color of the workspace name labels.
+
 *workspace_layout* default|horizontal|vertical
 	Specifies the initial layout for new containers in an empty workspace.
 

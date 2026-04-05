@@ -205,12 +205,14 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 	bool failed = false;
 	ws->layers.tiling = alloc_scene_tree(root->staging, &failed);
 	ws->layers.fullscreen = alloc_scene_tree(root->staging, &failed);
-	ws->jump.tree = alloc_scene_tree(root->staging, &failed);
+	ws->jump.text_tree = alloc_scene_tree(root->staging, &failed);
+	ws->jump.name_tree = alloc_scene_tree(root->staging, &failed);
 
 	if (failed) {
 		wlr_scene_node_destroy(&ws->layers.tiling->node);
 		wlr_scene_node_destroy(&ws->layers.fullscreen->node);
-		wlr_scene_node_destroy(&ws->jump.tree->node);
+		wlr_scene_node_destroy(&ws->jump.text_tree->node);
+		wlr_scene_node_destroy(&ws->jump.name_tree->node);
 		wlr_ext_workspace_handle_v1_destroy(ws->ext_workspace);
 		free(ws);
 		return NULL;
@@ -307,10 +309,12 @@ void workspace_destroy(struct sway_workspace *workspace) {
 
 	scene_node_disown_children(workspace->layers.tiling);
 	scene_node_disown_children(workspace->layers.fullscreen);
-	scene_node_disown_children(workspace->jump.tree);
+	scene_node_disown_children(workspace->jump.text_tree);
+	scene_node_disown_children(workspace->jump.name_tree);
 	wlr_scene_node_destroy(&workspace->layers.tiling->node);
 	wlr_scene_node_destroy(&workspace->layers.fullscreen->node);
-	wlr_scene_node_destroy(&workspace->jump.tree->node);
+	wlr_scene_node_destroy(&workspace->jump.text_tree->node);
+	wlr_scene_node_destroy(&workspace->jump.name_tree->node);
 
 	free(workspace->name);
 	free(workspace->representation);
@@ -1026,7 +1030,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	seat_set_focus(seat, next);
 
 	// old_ws may not have an output because it is being destroyed if empty
-	if (old_ws != workspace && (
+	if (!layout_overview_workspaces_enabled() && old_ws != workspace && (
 		(old_ws->output && old_ws->output == workspace->output) ||
 		(old_ws->output && !workspace->output) ||
 		(!old_ws->output && workspace->output)) &&

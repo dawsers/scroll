@@ -1463,6 +1463,14 @@ the jump labels.
 `jump_labels_keys`: default is `1234`. Keys that will be used to generate
 possible jump labels.
 
+### Workspaces Overview Options
+
+`workspace_labels_color`: default is  `#A54242FF`. Color of the workspace name
+labels.
+
+`workspace_labels_background`: default is  `#00000000`. Color of the background
+of the workspace name labels.
+
 ### General Options
 
 `align_reset_auto`: default is `yes` (`true`). If `true`, every time you
@@ -1951,8 +1959,8 @@ each one of them:
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,
-`scratchpad_minimize`, `workspace_next_on_output_create_empty`,
-`xwayland_output_scale`
+`scratchpad_minimize`, `workspace_labels_background`, `workspace_labels_color`,
+`workspace_next_on_output_create_empty`, `xwayland_output_scale`
 
 ### Runtime Only Commands
 

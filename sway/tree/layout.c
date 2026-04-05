@@ -307,6 +307,29 @@ bool layout_overview_workspaces_enabled() {
 
 static const int workspaces_gap = 20;
 
+static void workspace_name_decoration(struct sway_workspace *ws, bool enable) {
+	if (!enable) {
+		if (ws->jump.name) {
+			wlr_scene_node_destroy(ws->jump.name->node);
+			ws->jump.name = NULL;
+		}
+		return;
+	} else if (!ws->jump.name) {
+		ws->jump.name = sway_text_node_create(ws->jump.name_tree,
+			ws->name, config->workspace_labels_color, false);
+	} else {
+		sway_text_node_set_text(ws->jump.text, ws->name);
+	}
+	sway_text_node_set_background(ws->jump.name, config->workspace_labels_background);
+	double scale = fmin((double) ws->width / ws->jump.name->width,
+		(double) workspaces_gap / ws->jump.name->height);
+	sway_text_node_scale(ws->jump.name, scale);
+	int x = ws->jump.x + 0.5 * (ws->jump.width - ws->jump.name->width * scale);
+	int y = ws->jump.y - workspaces_gap;
+	wlr_scene_node_set_position(&ws->jump.name_tree->node, x, y);
+	wlr_scene_node_set_enabled(&ws->jump.name_tree->node, true);
+}
+
 void layout_overview_workspaces_toggle() {
 	root->overview = !root->overview;
 	for (int i = 0; i < root->outputs->length; i++) {
@@ -334,7 +357,8 @@ void layout_overview_workspaces_toggle() {
 				const double gapy = (usable_area->height - rows * scale * height) / (rows + 1);
 				for (int c = 0; c < cols; ++c) {
 					struct sway_workspace *child = output->workspaces->items[j++];
-					wlr_scene_node_reparent(&child->jump.tree->node, output->layers.shell_overlay);
+					wlr_scene_node_reparent(&child->jump.text_tree->node, output->layers.shell_overlay);
+					wlr_scene_node_reparent(&child->jump.name_tree->node, output->layers.shell_overlay);
 					child->layout.fullscreen = child->fullscreen;
 					child->jump.x = round(left + gapx + c * (scale * width + gapx));
 					child->jump.y = round(top + gapy + r * (scale * height + gapy));
@@ -347,6 +371,7 @@ void layout_overview_workspaces_toggle() {
 						container_set_fullscreen(child->fullscreen, FULLSCREEN_NONE);
 						arrange_root();
 					}
+					workspace_name_decoration(child, true);
 					for (int f = 0; f < child->floating->length; ++f) {
 						struct sway_container *con = child->floating->items[f];
 						con->scene_tree->node.info.workspace = child;
@@ -356,7 +381,9 @@ void layout_overview_workspaces_toggle() {
 		} else {
 			for (int j = 0; j < output->workspaces->length; ++j) {
 				struct sway_workspace *child = output->workspaces->items[j];
-				wlr_scene_node_reparent(&child->jump.tree->node, root->staging);
+				workspace_name_decoration(child, false);
+				wlr_scene_node_reparent(&child->jump.text_tree->node, root->staging);
+				wlr_scene_node_reparent(&child->jump.name_tree->node, root->staging);
 				child->layers.tiling->node.info.workspace = NULL;
 				node_set_dirty(&child->node);
 				if (child->layout.fullscreen) {
@@ -2434,7 +2461,7 @@ static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *te
 		}
 		return;
 	} else if (!ws->jump.text) {
-		ws->jump.text = sway_text_node_create(ws->jump.tree,
+		ws->jump.text = sway_text_node_create(ws->jump.text_tree,
 			text, config->jump_labels_color, false);
 	} else {
 		sway_text_node_set_text(ws->jump.text, text);
@@ -2447,8 +2474,8 @@ static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *te
 	sway_text_node_scale(ws->jump.text, jscale * scale * wscale);
 	int x = ws->jump.x + 0.5 * (ws->jump.width - ws->jump.text->width * jscale * scale * wscale);
 	int y = ws->jump.y + 0.5 * (ws->jump.height - ws->jump.text->height * jscale * scale * wscale);
-	wlr_scene_node_set_position(&ws->jump.tree->node, x, y);
-	wlr_scene_node_set_enabled(&ws->jump.tree->node, true);
+	wlr_scene_node_set_position(&ws->jump.text_tree->node, x, y);
+	wlr_scene_node_set_enabled(&ws->jump.text_tree->node, true);
 }
 
 static void jump_workspaces_handle_keyboard_key_end(void *data, bool focus) {
