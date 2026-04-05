@@ -43,8 +43,27 @@ struct cmd_results *cmd_jump_labels_keys(int argc, char **argv) {
 	if ((error = checkarg(argc, "jump_labels_keys", EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	free(config->jump_labels_keys);
-	config->jump_labels_keys = strdup(argv[0]);
+	list_free_items_and_destroy(config->jump_labels_keys_text);
+	config->jump_labels_keys_text = create_list();
+	for (uint32_t i = 0; i < strlen(argv[0]); ++i) {
+		char label[2] = { argv[0][i], 0 };
+		list_add(config->jump_labels_keys_text, strdup(label));
+	}
+	if (argc > 1) {
+		list_t *list = parse_string_array(argv[1]);
+		if (list) {
+			list_free_items_and_destroy(config->jump_labels_keys);
+			config->jump_labels_keys = list;
+		} else {
+			return cmd_results_new(CMD_FAILURE, "Error parsing jump_labels_keys symbols array");
+		}
+	} else {
+		list_free_items_and_destroy(config->jump_labels_keys);
+		config->jump_labels_keys = create_list();
+		for (int i = 0; i < config->jump_labels_keys_text->length; ++i) {
+			list_add(config->jump_labels_keys, strdup(config->jump_labels_keys_text->items[i]));
+		}
+	}
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 

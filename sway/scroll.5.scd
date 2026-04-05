@@ -226,8 +226,23 @@ The following commands may only be used in the configuration file.
 *jump_labels_color* <color>
 	Default is _#159E3080_. Color of the jump labels.
 
-*jump_labels_keys* <string>
-	Default is _1234_. Keys that will be used to generate possible jump labels.
+*jump_labels_keys* <string> [<array of strings>]
+	Default is _1234_.
+
+	The _<string>_ argument defines the possible characters that will be used
+	to generate the jump labels and shown on screen.
+
+	The optional _<array of strings>_ argument can be used to define a symbol
+	for each character when they don't correspond one to one. These symbols are
+	the same used in *bindsym*. For example	_,_ would be _comma_, but _a_
+	would also be _a_. The array starts with _[_ and ends with _]_, and
+	substrings are separated by spaces.
+
+	Example:
+```
+	# AZERTY keyboard, numbers 1 to 4
+	jump_labels_keys 1234 [ ampersand eacute quotedbl apostrophe ]
+```
 
 *jump_labels_scale* <number>
 	Default is _0.5_. Scale of the label within the window.

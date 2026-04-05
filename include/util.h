@@ -131,6 +131,12 @@ void timespec_sub(struct timespec *r, const struct timespec *a,
 list_t *parse_double_array(char *str);
 
 /**
+ * Parse an array with substrings and return a list
+ * Elements of the array are separated by spaces.
+ */
+list_t *parse_string_array(char *str);
+
+/**
  * Copies a list of doubles into the returned list
  */
 list_t *copy_double_list(list_t *src);

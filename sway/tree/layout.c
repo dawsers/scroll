@@ -1461,16 +1461,20 @@ static void override_input(bool override, sway_keyboard_cb_fn callback, void *da
 	}
 }
 
-static char *generate_label(uint32_t i, const char *keys, uint32_t nkeys) {
-	int ksize = strlen(keys);
-	char *label = malloc((nkeys + 1) * sizeof(char));
+static char *generate_label(uint32_t i, list_t *keys, uint32_t nkeys) {
+	int ksize = keys->length;
+	char label[1024] = {0};
+	int *indices = malloc(sizeof(int) * nkeys);
 	for (uint32_t n = 0, div = i; n < nkeys; ++n) {
 		uint32_t rem = div % ksize;
-		label[nkeys - 1 -n] = keys[rem];
+		indices[nkeys - 1 - n] = rem;
 		div = div / ksize;
 	}
-	label[nkeys] = 0x0;
-	return label;
+	for (uint32_t i = 0; i < nkeys; ++i) {
+		strcat(label, (char *)keys->items[indices[i]]);
+	}
+	free(indices);
+	return strdup(label);
 }
 
 static void jump_handle_keyboard_key_end(void *data, bool focus) {
@@ -1558,11 +1562,11 @@ static void jump_handle_keyboard_key(struct sway_keyboard *keyboard,
 	}
 	// Check if key is valid, otherwise exit
 	bool valid = false;
-	for (uint32_t i = 0; i < strlen(config->jump_labels_keys); ++i) {
-		char keyname[2] = { config->jump_labels_keys[i], 0x0 };
+	for (int i = 0; i < config->jump_labels_keys->length; ++i) {
+		char *keyname = config->jump_labels_keys->items[i];
 		xkb_keysym_t key = xkb_keysym_from_name(keyname, XKB_KEYSYM_NO_FLAGS);
 		if (key && key == keysym) {
-			common->window_number = common->window_number * strlen(config->jump_labels_keys) + i;
+			common->window_number = common->window_number * config->jump_labels_keys->length + i;
 			valid = true;
 			break;
 		}
@@ -1637,7 +1641,7 @@ void layout_jump() {
 		}
 	}
 	animation_set_type(ANIMATION_JUMP);
-	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
+	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(config->jump_labels_keys->length));
 	common->nwindows = nwindows;
 	common->nkeys = nkeys;
 	common->keyboard_key_end = jump_handle_keyboard_key_end;
@@ -1650,7 +1654,7 @@ void layout_jump() {
 			for (int j = 0; j < container->pending.children->length; ++j) {
 				struct sway_container *view = container->pending.children->items[j];
 				view->jump.id = n;
-				char *label = generate_label(n++, config->jump_labels_keys, nkeys);
+				char *label = generate_label(n++, config->jump_labels_keys_text, nkeys);
 				container_toggle_jump_decoration(wscale, view, label, view->pending.width, view->pending.height);
 				free(label);
 			}
@@ -1801,7 +1805,7 @@ void layout_jump_floating() {
 		nwindows += workspace->floating->length;
 	}
 	animation_set_type(ANIMATION_JUMP);
-	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
+	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(config->jump_labels_keys->length));
 	common->nwindows = nwindows;
 	common->nkeys = nkeys;
 	common->keyboard_key_end = jump_handle_keyboard_key_end;
@@ -1812,7 +1816,7 @@ void layout_jump_floating() {
 		for (int i = 0; i < workspace->floating->length; ++i) {
 			struct sway_container *view = workspace->floating->items[i];
 			view->jump.id = n;
-			char *label = generate_label(n++, config->jump_labels_keys, nkeys);
+			char *label = generate_label(n++, config->jump_labels_keys_text, nkeys);
 			container_toggle_jump_decoration(wscale, view, label, view->pending.width, view->pending.height);
 			free(label);
 		}
@@ -1917,11 +1921,11 @@ static void jump_scratchpad_handle_keyboard_key(struct sway_keyboard *keyboard,
 	}
 	// Check if key is valid, otherwise exit
 	bool valid = false;
-	for (uint32_t i = 0; i < strlen(config->jump_labels_keys); ++i) {
-		char keyname[2] = { config->jump_labels_keys[i], 0x0 };
+	for (int i = 0; i < config->jump_labels_keys->length; ++i) {
+		char *keyname = config->jump_labels_keys->items[i];
 		xkb_keysym_t key = xkb_keysym_from_name(keyname, XKB_KEYSYM_NO_FLAGS);
 		if (key && key == keysym) {
-			common->window_number = common->window_number * strlen(config->jump_labels_keys) + i;
+			common->window_number = common->window_number * config->jump_labels_keys->length + i;
 			valid = true;
 			break;
 		}
@@ -2005,7 +2009,7 @@ void layout_jump_scratchpad(struct sway_workspace *workspace) {
 
 	animation_set_type(ANIMATION_JUMP);
 	uint32_t nwindows = workspace->floating->length;
-	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
+	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(config->jump_labels_keys->length));
 	common->nwindows = nwindows;
 	common->nkeys = nkeys;
 	common->keyboard_key_end = jump_scratchpad_handle_keyboard_key_end;
@@ -2014,7 +2018,7 @@ void layout_jump_scratchpad(struct sway_workspace *workspace) {
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *view = workspace->floating->items[i];
 		view->jump.id = i;
-		char *label = generate_label(i, config->jump_labels_keys, nkeys);
+		char *label = generate_label(i, config->jump_labels_keys_text, nkeys);
 		container_toggle_jump_decoration(wscale, view, label, view->pending.width, view->pending.height);
 		free(label);
 	}
@@ -2176,7 +2180,7 @@ void layout_jump_trailmark(struct sway_workspace *workspace) {
 
 	animation_set_type(ANIMATION_JUMP);
 	uint32_t nwindows = workspace->floating->length;
-	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
+	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(config->jump_labels_keys->length));
 	common->nwindows = nwindows;
 	common->nkeys = nkeys;
 	common->keyboard_key_end = jump_trailmark_handle_keyboard_key_end;
@@ -2185,7 +2189,7 @@ void layout_jump_trailmark(struct sway_workspace *workspace) {
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *view = workspace->floating->items[i];
 		view->jump.id = i;
-		char *label = generate_label(i, config->jump_labels_keys, nkeys);
+		char *label = generate_label(i, config->jump_labels_keys_text, nkeys);
 		container_toggle_jump_decoration(wscale, view, label, view->pending.width, view->pending.height);
 		free(label);
 	}
@@ -2284,11 +2288,11 @@ static void jump_all_handle_keyboard_key(struct sway_keyboard *keyboard,
 	}
 	// Check if key is valid, otherwise exit
 	bool valid = false;
-	for (uint32_t i = 0; i < strlen(config->jump_labels_keys); ++i) {
-		char keyname[2] = { config->jump_labels_keys[i], 0x0 };
+	for (int i = 0; i < config->jump_labels_keys->length; ++i) {
+		char *keyname = config->jump_labels_keys->items[i];
 		xkb_keysym_t key = xkb_keysym_from_name(keyname, XKB_KEYSYM_NO_FLAGS);
 		if (key && key == keysym) {
-			common->window_number = common->window_number * strlen(config->jump_labels_keys) + i;
+			common->window_number = common->window_number * config->jump_labels_keys->length + i;
 			valid = true;
 			break;
 		}
@@ -2430,7 +2434,7 @@ void layout_jump_all() {
 	}
 
 	animation_set_type(ANIMATION_JUMP);
-	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(strlen(config->jump_labels_keys)));
+	uint32_t nkeys = nwindows == 1 ? 1 : ceil(log10(nwindows) / log10(config->jump_labels_keys->length));
 	common->nwindows = nwindows;
 	common->nkeys = nkeys;
 	common->keyboard_key_end = jump_all_handle_keyboard_key_end;
@@ -2443,7 +2447,7 @@ void layout_jump_all() {
 		for (int j = 0; j < workspace->floating->length; ++j) {
 			struct sway_container *view = workspace->floating->items[j];
 			view->jump.id = n;
-			char *label = generate_label(n, config->jump_labels_keys, nkeys);
+			char *label = generate_label(n, config->jump_labels_keys_text, nkeys);
 			container_toggle_jump_decoration(wscale, view, label, view->pending.width, view->pending.height);
 			free(label);
 			++n;
@@ -2566,7 +2570,7 @@ void layout_jump_workspaces() {
 	}
 
 	root->jumping = true;
-	uint32_t nkeys = nworkspaces == 1 ? 1 : ceil(log10(nworkspaces) / log10(strlen(config->jump_labels_keys)));
+	uint32_t nkeys = nworkspaces == 1 ? 1 : ceil(log10(nworkspaces) / log10(config->jump_labels_keys->length));
 	common->nwindows = nworkspaces;
 	common->nkeys = nkeys;
 	common->keyboard_key_end = jump_workspaces_handle_keyboard_key_end;
@@ -2575,7 +2579,7 @@ void layout_jump_workspaces() {
 		struct sway_output *output = root->outputs->items[i];
 		for (int j = 0; j < output->current.workspaces->length; ++j) {
 			struct sway_workspace *child = output->current.workspaces->items[j];
-			char *label = generate_label(n++, config->jump_labels_keys, nkeys);
+			char *label = generate_label(n++, config->jump_labels_keys_text, nkeys);
 			workspace_toggle_jump_decoration(child, label);
 			free(label);
 		}
@@ -2637,7 +2641,7 @@ static void container_jump(struct jump_data *jump_data) {
 			for (int i = 0; i < container->pending.children->length; ++i) {
 				struct sway_container *con = container->pending.children->items[i];
 				double cheight = con->pending.height / height * workspace->height;
-				char *label = generate_label(i, config->jump_labels_keys, common->nkeys);
+				char *label = generate_label(i, config->jump_labels_keys_text, common->nkeys);
 				container_toggle_jump_decoration(wscale, con, label, container->pending.width, cheight);
 				free(label);
 			}
@@ -2657,7 +2661,7 @@ static void container_jump(struct jump_data *jump_data) {
 			for (int i = 0; i < container->pending.children->length; ++i) {
 				struct sway_container *con = container->pending.children->items[i];
 				double cwidth = con->pending.width / width * workspace->width;
-				char *label = generate_label(i, config->jump_labels_keys, common->nkeys);
+				char *label = generate_label(i, config->jump_labels_keys_text, common->nkeys);
 				container_toggle_jump_decoration(wscale, con, label, cwidth, container->pending.height);
 				free(label);
 			}
@@ -2733,7 +2737,7 @@ void layout_jump_container(struct sway_container *container) {
 	specific->container = container;
 
 	uint32_t ncontainers = container->pending.children->length;
-	uint32_t nkeys = ceil(log10(ncontainers) / log10(strlen(config->jump_labels_keys)));
+	uint32_t nkeys = ceil(log10(ncontainers) / log10(config->jump_labels_keys->length));
 	common->nwindows = ncontainers;
 	common->nkeys = nkeys;
 	common->keyboard_key_end = jump_container_handle_keyboard_key_end;

@@ -180,7 +180,8 @@ void free_config(struct sway_config *config) {
 
 	list_free_items_and_destroy(config->layout_widths);
 	list_free_items_and_destroy(config->layout_heights);
-	free(config->jump_labels_keys);
+	list_free_items_and_destroy(config->jump_labels_keys);
+	list_free_items_and_destroy(config->jump_labels_keys_text);
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
 	list_free_items_and_destroy(config->config_chain);
@@ -257,7 +258,16 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->jump_labels_color, 0x159E3080);
 	color_to_rgba(config->jump_labels_background, 0x00000000);
 	config->jump_labels_scale = 0.5;
-	config->jump_labels_keys = strdup("1234");
+	if (!(config->jump_labels_keys = create_list())) goto cleanup;
+	list_add(config->jump_labels_keys, strdup("1"));
+	list_add(config->jump_labels_keys, strdup("2"));
+	list_add(config->jump_labels_keys, strdup("3"));
+	list_add(config->jump_labels_keys, strdup("4"));
+	if (!(config->jump_labels_keys_text = create_list())) goto cleanup;
+	list_add(config->jump_labels_keys_text, strdup("1"));
+	list_add(config->jump_labels_keys_text, strdup("2"));
+	list_add(config->jump_labels_keys_text, strdup("3"));
+	list_add(config->jump_labels_keys_text, strdup("4"));
 	color_to_rgba(config->workspace_labels_color, 0xA54242FF);
 	color_to_rgba(config->workspace_labels_background, 0x00000000);
 	config->fullscreen_movefocus = FULLSCREEN_MOVEFOCUS_NOFOLLOW;

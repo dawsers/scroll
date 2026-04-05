@@ -1460,8 +1460,19 @@ the jump labels.
 
 `jump_labels_scale`: default is `0.5`. Scale of the label within the window.
 
-`jump_labels_keys`: default is `1234`. Keys that will be used to generate
-possible jump labels.
+`jump_labels_keys`: `<string> [<array of strings>]`
+
+Default is `1234`. Characters that will be used to generate possible jump
+labels. You can optionally define a symbol for each character, the symbols
+would be the same used in `bindsym`. For example, some characters don't
+correspond to their symbol (`,` is `comma`, while `a` is `a`).
+
+For example:
+
+```
+	# AZERTY keyboard, numbers 1 to 4
+	jump_labels_keys 1234 [ ampersand eacute quotedbl apostrophe ]
+```
 
 ### Workspaces Overview Options
 

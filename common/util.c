@@ -291,6 +291,24 @@ list_t *parse_double_array(char *str) {
 	return list;
 }
 
+list_t *parse_string_array(char *str) {
+	uint32_t len = strlen(str);
+	if (str[0] != '[' || str[len - 1] != ']') {
+		return NULL;
+	}
+	char *strcp = malloc(len - 1);
+	strcpy(strcp, &str[1]);
+	strcp[len - 2] = 0;
+	list_t *list = create_list();
+	char *sub = strtok(strcp, " ");
+	while(sub != NULL) {
+		list_add(list, strdup(sub));
+		sub = strtok(NULL, " ");
+	}
+	free(strcp);
+	return list;
+}
+
 // Copies a list of doubles into a new list
 list_t *copy_double_list(list_t *src) {
 	if (src->length == 0) {

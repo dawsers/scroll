@@ -611,7 +611,8 @@ struct sway_config {
 	float jump_labels_color[4];
 	float jump_labels_background[4];
 	double jump_labels_scale;
-	char *jump_labels_keys;
+	list_t *jump_labels_keys;
+	list_t *jump_labels_keys_text;
 	float workspace_labels_color[4];
 	float workspace_labels_background[4];
 	enum sway_fullscreen_movefocus fullscreen_movefocus;
