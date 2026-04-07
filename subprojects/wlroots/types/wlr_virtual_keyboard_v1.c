@@ -52,7 +52,7 @@ static void virtual_keyboard_keymap(struct wl_client *client,
 	if (data == MAP_FAILED) {
 		goto fd_fail;
 	}
-	struct xkb_keymap *keymap = xkb_keymap_new_from_string(context, data,
+	struct xkb_keymap *keymap = xkb_keymap_new_from_buffer(context, data, size,
 		XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
 	munmap(data, size);
 	if (!keymap) {
