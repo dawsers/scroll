@@ -199,7 +199,7 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 		maxh = fh;
 	}
 	double scale = fmin(fmin(workspace->width / w, workspace->height / maxh), 1.0);
-	if (workspace->layers.tiling->node.info.scale != scale) {
+	if (layout_scale_get(workspace) != scale) {
 		workspace_set_scale(workspace, scale);
 		node_set_dirty(&workspace->node);
 		recreate_buffers(workspace);
@@ -480,7 +480,7 @@ bool layout_scale_enabled(struct sway_workspace *workspace) {
 	if (!workspace) {
 		return false;
 	}
-	return workspace->layers.tiling->node.info.scale > 0.0;
+	return layout_scale_get(workspace) > 0.0;
 }
 
 void layout_view_scale_set(struct sway_container *view, double scale) {
@@ -488,7 +488,7 @@ void layout_view_scale_set(struct sway_container *view, double scale) {
 }
 
 void layout_view_scale_reset(struct sway_container *view) {
-	view->scene_tree->node.info.scale = -1.0;
+	layout_view_scale_set(view, -1.0);
 }
 
 double layout_view_scale_get(struct sway_container *view) {
