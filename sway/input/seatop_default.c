@@ -593,8 +593,6 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 static const uint32_t SHAKE_MSEC = 500;
 static const uint32_t SHAKE_MIN_PIX = 200;
 static const int SHAKE_MIN_SEGMENTS = 4;
-static const double SHAKE_FACTOR = 2.5;
-static const double M_PI = 3.14159265358979323846;
 
 static bool cursor_detect_shake(struct sway_cursor *cursor, uint32_t time_msec) {
 	struct Position {
@@ -609,20 +607,16 @@ static bool cursor_detect_shake(struct sway_cursor *cursor, uint32_t time_msec) 
 	struct Position p0;
 	p0.x = cursor->cursor->x;
 	p0.y = cursor->cursor->y;
-	if (history->length > 0) {
-		struct Position *p1 = history->items[history->length - 1];
-		const double len_p1x = p0.x - p1->x;
-		const double len_p1y = p0.y - p1->y;
-		if (history->length > 1) {
-			struct Position *p2 = history->items[history->length - 2];
-			const double len_p2x = p0.x - p2->x;
-			const double len_p2y = p0.y - p2->y;
-			if (len_p1x * len_p2x >= -0.5 && len_p1y * len_p2y >= -0.5) {
-				p1->x = p0.x;
-				p1->y = p0.y;
-				p1->time = time_msec;
-				reused = true;
-			}
+	if (history->length > 1) {
+		struct Position *p2 = history->items[history->length - 2];
+		const int dt = time_msec - p2->time;
+		const double d = (p0.x - p2->x) * (p0.x - p2->x) + (p0.y - p2->y) * (p0.y - p2->y);
+		if (dt < 25 || d < 100) {
+			struct Position *p1 = history->items[history->length - 1];
+			p1->x = p0.x;
+			p1->y = p0.y;
+			p1->time = time_msec;
+			reused = true;
 		}
 	}
 	if (!reused) {
@@ -642,21 +636,30 @@ static bool cursor_detect_shake(struct sway_cursor *cursor, uint32_t time_msec) 
 		}
 	}
 	if (history->length > SHAKE_MIN_SEGMENTS) {
-		double length = 0.0, rotation = 0.0;
-		for (int i = 2; i < history->length; ++i) {
-			struct Position *p0 = history->items[i];
-			struct Position *p1 = history->items[i - 1];
-			struct Position *p2 = history->items[i - 2];
-			double a2 = (p1->x - p2->x) * (p1->x - p2->x) + (p1->y - p2->y) * (p1->y - p2->y);
-			double b2 = (p1->x - p0->x) * (p1->x - p0->x) + (p1->y - p0->y) * (p1->y - p0->y);
-			double c2 = (p0->x - p2->x) * (p0->x - p2->x) + (p0->y - p2->y) * (p0->y - p2->y);
-			length += sqrt(b2);
-			if (a2 * b2 == 0.0) {
-				continue;
+		double length = 0.0;
+		double minx = ((struct Position *)(history->items[0]))->x;
+		double maxx = minx;
+		double miny = ((struct Position *)(history->items[0]))->y;
+		double maxy = miny;
+		for (int i = 1; i < history->length; ++i) {
+			struct Position *p1 = history->items[i];
+			struct Position *p0 = history->items[i - 1];
+			if (p1->x < minx) {
+				minx = p1->x;
 			}
-			rotation += M_PI - acos((a2 + b2 - c2) / (2.0 *  sqrt(a2 * b2)));
+			if (p1->x > maxx) {
+				maxx = p1->x;
+			}
+			if (p1->y < miny) {
+				miny = p1->y;
+			}
+			if (p1->y > maxy) {
+				maxy = p1->y;
+			}
+			length += sqrt((p1->x - p0->x) * (p1->x - p0->x) + (p1->y - p0->y) * (p1->y - p0->y));
 		}
-		if (length > SHAKE_MIN_PIX && rotation > SHAKE_FACTOR * M_PI) {
+		const double diag = sqrt((maxx - minx) * (maxx - minx) + (maxy - miny) * (maxy - miny));
+		if (length > SHAKE_MIN_PIX && length > diag / config->cursor_shake_magnify_sensitivity) {
 			return true;
 		}
 	}
@@ -676,26 +679,18 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 		check_focus_follows_mouse(seat, e, node);
 	}
 
-	if (config->cursor_shake_magnify) {
-		// wlroots is missing an easy way to scale the cursor. It creates a default
-		// size per output depending on the cursor theme and the output scale,
-		// and it provides no more control than that, so I need to reconfigure
-		// the theme each time.
-		struct seat_config *seat_config = seat_get_config(seat);
-		static int size = 0;
-		if (cursor_detect_shake(cursor, time_msec) && size > 0) {
-			if (size == seat_config->xcursor_theme.size) {
-				seat_config->xcursor_theme.size = size * 4;
-				seat_configure_xcursor(seat);
+	if (config->cursor_shake_magnify && config->cursor_shake_magnify_sensitivity > 0.0) {
+		static bool shaking = false;
+		if (cursor_detect_shake(cursor, time_msec)) {
+			if (!shaking) {
+				wlr_cursor_set_scale(cursor->cursor, 4.0f);
 			}
+			shaking = true;
 		} else {
-			if (size <= 0) {
-				size = seat_config->xcursor_theme.size;
+			if (shaking) {
+				wlr_cursor_set_scale(cursor->cursor, 1.0f);
 			}
-			if (seat_config->xcursor_theme.size != size) {
-				seat_config->xcursor_theme.size = size;
-				seat_configure_xcursor(seat);
-			}
+			shaking = false;
 		}
 	}
 

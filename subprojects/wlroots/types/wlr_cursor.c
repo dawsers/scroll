@@ -652,6 +652,16 @@ static void cursor_update_outputs(struct wlr_cursor *cur) {
 	}
 }
 
+void wlr_cursor_set_scale(struct wlr_cursor *cur, float scale) {
+	assert(cur->state->layout);
+
+	struct wlr_cursor_output_cursor *output_cursor;
+	wl_list_for_each(output_cursor, &cur->state->output_cursors, link) {
+		wlr_output_cursor_set_scale(output_cursor->output_cursor, scale);
+	}
+	cursor_update_outputs(cur);
+}
+
 void wlr_cursor_set_xcursor(struct wlr_cursor *cur,
 		struct wlr_xcursor_manager *manager, const char *name) {
 	if (manager == cur->state->xcursor_manager &&

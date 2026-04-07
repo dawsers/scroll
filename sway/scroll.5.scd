@@ -174,6 +174,12 @@ The following commands may only be used in the configuration file.
 	Default value is _false_. If _true_, shaking the cursor will magnify it. It
 	can be useful to find the location of the cursor on very big displays.
 
+*cursor_shake_magnify_sensitivity* <number from 0.0 to 1.0>
+	Default value is _0.5_. A lower value reduces the sensitivity of the
+	algorithm that detects cursor shake, so you will need to shake the pointer
+	more vigorously to get the cursor magnified. A higher value makes the
+	algorithm more sensitive.
+
 *cycle_size_wrap* <true|false>
 	Default value is _false_. Enables wrapping sizes in the *cycle_size* command.
 	Incrementing from the last available size will start again from the

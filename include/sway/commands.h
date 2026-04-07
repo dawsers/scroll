@@ -122,6 +122,7 @@ sway_cmd cmd_client_selected_focused;
 sway_cmd cmd_commands;
 sway_cmd cmd_create_output;
 sway_cmd cmd_cursor_shake_magnify;
+sway_cmd cmd_cursor_shake_magnify_sensitivity;
 sway_cmd cmd_cycle_size;
 sway_cmd cmd_cycle_size_wrap;
 sway_cmd cmd_decoration;

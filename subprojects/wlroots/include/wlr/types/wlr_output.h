@@ -39,6 +39,7 @@ struct wlr_output_mode {
 struct wlr_output_cursor {
 	struct wlr_output *output;
 	double x, y;
+	float scale;
 	bool enabled;
 	bool visible;
 	uint32_t width, height;
@@ -468,6 +469,7 @@ bool wlr_output_cursor_set_buffer(struct wlr_output_cursor *cursor,
 bool wlr_output_cursor_move(struct wlr_output_cursor *cursor,
 	double x, double y);
 void wlr_output_cursor_destroy(struct wlr_output_cursor *cursor);
+void wlr_output_cursor_set_scale(struct wlr_output_cursor *cursor, float scale);
 
 /**
  * Initialize an output state.

@@ -507,6 +507,7 @@ In this section we will configure some of the most common options for
 
 # align_reset_auto yes
 # cursor_shake_magnify false
+# cursor_shake_magnify_sensitivity 0.5
 # cycle_size_wrap false
 # fullscreen_movefocus true nofollow
 # fullscreen_on_request default
@@ -1495,6 +1496,11 @@ without any need to call `align reset`, for a behavior similar to hyprscroller's
 shaking the cursor will magnify it. It can be useful to find the location of
 the cursor on very big displays.
 
+`cursor_shake_magnify_sensitivity <number from 0.0 to 1.0>`: Default value
+is 0.5. A lower value makes the cursor shake algorithm less sensitive (you will
+need to shake the pointer harder to get it magnified), while a higher value makes
+it more sensitive.
+
 `cycle_size_wrap <true|false>`: Default value is `false`. Enables wrapping
 sizes in the `cycle_size` command. Incrementing from the last available size
 will start again from the beginning, and decrementing the first one will move
@@ -1968,7 +1974,8 @@ each one of them:
 
 ### Config-Only Commands
 
-`align_reset_auto`, `animations`, `cursor_shake_magnify`, `cycle_size_wrap`,
+`align_reset_auto`, `animations`, `cursor_shake_magnify`,
+`cursor_shake_magnify_sensitivity`, `cycle_size_wrap`,
 `fullscreen_movefocus`, `gesture_scroll_enable`, `gesture_scroll_fingers`,
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_default_height`,

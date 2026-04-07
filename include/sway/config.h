@@ -622,6 +622,7 @@ struct sway_config {
 	bool cycle_size_wrap;
 	bool maximize_if_single;
 	bool cursor_shake_magnify;
+	double cursor_shake_magnify_sensitivity;
 	bool workspace_next_on_output_create_empty;
 	bool xwayland_output_scale;
 	bool xdg_activation_force;

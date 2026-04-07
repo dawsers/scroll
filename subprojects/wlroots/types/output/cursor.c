@@ -382,8 +382,8 @@ bool output_cursor_set_texture(struct wlr_output_cursor *cursor,
 
 	cursor->enabled = texture != NULL;
 	if (texture != NULL) {
-		cursor->width = (int)roundf(dst_width * output->scale);
-		cursor->height = (int)roundf(dst_height * output->scale);
+		cursor->width = (int)roundf(dst_width * output->scale * cursor->scale);
+		cursor->height = (int)roundf(dst_height * output->scale * cursor->scale);
 		cursor->src_box = *src_box;
 		cursor->transform = transform;
 	} else {
@@ -464,12 +464,39 @@ bool wlr_output_cursor_move(struct wlr_output_cursor *cursor,
 	return output_move_hardware_cursor(cursor->output, (int)x, (int)y);
 }
 
+void wlr_output_cursor_set_scale(struct wlr_output_cursor *cursor, float scale) {
+	if (cursor->scale == scale) {
+		return;
+	}
+
+	if (cursor->output->hardware_cursor != cursor) {
+		output_cursor_damage_whole(cursor);
+	}
+
+	cursor->scale = scale;
+	bool was_visible = cursor->visible;
+	output_cursor_update_visible(cursor);
+
+	if (!was_visible && !cursor->visible) {
+		// Cursor is still hidden, do nothing
+		return;
+	}
+
+	if (cursor->output->hardware_cursor != cursor) {
+		output_cursor_damage_whole(cursor);
+		return;
+	}
+
+	wlr_output_update_needs_frame(cursor->output);
+}
+
 struct wlr_output_cursor *wlr_output_cursor_create(struct wlr_output *output) {
 	struct wlr_output_cursor *cursor = calloc(1, sizeof(*cursor));
 	if (cursor == NULL) {
 		return NULL;
 	}
 	cursor->output = output;
+	cursor->scale = 1.0f;
 	wl_list_insert(&output->cursors, &cursor->link);
 	cursor->visible = true; // default position is at (0, 0)
 	wl_list_init(&cursor->renderer_destroy.link);

@@ -151,6 +151,14 @@ void wlr_cursor_set_buffer(struct wlr_cursor *cur, struct wlr_buffer *buffer,
 void wlr_cursor_unset_image(struct wlr_cursor *cur);
 
 /**
+ * Set the cursor scale
+ *
+ * `cursor_shake_magnify` may need to increase the scale of the cursor
+ * temporarily. It will render the cursor texture at a larger scale.
+ */
+void wlr_cursor_set_scale(struct wlr_cursor *cur, float scale);
+
+/**
  * Set the cursor image from an XCursor theme.
  *
  * The image will be loaded from the struct wlr_xcursor_manager.
