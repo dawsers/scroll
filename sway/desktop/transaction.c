@@ -110,6 +110,7 @@ static void copy_workspace_state(struct sway_workspace *ws,
 	state->y = ws->y;
 	state->width = ws->width;
 	state->height = ws->height;
+	state->scale = ws->scale;
 
 	if (state->floating) {
 		state->floating->length = 0;

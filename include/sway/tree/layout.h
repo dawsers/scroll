@@ -130,12 +130,6 @@ void layout_scale_reset(struct sway_workspace *workspace);
 double layout_scale_get(struct sway_workspace *workspace);
 bool layout_scale_enabled(struct sway_workspace *workspace);
 
-// Set the scale for an individual window (used for floating windows)
-void layout_view_scale_set(struct sway_container *view, double scale);
-void layout_view_scale_reset(struct sway_container *view);
-double layout_view_scale_get(struct sway_container *view);
-bool layout_view_scale_enabled(struct sway_container *view);
-
 // Mode modifiers
 void layout_modifiers_init(struct sway_workspace *workspace);
 void layout_modifiers_set_mode(struct sway_workspace *workspace, enum sway_container_layout mode);

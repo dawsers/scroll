@@ -92,7 +92,6 @@ enum wlr_scene_node_type {
 };
 
 struct wlr_scene_node_info {
-	double scale;			// scale for everything below
 	struct wlr_output *wlr_output;	// wlr_output the node belongs to (if tiled, otherwise NULL)
 	void *workspace;
 	struct wlr_box *output_box;

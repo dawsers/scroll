@@ -267,6 +267,8 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 	ws->y = output->ly + area->y;
 	workspace_add_gaps(ws);
 
+	ws->scale = -1.0;
+
 	wlr_ext_workspace_handle_v1_set_name(ws->ext_workspace, ws->name);
 	if (ws->output && ws->output->ext_workspace_group) {
 		wlr_ext_workspace_handle_v1_set_group(ws->ext_workspace,
@@ -1242,11 +1244,6 @@ void workspace_add_floating(struct sway_workspace *workspace,
 		struct sway_container *con) {
 	if (con->pending.workspace) {
 		container_detach(con);
-	}
-	if (layout_scale_enabled(workspace)) {
-		layout_view_scale_set(con, layout_scale_get(workspace));
-	} else {
-		layout_view_scale_reset(con);
 	}
 	list_add(workspace->floating, con);
 	con->pending.workspace = workspace;

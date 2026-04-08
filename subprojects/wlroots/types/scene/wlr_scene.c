@@ -145,7 +145,6 @@ static void scene_node_init(struct wlr_scene_node *node,
 		.parent = parent,
 		.enabled = true,
 		.info = {
-			.scale = -1.0,
 			.wlr_output = NULL,
 			.workspace = NULL,
 			.output_box = NULL,

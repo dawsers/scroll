@@ -127,14 +127,6 @@ static void recreate_buffers(struct sway_workspace *workspace) {
 	}
 }
 
-static void workspace_set_scale(struct sway_workspace *workspace, double scale) {
-	workspace->layers.tiling->node.info.scale = scale;
-	for (int i = 0; i < workspace->floating->length; ++i) {
-		struct sway_container *con = workspace->floating->items[i];
-		layout_view_scale_set(con, scale);
-	}
-}
-
 void layout_compute_bounding_box(list_t *children, double *minx, double *maxx,
 		double *miny, double *maxy) {
 	*minx = DBL_MAX;
@@ -200,7 +192,7 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 	}
 	double scale = fmin(fmin(workspace->width / w, workspace->height / maxh), 1.0);
 	if (layout_scale_get(workspace) != scale) {
-		workspace_set_scale(workspace, scale);
+		workspace->scale = scale;
 		node_set_dirty(&workspace->node);
 		recreate_buffers(workspace);
 	}
@@ -249,7 +241,7 @@ void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_o
 		overview_pop_positions(workspace, mode);
 		// Disable and restore old scale value
 		workspace->layout.overview = OVERVIEW_DISABLED;
-		workspace_set_scale(workspace, workspace->layout.mem_scale);
+		workspace->scale = workspace->layout.mem_scale;
 		node_set_dirty(&workspace->node);
 		recreate_buffers(workspace);
 		struct sway_seat *seat = input_manager_current_seat();
@@ -456,24 +448,28 @@ void layout_scale_set(struct sway_workspace *workspace, double scale) {
 	if (!workspace) {
 		return;
 	}
-	workspace_set_scale(workspace, scale);
-	node_set_dirty(&workspace->node);
-	recreate_buffers(workspace);
-	ipc_event_scroller("scale", workspace);
+	if (workspace->scale != scale) {
+		workspace->scale = scale;
+		node_set_dirty(&workspace->node);
+		recreate_buffers(workspace);
+		ipc_event_scroller("scale", workspace);
+	}
 }
 
 void layout_scale_reset(struct sway_workspace *workspace) {
 	if (!workspace) {
 		return;
 	}
-	workspace_set_scale(workspace, -1.0);
-	node_set_dirty(&workspace->node);
-	recreate_buffers(workspace);
-	ipc_event_scroller("scale", workspace);
+	if (workspace->scale != -1.0) {
+		workspace->scale = -1.0;
+		node_set_dirty(&workspace->node);
+		recreate_buffers(workspace);
+		ipc_event_scroller("scale", workspace);
+	}
 }
 
 double layout_scale_get(struct sway_workspace *workspace) {
-	return workspace->layers.tiling->node.info.scale;
+	return workspace->scale;
 }
 
 bool layout_scale_enabled(struct sway_workspace *workspace) {
@@ -481,22 +477,6 @@ bool layout_scale_enabled(struct sway_workspace *workspace) {
 		return false;
 	}
 	return layout_scale_get(workspace) > 0.0;
-}
-
-void layout_view_scale_set(struct sway_container *view, double scale) {
-	view->scene_tree->node.info.scale = scale;
-}
-
-void layout_view_scale_reset(struct sway_container *view) {
-	layout_view_scale_set(view, -1.0);
-}
-
-double layout_view_scale_get(struct sway_container *view) {
-	return view->scene_tree->node.info.scale;
-}
-
-bool layout_view_scale_enabled(struct sway_container *view) {
-	return view->scene_tree->node.info.scale > 0.0;
 }
 
 void layout_modifiers_init(struct sway_workspace *workspace) {
@@ -715,7 +695,6 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 
 // Layout API
 void layout_add_view(struct sway_workspace *workspace, struct sway_container *active, struct sway_container *view) {
-	layout_view_scale_reset(view);
 	enum sway_layout_insert pos = layout_modifiers_get_insert(workspace);
 	enum sway_container_layout mode = layout_modifiers_get_mode(workspace);
 	if (layout_get_type(workspace) == mode || workspace->tiling->length == 0) {
@@ -2891,11 +2870,6 @@ static void layout_scroll_float_pinned_container(struct sway_workspace *workspac
 	// Float the pin
 	list_del(workspace->tiling, pidx);
 	list_add(workspace->floating, pin);
-	if (layout_scale_enabled(workspace)) {
-		layout_view_scale_set(pin, layout_scale_get(workspace));
-	} else {
-		layout_view_scale_reset(pin);
-	}
 	node_set_dirty(&workspace->node);
 	//node_set_dirty(&pin->node);
 	transaction_commit_dirty();
@@ -2961,7 +2935,6 @@ static void layout_scroll_unfloat_pinned_container(struct sway_workspace *worksp
 		seat_set_focus_container(seat, pin);
 	}
 	list_del(workspace->floating, fidx);
-	layout_view_scale_reset(pin);
 	layout_pin_set(workspace, pin, pos);
 	node_set_dirty(&workspace->node);
 	node_set_dirty(&pin->node);

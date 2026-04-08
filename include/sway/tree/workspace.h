@@ -26,6 +26,7 @@ struct sway_workspace_state {
 	struct sway_container *fullscreen;
 	double x, y;
 	int width, height;
+	double scale;
 	list_t *floating;
 	list_t *tiling;
 
@@ -48,6 +49,7 @@ struct sway_workspace {
 
 	double x, y;
 	int width, height;
+	double scale;
 	struct sway_scroller layout;
 
 	struct side_gaps current_gaps;
