@@ -209,6 +209,11 @@ static int scroll_command_error(lua_State *L, const char *error) {
 	return 1;
 }
 
+void lua_command_data_create() {
+	luaL_unref(config->lua.state, LUA_REGISTRYINDEX, config->lua.command_data);
+	config->lua.command_data = luaL_ref(config->lua.state, LUA_REGISTRYINDEX);
+}
+
 // scroll.command(container|workspace|nil, command)
 static int scroll_command(lua_State *L) {
 	int argc = lua_gettop(L);
@@ -243,6 +248,8 @@ static int scroll_command(lua_State *L) {
 			return scroll_command_error(L, "Error: scroll_command() received a parameter that is neither a container nor a workspace");
 		}
 	}
+	// Remove command_data
+	luaL_unref(config->lua.state, LUA_REGISTRYINDEX, config->lua.command_data);
 	const char *lua_cmd = luaL_checkstring(L, 2);
 	char *cmd = strdup(lua_cmd);
 	list_t *results = execute_command(cmd, seat, container);
@@ -258,6 +265,15 @@ static int scroll_command(lua_State *L) {
 		lua_rawseti(L, -2, i + 1);
 	}
 	free(cmd);
+
+	// Lua callback: "command_end" only applies to commands executed from Lua scripts
+	for (int i = 0; i < config->lua.cbs_command_end->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_command_end->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, config->lua.command_data);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
 	return 1;
 }
 
@@ -1422,6 +1438,10 @@ static int scroll_add_callback(lua_State *L) {
 		list_add(config->lua.cbs_ipc_view, closure);
 	} else if (strcmp(event, "ipc_workspace") == 0) {
 		list_add(config->lua.cbs_ipc_workspace, closure);
+	} else if (strcmp(event, "jump_end") == 0) {
+		list_add(config->lua.cbs_jump_end, closure);
+	} else if (strcmp(event, "command_end") == 0) {
+		list_add(config->lua.cbs_command_end, closure);
 	} else {
 		free(closure);
 		lua_pushnil(L);
@@ -1513,6 +1533,24 @@ static int scroll_remove_callback(lua_State *L) {
 	for (int i = 0; i < config->lua.cbs_ipc_workspace->length; ++i) {
 		if (config->lua.cbs_ipc_workspace->items[i] == closure) {
 			list_del(config->lua.cbs_ipc_workspace, i);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+			free(closure);
+			return 0;
+		}
+	}
+	for (int i = 0; i < config->lua.cbs_jump_end->length; ++i) {
+		if (config->lua.cbs_jump_end->items[i] == closure) {
+			list_del(config->lua.cbs_jump_end, i);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+			free(closure);
+			return 0;
+		}
+	}
+	for (int i = 0; i < config->lua.cbs_command_end->length; ++i) {
+		if (config->lua.cbs_command_end->items[i] == closure) {
+			list_del(config->lua.cbs_command_end, i);
 			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 			luaL_unref(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
 			free(closure);

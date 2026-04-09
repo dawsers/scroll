@@ -1454,6 +1454,21 @@ static char *generate_label(uint32_t i, list_t *keys, uint32_t nkeys) {
 	return strdup(label);
 }
 
+static void execute_lua_jump_end_callbacks(struct sway_container *focused) {
+	// Lua callbacks
+	for (int i = 0; i < config->lua.cbs_jump_end->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_jump_end->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		if (focused) {
+			lua_pushlightuserdata(config->lua.state, focused->view);
+		} else {
+			lua_pushnil(config->lua.state);
+		}
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
 static void jump_handle_keyboard_key_end(void *data, bool focus) {
 	struct jump_data *jump_data = data;
 	struct jump_specific_data *specific = jump_data->specific;
@@ -1521,6 +1536,7 @@ static void jump_handle_keyboard_key_end(void *data, bool focus) {
 	free(specific);
 	free(common);
 	free(jump_data);
+	execute_lua_jump_end_callbacks(focused);
 	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
@@ -1864,13 +1880,16 @@ static void jump_scratchpad_handle_keyboard_key_end(void *data, bool focus) {
 			wlr_scene_node_reparent(&view->scene_tree->node, root->layers.floating);
 		}
 	}
+	struct sway_container *focused = NULL;
 	if (focus) {
 		root_scratchpad_show(common->focused);
+		focused = common->focused;
 	} else {
 		struct sway_seat *seat = input_manager_current_seat();
 		struct sway_container *con = seat_get_focused_container(seat);
 		if (con && con->scratchpad) {
 			root_scratchpad_show(con);
+			focused = con;
 		}
 	}
 	node_set_dirty(&workspace->node);
@@ -1879,6 +1898,7 @@ static void jump_scratchpad_handle_keyboard_key_end(void *data, bool focus) {
 	free(specific);
 	free(common);
 	free(jump_data);
+	execute_lua_jump_end_callbacks(focused);
 	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
@@ -2043,6 +2063,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 			wlr_scene_node_reparent(&view->scene_tree->node, root->layers.floating);
 		}
 	}
+	struct sway_container *focused = NULL;
 	if (focus) {
 		struct sway_seat *seat = input_manager_current_seat();
 		struct sway_container * con = seat_get_focused_container(seat);
@@ -2052,6 +2073,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 		}
 		seat_set_focus_workspace(seat, common->focused->pending.workspace);
 		seat_set_focus_container(seat, common->focused);
+		focused = common->focused;
 		wlr_scene_node_raise_to_top(&common->focused->scene_tree->node);
 		seat_consider_warp_to_focus(seat);
 	}
@@ -2062,6 +2084,7 @@ static void jump_trailmark_handle_keyboard_key_end(void *data, bool focus) {
 	free(common);
 	free(jump_data);
 	root_set_default_filters(root);
+	execute_lua_jump_end_callbacks(focused);
 	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
@@ -2228,9 +2251,11 @@ static void jump_all_handle_keyboard_key_end(void *data, bool focus) {
 	}
 	list_free(specific->outputs);
 
+	struct sway_container *focused = NULL;
 	if (focus) {
 		struct sway_seat *seat = input_manager_current_seat();
 		struct sway_container * con = seat_get_focused_container(seat);
+		focused = common->focused;
 		if (con && common->focused->pending.workspace->fullscreen == con) {
 			container_fullscreen_disable(common->focused->pending.workspace->fullscreen);
 			arrange_root();
@@ -2246,6 +2271,7 @@ static void jump_all_handle_keyboard_key_end(void *data, bool focus) {
 	free(common);
 	free(jump_data);
 	animation_set_type(ANIMATION_JUMP);
+	execute_lua_jump_end_callbacks(focused);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
 }
@@ -2656,8 +2682,10 @@ static void jump_container_handle_keyboard_key_end(void *data, bool focus) {
 	struct jump_container_specific_data *specific = jump_data->specific;
 	struct jump_common_data *common = jump_data->common;
 
+	struct sway_container * focused = NULL;
 	if (focus) {
 		struct sway_container *view = specific->container->pending.children->items[common->window_number];
+		focused = view;
 		if (config->fullscreen_movefocus != FULLSCREEN_MOVEFOCUS_NONE) {
 			if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW && specific->fs) {
 				container_set_fullscreen(view, FULLSCREEN_WORKSPACE);
@@ -2680,6 +2708,7 @@ static void jump_container_handle_keyboard_key_end(void *data, bool focus) {
 	free(specific);
 	free(common);
 	free(jump_data);
+	execute_lua_jump_end_callbacks(focused);
 	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);

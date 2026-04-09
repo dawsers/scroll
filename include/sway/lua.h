@@ -29,8 +29,14 @@ struct sway_lua {
 	list_t *cbs_workspace_focus;
 	list_t *cbs_ipc_view;
 	list_t *cbs_ipc_workspace;
+	list_t *cbs_jump_end;
+	int command_data;
+	list_t *cbs_command_end;
 };
 
 int luaopen_scroll(lua_State *L);
+
+// Takes whatever Lua object is top of the stack and assigns it to command_data
+void lua_command_data_create();
 
 #endif

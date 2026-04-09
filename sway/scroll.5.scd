@@ -2161,6 +2161,9 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 	"view_float" a window becomes floating or goes back to tiled.
 
+	"jump_end": called when *jump* mode ends. _view_ is the focused view, or
+	_nil_ if cancelled.
+
 	workspace events: _cb_func_ is Lua function with two parameters,_workspace_
 	(the workspace triggering the event) and _data_, the _cb_data_ value passed
 	when creating the callback.
@@ -2180,6 +2183,12 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	_cb_func_ is Lua function with four parameters:_old_ws_ (the old workspace),
 	_new_ws_ (the new workspace), _change_ (a string with the event name), and
 	_data_, the _cb_data_ value	passed when creating the callback.
+
+	"command_end": called when *command(container|workspace|nil, command)* ends.
+	_cb_func_ is a Lua function with two parameters, _cmd_data_ (the data
+	returned by the executed command), and _data_ (the _cb_data_ value passed
+	when creating the callback). Currently, there are no commands that return
+	any data, but this may change in the future.
 
 	_cb_data_ can be any Lua variable, including a table with multiple values.
 
