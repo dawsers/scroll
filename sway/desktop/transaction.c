@@ -870,7 +870,7 @@ static void animate_view(struct sway_container *con,
 		view_reconfigure(con->view);
 		return;
 	}
-	double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+	double scale = workspace->animation.st;
 	double border_top = container_titlebar_height() * scale;
 	double border_width = MAX(1, con->current.border_thickness * scale);
 	double width = scale * dwidth;
@@ -1348,6 +1348,12 @@ static void animate_output(struct sway_output *output) {
 			} else {
 				bool tiling = root->filters.workspace_tiling_filter(child, root->filters.workspace_tiling_filter_data);
 
+				double t, x, y, anim_scale;
+				animation_get_values(&t, &x, &y, &anim_scale);
+				child->animation.st = linear_scale(child->animation.s0, child->animation.s1, t);
+				if (child->animation.st != child->animation.s1) {
+					animation_set_animation_enabled(true);
+				}
 				if (tiling) {
 					animate_workspace_tiling(child);
 				}
@@ -1905,6 +1911,9 @@ static void children_save_animation_variables(list_t *children) {
 }
 
 static void workspace_save_animation_variables(struct sway_workspace *ws) {
+	ws->animation.s0 = ws->current.scale > 0.0 ? ws->current.scale : 1.0;
+	ws->animation.s1 = ws->scale > 0.0 ? ws->scale : 1.0;
+	ws->animation.st = ws->animation.s1;
 	if (ws->tiling->length == 0 && ws->floating->length == 0) {
 		return;
 	}

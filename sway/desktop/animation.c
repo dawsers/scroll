@@ -18,11 +18,18 @@ struct bezier_curve {
 	bool simple;
 };
 
+struct curve_cache {
+	bool valid;
+	double u;
+	double t, x, y, scale;
+};
+
 struct sway_animation_curve {
 	uint32_t duration_ms;
 	double offset_scale;
 	struct bezier_curve var;
 	struct bezier_curve off;
+	struct curve_cache cache;
 };
 
 static uint32_t comb_n_i(uint32_t n, uint32_t i) {
@@ -706,12 +713,39 @@ static void lookup_xy(struct bezier_curve *curve, double t, double *x, double *y
 	*x = B[0]; *y = B[1];
 }
 
+static bool animation_curve_query_cache(struct sway_animation_curve *curve, double u,
+		double *t, double *x, double *y, double *scale) {
+	if (curve->cache.valid && curve->cache.u == u) {
+		*t = curve->cache.t;
+		*x = curve->cache.x;
+		*y = curve->cache.y;
+		*scale = curve->cache.scale;
+		return true;
+	}
+	return false;
+}
+static void animation_curve_update_cache(struct sway_animation_curve *curve, double u,
+		double t, double x, double y, double scale) {
+	curve->cache = (struct curve_cache) {
+		.valid = true,
+		.u = u,
+		.t = t,
+		.x = x,
+		.y = y,
+		.scale = scale,
+	};
+}
+
 static void animation_curve_get_values(struct sway_animation_curve *curve, double u,
 		double *t, double *x, double *y, double *scale) {
+	if (animation_curve_query_cache(curve, u, t, x, y, scale)) {
+		return;
+	}
 	if (u >= 1.0) {
 		*t = 1.0;
 		*x = 1.0; *y = 0.0;
 		*scale = 0.0;
+		animation_curve_update_cache(curve, u, *t, *x, *y, *scale);
 		return;
 	}
 	double t_off;
@@ -725,6 +759,7 @@ static void animation_curve_get_values(struct sway_animation_curve *curve, doubl
 	if (t_off >= 1.0) {
 		*x = 1.0; *y = 0.0;
 		*scale = 0.0;
+		animation_curve_update_cache(curve, u, *t, *x, *y, *scale);
 		return;
 	} else if (t_off < 0.0) {
 		t_off = 0.0;
@@ -736,6 +771,7 @@ static void animation_curve_get_values(struct sway_animation_curve *curve, doubl
 		*x = *t; *y = 0.0;
 		*scale = 0.0;
 	}
+	animation_curve_update_cache(curve, u, *t, *x, *y, *scale);
 }
 
 // Get the current parameters for the active animation
@@ -805,6 +841,7 @@ struct sway_animation_curve *create_animation_curve(uint32_t duration_ms,
 	struct sway_animation_curve *curve = (struct sway_animation_curve *) malloc(sizeof(struct sway_animation_curve));
 	curve->duration_ms = duration_ms;
 	curve->offset_scale = offset_scale;
+	curve->cache.valid = false;
 
 	double end_var[2] = { 1.0, 1.0 };
 	create_bezier(&curve->var, var_order, var_points, end_var, var_simple);

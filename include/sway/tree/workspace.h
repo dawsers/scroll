@@ -88,6 +88,10 @@ struct sway_workspace {
 		struct wlr_box usable_area;
 	} split;
 
+	struct {
+		double s0, st, s1;
+	} animation;
+
 	struct sway_workspace_state current;
 	struct wlr_ext_workspace_handle_v1 *ext_workspace; // Always set.
 };

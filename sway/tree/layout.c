@@ -2199,10 +2199,9 @@ static void jump_all_handle_keyboard_key_end(void *data, bool focus) {
 		struct jump_all_output_data *data = specific->outputs->items[i];
 		struct sway_output *output = data->output;
 		struct sway_workspace *workspace = data->workspace;
-		double wscale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
 		for (int j = 0; j < workspace->floating->length; ++j) {
 			struct sway_container *view = workspace->floating->items[j];
-			container_toggle_jump_decoration(wscale, view, NULL, 0, 0);
+			container_toggle_jump_decoration(0.0, view, NULL, 0, 0);
 			view->overview.x = view->jump.x;
 			view->overview.y = view->jump.y;
 			node_set_dirty(&view->node);

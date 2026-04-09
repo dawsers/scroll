@@ -1624,7 +1624,7 @@ double view_get_total_scale(struct sway_view *view) {
 		scale = -1.0;
 	} else {
 		struct sway_workspace *ws = container->pending.workspace;
-		scale = ws ? (layout_scale_enabled(ws) ? layout_scale_get(ws) : -1.0) : -1.0;
+		scale = ws ? ws->animation.st : -1.0;
 	}
 	if (view_is_content_scaled(view)) {
 		scale = (scale > 0.0f ? scale : 1.0) * view_get_content_scale(view);
