@@ -1114,6 +1114,7 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 	enum sway_layout_overview mode = layout_overview_mode(ws);
 	if (mode == OVERVIEW_ALL || mode == OVERVIEW_FLOATING) {
 		layout_overview_recompute_scale(ws, ws->gaps_inner);
+		ws->animation.s1 = ws->scale > 0.0 ? ws->scale : 1.0;
 	}
 
 	for (int i = 0; i < ws->current.floating->length; i++) {
@@ -1227,6 +1228,7 @@ static void arrange_workspace_tiling(struct sway_workspace *ws,
 	enum sway_layout_overview mode = layout_overview_mode(ws);
 	if (mode == OVERVIEW_ALL || mode == OVERVIEW_TILING) {
 		layout_overview_recompute_scale(ws, ws->gaps_inner);
+		ws->animation.s1 = ws->scale > 0.0 ? ws->scale : 1.0;
 	}
 	if (!root->filters.free_animation_activation_filter(ws, root->filters.free_animation_activation_filter_data)) {
 		arrange_children(ws, layout_get_type(ws), ws->tiling,
