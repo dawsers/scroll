@@ -523,43 +523,43 @@ static uint32_t predict_scroller_item_length(cairo_t *cairo,
 }
 
 static const char *get_scroll_mode_symbol(struct swaybar *bar) {
-		if (bar->scroll_mode == NULL) {
-			return " ";
-		} else if (!strcmp(bar->scroll_mode, "horizontal")) {
-			return "-";
-		} else if (!strcmp(bar->scroll_mode, "vertical")) {
-			return "|";
-		} else {
-			return " ";
-		}
+	if (bar->scroll_mode == NULL) {
+		return " ";
+	} else if (!strcmp(bar->scroll_mode, "horizontal")) {
+		return "-";
+	} else if (!strcmp(bar->scroll_mode, "vertical")) {
+		return "|";
+	} else {
+		return " ";
+	}
 }
 
 static const char *get_scroll_insert_symbol(struct swaybar *bar) {
-		if (bar->scroll_insert == NULL) {
-			return " ";
-		} else if (!strcmp(bar->scroll_insert, "after")) {
-			return "→";
-		} else if (!strcmp(bar->scroll_insert, "before")) {
-			return "←";
-		} else if (!strcmp(bar->scroll_insert, "end")) {
-			return "⇥";
-		} else if (!strcmp(bar->scroll_insert, "beginning")) {
-			return "⇤";
-		} else {
-			return " ";
-		}
+	if (bar->scroll_insert == NULL) {
+		return " ";
+	} else if (!strcmp(bar->scroll_insert, "after")) {
+		return "→";
+	} else if (!strcmp(bar->scroll_insert, "before")) {
+		return "←";
+	} else if (!strcmp(bar->scroll_insert, "end")) {
+		return "⇥";
+	} else if (!strcmp(bar->scroll_insert, "beginning")) {
+		return "⇤";
+	} else {
+		return " ";
+	}
 }
 
 static const char *get_scroll_reorder_symbol(struct swaybar *bar) {
-		if (bar->scroll_reorder == NULL) {
-			return " ";
-		} else if (!strcmp(bar->scroll_reorder, "auto")) {
-			return "🅰";
-		} else if (!strcmp(bar->scroll_reorder, "lazy")) {
-			return "✋";
-		} else {
-			return " ";
-		}
+	if (bar->scroll_reorder == NULL) {
+		return " ";
+	} else if (!strcmp(bar->scroll_reorder, "auto")) {
+		return "🅰";
+	} else if (!strcmp(bar->scroll_reorder, "lazy")) {
+		return "✋";
+	} else {
+		return " ";
+	}
 }
 
 static uint32_t predict_scroller_indicator_length(cairo_t *cairo,
