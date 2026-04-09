@@ -522,29 +522,41 @@ static uint32_t predict_scroller_item_length(cairo_t *cairo,
 	return width;
 }
 
-static const char *get_scroll_mode_symbol(struct swaybar *bar) {
-	if (bar->scroll_mode == NULL) {
-		return " ";
-	} else if (!strcmp(bar->scroll_mode, "horizontal")) {
-		return "-";
-	} else if (!strcmp(bar->scroll_mode, "vertical")) {
-		return "|";
-	} else {
-		return " ";
-	}
-}
-
 static const char *get_scroll_insert_symbol(struct swaybar *bar) {
-	if (bar->scroll_insert == NULL) {
+	if (bar->scroll_insert == NULL || bar->scroll_mode == NULL) {
 		return " ";
 	} else if (!strcmp(bar->scroll_insert, "after")) {
-		return "→";
+		if (!strcmp(bar->scroll_mode, "horizontal")) {
+			return "→";
+		} else if (!strcmp(bar->scroll_mode, "vertical")) {
+			return "↓";
+		} else {
+			return " ";
+		}
 	} else if (!strcmp(bar->scroll_insert, "before")) {
-		return "←";
+		if (!strcmp(bar->scroll_mode, "horizontal")) {
+			return "←";
+		} else if (!strcmp(bar->scroll_mode, "vertical")) {
+			return "↑";
+		} else {
+			return " ";
+		}
 	} else if (!strcmp(bar->scroll_insert, "end")) {
-		return "⇥";
+		if (!strcmp(bar->scroll_mode, "horizontal")) {
+			return "⇥";
+		} else if (!strcmp(bar->scroll_mode, "vertical")) {
+			return "⤓";
+		} else {
+			return " ";
+		}
 	} else if (!strcmp(bar->scroll_insert, "beginning")) {
-		return "⇤";
+		if (!strcmp(bar->scroll_mode, "horizontal")) {
+			return "⇤";
+		} else if (!strcmp(bar->scroll_mode, "vertical")) {
+			return "⤒";
+		} else {
+			return " ";
+		}
 	} else {
 		return " ";
 	}
@@ -568,7 +580,6 @@ static uint32_t predict_scroller_indicator_length(cairo_t *cairo,
 	struct swaybar_config *config = output->bar->config;
 	if (config->scroller_indicator) {
 		const char *strs[] = {
-			get_scroll_mode_symbol(output->bar),
 			get_scroll_insert_symbol(output->bar),
 			output->bar->scroll_focus ? "" : "",
 			output->bar->scroll_center_horizontal ? "" : " ",
@@ -577,7 +588,7 @@ static uint32_t predict_scroller_indicator_length(cairo_t *cairo,
 			output->bar->scroll_overview ? "🐦" : " ",
 			output->bar->scroll_scaled ? "S" : " "
 		};
-		for (uint32_t i = 0; i < 8; ++i) {
+		for (uint32_t i = 0; i < 7; ++i) {
 			uint32_t w = predict_scroller_item_length(cairo, output, strs[i]);
 			if (w == 0) {
 				return 0;
@@ -826,7 +837,6 @@ static uint32_t render_scroller_indicator(struct render_context *ctx,
 	uint32_t max_height = 0;
 	struct swaybar_config *config = output->bar->config;
 	const char *strs[] = {
-		get_scroll_mode_symbol(output->bar),
 		get_scroll_insert_symbol(output->bar),
 		output->bar->scroll_focus ? "" : "",
 		output->bar->scroll_center_horizontal ? "" : " ",
@@ -836,7 +846,7 @@ static uint32_t render_scroller_indicator(struct render_context *ctx,
 		output->bar->scroll_scaled ? "S" : " "
 	};
 	if (config->scroller_indicator) {
-		for (uint32_t i = 0; i < 8; ++i) {
+		for (uint32_t i = 0; i < 7; ++i) {
 			uint32_t h = render_scroller_item(ctx, x, strs[i]);
 			if (h > max_height) {
 				max_height = h;
