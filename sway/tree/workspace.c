@@ -1018,6 +1018,11 @@ static void animate_workspace_switch(struct sway_output *output,
 	animation_set_callbacks(callbacks);
 }
 
+static void workspace_consider_destroy_iter(struct sway_workspace *workspace,
+		void *data) {
+	workspace_consider_destroy(workspace);
+}
+
 bool workspace_switch(struct sway_workspace *workspace) {
 	struct sway_seat *seat = input_manager_current_seat();
 
@@ -1043,6 +1048,10 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	} else {
 		arrange_workspace(workspace);
 	}
+
+	// Garbage collection of empty workspaces
+	root_for_each_workspace(workspace_consider_destroy_iter, NULL);
+
 	return true;
 }
 
