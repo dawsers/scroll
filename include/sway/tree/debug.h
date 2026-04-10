@@ -3,6 +3,7 @@
 
 struct wlr_scene_node;
 
-void scene_node_debug_print_info(struct wlr_scene_node *node, int x, int y);;
+void wlr_scene_node_debug_print_info(struct wlr_scene_node *node, double x, double y);
+void wlr_scene_node_recurse_debug_print_info(struct wlr_scene_node *node);
 
 #endif
