@@ -75,8 +75,16 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 			}
 			const double cx = rx / scale + con->pending.x - con->pending.content_x;
 			const double cy = ry / scale + con->pending.y - con->pending.content_y;
-			if (cx > 0.0 && cx < con->pending.content_width &&
-				cy > 0.0 && cy < con->pending.content_height) {
+			// Check if the cursor is inside the decoration frame, and if it is,
+			// let the cursor pass through to select the view's buffer.
+			// We use MARGIN to reduce the pass-through area, or the cursor
+			// could be let through and also miss the buffer, as they are the
+			// same size, ending up in another view below the current one.
+			// This manifests as a change of focus when hovering over the title
+			// bar of a floating container that has another one below.
+			const double MARGIN = 5.0;
+			if (cx > MARGIN && cx < con->pending.content_width - MARGIN &&
+				cy > MARGIN && cy < con->pending.content_height - MARGIN) {
 				return false;
 			}
 		}
