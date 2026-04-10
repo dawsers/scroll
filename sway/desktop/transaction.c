@@ -1111,12 +1111,6 @@ static void animate_fullscreen(struct wlr_scene_tree *tree,
 }
 
 static void arrange_workspace_floating(struct sway_workspace *ws) {
-	enum sway_layout_overview mode = layout_overview_mode(ws);
-	if (mode == OVERVIEW_ALL || mode == OVERVIEW_FLOATING) {
-		layout_overview_recompute_scale(ws, ws->gaps_inner);
-		ws->animation.s1 = ws->scale > 0.0 ? ws->scale : 1.0;
-	}
-
 	for (int i = 0; i < ws->current.floating->length; i++) {
 		struct sway_container *floater = ws->current.floating->items[i];
 		struct wlr_scene_tree *layer = root->layers.floating;
@@ -1224,11 +1218,6 @@ static void arrange_workspace_tiling(struct sway_workspace *ws,
 		int width, int height) {
 	if (ws->tiling->length == 0) {
 		return;
-	}
-	enum sway_layout_overview mode = layout_overview_mode(ws);
-	if (mode == OVERVIEW_ALL || mode == OVERVIEW_TILING) {
-		layout_overview_recompute_scale(ws, ws->gaps_inner);
-		ws->animation.s1 = ws->scale > 0.0 ? ws->scale : 1.0;
 	}
 	if (!root->filters.free_animation_activation_filter(ws, root->filters.free_animation_activation_filter_data)) {
 		arrange_children(ws, layout_get_type(ws), ws->tiling,
@@ -1350,12 +1339,6 @@ static void animate_output(struct sway_output *output) {
 			} else {
 				bool tiling = root->filters.workspace_tiling_filter(child, root->filters.workspace_tiling_filter_data);
 
-				double t, x, y, anim_scale;
-				animation_get_values(&t, &x, &y, &anim_scale);
-				child->animation.st = linear_scale(child->animation.s0, child->animation.s1, t);
-				if (child->animation.st != child->animation.s1) {
-					animation_set_animation_enabled(true);
-				}
 				if (tiling) {
 					animate_workspace_tiling(child);
 				}
@@ -1731,6 +1714,10 @@ static bool should_configure(struct sway_node *node,
 	if (!instruction->server_request) {
 		return false;
 	}
+	struct sway_workspace *workspace = node->sway_container->pending.workspace;
+	if (workspace && workspace->animation.s0 != workspace->animation.s1) {
+		return true;
+	}
 	struct sway_container_state *cstate = &node->sway_container->current;
 	struct sway_container_state *istate = &instruction->container_state;
 #if WLR_HAS_XWAYLAND
@@ -1938,7 +1925,37 @@ static void save_animation_variables() {
 	}
 }
 
+static void overview_recompute_scales() {
+	struct sway_container *fs = root->fullscreen_global;
+
+	if (!fs) {
+		for (int j = 0; j < root->outputs->length; j++) {
+			struct sway_output *output = root->outputs->items[j];
+			if (!output->enabled || !output->wlr_output->enabled ||
+				!root->filters.output_filter(output, root->filters.output_filter_data)) {
+				continue;
+			}
+			for (int i = 0; i < output->workspaces->length; i++) {
+				struct sway_workspace *child = output->workspaces->items[i];
+				if (!child || child->node.destroying) {
+					continue;
+				}
+				bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
+				if (!activated) {
+					continue;
+				}
+				enum sway_layout_overview mode = layout_overview_mode(child);
+				if (mode != OVERVIEW_DISABLED) {
+					layout_overview_recompute_scale(child, child->gaps_inner);
+				}
+			}
+		}
+	}
+}
+
 static void _transaction_commit_dirty(bool server_request) {
+	overview_recompute_scales();
+
 	if (!server.dirty_nodes->length) {
 		return;
 	}

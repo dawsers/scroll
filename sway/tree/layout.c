@@ -95,33 +95,22 @@ enum sway_container_layout layout_get_type(struct sway_workspace *workspace) {
 	return workspace->layout.type;
 }
 
-static void recreate_view_buffer(struct sway_container *view) {
-	// Views using CSD need to be reconfigured, otherwise the content
-	// is not in sync with our borders. Also, some views created while
-	// in scaled mode need to be reconfigured, so reconfigure everything
-	// just in case.
-	view_configure(view->view, view->pending.content_x, view->pending.content_y,
-		view->pending.content_width, view->pending.content_height);
-	view_reconfigure(view->view);
-	node_set_dirty(&view->node);
-}
-
-static void recreate_buffers(struct sway_workspace *workspace) {
+static void workspace_set_views_dirty(struct sway_workspace *workspace) {
 	for (int i = 0; i < workspace->tiling->length; ++i) {
 		const struct sway_container *con = workspace->tiling->items[i];
 		for (int j = 0; j < con->pending.children->length; ++j) {
 			struct sway_container *view = con->pending.children->items[j];
-			recreate_view_buffer(view);
+			node_set_dirty(&view->node);
 		}
 	}
 	for (int i = 0; i < workspace->floating->length; ++i) {
 		struct sway_container *con = workspace->floating->items[i];
 		if (con->view) {
-			recreate_view_buffer(con);
+			node_set_dirty(&con->node);
 		} else if (con->pending.children){
 			for (int j = 0; j < con->pending.children->length; ++j) {
 				struct sway_container *view = con->pending.children->items[j];
-				recreate_view_buffer(view);
+				node_set_dirty(&view->node);
 			}
 		}
 	}
@@ -194,7 +183,7 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 	if (layout_scale_get(workspace) != scale) {
 		workspace->scale = scale;
 		node_set_dirty(&workspace->node);
-		recreate_buffers(workspace);
+		workspace_set_views_dirty(workspace);
 	}
 }
 
@@ -243,7 +232,7 @@ void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_o
 		workspace->layout.overview = OVERVIEW_DISABLED;
 		workspace->scale = workspace->layout.mem_scale;
 		node_set_dirty(&workspace->node);
-		recreate_buffers(workspace);
+		workspace_set_views_dirty(workspace);
 		struct sway_seat *seat = input_manager_current_seat();
 		struct sway_container * focus = seat_get_focused_container(seat);
 		bool ws_focused = focus && focus->pending.workspace == workspace;
@@ -451,7 +440,7 @@ void layout_scale_set(struct sway_workspace *workspace, double scale) {
 	if (workspace->scale != scale) {
 		workspace->scale = scale;
 		node_set_dirty(&workspace->node);
-		recreate_buffers(workspace);
+		workspace_set_views_dirty(workspace);
 		ipc_event_scroller("scale", workspace);
 	}
 }
@@ -463,7 +452,7 @@ void layout_scale_reset(struct sway_workspace *workspace) {
 	if (workspace->scale != -1.0) {
 		workspace->scale = -1.0;
 		node_set_dirty(&workspace->node);
-		recreate_buffers(workspace);
+		workspace_set_views_dirty(workspace);
 		ipc_event_scroller("scale", workspace);
 	}
 }
