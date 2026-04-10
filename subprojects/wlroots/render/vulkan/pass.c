@@ -295,6 +295,11 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 
 	vkCmdEndRenderPass(render_cb->vk);
 
+	if (pass->timer != NULL) {
+		vkCmdWriteTimestamp(render_cb->vk, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+			pass->timer->query_pool, 1);
+	}
+
 	size_t pass_textures_len = pass->textures.size / sizeof(struct wlr_vk_render_pass_texture);
 	size_t render_wait_cap = (1 + pass_textures_len) * WLR_DMABUF_MAX_PLANES;
 	render_wait = calloc(render_wait_cap, sizeof(*render_wait));
@@ -1547,6 +1552,14 @@ struct wlr_vk_render_pass *vulkan_begin_render_pass(struct wlr_vk_renderer *rend
 			VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
+	struct wlr_vk_render_timer *timer = NULL;
+	if (options != NULL && options->timer != NULL) {
+		timer = wl_container_of(options->timer, timer, base);
+		vkCmdResetQueryPool(cb->vk, timer->query_pool, 0, 2);
+		vkCmdWriteTimestamp(cb->vk, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			timer->query_pool, 0);
+	}
+
 	int width = buffer->wlr_buffer->width;
 	int height = buffer->wlr_buffer->height;
 	VkRect2D rect = { .extent = { width, height } };
@@ -1575,5 +1588,6 @@ struct wlr_vk_render_pass *vulkan_begin_render_pass(struct wlr_vk_renderer *rend
 	pass->render_buffer_out = buffer_out;
 	pass->render_setup = render_setup;
 	pass->command_buffer = cb;
+	pass->timer = timer;
 	return pass;
 }

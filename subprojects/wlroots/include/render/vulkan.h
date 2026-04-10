@@ -67,6 +67,9 @@ struct wlr_vk_device {
 	struct wlr_drm_format_set dmabuf_render_formats;
 	struct wlr_drm_format_set dmabuf_texture_formats;
 	struct wlr_drm_format_set shm_texture_formats;
+
+	float timestamp_period;
+	uint32_t timestamp_valid_bits;
 };
 
 // Tries to find the VkPhysicalDevice for the given drm fd.
@@ -474,6 +477,12 @@ VkCommandBuffer vulkan_record_stage_cb(struct wlr_vk_renderer *renderer);
 // finished execution.
 bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer, int wait_sync_file_fd);
 
+struct wlr_vk_render_timer {
+	struct wlr_render_timer base;
+	struct wlr_vk_renderer *renderer;
+	VkQueryPool query_pool;
+};
+
 struct wlr_vk_render_pass_texture {
 	struct wlr_vk_texture *texture;
 
@@ -497,6 +506,8 @@ struct wlr_vk_render_pass {
 
 	struct wlr_drm_syncobj_timeline *signal_timeline;
 	uint64_t signal_point;
+
+	struct wlr_vk_render_timer *timer;
 
 	struct wl_array textures; // struct wlr_vk_render_pass_texture
 };

@@ -488,10 +488,15 @@ struct wlr_vk_device *vulkan_device_create(struct wlr_vk_instance *ini,
 			graphics_found = queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
 			if (graphics_found) {
 				dev->queue_family = i;
+				dev->timestamp_valid_bits = queue_props[i].timestampValidBits;
 				break;
 			}
 		}
 		assert(graphics_found);
+
+		VkPhysicalDeviceProperties phdev_props;
+		vkGetPhysicalDeviceProperties(phdev, &phdev_props);
+		dev->timestamp_period = phdev_props.limits.timestampPeriod;
 	}
 
 	bool exportable_semaphore = false, importable_semaphore = false;
