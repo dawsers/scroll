@@ -51,6 +51,8 @@ static void popup_unconstrain(struct sway_xdg_popup *popup) {
 		// is null if in the scratchpad
 		return;
 	}
+	popup->scene_tree->node.info.workspace =
+		layout_overview_workspaces_enabled() ? workspace : NULL;
 
 	float scale = view_is_content_scaled(view) ? view_get_content_scale(view) : 1.0f;
 	scale *= layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;

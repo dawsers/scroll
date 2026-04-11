@@ -46,7 +46,7 @@ static bool find_container_by_pid(struct sway_container *con, void *data) {
 	return false;
 }
 
-static void get_node_coords(struct wlr_xwayland_surface *xsurface, double *dx, double *dy) {
+static struct sway_view *get_node_coords(struct wlr_xwayland_surface *xsurface, double *dx, double *dy) {
 	double x, y;
 	struct sway_view *view = view_from_wlr_xwayland_surface(xsurface);
 	if (view && view->container) {
@@ -113,6 +113,8 @@ static void get_node_coords(struct wlr_xwayland_surface *xsurface, double *dx, d
 	}
 	*dx = x;
 	*dy = y;
+
+	return view;
 }
 
 static void unmanaged_handle_request_configure(struct wl_listener *listener,
@@ -147,7 +149,13 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data) {
 		scene_descriptor_assign(&surface->surface_scene->buffer->node,
 			SWAY_SCENE_DESC_XWAYLAND_UNMANAGED, surface);
 		double x, y;
-		get_node_coords(xsurface, &x, &y);
+		struct sway_view *view = get_node_coords(xsurface, &x, &y);
+
+		struct sway_workspace *workspace =
+			view && view->container && view->container->pending.workspace ?
+			view->container->pending.workspace : NULL;
+		surface->surface_scene->buffer->node.info.workspace =
+			layout_overview_workspaces_enabled() ? workspace : NULL;
 
 		wlr_scene_node_set_position(&surface->surface_scene->buffer->node,
 			round(x), round(y));

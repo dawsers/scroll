@@ -103,6 +103,9 @@ static void *scene_node_get_workspace(struct wlr_scene_node *node) {
 	if (node->type == WLR_SCENE_NODE_TREE) {
 		tree = wlr_scene_tree_from_node(node);
 	} else {
+		if (node->info.workspace != NULL) {
+			return node->info.workspace;
+		}
 		tree = node->parent;
 	}
 
