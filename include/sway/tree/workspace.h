@@ -198,7 +198,7 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 void workspace_move_to_output(struct sway_workspace *workspace,
 		struct sway_output *output);
 
-void sway_ext_workspace_init(void);
+bool sway_ext_workspace_init(void);
 void sway_ext_workspace_output_enable(struct sway_output *output);
 void sway_ext_workspace_output_disable(struct sway_output *output);
 
