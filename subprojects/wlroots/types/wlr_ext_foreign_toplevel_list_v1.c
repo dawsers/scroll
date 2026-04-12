@@ -168,7 +168,7 @@ wlr_ext_foreign_toplevel_handle_v1_create(struct wlr_ext_foreign_toplevel_list_v
 		return NULL;
 	}
 
-	wl_list_insert(&list->toplevels, &toplevel->link);
+	wl_list_insert(list->toplevels.prev, &toplevel->link);
 	toplevel->list = list;
 	if (state->app_id) {
 		toplevel->app_id = strdup(state->app_id);

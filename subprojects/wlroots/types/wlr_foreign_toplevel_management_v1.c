@@ -530,7 +530,7 @@ wlr_foreign_toplevel_handle_v1_create(
 		return NULL;
 	}
 
-	wl_list_insert(&manager->toplevels, &toplevel->link);
+	wl_list_insert(manager->toplevels.prev, &toplevel->link);
 	toplevel->manager = manager;
 
 	wl_list_init(&toplevel->resources);

@@ -790,7 +790,7 @@ struct wlr_ext_workspace_handle_v1 *wlr_ext_workspace_handle_v1_create(
 	wl_array_init(&workspace->coordinates);
 	wl_signal_init(&workspace->events.destroy);
 
-	wl_list_insert(&manager->workspaces, &workspace->link);
+	wl_list_insert(manager->workspaces.prev, &workspace->link);
 
 	struct wlr_ext_workspace_manager_v1_resource *manager_res;
 	wl_list_for_each(manager_res, &manager->resources, link) {
