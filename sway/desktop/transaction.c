@@ -861,20 +861,23 @@ static void animate_view(struct sway_container *con,
 	// make sure it's enabled for viewing
 	wlr_scene_node_set_enabled(&con->scene_tree->node, true);
 
+	double scale = workspace->animation.st;
+	double width = scale * dwidth;
+	double height = scale * dheight;
+
 	if (con->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
 		wlr_scene_node_set_position(&con->view->scene_tree->node, 0, 0);
 		wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
 		wlr_scene_node_set_enabled(&con->decoration.full->node, false);
 		wlr_scene_node_set_enabled(&con->shadow->node, false);
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
+		wlr_scene_node_set_position(&con->view->output_handler->node, 0, 0);
+		wlr_scene_buffer_set_dest_size(con->view->output_handler, width, height);
 		view_reconfigure(con->view);
 		return;
 	}
-	double scale = workspace->animation.st;
 	double border_top = container_titlebar_height() * scale;
 	double border_width = MAX(1, con->current.border_thickness * scale);
-	double width = scale * dwidth;
-	double height = scale * dheight;
 
 	if (title_bar && con->current.border != B_NORMAL) {
 		wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
@@ -963,6 +966,13 @@ static void animate_view(struct sway_container *con,
 	wlr_scene_node_set_position(&con->view->scene_tree->node,
 		border_left, border_top);
 
+	// the output handler for the view wants to detect events for the entire
+	// container so give it negative coordinates to move it back over the
+	// decorations
+	wlr_scene_node_set_position(&con->view->output_handler->node,
+		-border_left, -border_top);
+	wlr_scene_buffer_set_dest_size(con->view->output_handler, width, height);
+
 	wlr_scene_node_set_enabled(&shadow->node, shadow->enabled);
 
 	// Update content geometry
@@ -1033,10 +1043,6 @@ static void animate_container(struct sway_container *con,
 		return;
 	}
 
-	if (con->output_handler) {
-		wlr_scene_buffer_set_dest_size(con->output_handler, dwidth, dheight);
-	}
-
 	if (con->view) {
 		animate_view(con, dwidth, dheight, title_bar, gaps, workspace);
 	} else {
@@ -1104,9 +1110,12 @@ static void animate_fullscreen(struct wlr_scene_tree *tree,
 		wlr_scene_node_set_position(&output->fullscreen_background->node, fs->animation.xt - output->lx, fs->animation.yt - output->ly);
 		wlr_scene_rect_set_size(output->fullscreen_background, fs->animation.wt, fs->animation.ht);
 		wlr_scene_node_set_position(fs_node, fs->animation.xt - output->lx, fs->animation.yt - output->ly);
+		wlr_scene_node_set_position(&fs->view->output_handler->node, fs->animation.xt - output->lx, fs->animation.yt - output->ly);
 	} else {
 		wlr_scene_node_set_position(fs_node, fs->animation.xt, fs->animation.yt);
+		wlr_scene_node_set_position(&fs->view->output_handler->node, fs->animation.xt, fs->animation.yt);
 	}
+	wlr_scene_buffer_set_dest_size(fs->view->output_handler, fs->animation.wt, fs->animation.ht);
 	view_reconfigure(fs->view);
 }
 

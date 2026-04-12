@@ -27,50 +27,6 @@
 #include "stringop.h"
 #include "util.h"
 
-static void handle_outputs_update(
-		struct wl_listener *listener, void *data) {
-	struct sway_container *con = wl_container_of(
-			listener, con, outputs_update);
-	struct wlr_scene_outputs_update_event *event = data;
-
-	struct wlr_foreign_toplevel_handle_v1 *toplevel = con->view->foreign_toplevel;
-	if (toplevel) {
-		struct wlr_foreign_toplevel_handle_v1_output *toplevel_output, *tmp;
-		wl_list_for_each_safe(toplevel_output, tmp, &toplevel->outputs, link) {
-			bool active = false;
-			for (size_t i = 0; i < event->size; i++) {
-				struct wlr_scene_output *scene_output = event->active[i];
-				if (scene_output->output == toplevel_output->output) {
-					active = true;
-					break;
-				}
-			}
-
-			if (!active) {
-				wlr_foreign_toplevel_handle_v1_output_leave(toplevel, toplevel_output->output);
-			}
-		}
-
-		for (size_t i = 0; i < event->size; i++) {
-			struct wlr_scene_output *scene_output = event->active[i];
-			wlr_foreign_toplevel_handle_v1_output_enter(toplevel, scene_output->output);
-		}
-	}
-}
-
-static void handle_destroy(
-		struct wl_listener *listener, void *data) {
-	struct sway_container *con = wl_container_of(
-			listener, con, output_handler_destroy);
-
-	container_begin_destroy(con);
-}
-
-static bool handle_point_accepts_input(
-		struct wlr_scene_buffer *buffer, double *x, double *y) {
-	return false;
-}
-
 static struct wlr_scene_decoration *alloc_decoration_node(struct wlr_scene_tree *parent,
 		struct sway_view *view, bool *failed) {
 	if (*failed) {
@@ -132,21 +88,6 @@ struct sway_container *container_create(struct sway_view *view) {
 		// We set the title bar at the top and the shadow at the bottom
 		wlr_scene_node_lower_to_bottom(&c->shadow->node);
 		wlr_scene_node_raise_to_top(&c->title_bar.tree->node);
-		c->output_handler = wlr_scene_buffer_create(c->decoration.tree, NULL);
-		if (!c->output_handler) {
-			sway_log(SWAY_ERROR, "Failed to allocate a scene node");
-			failed = true;
-		}
-
-		if (!failed) {
-			c->outputs_update.notify = handle_outputs_update;
-			wl_signal_add(&c->output_handler->events.outputs_update,
-					&c->outputs_update);
-			c->output_handler_destroy.notify = handle_destroy;
-			wl_signal_add(&c->output_handler->node.events.destroy,
-					&c->output_handler_destroy);
-			c->output_handler->point_accepts_input = handle_point_accepts_input;
-		}
 	}
 
 	if (!failed && !scene_descriptor_assign(&c->scene_tree->node,
@@ -541,7 +482,6 @@ void container_destroy(struct sway_container *con) {
 
 	if (con->view && con->view->container == con) {
 		con->view->container = NULL;
-		wlr_scene_node_destroy(&con->output_handler->node);
 		if (con->view->destroying) {
 			view_destroy(con->view);
 		}
@@ -596,11 +536,6 @@ void container_begin_destroy(struct sway_container *con) {
 
 	if (con->pending.parent || con->pending.workspace) {
 		container_detach(con);
-	}
-
-	if (con->view && con->view->container == con) {
-		wl_list_remove(&con->outputs_update.link);
-		wl_list_remove(&con->output_handler_destroy.link);
 	}
 }
 
