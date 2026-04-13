@@ -123,6 +123,18 @@ paru -S sway-scroll-git
 `sway-scroll`. Please uninstall it and install `sway-scroll` if you want the
 stable version.
 
+### Fedora and Derivatives
+
+Thanks to @Owen-sz for adding and maintaining scroll in Terra.
+
+If on Fedora, install the [Terra repository](https://terrapkg.com/).
+
+**Note**:
+If on Nobara or Ultramarine, Terra is pre-installed.
+If on Bazzite, Terra is pre-installed but disabled, enable and install at your own risk.
+
+Install scroll: `dnf install scroll`
+
 ### NixOS
 
 Thanks to @Diax170 for maintaining a nix flake of scroll in his repository,
