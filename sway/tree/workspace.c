@@ -812,7 +812,7 @@ static void workspace_switch_callback_end(void *callback_data) {
 		node_set_dirty(&cdata->container->node);
 	}
 
-	if (data->from->output) {
+	if (data->from && data->from->output) {
 		node_set_dirty(&data->from->node);
 	}
 	if (data->to->output) {
@@ -833,7 +833,7 @@ static bool switching_output(struct sway_workspace *workspace,
 		return false;
 	}
 	struct sway_output *output = workspace->output;
-	struct sway_output *from_output = data->from->output;
+	struct sway_output *from_output = data->from ? data->from->output : NULL;
 	struct sway_output *to_output = data->to->output;
 	if (!output || !from_output || !to_output) {
 		return false;
@@ -977,13 +977,23 @@ static bool workspace_switch_down(struct sway_workspace *from, struct sway_works
 static void animate_workspace_switch(struct sway_output *output,
 		struct sway_workspace *from, struct sway_workspace *to) {
 	bool down = workspace_switch_down(from, to);
-	animation_end();
-	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
+
+	// Store the from workspace data here, because it may get deleted when
+	// calling animation_end() if it is empty. workspace_switch_callback_end
+	// calls transaction_commit_dirty(), which will destroy workspaces marked
+	// for deletion, and empty workspaces that are not active are marked for
+	// deletion.
 	struct workspace_switch_data *data = malloc(sizeof(struct workspace_switch_data));
-	data->from = from;
+	const double from_y = from->y;
+	const int from_height = from->height;
+	data->from = from->node.destroying ? NULL: from;
 	data->to = to;
 	data->from_containers = create_list();
 	data->to_containers = create_list();
+
+	animation_end();
+	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
+
 	root->filters.free_animation_activation_filter = workspace_switch_animation_filter;
 	root->filters.free_animation_activation_filter_data = data;
 	root->filters.workspace_filter = workspace_switch_workspace_filter;
@@ -993,21 +1003,17 @@ static void animate_workspace_switch(struct sway_output *output,
 
 	double min_y_to = to->y, max_y_to = to->y + to->height;
 	select_visible_containers(data->to_containers, to, to->tiling, &min_y_to, &max_y_to);
-	if (max_y_to < min_y_to) {
-		max_y_to = min_y_to = to->y;
-	}
-	double min_y_from = from->y, max_y_from = from->y + from->height;
-	select_visible_containers(data->from_containers, from, from->tiling, &min_y_from, &max_y_from);
-	if (max_y_from < min_y_from) {
-		max_y_from = min_y_from = from->y;
+	double min_y_from = from_y, max_y_from = from_y + from_height;
+	if (data->from) {
+		select_visible_containers(data->from_containers, from, from->tiling, &min_y_from, &max_y_from);
 	}
 	double delta;
 	if (down) {
-		delta = output->height + max_y_from - (from->y + from->height)
-			+ (from->y - min_y_to);
+		delta = output->height + max_y_from - (from_y + from_height)
+			+ (from_y - min_y_to);
 	} else {
-		delta = output->height + max_y_to - (from->y + from->height)
-			+ (from->y - min_y_from);
+		delta = output->height + max_y_to - (from_y + from_height)
+			+ (from_y - min_y_from);
 		delta = -delta;
 	}
 	add_delta_to_containers(data->to_containers, add_delta_to_current, delta);
