@@ -105,17 +105,32 @@ struct cmd_results *cmd_scale_workspace(int argc, char **argv) {
 		if (!root->jumping) {
 			layout_overview_toggle(workspace, OVERVIEW_ALL);
 		}
-	} else if (strcasecmp(argv[0], "workspaces") == 0) {
-		if (!root->jumping) {
-			layout_overview_workspaces_toggle();
-		}
 	} else {
 		fail = 1;
 	}
 
 	if (fail) {
-		const char usage[] = "Expected 'scale_workspace <exact number|increment number|reset|overview|workspaces>'";
+		const char usage[] = "Expected 'scale_workspace <exact number|increment number|reset|overview>'";
 		return cmd_results_new(CMD_INVALID, "%s", usage);
 	}
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
+
+struct cmd_results *cmd_scale_workspaces(int argc, char **argv) {
+	if (root->fullscreen_global) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't run this command while in global fullscreen mode.");
+	}
+	if (!root->outputs->length) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't run this command while there's no outputs connected.");
+	}
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "scale_workspaces", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	bool scale_workspaces = parse_boolean(argv[0], layout_overview_workspaces_enabled());
+	layout_overview_workspaces(scale_workspaces);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+

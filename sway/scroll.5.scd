@@ -307,7 +307,7 @@ The following commands may only be used in the configuration file.
 
 *workspace_labels_height* <integer>
 	Default is _30_. Height of the workspace name labels, equal to the gap
-	between workspaces in _scale_workspace workspaces_ mode.
+	between workspaces in _scale_workspaces_ mode.
 
 *workspace_layout* default|horizontal|vertical
 	Specifies the initial layout for new containers in an empty workspace.
@@ -717,19 +717,21 @@ set|plus|minus|toggle <amount>
 	If you want to have Xwayland windows at 1:1 physical monitor scale, read
 	about the option *xwayland_output_scale*.
 
-*scale_workspace* <exact number|increment number|reset|overview|workspaces>
+*scale_workspace* <exact number|increment number|reset|overview>
 	This command will scale the workspace to an _exact_ scale, or
 	incrementally by a delta value.
 
 	_overview_ will use an automatic scale that fits all the windows of the
 	workspace in the current viewport.
 
-	_workspaces_ will also scale automatically and show a global overview where
-	each output renders all	its workspaces.
-
 	You will still be able to interact with the windows normally (change focus,
 	move windows, create or destroy them, type in them etc.). Use it as a way
 	to see where things are and move the active focus, or reposition windows.
+
+*scale_workspaces* enable|disable|toggle
+	This command will show a global overview where each output renders all its
+	workspaces. As in *scale_workspace*, you will be able to interact with
+	the windows normally.
 
 *scratchpad* show|jump
 	_show_ shows a window from the scratchpad. Repeatedly using this command will

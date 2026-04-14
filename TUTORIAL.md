@@ -252,7 +252,7 @@ When you have too many windows in a workspace, it can be hard to know where
 things are. `scale_workspace overview` helps with that by creating a bird's eye view
 of the whole workspace.
 
-`scale_workspace workspaces` creates an overview mode where *scroll* renders
+`scale_workspaces toggle` creates an overview mode where *scroll* renders
 all the workspaces for each monitor.
 
 You can work normally when in either overview mode, and drag windows between
@@ -260,7 +260,7 @@ workspaces too.
 
 ``` config
     bindsym --no-repeat $mod+tab scale_workspace overview
-    bindsym --no-repeat $mod+Shift+tab scale_workspace workspaces
+    bindsym --no-repeat $mod+Shift+tab scale_workspaces toggle
 ```
 
 [Overview](https://github.com/user-attachments/assets/618fa129-f3db-4970-8dff-4d2ed7ed5ae2)

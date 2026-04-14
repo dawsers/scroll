@@ -284,8 +284,7 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 
 	if (layout_overview_workspaces_enabled()) {
 		// Re-do workspaces overview when creating a new workspace
-		layout_overview_workspaces_toggle();
-		layout_overview_workspaces_toggle();
+		layout_overview_workspaces_recompute_scale();
 	}
 
 	// Lua callbacks
@@ -345,6 +344,10 @@ void workspace_begin_destroy(struct sway_workspace *workspace) {
 }
 
 void workspace_consider_destroy(struct sway_workspace *ws) {
+	if (layout_overview_workspaces_enabled()) {
+		return;
+	}
+
 	if (ws->tiling->length || ws->floating->length) {
 		return;
 	}
@@ -1229,8 +1232,7 @@ void workspace_detach(struct sway_workspace *workspace) {
 
 	if (layout_overview_workspaces_enabled()) {
 		// Re-do workspaces overview when detaching a workspace
-		layout_overview_workspaces_toggle();
-		layout_overview_workspaces_toggle();
+		layout_overview_workspaces_recompute_scale();
 	}
 }
 

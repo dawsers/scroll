@@ -173,6 +173,7 @@ static const struct cmd_handler command_handlers[] = {
 	{ "resize", cmd_resize },
 	{ "scale_content", cmd_scale_content },
 	{ "scale_workspace", cmd_scale_workspace },
+	{ "scale_workspaces", cmd_scale_workspaces },
 	{ "scratchpad", cmd_scratchpad },
 	{ "selection", cmd_selection },
 	{ "set_mode", cmd_set_mode },

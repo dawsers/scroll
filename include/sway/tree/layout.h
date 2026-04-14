@@ -120,10 +120,11 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 enum sway_layout_overview layout_overview_mode(struct sway_workspace *workspace);
 
 bool layout_overview_workspaces_enabled();
-void layout_overview_workspaces_toggle();
+void layout_overview_workspaces(bool on);
 bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspace, double *lx, double *ly);
 void layout_overview_workspaces_global_to_local(struct sway_workspace *workspace, double *lx, double *ly);
 void layout_overview_workspaces_local_to_global(struct sway_workspace *workspace, double *lx, double *ly);
+void layout_overview_workspaces_recompute_scale();
 
 void layout_scale_set(struct sway_workspace *workspace, double scale);
 void layout_scale_reset(struct sway_workspace *workspace);

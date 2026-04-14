@@ -895,18 +895,24 @@ columns or windows affected, or *equal* for all of them.
 In *scroll* you can work at any scale. The workspace can be scaled using
 
 ``` config
-scale_workspace <exact number|increment number|reset|overview|workspaces>
+scale_workspace <exact number|increment number|reset|overview>
 ```
 
 This command will scale the workspace to an exact scale, or incrementally by a
 delta value. If you want a useful automatic scale, use the `overview` argument
-which will fit all the windows of the workspace in the current viewport. The
-`workspaces` argument will also use an automatic scale to render all the
-workspaces for each monitor.
+which will fit all the windows of the workspace in the current viewport.
 
 Note that You will still be able to interact with the windows normally (change
 focus, move windows, create or destroy them, type in them etc.). Use it as a
 way to see where things are and move the active focus, or reposition windows.
+
+``` config
+scale_workspaces enable|disable|toggle
+```
+
+This command will create a global overview, where every output will render all
+its workspaces scaled to fit. As in `scale_workspace`, you can still interact
+with the windows normally.
 
 Example configuration:
 
@@ -925,7 +931,7 @@ Example configuration:
     # Mod + Tab or a lateral mouse button will toggle overview.
     bindsym --no-repeat $mod+tab scale_workspace overview
     bindsym --whole-window button8 scale_workspace overview
-    bindsym --no-repeat $mod+Shift+tab scale_workspace workspaces
+    bindsym --no-repeat $mod+Shift+tab scale_workspaces toggle
 ```
 
 

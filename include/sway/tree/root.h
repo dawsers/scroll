@@ -21,6 +21,28 @@ typedef bool (*sway_root_workspace_filter_func_t)(
 typedef bool (*sway_root_container_filter_func_t)(
 	struct sway_workspace *workspace, struct sway_container *container, void *data);
 
+// Filters used during arrange_root()
+struct sway_root_filters {
+	// Function to trigger free animation instead of the default
+	sway_root_workspace_filter_func_t free_animation_activation_filter;
+	void *free_animation_activation_filter_data;
+	// Decide whether to add this output to the scene graph (SG)
+	sway_root_output_filter_func_t output_filter;
+	void *output_filter_data;
+	// Decide whether to add this workspace to the SG
+	sway_root_workspace_filter_func_t workspace_filter;
+	void *workspace_filter_data;
+	// Decide whether to add floating containers of this workspace to the SG
+	sway_root_workspace_filter_func_t workspace_floating_filter;
+	void *workspace_floating_filter_data;
+	// Decide whether to add tiling containers of this workspace to the SG
+	sway_root_workspace_filter_func_t workspace_tiling_filter;
+	void *workspace_tiling_filter_data;
+	// Decide whether to add this container to the SG
+	sway_root_container_filter_func_t container_filter;
+	void *container_filter_data;
+};
+
 struct sway_root {
 	struct sway_node node;
 	struct wlr_output_layout *output_layout;
@@ -83,26 +105,7 @@ struct sway_root {
 	} events;
 
 	// Filters used during arrange_root()
-	struct {
-		// Function to trigger free animation instead of the default
-		sway_root_workspace_filter_func_t free_animation_activation_filter;
-		void *free_animation_activation_filter_data;
-		// Decide whether to add this output to the scene graph (SG)
-		sway_root_output_filter_func_t output_filter;
-		void *output_filter_data;
-		// Decide whether to add this workspace to the SG
-		sway_root_workspace_filter_func_t workspace_filter;
-		void *workspace_filter_data;
-		// Decide whether to add floating containers of this workspace to the SG
-		sway_root_workspace_filter_func_t workspace_floating_filter;
-		void *workspace_floating_filter_data;
-		// Decide whether to add tiling containers of this workspace to the SG
-		sway_root_workspace_filter_func_t workspace_tiling_filter;
-		void *workspace_tiling_filter_data;
-		// Decide whether to add this container to the SG
-		sway_root_container_filter_func_t container_filter;
-		void *container_filter_data;
-	} filters;
+	struct sway_root_filters filters;
 
 	bool overview;
 	bool jumping;

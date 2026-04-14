@@ -270,7 +270,7 @@ bindsym $mod+Shift+backslash mode "wssplit"
     # workspace_labels_background #00000000
     bindsym --no-repeat $mod+tab scale_workspace overview
     bindsym --whole-window button8 scale_workspace overview
-    bindsym --no-repeat $mod+Shift+tab scale_workspace workspaces
+    bindsym --no-repeat $mod+Shift+tab scale_workspaces toggle
 
     # Jump
     # jump_labels_color #9e1530FF
