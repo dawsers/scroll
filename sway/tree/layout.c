@@ -1784,8 +1784,8 @@ static void organize_floating_windows(struct sway_workspace *workspace) {
 	// Re-center on workspace
 	double minx, maxx, miny, maxy;
 	layout_compute_bounding_box(children, &minx, &maxx, &miny, &maxy);
-	const double dx = (minx + 0.5 * (maxx - minx)) - (workspace->output->lx + 0.5 * workspace->output->width);
-	const double dy = (miny + 0.5 * (maxy - miny)) - (workspace->output->ly + 0.5 * workspace->output->height);
+	const double dx = (minx + 0.5 * (maxx - minx)) - (workspace->x + 0.5 * workspace->width);
+	const double dy = (miny + 0.5 * (maxy - miny)) - (workspace->y + 0.5 * workspace->height);
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *con = children->items[i];
 		con->pending.x -= dx;
