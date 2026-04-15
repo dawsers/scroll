@@ -49,18 +49,29 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 	if (layout_overview_workspaces_enabled()) {
 		layout_overview_workspaces_local_to_global(cont->pending.workspace, &cx, &cy);
 	}
-	float scale = layout_scale_enabled(cont->pending.workspace) ? layout_scale_get(cont->pending.workspace) : 1.0f;
+	double scale = layout_scale_enabled(cont->pending.workspace) ? layout_scale_get(cont->pending.workspace) : 1.0;
+	double x, y;
+	if (container_is_floating(cont)) {
+		struct sway_output *output = cont->pending.workspace->output;
+		const double minx = output->lx + 0.5 * (1.0 - scale) * output->width;
+		x = minx + scale * (cont->pending.x - output->lx);
+		const double miny = output->ly + 0.5 * (1.0 - scale) * output->height;
+		y = miny + scale * (cont->pending.y - output->ly);
+	} else {
+		x = cont->pending.x;
+		y = cont->pending.y;
+	}
 	enum wlr_edges edge = 0;
-	if (cx < cont->pending.x + MAX(1, scale * cont->pending.border_thickness)) {
+	if (cx < x + MAX(1, scale * cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_LEFT;
 	}
-	if (cy < cont->pending.y + MAX(1, scale *cont->pending.border_thickness)) {
+	if (cy < y + MAX(1, scale *cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_TOP;
 	}
-	if (cx >= cont->pending.x + scale * (cont->pending.width - cont->pending.border_thickness)) {
+	if (cx >= x + scale * (cont->pending.width - cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_RIGHT;
 	}
-	if (cy >= cont->pending.y + scale * (cont->pending.height - cont->pending.border_thickness)) {
+	if (cy >= y + scale * (cont->pending.height - cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_BOTTOM;
 	}
 

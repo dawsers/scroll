@@ -121,8 +121,10 @@ struct sway_node *node_at_coords(
 					if (con->view && !con->pending.parent) {
 						// Floating window are special in scaled workspaces, because
 						// the virtual viewport is centered for them
-						x = scale * con->pending.x + (1.0 - scale) * (ws->output->lx + 0.5 * ws->output->width);
-						y = scale * con->pending.y + (1.0 - scale) * (ws->output->ly + 0.5 * ws->output->height);
+						const double minx = ws->output->lx + 0.5 * (1.0 - scale) * ws->output->width;
+						x = minx + scale * (con->pending.x - ws->output->lx);
+						const double miny = ws->output->ly + 0.5 * (1.0 - scale) * ws->output->height;
+						y = miny + scale * (con->pending.y - ws->output->ly);
 					} else {
 						x = con->pending.x;
 						y = con->pending.y;

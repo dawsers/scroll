@@ -152,12 +152,14 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 		workspace->tiling->length == 0 && workspace->floating->length == 0) {
 		return;
 	}
-	double fw = 0.0, fh = 0.0;
-	if (mode == OVERVIEW_FLOATING || mode == OVERVIEW_ALL) {
+	double fw, fh;
+	if (mode == OVERVIEW_FLOATING) {
 		double minx, maxx, miny, maxy;
 		layout_compute_bounding_box(workspace->floating, &minx, &maxx, &miny, &maxy);
 		fw = maxx - minx;
 		fh = maxy - miny;
+	} else {
+		fw = workspace->output->width, fh = workspace->output->height;
 	}
 	double maxw = 0.0, maxh = 0.0;
 	if (mode == OVERVIEW_TILING || mode == OVERVIEW_ALL) {
@@ -217,10 +219,12 @@ static void overview_push_positions(struct sway_workspace *workspace,
 		overview_push_container_position(container, NULL);
 		container_for_each_child(container, overview_push_container_position, NULL);
 	}
-	for (int i = 0; i < workspace->floating->length; ++i) {
-		struct sway_container *container = workspace->floating->items[i];
-		overview_push_container_position(container, NULL);
-		container_for_each_child(container, overview_push_container_position, NULL);
+	if (mode == OVERVIEW_FLOATING) {
+		for (int i = 0; i < workspace->floating->length; ++i) {
+			struct sway_container *container = workspace->floating->items[i];
+			overview_push_container_position(container, NULL);
+			container_for_each_child(container, overview_push_container_position, NULL);
+		}
 	}
 }
 
@@ -231,16 +235,18 @@ static void overview_pop_positions(struct sway_workspace *workspace,
 		overview_pop_container_position(container, NULL);
 		container_for_each_child(container, overview_pop_container_position, NULL);
 	}
-	for (int i = 0; i < workspace->floating->length; ++i) {
-		struct sway_container *container = workspace->floating->items[i];
-		overview_pop_container_position(container, NULL);
-		container_for_each_child(container, overview_pop_container_position, NULL);
+	if (mode == OVERVIEW_FLOATING) {
+		for (int i = 0; i < workspace->floating->length; ++i) {
+			struct sway_container *container = workspace->floating->items[i];
+			overview_pop_container_position(container, NULL);
+			container_for_each_child(container, overview_pop_container_position, NULL);
+		}
 	}
 }
 
 void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_overview mode) {
-	if (workspace->layout.overview != OVERVIEW_DISABLED) {
-		overview_pop_positions(workspace, mode);
+	if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		overview_pop_positions(workspace, layout_overview_mode(workspace));
 		// Disable and restore old scale value
 		workspace->layout.overview = OVERVIEW_DISABLED;
 		workspace->scale = workspace->layout.mem_scale;
@@ -1774,8 +1780,16 @@ static void organize_floating_windows(struct sway_workspace *workspace) {
 		con->jump.y = con->pending.y;
 	}
 	deoverlap(children);
+
+	// Re-center on workspace
+	double minx, maxx, miny, maxy;
+	layout_compute_bounding_box(children, &minx, &maxx, &miny, &maxy);
+	const double dx = (minx + 0.5 * (maxx - minx)) - (workspace->output->lx + 0.5 * workspace->output->width);
+	const double dy = (miny + 0.5 * (maxy - miny)) - (workspace->output->ly + 0.5 * workspace->output->height);
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *con = children->items[i];
+		con->pending.x -= dx;
+		con->pending.y -= dy;
 		arrange_container(con);
 		node_set_dirty(&con->node);
 	}
@@ -2254,8 +2268,8 @@ static void jump_all_handle_keyboard_key_end(void *data, bool focus) {
 			node_set_dirty(&view->node);
 			view->pending.workspace = view->jump.workspace;
 			view->pending.parent = view->jump.parent;
-			view->pending.x = view->jump.x;
-			view->pending.y = view->jump.y;
+			view->overview.x = view->jump.x;
+			view->overview.y = view->jump.y;
 			node_set_dirty(&view->pending.workspace->node);
 		}
 		for (int k = 0; k < output->workspaces->length; ++k) {

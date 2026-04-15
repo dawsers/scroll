@@ -1206,14 +1206,31 @@ void container_floating_move_to(struct sway_container *con,
 		}
 		if (layout_overview_workspaces_enabled()) {
 			struct sway_seat *seat = input_manager_current_seat();
-			struct sway_node *next = seat_get_focus_inactive(seat, &new_workspace->node);
-			if (next == NULL) {
-				next = &new_workspace->node;
-			}
-			seat_set_focus(seat, next);
+			seat_set_focus_workspace(seat, new_workspace);
+			seat_set_focus_container(seat, con);
 		}
 		workspace_detect_urgent(old_workspace);
 		workspace_detect_urgent(new_workspace);
+	} else {
+		// Always keep some part of the floating window inside the workspace
+		struct sway_output *output = new_workspace->output;
+		const double MARGIN = MIN(output->width * 0.025, output->height * 0.025);
+		const double dxmax = con->pending.x - (output->lx + output->width - MARGIN);
+		const double dymax = con->pending.y - (output->ly + output->height - MARGIN);
+		const double dxmin = con->pending.x + con->pending.width - (output->lx + MARGIN);
+		const double dymin = con->pending.y + con->pending.height - (output->ly + MARGIN);
+		if (dxmax > 0.0) {
+			con->pending.x -= dxmax;
+		}
+		if (dymax > 0.0) {
+			con->pending.y -= dymax;
+		}
+		if (dxmin < 0.0) {
+			con->pending.x -= dxmin;
+		}
+		if (dymin < 0.0) {
+			con->pending.y -= dymin;
+		}
 	}
 }
 
