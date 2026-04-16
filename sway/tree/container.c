@@ -1127,22 +1127,41 @@ struct sway_output *container_floating_find_output(struct sway_container *con) {
 	return closest_output;
 }
 
+/*
+ * Find the workspace containing the center of the floating container.
+ *
+ * Use this function **only** for cases where the layout is in overview
+ * workspaces and/or the workspace is a split workspace,
+ */
 static struct sway_workspace *container_floating_find_workspace(struct sway_output *output,
 		struct sway_container *con) {
 	double center_x = con->pending.x + con->pending.width / 2;
 	double center_y = con->pending.y + con->pending.height / 2;
-	layout_overview_workspaces_global_to_local(con->pending.workspace, &center_x, &center_y);
+	if (layout_overview_workspaces_enabled()) {
+		layout_overview_workspaces_global_to_local(con->pending.workspace, &center_x, &center_y);
+	}
 	struct sway_workspace *closest_workspace = NULL;
 	double closest_distance = DBL_MAX;
 	double closest_x, closest_y;
 	for (int j = 0; j < output->workspaces->length; ++j) {
 		struct sway_workspace *workspace = output->workspaces->items[j];
-		struct wlr_box workspace_box = {
-			.x = output->lx + workspace->jump.x,
-			.y = output->ly + workspace->jump.y,
-			.width = workspace->jump.width,
-			.height = workspace->jump.height
-		};
+		struct wlr_box workspace_box;
+		if (layout_overview_workspaces_enabled()) {
+			workspace_box = (struct wlr_box) {
+				.x = output->lx + workspace->jump.x,
+				.y = output->ly + workspace->jump.y,
+				.width = workspace->jump.width,
+				.height = workspace->jump.height
+			};
+			if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+				workspace_box.x += (workspace->split.output_area.x - output->lx) * workspace->jump.width / output->width;
+				workspace_box.y += (workspace->split.output_area.y - output->ly) * workspace->jump.height / output->height;
+				workspace_box.width = workspace->jump.width * workspace->split.output_area.width / output->width;
+				workspace_box.height = workspace->jump.height * workspace->split.output_area.height / output->height;
+			}
+		} else {
+			workspace_box = workspace->split.output_area;
+		}
 		wlr_box_closest_point(&workspace_box, center_x, center_y,
 			&closest_x, &closest_y);
 		double x_dist = closest_x - center_x;
@@ -1172,7 +1191,9 @@ void container_floating_move_to(struct sway_container *con,
 		return;
 	}
 	struct sway_workspace *new_workspace;
-	if (layout_overview_workspaces_enabled()) {
+	if (layout_overview_workspaces_enabled() ||
+		(old_workspace->split.split != WORKSPACE_SPLIT_NONE &&
+		 old_workspace->output == new_output)) {
 		new_workspace = container_floating_find_workspace(new_output, con);
 		if (!sway_assert(new_workspace, "Unable to find any workspace")) {
 			return;
@@ -1204,7 +1225,11 @@ void container_floating_move_to(struct sway_container *con,
 			output_get_box(new_workspace->output, &output_box);
 			con->transform = output_box;
 		}
-		if (layout_overview_workspaces_enabled()) {
+		if (layout_overview_workspaces_enabled() ||
+			new_workspace->split.split != WORKSPACE_SPLIT_NONE) {
+			// Add the new workspace to the focus stack because for
+			// splits and overview workspaces it is not done automatically,
+			// as there is no change of output
 			struct sway_seat *seat = input_manager_current_seat();
 			seat_set_focus_workspace(seat, new_workspace);
 			seat_set_focus_container(seat, con);
