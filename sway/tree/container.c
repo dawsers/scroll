@@ -999,6 +999,11 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		}
 	} else {
 		// Returning to tiled
+		if (container->view) {
+			// Store the current size in case the container returns to floating mode
+			container->view->natural_width = container->pending.width;
+			container->view->natural_height = container->pending.height;
+		}
 		if (layout_overview_workspaces_enabled()) {
 			container->scene_tree->node.info.workspace = NULL;
 		}
