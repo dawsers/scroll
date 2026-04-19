@@ -1241,7 +1241,7 @@ void container_floating_move_to(struct sway_container *con,
 		}
 		workspace_detect_urgent(old_workspace);
 		workspace_detect_urgent(new_workspace);
-	} else {
+	} else if (!root->jumping) {
 		// Always keep some part of the floating window inside the workspace
 		struct sway_output *output = new_workspace->output;
 		const double MARGIN = MIN(output->width * 0.025, output->height * 0.025);

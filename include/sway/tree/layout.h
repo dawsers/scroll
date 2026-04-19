@@ -67,6 +67,21 @@ enum sway_toggle_size {
 	TOGGLE_SIZE_ALL
 };
 
+enum sway_layout_filter_apply {
+	LAYOUT_FILTER_APPLY_ACTIVE,
+	LAYOUT_FILTER_APPLY_ALL,
+	LAYOUT_FILTER_APPLY_ACTIVE_ONLY
+};
+
+enum sway_layout_filter {
+	LAYOUT_FILTER_ALL,
+	LAYOUT_FILTER_TILING,
+	LAYOUT_FILTER_FLOATING,
+	LAYOUT_FILTER_CONTAINER,
+	LAYOUT_FILTER_TRAILMARK,
+	LAYOUT_FILTER_VISIBLE,
+};
+
 struct sway_scroller {
 	enum sway_container_layout type;
 
@@ -159,10 +174,14 @@ bool layout_move_container(struct sway_container *container, enum sway_layout_di
 void layout_jump();
 void layout_jump_workspaces();
 void layout_jump_container(struct sway_container *container);
-void layout_jump_floating();
+void layout_jump_tiling(bool all);
+void layout_jump_floating(bool all);
 void layout_jump_scratchpad(struct sway_workspace *workspace);
-void layout_jump_trailmark(struct sway_workspace *workspace);
-void layout_jump_all();
+void layout_jump_trailmark(bool all);
+void layout_jump_all(bool all);
+
+void layout_filter_reset();
+void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply apply);
 
 // Gestures
 // Begin scrolling swipe gesture. Return true if scrolling, false if there are

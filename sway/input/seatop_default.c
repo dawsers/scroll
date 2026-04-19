@@ -51,7 +51,7 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 	}
 	double scale = layout_scale_enabled(cont->pending.workspace) ? layout_scale_get(cont->pending.workspace) : 1.0;
 	double x, y;
-	if (container_is_floating(cont)) {
+	if (container_is_floating(cont) && cont->pending.workspace && cont->pending.workspace->output) {
 		struct sway_output *output = cont->pending.workspace->output;
 		const double minx = output->lx + 0.5 * (1.0 - scale) * output->width;
 		x = minx + scale * (cont->pending.x - output->lx);

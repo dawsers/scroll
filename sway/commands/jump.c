@@ -71,6 +71,9 @@ struct cmd_results *cmd_jump_labels_keys(int argc, char **argv) {
  *  jump
  */
 struct cmd_results *cmd_jump(int argc, char **argv) {
+	const char expected_syntax[] =
+		"Expected 'jump [workspaces|all|tiling|floating|container|trailmark] [active|all]'";
+
 	if (root->fullscreen_global) {
 		return cmd_results_new(CMD_INVALID,
 				"Can't run this command while in global fullscreen mode.");
@@ -81,6 +84,18 @@ struct cmd_results *cmd_jump(int argc, char **argv) {
 	}
 
 	if (argc > 0) {
+		bool all = false;
+		if (argc == 2) {
+			if (strcasecmp(argv[1], "active") == 0) {
+				all = false;
+			} else if (strcasecmp(argv[1], "all") == 0) {
+				all = true;
+			} else {
+				return cmd_results_new(CMD_INVALID, "Invalid argument %s for command 'jump'.", argv[1]);
+			}
+		} else if (argc > 2){
+			goto fail;
+		}
 		if(strcasecmp(argv[0], "workspaces") == 0) {
 			layout_jump_workspaces();
 		} else if (strcasecmp(argv[0], "container") == 0) {
@@ -90,11 +105,13 @@ struct cmd_results *cmd_jump(int argc, char **argv) {
 			}
 			layout_jump_container(con);
 		} else if(strcasecmp(argv[0], "all") == 0) {
-			layout_jump_all();
+			layout_jump_all(all);
 		} else if(strcasecmp(argv[0], "floating") == 0) {
-			layout_jump_floating();
+			layout_jump_floating(all);
 		} else if(strcasecmp(argv[0], "tiling") == 0) {
-			layout_jump();
+			layout_jump_tiling(all);
+		} else if(strcasecmp(argv[0], "trailmark") == 0) {
+			layout_jump_trailmark(all);
 		} else {
 			return cmd_results_new(CMD_INVALID, "Invalid argument %s for command 'jump'.", argv[0]);
 		}
@@ -103,4 +120,61 @@ struct cmd_results *cmd_jump(int argc, char **argv) {
 	}
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
+
+fail:
+	return cmd_results_new(CMD_INVALID, "%s", expected_syntax);
+}
+
+struct cmd_results *cmd_filter(int argc, char **argv) {
+	const char expected_syntax[] =
+		"Expected 'filter <active|all|active_only|reset> <tiling|floating|container|trailmark|visible>'";
+
+	if (root->fullscreen_global) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't run this command while in global fullscreen mode.");
+	}
+	if (!root->outputs->length) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't run this command while there are no outputs connected.");
+	}
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "filter", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+
+	enum sway_layout_filter_apply apply;
+	if (strcasecmp(argv[0], "active") == 0) {
+		apply = LAYOUT_FILTER_APPLY_ACTIVE;
+	} else if (strcasecmp(argv[0], "all") == 0) {
+		apply = LAYOUT_FILTER_APPLY_ALL;
+	} else if (strcasecmp(argv[0], "active_only") == 0) {
+		apply = LAYOUT_FILTER_APPLY_ACTIVE_ONLY;
+	} else if (strcasecmp(argv[0], "reset") == 0 && argc == 1) {
+		layout_filter_reset();
+	} else {
+		goto fail;
+	}
+
+	if (argc < 2) {
+		goto fail;
+	}
+
+	if(strcasecmp(argv[1], "tiling") == 0) {
+		layout_filter(LAYOUT_FILTER_TILING, apply);
+	} else if(strcasecmp(argv[1], "floating") == 0) {
+		layout_filter(LAYOUT_FILTER_FLOATING, apply);
+	} else if (strcasecmp(argv[1], "container") == 0) {
+		layout_filter(LAYOUT_FILTER_CONTAINER, apply);
+	} else if(strcasecmp(argv[1], "trailmark") == 0) {
+		layout_filter(LAYOUT_FILTER_TRAILMARK, apply);
+	} else if(strcasecmp(argv[1], "visible") == 0) {
+		layout_filter(LAYOUT_FILTER_VISIBLE, apply);
+	} else {
+		goto fail;
+	}
+
+	return cmd_results_new(CMD_SUCCESS, NULL);
+
+fail:
+	return cmd_results_new(CMD_INVALID, "%s", expected_syntax);
 }

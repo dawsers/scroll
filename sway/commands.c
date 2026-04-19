@@ -155,6 +155,7 @@ static const struct cmd_handler command_handlers[] = {
 	{ "cycle_size", cmd_cycle_size },
 	{ "decoration", cmd_decoration },
 	{ "exit", cmd_exit },
+	{ "filter", cmd_filter },
 	{ "fit_size", cmd_fit_size },
 	{ "floating", cmd_floating },
 	{ "fullscreen", cmd_fullscreen },
