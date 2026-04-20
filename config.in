@@ -278,18 +278,47 @@ bindsym $mod+Shift+backslash mode "wssplit"
     # jump_labels_scale 0.9
     # jump_labels_keys asdf
 mode "jump" {
-    bindsym  slash jump; mode default
+    bindsym  slash jump tiling; mode default
+    bindsym  Shift+slash jump tiling all; mode default
     bindsym  c jump container; mode default
     bindsym  w jump workspaces; mode default
     bindsym  f jump floating; mode default
+    bindsym  Shift+f jump floating all; mode default
     bindsym  a jump all; mode default
+    bindsym  Shift+a jump all all; mode default
     bindsym  s scratchpad jump; mode default
-    bindsym  t trailmark jump; mode default
+    bindsym  t jump trailmark; mode default
+    bindsym  Shift+t jump trailmark all; mode default
+    bindsym  v jump; mode default
+    bindsym  r jump criteria [app_id="firefox"]; mode default
 
     # Return to default mode
     bindsym Escape mode "default"
 }
 bindsym  $mod+slash mode "jump"
+
+mode "filter" {
+    bindsym  slash filter active tiling; mode default
+    bindsym  Shift+slash filter all tiling; mode default
+    bindsym  Ctrl+slash filter active_only tiling; mode default
+    bindsym  c filter active container; mode default
+    bindsym  Shift+c filter all container; mode default
+    bindsym  Ctrl+c filter active_only container; mode default
+    bindsym  f filter active floating; mode default
+    bindsym  Shift+f filter all floating; mode default
+    bindsym  Ctrl+f filter active_only floating; mode default
+    bindsym  t filter active trailmark; mode default
+    bindsym  shift+t filter all trailmark; mode default
+    bindsym  Ctrl+t filter active_only trailmark; mode default
+    bindsym  v filter active visible; mode default
+    bindsym  Shift+v filter all visible; mode default
+    bindsym  Ctrl+v filter active_only visible; mode default
+    bindsym  r filter reset; mode default
+
+    # Return to default mode
+    bindsym Escape mode "default"
+}
+bindsym  $mod+Shift+slash mode "filter"
 
     # Content
     bindsym $mod+comma scale_content incr -0.05

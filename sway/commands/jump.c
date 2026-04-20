@@ -4,6 +4,7 @@
 #include <strings.h>
 #include "sway/commands.h"
 #include "sway/tree/workspace.h"
+#include "sway/criteria.h"
 #include "util.h"
 
 struct cmd_results *cmd_jump_labels_color(int argc, char **argv) {
@@ -72,7 +73,7 @@ struct cmd_results *cmd_jump_labels_keys(int argc, char **argv) {
  */
 struct cmd_results *cmd_jump(int argc, char **argv) {
 	const char expected_syntax[] =
-		"Expected 'jump [workspaces|all|tiling|floating|container|trailmark] [active|all]'";
+		"Expected 'jump [workspaces|all|tiling|floating|container|trailmark|criteria <criteria>] [active|all]'";
 
 	if (root->fullscreen_global) {
 		return cmd_results_new(CMD_INVALID,
@@ -84,6 +85,22 @@ struct cmd_results *cmd_jump(int argc, char **argv) {
 	}
 
 	if (argc > 0) {
+		if (strcasecmp(argv[0], "criteria") == 0) {
+			if (argc == 2) {
+				char *err_str = NULL;
+				struct criteria *criteria = criteria_parse(argv[1], &err_str);
+				if (!criteria) {
+					struct cmd_results *error = cmd_results_new(CMD_INVALID, "%s", err_str);
+					free(err_str);
+					return error;
+				}
+				layout_jump_criteria(criteria);
+				return cmd_results_new(CMD_SUCCESS, NULL);
+			} else {
+				return cmd_results_new(CMD_INVALID, "Invalid arguments for command 'jump criteria <criteria>'.");
+			}
+		}
+
 		bool all = false;
 		if (argc == 2) {
 			if (strcasecmp(argv[1], "active") == 0) {

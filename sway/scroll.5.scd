@@ -393,6 +393,22 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 *exit*
 	Exit scroll and end your Wayland session.
 
+*filter* <active|all|active_only|reset> <tiling|floating|container|trailmark|visible>
+	Filters the content that will be shown by the compositor.
+
+	_reset_ resets the current filter and shows everything again
+	_active_ shows only the filtered windows on the active workspace of each
+	monitor, leaving the rest empty if in workspaces overview mode.
+	_all_ applies the filter to all the workspaces of each monitor.
+	_active_only_ applies the filter only to the active workspace of each
+	monitor, rendering the rest normally.
+
+	_tiling_ filters all the tiling containers.
+	_floating_ filters only the floating containers.
+	_container_ filters the active container of each workspace.
+	_trilmark_ filters all the windows that are trailmarked in the current trail.
+	_visible_ shows only those windows that are completely visible.
+
 *fit_size* <h|v> <active|visible|all|toend|tobeg> <proportional|equal>
 	Allows re-fitting the columns (horizontal mode) or windows (vertical mode)
 	you want to the screen extents. It accepts an argument related to the
@@ -480,15 +496,21 @@ set|plus|minus|toggle <amount>
 	This can also be used with criteria to set an idle inhibitor for any
 	existing window or with _for_window_ to set idle inhibitors for future windows.
 
-*jump* [container|workspaces|floating|tiling|all]
-	*jump* with no arguments starts an overview mode where all the tiling
-	windows of the visible workspaces fit in their monitors. Each window will have
-	an overlay with the combination of keys that will change focus to each of them
-	and exit jump mode. Pressing any other combination of keys exits jump mode
-	with no change of focus. Clicking on an item will also select it. There are
-	several options to modify the look and content of the labels.
+*jump* [container|workspaces|floating|tiling|trailmark|all|criteria <criteria>] [active|all]
+	*jump* starts an overview mode where some set of windows fit in their
+	monitors. Each window will have	an overlay with the combination of keys
+	that will change focus to each of them and exit jump mode. Pressing any
+	other combination of keys exits jump mode with no change of focus.
+	Clicking on an item will also select it. There are several options to
+	modify the look and content of the labels.
 
-	Using _tiling_ does the same as using no arguments.
+	_active_ (default, if this argument is not specified) will only show labels
+	for the active workspace of each monitor, while _all_ will start a
+	*scale_workspaces* overview mode, and show labels for every workspace.
+
+	No arguments selects all the completely visible windows.
+
+	Using _tiling_ selects only the tiling windows.
 
 	The argument _workspaces_, instead creates an overview of the workspaces
 	available on each monitor for a quick preview and navigation to any workspace.
@@ -505,6 +527,16 @@ set|plus|minus|toggle <amount>
 	_all_ starts a jump mode where each output shows every window -tiled or
 	floating- of every workspace assigned to that output. You can use it to
 	quickly jump to any open window on any workspace.
+
+	_trailmark_ shows all the trailmarked windows of the active trail. See
+	*trail* and *trailmark*.
+
+	_criteria_ accepts a _<criteria>_ argument to select which windows it will
+	show. For example, to only see all the Firefox windows, use:
+
+```
+	jump criteria [app_id="firefox"]
+```
 
 *layout_transpose*
 	Allows you to change from one type of layout to the other at runtime. For

@@ -28,7 +28,7 @@ supports some added features:
   workspaces on each monitor, both are completely interactive. Jump allows you
   to move to any window with just some key presses, like easymotion in some
   editors. There is also a jump mode to preview and switch to any available
-  workspace.
+  workspace. Jump also accepts window rules (criteria).
 
 * Workspace scaling: Apart from overview, you can scale the workspace to any
   scale, and continue working.
@@ -937,8 +937,8 @@ Example configuration:
 
 ### Jump
 
-`jump` provides a shortcut-based quick focus mode for any tiled window on
-the active workspaces, similar to [vim-easymotion](https://github.com/easymotion/vim-easymotion)
+Jump provides a shortcut-based quick focus mode for any window on
+any workspace, similar to [vim-easymotion](https://github.com/easymotion/vim-easymotion)
 and variations.
 
 It shows all the windows on your monitors' active workspaces in overview, and
@@ -950,9 +950,17 @@ Depending on the total number of windows and keys you set on your list, you
 will have to press more or less keys. Each window has its full trigger combination
 on the overlaid label.
 
-You can call `jump` from any mode: overview or normal mode.
+You can call `jump` from any mode: overview, `scale_workspaces` or normal mode.
 
-There are also other special `jump` modes:
+`jump` accepts an optional argument: `active` or `all`. `active` only shows
+the labels for the active workspace of each monitor, while `all` starts a
+`scale_workspaces` overview mode and shows labels for every workspace.
+
+There are many special `jump` modes:
+
+`jump` will show labels on every completely visible window.
+
+`jump tiling` will show labels on every tiled window of each workspace.
 
 `jump workspaces` will show you a preview of all the available workspaces on
 their respective monitor. You can use this mode to preview and quickly jump
@@ -972,15 +980,27 @@ you also see the content of the windows.
 assigned to that monitor, allowing you to quickly focus any window open on any
 workspace.
 
+`jump trailmark` will show you an overview of all the windows for the current
+trail.
+
+`jump criteria <criteria>` shows labels on windows that fulfill `<criteria>`.
+For example, you can filter windows of certain applications or with some title.
+
 ``` config
 mode "jump" {
-    bindsym  slash jump; mode default
+    bindsym  slash jump tiling; mode default
+    bindsym  Shift+slash jump tiling all; mode default
     bindsym  c jump container; mode default
     bindsym  w jump workspaces; mode default
     bindsym  f jump floating; mode default
+    bindsym  Shift+f jump floating all; mode default
     bindsym  a jump all; mode default
+    bindsym  Shift+a jump all all; mode default
     bindsym  s scratchpad jump; mode default
-    bindsym  t trailmark jump; mode default
+    bindsym  t jump trailmark; mode default
+    bindsym  Shift+t jump trailmark all; mode default
+    bindsym  v jump; mode default
+    bindsym  r jump criteria [app_id="firefox"]; mode default
 
     # Return to default mode
     bindsym Escape mode "default"
@@ -991,7 +1011,12 @@ bindsym  $mod+slash mode "jump"
 You can also click on the item (container, workspace etc.) to exit jump mode
 and focus on that element.
 
-There are also special jump modes for the scratchpad and trailmarks.
+There is also a special jump mode for the scratchpad windows.
+
+### Filters
+
+The `filter` command lets you filter certain windows, removing the rest from
+sight. See `man 5 scroll` for details.
 
 ### Scratchpad
 

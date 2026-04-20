@@ -97,4 +97,10 @@ list_t *criteria_get_containers(struct criteria *criteria);
  */
 struct criteria *criteria_duplicate(struct criteria *criteria);
 
+bool criteria_matches_container(struct criteria *criteria,
+		struct sway_container *container);
+
+bool criteria_matches_view(struct criteria *criteria,
+		struct sway_view *view);
+
 #endif

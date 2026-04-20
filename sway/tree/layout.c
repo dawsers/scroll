@@ -14,6 +14,7 @@
 #include "sway/ipc-server.h"
 #include <libevdev/libevdev.h>
 #include "sway/desktop/animation.h"
+#include "sway/criteria.h"
 
 struct sway_trails {
 	list_t *trails;
@@ -1509,6 +1510,15 @@ static bool filter_container_active_visible(struct sway_workspace *workspace,
 	return true;
 }
 
+static bool filter_container_criteria(struct sway_workspace *workspace,
+		struct sway_container *container, void *data) {
+	if (container->view) {
+		struct criteria *criteria = data;
+		return criteria_matches_view(criteria, container->view);
+	}
+	return true;
+}
+
 void layout_filter_reset() {
 	root_set_default_filters(root);
 	node_set_dirty(&root->node);
@@ -1795,6 +1805,7 @@ static void organize_windows(struct sway_workspace *workspace, list_t *children)
 struct jump_workspace_data {
 	struct sway_workspace *workspace;
 	enum sway_layout_overview overview;
+	struct criteria *criteria;
 	list_t *tiling;
 	list_t *floating;
 };
@@ -1808,6 +1819,7 @@ struct jump_data {
 	struct sway_container *old_focused;
 	struct sway_container *new_focused;
 	bool focus;
+	struct criteria *criteria;
 	void (*keyboard_key_end)(void *data);
 	void (*jump_overview_prepare)(struct jump_data *data);
 	void (*jump_overview_restore)(struct jump_data *data);
@@ -1922,6 +1934,7 @@ static void jump_begin_common_cb(struct jump_data *jump_data) {
 			struct jump_workspace_data *workspace_data = calloc(1, sizeof(struct jump_workspace_data));
 			workspace_data->workspace = workspace;
 			workspace_data->overview = mode;
+			workspace_data->criteria = jump_data->criteria;
 			if (jump_data->jump_workspace_prepare) {
 				jump_data->jump_workspace_prepare(workspace_data);
 			}
@@ -2035,6 +2048,9 @@ static void jump_handle_keyboard_key_end(void *data) {
 	node_set_dirty(&root->node);
 	root->jumping = false;
 
+	if (jump_data->criteria) {
+		criteria_destroy(jump_data->criteria);
+	}
 	free(jump_data);
 	execute_lua_jump_end_callbacks(focused);
 	animation_set_type(ANIMATION_JUMP);
@@ -2096,6 +2112,7 @@ static bool jump_handle_button(struct sway_seat *seat, uint32_t time_msec,
 }
 
 static void jump(bool overview_workspaces, enum sway_layout_filter filter,
+		struct criteria *criteria,
 		struct sway_workspace *focused_workspace,
 		void (*jump_overview_prepare)(struct jump_data *data),
 		void (*jump_overview_restore)(struct jump_data *data),
@@ -2112,6 +2129,7 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 	}
 	jump_data->keyboard_key_end = jump_handle_keyboard_key_end;
 	jump_data->focused_workspace = focused_workspace;
+	jump_data->criteria = criteria;
 	jump_data->jump_overview_prepare = jump_overview_prepare;
 	jump_data->jump_overview_restore = jump_overview_restore;
 	jump_data->jump_root_prepare = jump_root_prepare;
@@ -2129,13 +2147,21 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 
 	// Save current filter
 	jump_data->root_filters = root->filters;
-	layout_filter(filter, overview_workspaces ? LAYOUT_FILTER_APPLY_ALL : LAYOUT_FILTER_APPLY_ACTIVE);
+	if (criteria) {
+		root->filters.container_filter = filter_container_criteria;
+		root->filters.container_filter_data = criteria;
+	} else {
+		layout_filter(filter, overview_workspaces ? LAYOUT_FILTER_APPLY_ALL : LAYOUT_FILTER_APPLY_ACTIVE);
+	}
 	jump_for_each_view(jump_add_windows, jump_data);
 
 	if (jump_data->nwindows == 0) {
 		layout_overview_workspaces(jump_data->overview_workspaces);
 		if (jump_data->jump_root_restore) {
 			jump_data->jump_root_restore(jump_data);
+		}
+		if (jump_data->criteria) {
+			criteria_destroy(jump_data->criteria);
 		}
 		root->filters = jump_data->root_filters;
 		node_set_dirty(&root->node);
@@ -2158,22 +2184,22 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 
 void layout_jump() {
 	bool all = layout_overview_workspaces_enabled();
-	jump(all, LAYOUT_FILTER_VISIBLE, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	jump(all, LAYOUT_FILTER_VISIBLE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 // Different `jump` implementations
 void layout_jump_tiling(bool all) {
-	jump(all, LAYOUT_FILTER_TILING, NULL, jump_overview_prepare_tiling_cb,
+	jump(all, LAYOUT_FILTER_TILING, NULL, NULL, jump_overview_prepare_tiling_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
 void layout_jump_floating(bool all) {
-	jump(all, LAYOUT_FILTER_FLOATING, NULL, jump_overview_prepare_floating_cb,
+	jump(all, LAYOUT_FILTER_FLOATING, NULL, NULL, jump_overview_prepare_floating_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
 void layout_jump_container(struct sway_container *container) {
-	jump(false, LAYOUT_FILTER_CONTAINER, NULL, jump_overview_prepare_tiling_cb,
+	jump(false, LAYOUT_FILTER_CONTAINER, NULL, NULL, jump_overview_prepare_tiling_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
@@ -2211,7 +2237,7 @@ static void jump_workspace_prepare_trailmark_cb(struct jump_workspace_data *work
 	workspace->tiling = create_list();
 }
 
-static void jump_workspace_restore_trailmark_cb(struct jump_workspace_data *workspace_data) {
+static void jump_workspace_restore_state_cb(struct jump_workspace_data *workspace_data) {
 	struct sway_workspace *workspace = workspace_data->workspace;
 	list_free(workspace->tiling);
 	list_free(workspace->floating);
@@ -2224,9 +2250,52 @@ static void jump_workspace_restore_trailmark_cb(struct jump_workspace_data *work
 }
 
 void layout_jump_trailmark(bool all) {
-	jump(all, LAYOUT_FILTER_TRAILMARK, NULL, jump_overview_prepare_floating_cb,
+	jump(all, LAYOUT_FILTER_TRAILMARK, NULL, NULL, jump_overview_prepare_floating_cb,
 		jump_overview_restore_cb, NULL, NULL, jump_workspace_prepare_trailmark_cb,
-		jump_workspace_restore_trailmark_cb);
+		jump_workspace_restore_state_cb);
+}
+
+struct criteria_cb_data {
+	list_t *windows;
+	struct criteria *criteria;
+};
+
+static void jump_criteria_for_each_container(struct sway_container *container, void *data) {
+	struct criteria_cb_data *cb_data = data;
+	if (container->view && criteria_matches_view(cb_data->criteria, container->view)) {
+		list_add(cb_data->windows, container);
+	}
+}
+
+static void jump_workspace_prepare_criteria_cb(struct jump_workspace_data *workspace_data) {
+	struct sway_workspace *workspace = workspace_data->workspace;
+	list_t *criteria_windows = create_list();
+	struct criteria_cb_data cb_data = {
+		.windows = criteria_windows,
+		.criteria = workspace_data->criteria,
+	};
+	workspace_for_each_container(workspace, jump_criteria_for_each_container, &cb_data);
+	workspace_data->floating = workspace->floating;
+	workspace_data->tiling = workspace->tiling;
+	if (layout_overview_workspaces_enabled()) {
+		for (int i = 0; i < workspace->tiling->length; ++i) {
+			struct sway_container *container = workspace->tiling->items[i];
+			container_for_each_child(container, jump_for_each_container_set_workspace_info, workspace);
+		}
+	}
+	// Disable all the floating windows in the scene graph
+	for (int i = 0; i < workspace->floating->length; ++i) {
+		struct sway_container *container = workspace->floating->items[i];
+		wlr_scene_node_set_enabled(&container->scene_tree->node, false);
+	}
+	workspace->floating = criteria_windows;
+	workspace->tiling = create_list();
+}
+
+void layout_jump_criteria(struct criteria *criteria) {
+	jump(true, LAYOUT_FILTER_ALL, criteria, NULL, jump_overview_prepare_floating_cb,
+		 jump_overview_restore_cb, NULL, NULL, jump_workspace_prepare_criteria_cb,
+		 jump_workspace_restore_state_cb);
 }
 
 static void jump_all_for_each_container(struct sway_container *container, void *data) {
@@ -2251,22 +2320,10 @@ static void jump_workspace_prepare_all_cb(struct jump_workspace_data *workspace_
 	workspace->tiling = create_list();
 }
 
-static void jump_workspace_restore_all_cb(struct jump_workspace_data *workspace_data) {
-	struct sway_workspace *workspace = workspace_data->workspace;
-	list_free(workspace->tiling);
-	list_free(workspace->floating);
-	workspace->tiling = workspace_data->tiling;
-	for (int i = 0; i < workspace->tiling->length; ++i) {
-		struct sway_container *container = workspace->tiling->items[i];
-		container_for_each_child(container, jump_for_each_container_set_workspace_info, NULL);
-	}
-	workspace->floating = workspace_data->floating;
-}
-
 void layout_jump_all(bool all) {
-	jump(all, LAYOUT_FILTER_ALL, NULL, jump_overview_prepare_floating_cb,
+	jump(all, LAYOUT_FILTER_ALL, NULL, NULL, jump_overview_prepare_floating_cb,
 		 jump_overview_restore_cb, NULL, NULL, jump_workspace_prepare_all_cb,
-		 jump_workspace_restore_all_cb);
+		 jump_workspace_restore_state_cb);
 }
 
 static void jump_root_prepare_scratchpad_cb(struct jump_data *jump_data) {
@@ -2312,7 +2369,7 @@ static void jump_root_restore_scratchpad_cb(struct jump_data *jump_data) {
 }
 
 void layout_jump_scratchpad(struct sway_workspace *workspace) {
-	jump(false, LAYOUT_FILTER_FLOATING, workspace, jump_overview_prepare_floating_cb,
+	jump(false, LAYOUT_FILTER_FLOATING, NULL, workspace, jump_overview_prepare_floating_cb,
 		jump_overview_restore_cb, jump_root_prepare_scratchpad_cb,
 		jump_root_restore_scratchpad_cb, NULL, NULL);
 }

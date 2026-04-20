@@ -278,13 +278,19 @@ workspace.
 
 ``` config
 mode "jump" {
-    bindsym  slash jump; mode default
+    bindsym  slash jump tiling; mode default
+    bindsym  Shift+slash jump tiling all; mode default
     bindsym  c jump container; mode default
     bindsym  w jump workspaces; mode default
     bindsym  f jump floating; mode default
+    bindsym  Shift+f jump floating all; mode default
     bindsym  a jump all; mode default
+    bindsym  Shift+a jump all all; mode default
     bindsym  s scratchpad jump; mode default
-    bindsym  t trailmark jump; mode default
+    bindsym  t jump trailmark; mode default
+    bindsym  Shift+t jump trailmark all; mode default
+    bindsym  v jump; mode default
+    bindsym  r jump criteria [app_id="firefox"]; mode default
 
     # Return to default mode
     bindsym Escape mode "default"
@@ -292,8 +298,9 @@ mode "jump" {
 bindsym  $mod+slash mode "jump"
 ```
 
-2. Pressing your `mod` key and `/` followed by `/` will show an overview of your windows on
-   each monitor.
+2. Pressing your `mod` key and `/` followed by `/` will show an overview of your tiling
+   windows for the active workspace on each monitor. You can also see all the
+   windows for all the workspaces pressing `mod`, `/`, followed by `Shift+/`.
 3. Now press the numbers shown on the overlay for the window you want to change
    focus to, or click on it.
 4. `jump` will exit, and the focus will be on the window you selected.
@@ -309,6 +316,8 @@ column instead.
 If you use floating windows, `mod+/` followed by `f` will show you an overview of
 all your floating windows without overlaps, so you can select one even if it
 was hidden behind.
+
+Try all the other bindings in the example above.
 
 [Jump](https://github.com/user-attachments/assets/33bec595-148f-4449-bcd6-e1cc9e5b9a1a)
 

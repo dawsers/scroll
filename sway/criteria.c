@@ -179,7 +179,7 @@ static bool has_container_criteria(struct criteria *criteria) {
 	return criteria->con_mark || criteria->con_id;
 }
 
-static bool criteria_matches_container(struct criteria *criteria,
+bool criteria_matches_container(struct criteria *criteria,
 		struct sway_container *container) {
 	if (criteria->con_mark) {
 		bool exists = false;
@@ -204,7 +204,7 @@ static bool criteria_matches_container(struct criteria *criteria,
 	return true;
 }
 
-static bool criteria_matches_view(struct criteria *criteria,
+bool criteria_matches_view(struct criteria *criteria,
 		struct sway_view *view) {
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_container *focus = seat_get_focused_container(seat);

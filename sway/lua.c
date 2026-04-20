@@ -264,6 +264,7 @@ static int scroll_command(lua_State *L) {
 		}
 		lua_rawseti(L, -2, i + 1);
 	}
+	list_free_items_and_destroy(results);
 	free(cmd);
 
 	// Lua callback: "command_end" only applies to commands executed from Lua scripts

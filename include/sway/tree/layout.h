@@ -179,6 +179,8 @@ void layout_jump_floating(bool all);
 void layout_jump_scratchpad(struct sway_workspace *workspace);
 void layout_jump_trailmark(bool all);
 void layout_jump_all(bool all);
+struct criteria;
+void layout_jump_criteria(struct criteria *critera);
 
 void layout_filter_reset();
 void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply apply);
