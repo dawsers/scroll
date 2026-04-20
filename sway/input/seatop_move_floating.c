@@ -6,7 +6,8 @@
 
 struct seatop_move_floating_event {
 	struct sway_container *con;
-	double dx, dy; // cursor offset in container
+	double x, y;	// original container position
+	double cx, cy;	// original cursor position
 };
 
 static void finalize_move(struct sway_seat *seat) {
@@ -40,10 +41,17 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	struct wlr_cursor *cursor = seat->cursor->cursor;
 	double cx = cursor->x;
 	double cy = cursor->y;
-	if (layout_overview_workspaces_enabled() && e->con->pending.workspace) {
-		layout_overview_workspaces_local_to_global(e->con->pending.workspace, &cx, &cy);
+	double scale = 1.0;
+	struct sway_workspace *workspace = e->con->pending.workspace;
+	if (workspace) {
+		if (layout_overview_workspaces_enabled()) {
+			layout_overview_workspaces_local_to_global(workspace, &cx, &cy);
+		}
+		if (layout_scale_enabled(workspace)) {
+			scale = layout_scale_get(workspace);
+		}
 	}
-	container_floating_move_to(e->con, cx - e->dx, cy - e->dy);
+	container_floating_move_to(e->con, e->x + (cx - e->cx) / scale, e->y + (cy - e->cy) / scale);
 	transaction_commit_dirty();
 }
 
@@ -77,8 +85,10 @@ void seatop_begin_move_floating(struct sway_seat *seat,
 		layout_overview_workspaces_local_to_global(con->pending.workspace, &cx, &cy);
 	}
 	e->con = con;
-	e->dx = cx - con->pending.x;
-	e->dy = cy - con->pending.y;
+	e->x = con->pending.x;
+	e->y = con->pending.y;
+	e->cx = cx;
+	e->cy = cy;
 
 	seat->seatop_impl = &seatop_impl;
 	seat->seatop_data = e;
