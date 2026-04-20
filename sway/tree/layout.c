@@ -171,7 +171,7 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps)
 		fw = maxx - minx;
 		fh = maxy - miny;
 	} else {
-		fw = workspace->output->width, fh = workspace->output->height;
+		fw = workspace->width, fh = workspace->height;
 	}
 	double maxw = 0.0, maxh = 0.0;
 	if (mode == OVERVIEW_TILING || mode == OVERVIEW_ALL) {
