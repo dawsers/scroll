@@ -464,7 +464,6 @@ bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer, int wait_sync_fi
 
 	uint64_t timeline_point = vulkan_end_command_buffer(cb, renderer);
 	if (timeline_point == 0) {
-		close(wait_sync_file_fd);
 		return false;
 	}
 
@@ -487,7 +486,6 @@ bool vulkan_submit_stage_wait(struct wlr_vk_renderer *renderer, int wait_sync_fi
 	if (wait_sync_file_fd != -1) {
 		wait_semaphore = vulkan_command_buffer_wait_sync_file(renderer, cb, 0, wait_sync_file_fd);
 		if (wait_semaphore == VK_NULL_HANDLE) {
-			close(wait_sync_file_fd);
 			return false;
 		}
 		submit_info.waitSemaphoreCount = 1;
