@@ -1327,6 +1327,12 @@ static void animate_output(struct sway_output *output) {
 			} else {
 				bool tiling = root->filters.workspace_tiling_filter(child, root->filters.workspace_tiling_filter_data);
 
+				if (child->animation.s0 != child->animation.s1) {
+					double t, x, y, anim_scale;
+					animation_get_values(&t, &x, &y, &anim_scale);
+					child->animation.st = linear_scale(child->animation.s0, child->animation.s1, t);
+					animation_set_animation_enabled(true);
+				}
 				if (tiling) {
 					animate_workspace_tiling(child);
 				}
