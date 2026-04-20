@@ -330,6 +330,7 @@ struct wlr_vk_texture_view *vulkan_texture_get_or_create_view(struct wlr_vk_text
 
 	view->ds_pool = vulkan_alloc_texture_ds(texture->renderer, pipeline_layout->ds, &view->ds);
 	if (!view->ds_pool) {
+		vkDestroyImageView(dev, view->image_view, NULL);
 		free(view);
 		wlr_log(WLR_ERROR, "failed to allocate descriptor");
 		return NULL;
