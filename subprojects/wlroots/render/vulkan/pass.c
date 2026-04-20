@@ -1266,7 +1266,7 @@ static bool create_3d_lut_image(struct wlr_vk_renderer *renderer,
 	res = vkCreateImage(dev, &img_info, NULL, image);
 	if (res != VK_SUCCESS) {
 		wlr_vk_error("vkCreateImage failed", res);
-		return NULL;
+		return false;
 	}
 
 	VkMemoryRequirements mem_reqs = {0};
