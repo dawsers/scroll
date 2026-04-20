@@ -162,8 +162,8 @@ struct wlr_gles2_texture {
 
 	GLenum target;
 
-	// If this texture is imported from a buffer, the texture is does not own
-	// these states. These cannot be destroyed along with the texture in this
+	// If this texture is imported from a buffer, the texture does not own
+	// these states. They cannot be destroyed along with the texture in this
 	// case.
 	GLuint tex;
 	GLuint fbo;
