@@ -242,11 +242,12 @@ void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
 	float alpha = con->alpha;
 
+	const float transparent[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	float top[4], bottom[4], left[4], right[4], title_border[4];
-	memcpy(top, colors->child_border, sizeof(top));
-	memcpy(bottom, colors->child_border, sizeof(bottom));
-	memcpy(left, colors->child_border, sizeof(left));
-	memcpy(right, colors->child_border, sizeof(right));
+	memcpy(top, con->pending.border_top ? colors->child_border : transparent, sizeof(top));
+	memcpy(bottom, con->pending.border_bottom ? colors->child_border : transparent, sizeof(bottom));
+	memcpy(left, con->pending.border_left ? colors->child_border : transparent, sizeof(left));
+	memcpy(right, con->pending.border_right ? colors->child_border : transparent, sizeof(right));
 	memcpy(title_border, colors->border, sizeof(title_border));
 
 	if (!container_is_current_floating(con)) {
@@ -258,18 +259,18 @@ void container_update(struct sway_container *con) {
 			case INSERT_BEFORE:
 			case INSERT_BEGINNING:
 				if (mode == L_HORIZ) {
-					memcpy(left, colors->indicator, sizeof(left));
+					memcpy(left, con->pending.border_left ? colors->indicator : transparent, sizeof(left));
 				} else if (mode == L_VERT) {
-					memcpy(top, colors->indicator, sizeof(top));
+					memcpy(top, con->pending.border_top ? colors->indicator : transparent, sizeof(top));
 					memcpy(title_border, colors->indicator, sizeof(title_border));
 				}
 				break;
 			case INSERT_AFTER:
 			case INSERT_END:
 				if (mode == L_HORIZ) {
-					memcpy(right, colors->indicator, sizeof(right));
+					memcpy(right, con->pending.border_right ? colors->indicator : transparent, sizeof(right));
 				} else if (mode == L_VERT) {
-					memcpy(bottom, colors->indicator, sizeof(bottom));
+					memcpy(bottom, con->pending.border_bottom ? colors->indicator : transparent, sizeof(bottom));
 				}
 				break;
 				break;
@@ -288,8 +289,7 @@ void container_update(struct sway_container *con) {
 			};
 			wlr_scene_decoration_set_dimming(con->decoration.full, con->pending.decoration.dim, color);
 		} else {
-			float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			wlr_scene_decoration_set_dimming(con->decoration.full, false, color);
+			wlr_scene_decoration_set_dimming(con->decoration.full, false, transparent);
 		}
 	}
 

@@ -345,6 +345,53 @@ static bool gaps_to_edge(struct sway_view *view) {
 	return gaps.top > 0 || gaps.right > 0 || gaps.bottom > 0 || gaps.left > 0;
 }
 
+void view_position(struct sway_container *view, bool *left, bool *right,
+		bool *top, bool *bottom) {
+	*left = false; *right = false; *top = false; *bottom = false;
+
+	struct sway_workspace *workspace = view->pending.workspace;
+	if (!workspace) {
+		return;
+	}
+	struct sway_container *parent = view;
+	while (parent->pending.parent != NULL) {
+		parent = parent->pending.parent;
+	}
+	list_t *children = view->pending.parent->pending.children;
+	int pidx = list_find(children, view);
+	if (view->pending.parent->pending.layout == L_HORIZ) {
+		if (pidx == 0) {
+			*left = true;
+		}
+		if (pidx == children->length - 1) {
+			*right = true;
+		}
+	} else if (view->pending.parent->pending.layout == L_VERT) {
+		if (pidx == 0) {
+			*top = true;
+		}
+		if (pidx == children->length - 1) {
+			*bottom = true;
+		}
+	}
+	int widx = list_find(workspace->tiling, parent);
+	if (parent->pending.layout == L_VERT) {
+		if (widx == 0) {
+			*left = true;
+		}
+		if (widx == workspace->tiling->length - 1) {
+			*right = true;
+		}
+	} else if (parent->pending.layout == L_HORIZ) {
+		if (widx == 0) {
+			*top =  true;
+		}
+		if (widx == workspace->tiling->length - 1) {
+			*bottom = true;
+		}
+	}
+}
+
 void view_autoconfigure(struct sway_view *view) {
 	struct sway_container *con = view->container;
 	struct sway_workspace *ws = con->pending.workspace;
@@ -392,18 +439,20 @@ void view_autoconfigure(struct sway_view *view) {
 	double y_offset = 0;
 
 	if (!container_is_floating_or_child(con) && ws) {
+		bool left, right, top, bottom;
+		if (config->hide_edge_borders != E_NONE) {
+			view_position(con, &left, &right, &top, &bottom);
+		}
 		if (config->hide_edge_borders == E_BOTH
 				|| config->hide_edge_borders == E_VERTICAL) {
-			con->pending.border_left = con->pending.x != ws->x;
-			int right_x = con->pending.x + con->pending.width;
-			con->pending.border_right = right_x != ws->x + ws->width;
+			con->pending.border_left = !left;
+			con->pending.border_right = !right;
 		}
 
 		if (config->hide_edge_borders == E_BOTH
 				|| config->hide_edge_borders == E_HORIZONTAL) {
-			con->pending.border_top = con->pending.y != ws->y;
-			int bottom_y = con->pending.y + con->pending.height;
-			con->pending.border_bottom = bottom_y != ws->y + ws->height;
+			con->pending.border_top = !top;
+			con->pending.border_bottom = !bottom;
 		}
 
 		bool smart = config->hide_edge_borders_smart == ESMART_ON ||
@@ -1565,9 +1614,8 @@ static void container_get_borders(struct sway_container *container, int *border_
 	*border_vert = container->pending.border_bottom * thickness;
 	if (container->pending.border == B_NORMAL) {
 		*border_vert += container_titlebar_height();
-	} else {
-		*border_vert += container->pending.border_top * thickness;
 	}
+	*border_vert += container->pending.border_top * thickness;
 }
 
 static void view_get_animation_sizes(struct sway_view *view, double *wt, double *ht) {

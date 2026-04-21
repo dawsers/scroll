@@ -37,7 +37,8 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 		return WLR_EDGE_NONE;
 	}
 	if (cont->pending.border == B_NONE || !cont->pending.border_thickness ||
-			cont->pending.border == B_CSD) {
+		(!cont->pending.border_left && !cont->pending.border_right && !cont->pending.border_top && !cont->pending.border_bottom) ||
+		cont->pending.border == B_CSD) {
 		return WLR_EDGE_NONE;
 	}
 	if (cont->pending.fullscreen_mode) {
@@ -62,16 +63,16 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 		y = cont->pending.y;
 	}
 	enum wlr_edges edge = 0;
-	if (cx < x + MAX(1, scale * cont->pending.border_thickness)) {
+	if (cont->pending.border_left && cx < x + MAX(1, scale * cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_LEFT;
 	}
-	if (cy < y + MAX(1, scale *cont->pending.border_thickness)) {
+	if (cont->pending.border_top && cy < y + MAX(1, scale *cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_TOP;
 	}
-	if (cx >= x + scale * (cont->pending.width - cont->pending.border_thickness)) {
+	if (cont->pending.border_left && cx >= x + scale * (cont->pending.width - cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_RIGHT;
 	}
-	if (cy >= y + scale * (cont->pending.height - cont->pending.border_thickness)) {
+	if (cont->pending.border_bottom && cy >= y + scale * (cont->pending.height - cont->pending.border_thickness)) {
 		edge |= WLR_EDGE_BOTTOM;
 	}
 

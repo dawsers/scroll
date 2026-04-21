@@ -890,7 +890,7 @@ static void animate_view(struct sway_container *con,
 			border_top = 0;
 			// should be handled by the parent container
 		}
-		border_top += border_width;
+		border_top += con->current.border_top ? border_width : 0.0;
 	} else if (con->current.border == B_PIXEL) {
 		container_update(con);
 		border_top = title_bar && con->current.border_top ? border_width : 0;
