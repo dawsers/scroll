@@ -853,7 +853,7 @@ static void animate_children(struct sway_workspace *workspace,
 static void animate_view(struct sway_container *con,
 		double dwidth, double dheight, bool title_bar, int gaps,
 		struct sway_workspace *workspace) {
-	if (!root->filters.container_filter(workspace, con, root->filters.container_filter_data)) {
+	if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
 		wlr_scene_node_set_enabled(&con->scene_tree->node, false);
 		return;
 	}
@@ -1014,7 +1014,7 @@ static void animate_view(struct sway_container *con,
 
 static void arrange_container(struct sway_container *con,
 		bool title_bar, int gaps, struct sway_workspace *workspace) {
-	if (!root->filters.container_filter(workspace, con, root->filters.container_filter_data)) {
+	if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
 		wlr_scene_node_set_enabled(&con->scene_tree->node, false);
 		return;
 	}
@@ -1028,7 +1028,7 @@ static void arrange_container(struct sway_container *con,
 			wlr_scene_node_set_enabled(&con->title_bar.tree->node, false);
 		}
 
-		if (!root->filters.free_animation_activation_filter(workspace, root->filters.free_animation_activation_filter_data)) {
+		if (!root->filters->free_animation_activation_filter(workspace, root->filters->free_animation_activation_filter_data)) {
 			arrange_children(workspace, con->current.layout,
 				con->current.children, con->current.focused_inactive_child,
 				con->content_tree, gaps);
@@ -1039,7 +1039,7 @@ static void arrange_container(struct sway_container *con,
 static void animate_container(struct sway_container *con,
 		double dwidth, double dheight, bool title_bar, int gaps,
 		struct sway_workspace *workspace) {
-	if (!root->filters.container_filter(workspace, con, root->filters.container_filter_data)) {
+	if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
 		return;
 	}
 
@@ -1207,7 +1207,7 @@ static void arrange_workspace_tiling(struct sway_workspace *ws,
 	if (ws->tiling->length == 0) {
 		return;
 	}
-	if (!root->filters.free_animation_activation_filter(ws, root->filters.free_animation_activation_filter_data)) {
+	if (!root->filters->free_animation_activation_filter(ws, root->filters->free_animation_activation_filter_data)) {
 		arrange_children(ws, layout_get_type(ws), ws->tiling,
 			ws->current.focused_inactive_child, ws->layers.tiling,
 			ws->gaps_inner);
@@ -1247,13 +1247,13 @@ static void arrange_output(struct sway_output *output) {
 		if (!child || child->node.destroying) {
 			continue;
 		}
-		bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
+		bool activated = root->filters->workspace_filter(child, root->filters->workspace_filter_data);
 
 		wlr_scene_node_reparent(&child->layers.tiling->node, output->layers.tiling);
 		wlr_scene_node_reparent(&child->layers.fullscreen->node, output->layers.fullscreen);
 
-		bool floating = root->filters.workspace_floating_filter(child, root->filters.workspace_floating_filter_data);
-		bool tiling = root->filters.workspace_tiling_filter(child, root->filters.workspace_tiling_filter_data);
+		bool floating = root->filters->workspace_floating_filter(child, root->filters->workspace_floating_filter_data);
+		bool tiling = root->filters->workspace_tiling_filter(child, root->filters->workspace_tiling_filter_data);
 
 		for (int i = 0; i < child->current.floating->length; i++) {
 			struct sway_container *floater = child->current.floating->items[i];
@@ -1316,16 +1316,16 @@ static void animate_output(struct sway_output *output) {
 		if (!child || child->node.destroying) {
 			continue;
 		}
-		bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
+		bool activated = root->filters->workspace_filter(child, root->filters->workspace_filter_data);
 
 		if (activated) {
 			struct sway_container *fs = child->current.fullscreen;
-			bool floating = root->filters.workspace_floating_filter(child, root->filters.workspace_floating_filter_data);
+			bool floating = root->filters->workspace_floating_filter(child, root->filters->workspace_floating_filter_data);
 
 			if (fs) {
 				animate_fullscreen(child->layers.fullscreen, fs, child);
 			} else {
-				bool tiling = root->filters.workspace_tiling_filter(child, root->filters.workspace_tiling_filter_data);
+				bool tiling = root->filters->workspace_tiling_filter(child, root->filters->workspace_tiling_filter_data);
 
 				if (child->animation.s0 != child->animation.s1) {
 					double t, x, y, anim_scale;
@@ -1380,7 +1380,7 @@ static void arrange_root(struct sway_root *root) {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
 			if (!output->enabled || !output->wlr_output->enabled ||
-				!root->filters.output_filter(output, root->filters.output_filter_data)) {
+				!root->filters->output_filter(output, root->filters->output_filter_data)) {
 				continue;
 			}
 			struct sway_workspace *ws = output->current.active_workspace;
@@ -1404,7 +1404,7 @@ static void arrange_root(struct sway_root *root) {
 		for (int i = 0; i < root->outputs->length; i++) {
 			struct sway_output *output = root->outputs->items[i];
 			if (!output->enabled || !output->wlr_output->enabled ||
-				!root->filters.output_filter(output, root->filters.output_filter_data)) {
+				!root->filters->output_filter(output, root->filters->output_filter_data)) {
 				continue;
 			}
 
@@ -1451,14 +1451,14 @@ static void animate_root(struct sway_root *root) {
 		if (cur && cur->data) {
 			struct sway_output *output = cur->data;
 			if (output->enabled && output->wlr_output->enabled &&
-				root->filters.output_filter(output, root->filters.output_filter_data)) {
+				root->filters->output_filter(output, root->filters->output_filter_data)) {
 				animate_output(output);
 			}
 		} else {
 			for (int i = 0; i < root->outputs->length; i++) {
 				struct sway_output *output = root->outputs->items[i];
 				if (!output->enabled || !output->wlr_output->enabled ||
-					!root->filters.output_filter(output, root->filters.output_filter_data)) {
+					!root->filters->output_filter(output, root->filters->output_filter_data)) {
 					continue;
 				}
 				animate_output(output);
@@ -1926,7 +1926,7 @@ static void overview_recompute_scales() {
 		for (int j = 0; j < root->outputs->length; j++) {
 			struct sway_output *output = root->outputs->items[j];
 			if (!output->enabled || !output->wlr_output->enabled ||
-				!root->filters.output_filter(output, root->filters.output_filter_data)) {
+				!root->filters->output_filter(output, root->filters->output_filter_data)) {
 				continue;
 			}
 			for (int i = 0; i < output->workspaces->length; i++) {
@@ -1934,7 +1934,7 @@ static void overview_recompute_scales() {
 				if (!child || child->node.destroying) {
 					continue;
 				}
-				bool activated = root->filters.workspace_filter(child, root->filters.workspace_filter_data);
+				bool activated = root->filters->workspace_filter(child, root->filters->workspace_filter_data);
 				if (!activated) {
 					continue;
 				}

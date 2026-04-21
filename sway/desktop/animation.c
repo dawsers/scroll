@@ -662,10 +662,10 @@ void animation_animate(struct wlr_output *output) {
 	bool ended = animation_set_time(&now);
 
 	// Save old filters and push new
-	sway_root_output_filter_func_t old_filter = root->filters.output_filter;
-	void *old_filter_data = root->filters.output_filter_data;
-	root->filters.output_filter = animation_output_filter;
-	root->filters.output_filter_data = NULL;
+	sway_root_output_filter_func_t old_filter = root->filters->output_filter;
+	void *old_filter_data = root->filters->output_filter_data;
+	root->filters->output_filter = animation_output_filter;
+	root->filters->output_filter_data = NULL;
 
 	// Set current output so callback_step only processes this output
 	// instead of looping all animating outputs (avoids N² work)
@@ -674,8 +674,8 @@ void animation_animate(struct wlr_output *output) {
 	animation->current_output = NULL;
 
 	// Restore old filters
-	root->filters.output_filter = old_filter;
-	root->filters.output_filter_data = old_filter_data;
+	root->filters->output_filter = old_filter;
+	root->filters->output_filter_data = old_filter_data;
 
 	if (ended) {
 		int idx = get_animating_index(output);

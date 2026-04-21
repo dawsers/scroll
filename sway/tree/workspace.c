@@ -799,10 +799,12 @@ struct workspace_switch_data {
 	struct sway_workspace *to;
 	list_t *from_containers;
 	list_t *to_containers;
+	struct sway_root_filters *root_filters;
 };
 
 static void workspace_switch_callback_end(void *callback_data) {
 	struct workspace_switch_data *data = callback_data;
+	root_filters_destroy(root, data->root_filters);
 
 	for (int i = 0; i < data->from_containers->length; ++i) {
 		struct workspace_switch_container_data *cdata = data->from_containers->items[i];
@@ -825,7 +827,6 @@ static void workspace_switch_callback_end(void *callback_data) {
 	list_free_items_and_destroy(data->from_containers);
 	list_free_items_and_destroy(data->to_containers);
 	free(data);
-	root_set_default_filters(root);
 
 	transaction_commit_dirty();
 }
@@ -997,12 +998,13 @@ static void animate_workspace_switch(struct sway_output *output,
 	animation_end();
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 
-	root->filters.free_animation_activation_filter = workspace_switch_animation_filter;
-	root->filters.free_animation_activation_filter_data = data;
-	root->filters.workspace_filter = workspace_switch_workspace_filter;
-	root->filters.workspace_filter_data = data;
-	root->filters.container_filter = workspace_switch_container_filter;
-	root->filters.container_filter_data = data;
+	data->root_filters = root_filters_create(root);
+	data->root_filters->free_animation_activation_filter = workspace_switch_animation_filter;
+	data->root_filters->free_animation_activation_filter_data = data;
+	data->root_filters->workspace_filter = workspace_switch_workspace_filter;
+	data->root_filters->workspace_filter_data = data;
+	data->root_filters->container_filter = workspace_switch_container_filter;
+	data->root_filters->container_filter_data = data;
 
 	double min_y_to = to->y, max_y_to = to->y + to->height;
 	select_visible_containers(data->to_containers, to, to->tiling, &min_y_to, &max_y_to);

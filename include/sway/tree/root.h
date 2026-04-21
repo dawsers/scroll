@@ -23,6 +23,7 @@ typedef bool (*sway_root_container_filter_func_t)(
 
 // Filters used during arrange_root()
 struct sway_root_filters {
+	bool reset;	// the filter can be reset
 	// Function to trigger free animation instead of the default
 	sway_root_workspace_filter_func_t free_animation_activation_filter;
 	void *free_animation_activation_filter_data;
@@ -105,7 +106,9 @@ struct sway_root {
 	} events;
 
 	// Filters used during arrange_root()
-	struct sway_root_filters filters;
+	struct sway_root_filters *filters;
+	// All the accessible sets of filters, the first item is the default filters
+	list_t *filters_list;
 
 	bool overview;
 	bool jumping;
@@ -158,6 +161,20 @@ struct sway_container *root_find_container(
 
 void root_get_box(struct sway_root *root, struct wlr_box *box);
 
-void root_set_default_filters(struct sway_root *root);
+/*
+ * Delete all the filters on the list that can be reset, and set the last one
+ * as current.
+ */
+void root_filters_reset(struct sway_root *root);
+
+/*
+ * Create a sway_root_filters struct, push it to the filters_list and make it active.
+ */
+struct sway_root_filters *root_filters_create(struct sway_root *root);
+
+/*
+ * Destroy the filter set from the filters_list, free it, and make the last one active
+ */
+void root_filters_destroy(struct sway_root *root, struct sway_root_filters *filters);
 
 #endif

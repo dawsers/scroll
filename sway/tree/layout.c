@@ -1519,43 +1519,38 @@ static bool filter_container_criteria(struct sway_workspace *workspace,
 	return true;
 }
 
-void layout_filter_reset() {
-	root_set_default_filters(root);
-	node_set_dirty(&root->node);
-}
-
-void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply apply) {
-	layout_filter_reset();
+static void filter_configure(struct sway_root_filters *filters,
+		enum sway_layout_filter filter, enum sway_layout_filter_apply apply) {
 	switch (filter) {
 	case LAYOUT_FILTER_ALL:
 		break;
 	case LAYOUT_FILTER_TILING:
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
-			root->filters.workspace_filter = filter_workspace_active_enable;
-			root->filters.workspace_floating_filter = filter_workspace_active_disable;
+			filters->workspace_filter = filter_workspace_active_enable;
+			filters->workspace_floating_filter = filter_workspace_active_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
-			root->filters.workspace_filter = filter_workspace_enable;
-			root->filters.workspace_floating_filter = filter_workspace_disable;
+			filters->workspace_filter = filter_workspace_enable;
+			filters->workspace_floating_filter = filter_workspace_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			root->filters.workspace_floating_filter = filter_workspace_active_disable;
+			filters->workspace_floating_filter = filter_workspace_active_disable;
 			break;
 		}
 		break;
 	case LAYOUT_FILTER_FLOATING:
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
-			root->filters.workspace_filter = filter_workspace_active_enable;
-			root->filters.workspace_tiling_filter = filter_workspace_active_disable;
+			filters->workspace_filter = filter_workspace_active_enable;
+			filters->workspace_tiling_filter = filter_workspace_active_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
-			root->filters.workspace_filter = filter_workspace_enable;
-			root->filters.workspace_tiling_filter = filter_workspace_disable;
+			filters->workspace_filter = filter_workspace_enable;
+			filters->workspace_tiling_filter = filter_workspace_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			root->filters.workspace_tiling_filter = filter_workspace_active_disable;
+			filters->workspace_tiling_filter = filter_workspace_active_disable;
 			break;
 		}
 		break;
@@ -1564,16 +1559,16 @@ void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply
 		struct sway_container *focused = seat_get_focused_container(seat);
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
-			root->filters.container_filter = filter_container_enable;
-			root->filters.container_filter_data = focused;
+			filters->container_filter = filter_container_enable;
+			filters->container_filter_data = focused;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
-			root->filters.container_filter = filter_container_enable;
-			root->filters.container_filter_data = NULL;
+			filters->container_filter = filter_container_enable;
+			filters->container_filter_data = NULL;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			root->filters.container_filter = filter_container_active_enable;
-			root->filters.container_filter_data = focused;
+			filters->container_filter = filter_container_active_enable;
+			filters->container_filter_data = focused;
 			break;
 		}
 		break;
@@ -1581,32 +1576,45 @@ void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply
 	case LAYOUT_FILTER_TRAILMARK:
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
-			root->filters.workspace_filter = filter_workspace_active_enable;
-			root->filters.container_filter = filter_trailmarks_active_enable;
+			filters->workspace_filter = filter_workspace_active_enable;
+			filters->container_filter = filter_trailmarks_active_enable;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
-			root->filters.container_filter = filter_trailmarks_enable;
+			filters->container_filter = filter_trailmarks_enable;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			root->filters.container_filter = filter_trailmarks_active_enable;
+			filters->container_filter = filter_trailmarks_active_enable;
 			break;
 		}
 		break;
 	case LAYOUT_FILTER_VISIBLE:
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
-			root->filters.workspace_filter = filter_workspace_active_enable;
-			root->filters.container_filter = filter_container_active_visible;
+			filters->workspace_filter = filter_workspace_active_enable;
+			filters->container_filter = filter_container_active_visible;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
-			root->filters.container_filter = filter_container_visible;
+			filters->container_filter = filter_container_visible;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			root->filters.container_filter = filter_container_active_visible;
+			filters->container_filter = filter_container_active_visible;
 			break;
 		}
 		break;
 	}
+	node_set_dirty(&root->node);
+}
+
+void layout_filter_reset() {
+	root_filters_reset(root);
+	node_set_dirty(&root->node);
+}
+
+void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply apply) {
+	layout_filter_reset();
+	struct sway_root_filters *filters = root_filters_create(root);
+	filters->reset = true;
+	filter_configure(filters, filter, apply);
 }
 
 static void container_toggle_jump_decoration(double wscale,
@@ -1820,6 +1828,7 @@ struct jump_data {
 	struct sway_container *new_focused;
 	bool focus;
 	struct criteria *criteria;
+	struct sway_root_filters *root_filters;
 	void (*keyboard_key_end)(void *data);
 	void (*jump_overview_prepare)(struct jump_data *data);
 	void (*jump_overview_restore)(struct jump_data *data);
@@ -1829,7 +1838,6 @@ struct jump_data {
 	void (*jump_workspace_restore)(struct jump_workspace_data *workspace_data);
 	enum sway_layout_overview overview;
 	// Previous state data
-	struct sway_root_filters root_filters;
 	bool overview_workspaces;
 	list_t *workspace_data; // struct jump_workspace_data
 	// For jump scratchpad
@@ -1855,7 +1863,7 @@ static void jump_generate_labels(struct sway_container *view, void *data) {
 
 static void jump_for_each_container(struct sway_workspace *workspace,
 		struct sway_container *container, void (*f)(struct sway_container *view, void *data), void *data) {
-	if (!root->filters.container_filter(workspace, container, root->filters.container_filter_data)) {
+	if (!root->filters->container_filter(workspace, container, root->filters->container_filter_data)) {
 		return;
 	}
 	if (container->pending.children) {
@@ -1872,7 +1880,7 @@ static void jump_for_each_view(void (*f)(struct sway_container *view, void *data
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
 		if (!output->enabled || !output->wlr_output->enabled ||
-			!root->filters.output_filter(output, root->filters.output_filter_data)) {
+			!root->filters->output_filter(output, root->filters->output_filter_data)) {
 			continue;
 		}
 		for (int j = 0; j < output->workspaces->length; ++j) {
@@ -1881,12 +1889,12 @@ static void jump_for_each_view(void (*f)(struct sway_container *view, void *data
 			if (!workspace || workspace->node.destroying) {
 				continue;
 			}
-			bool activated = root->filters.workspace_filter(workspace, root->filters.workspace_filter_data);
+			bool activated = root->filters->workspace_filter(workspace, root->filters->workspace_filter_data);
 			if (!activated) {
 				continue;
 			}
-			bool floating = root->filters.workspace_floating_filter(workspace, root->filters.workspace_floating_filter_data);
-			bool tiling = root->filters.workspace_tiling_filter(workspace, root->filters.workspace_tiling_filter_data);
+			bool floating = root->filters->workspace_floating_filter(workspace, root->filters->workspace_floating_filter_data);
+			bool tiling = root->filters->workspace_tiling_filter(workspace, root->filters->workspace_tiling_filter_data);
 			if (floating) {
 				for (int k = 0; k < workspace->floating->length; k++) {
 					struct sway_container *container = workspace->floating->items[k];
@@ -1926,7 +1934,7 @@ static void jump_begin_common_cb(struct jump_data *jump_data) {
 			if (!workspace || workspace->node.destroying) {
 				continue;
 			}
-			bool activated = root->filters.workspace_filter(workspace, root->filters.workspace_filter_data);
+			bool activated = root->filters->workspace_filter(workspace, root->filters->workspace_filter_data);
 			if (!activated) {
 				continue;
 			}
@@ -1974,7 +1982,7 @@ static void jump_overview_restore_cb(struct jump_data *jump_data) {
 			if (!workspace || workspace->node.destroying) {
 				continue;
 			}
-			bool activated = root->filters.workspace_filter(workspace, root->filters.workspace_filter_data);
+			bool activated = root->filters->workspace_filter(workspace, root->filters->workspace_filter_data);
 			if (!activated) {
 				continue;
 			}
@@ -2044,7 +2052,7 @@ static void jump_handle_keyboard_key_end(void *data) {
 
 	layout_overview_workspaces(jump_data->overview_workspaces);
 	list_free_items_and_destroy(jump_data->workspace_data);
-	root->filters = jump_data->root_filters;
+	root_filters_destroy(root, jump_data->root_filters);
 	node_set_dirty(&root->node);
 	root->jumping = false;
 
@@ -2144,14 +2152,12 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 	if (jump_data->jump_root_prepare) {
 		jump_data->jump_root_prepare(jump_data);
 	}
-
-	// Save current filter
-	jump_data->root_filters = root->filters;
+	jump_data->root_filters = root_filters_create(root);
 	if (criteria) {
-		root->filters.container_filter = filter_container_criteria;
-		root->filters.container_filter_data = criteria;
+		jump_data->root_filters->container_filter = filter_container_criteria;
+		jump_data->root_filters->container_filter_data = criteria;
 	} else {
-		layout_filter(filter, overview_workspaces ? LAYOUT_FILTER_APPLY_ALL : LAYOUT_FILTER_APPLY_ACTIVE);
+		filter_configure(jump_data->root_filters, filter, overview_workspaces ? LAYOUT_FILTER_APPLY_ALL : LAYOUT_FILTER_APPLY_ACTIVE);
 	}
 	jump_for_each_view(jump_add_windows, jump_data);
 
@@ -2163,7 +2169,7 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 		if (jump_data->criteria) {
 			criteria_destroy(jump_data->criteria);
 		}
-		root->filters = jump_data->root_filters;
+		root_filters_destroy(root, jump_data->root_filters);
 		node_set_dirty(&root->node);
 		free(jump_data);
 		return;

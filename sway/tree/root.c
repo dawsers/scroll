@@ -83,7 +83,8 @@ struct sway_root *root_create(struct wl_display *wl_display) {
 
 	root->spaces = create_list();
 
-	root_set_default_filters(root);
+	root->filters_list = create_list();
+	root->filters = root_filters_create(root);
 
 	return root;
 }
@@ -94,6 +95,7 @@ void root_destroy(struct sway_root *root) {
 	list_free(root->non_desktop_outputs);
 	list_free(root->outputs);
 	wlr_scene_node_destroy(&root->root_scene->tree.node);
+	list_free_items_and_destroy(root->filters_list);
 	free(root);
 }
 
@@ -404,17 +406,62 @@ static bool default_container_filter(struct sway_workspace *workspace,
 	return true;
 }
 
-void root_set_default_filters(struct sway_root *root) {
-	root->filters.free_animation_activation_filter = default_free_animation_activation_filter;
-	root->filters.free_animation_activation_filter_data = NULL;
-	root->filters.output_filter = default_output_filter;
-	root->filters.output_filter_data = NULL;
-	root->filters.workspace_filter = default_workspace_filter;
-	root->filters.workspace_filter_data = NULL;
-	root->filters.workspace_tiling_filter = default_workspace_tiling_filter;
-	root->filters.workspace_tiling_filter_data = NULL;
-	root->filters.workspace_floating_filter = default_workspace_floating_filter;
-	root->filters.workspace_floating_filter_data = NULL;
-	root->filters.container_filter = default_container_filter;
-	root->filters.container_filter_data = NULL;
+static void filters_set_default(struct sway_root_filters *filters) {
+	filters->free_animation_activation_filter = default_free_animation_activation_filter;
+	filters->free_animation_activation_filter_data = NULL;
+	filters->output_filter = default_output_filter;
+	filters->output_filter_data = NULL;
+	filters->workspace_filter = default_workspace_filter;
+	filters->workspace_filter_data = NULL;
+	filters->workspace_tiling_filter = default_workspace_tiling_filter;
+	filters->workspace_tiling_filter_data = NULL;
+	filters->workspace_floating_filter = default_workspace_floating_filter;
+	filters->workspace_floating_filter_data = NULL;
+	filters->container_filter = default_container_filter;
+	filters->container_filter_data = NULL;
+}
+
+/*
+ * Delete all the filters on the list, and set the default ones as current.
+ */
+void root_filters_reset(struct sway_root *root) {
+	if (root->filters_list->length == 0) {
+		struct sway_root_filters *filters = calloc(1, sizeof(struct sway_root_filters));
+		filters_set_default(filters);
+		list_add(root->filters_list, filters);
+	}
+	for (int i = root->filters_list->length - 1; i > 0; i--) {
+		struct sway_root_filters *filters = root->filters_list->items[i];
+		if (filters->reset) {
+			free(filters);
+			list_del(root->filters_list, i);
+		}
+	}
+	root->filters = root->filters_list->items[root->filters_list->length - 1];
+}
+
+/*
+ * Create a sway_root_filters struct, push it to the filters_list and make it active.
+ */
+struct sway_root_filters *root_filters_create(struct sway_root *root) {
+	struct sway_root_filters *filters = calloc(1, sizeof(struct sway_root_filters));
+	filters_set_default(filters);
+	list_add(root->filters_list, filters);
+	root->filters = filters;
+	return filters;
+}
+
+/*
+ * Destroy the filter set from the filters_list, free it, and make the last one active
+ */
+void root_filters_destroy(struct sway_root *root, struct sway_root_filters *filters) {
+	for (int i = 1; i < root->filters_list->length; ++i) {
+		struct sway_root_filters *item = root->filters_list->items[i];
+		if (filters == item) {
+			list_del(root->filters_list, i);
+			free(filters);
+			root->filters = root->filters_list->items[root->filters_list->length - 1];
+			return;
+		}
+	}
 }
