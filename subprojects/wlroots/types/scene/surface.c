@@ -378,10 +378,9 @@ static void handle_scene_surface_surface_commit(
 	// the surface anyway.
 	double lx, ly;
 	bool enabled = wlr_scene_node_coords(&scene_buffer->node, &lx, &ly);
-
-	if (!wl_list_empty(&surface->surface->current.frame_callback_list) &&
-			surface->buffer->primary_output != NULL && enabled) {
-		wlr_output_schedule_frame(surface->buffer->primary_output->output);
+	struct wlr_output *output = get_surface_frame_pacing_output(surface->surface);
+	if (!wl_list_empty(&surface->surface->current.frame_callback_list) && output && enabled) {
+		wlr_output_schedule_frame(output);
 	}
 }
 
