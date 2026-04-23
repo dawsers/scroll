@@ -17,7 +17,7 @@ foreign_toplevel_manager_from_resource(struct wl_resource *resource) {
 }
 
 bool wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request_accept(
-		struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request *request,
+		struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request_event *request,
 		struct wlr_ext_image_capture_source_v1 *source) {
 	return wlr_ext_image_capture_source_v1_create_resource(source, request->client, request->new_id);
 }
@@ -34,18 +34,13 @@ static void foreign_toplevel_manager_handle_create_source(struct wl_client *clie
 		return;
 	}
 
-	struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request *request =
-		calloc(1, sizeof(*request));
-	if (request == NULL) {
-		wl_resource_post_no_memory(manager_resource);
-		return;
-	}
+	struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request_event request = {
+		.toplevel_handle = toplevel_handle,
+		.client = client,
+		.new_id = new_id,
+	};
 
-	request->toplevel_handle = toplevel_handle;
-	request->client = client;
-	request->new_id = new_id;
-
-	wl_signal_emit_mutable(&manager->events.new_request, request);
+	wl_signal_emit_mutable(&manager->events.capture_request, &request);
 }
 
 static void foreign_toplevel_manager_handle_destroy(struct wl_client *client,
@@ -76,7 +71,7 @@ static void foreign_toplevel_manager_handle_display_destroy(struct wl_listener *
 		wl_container_of(listener, manager, display_destroy);
 	wl_signal_emit_mutable(&manager->events.destroy, NULL);
 	assert(wl_list_empty(&manager->events.destroy.listener_list));
-	assert(wl_list_empty(&manager->events.new_request.listener_list));
+	assert(wl_list_empty(&manager->events.capture_request.listener_list));
 	wl_list_remove(&manager->display_destroy.link);
 	wl_global_destroy(manager->global);
 	free(manager);
@@ -102,7 +97,7 @@ wlr_ext_foreign_toplevel_image_capture_source_manager_v1_create(struct wl_displa
 	}
 
 	wl_signal_init(&manager->events.destroy);
-	wl_signal_init(&manager->events.new_request);
+	wl_signal_init(&manager->events.capture_request);
 
 	manager->display_destroy.notify = foreign_toplevel_manager_handle_display_destroy;
 	wl_display_add_destroy_listener(display, &manager->display_destroy);

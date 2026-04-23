@@ -91,7 +91,7 @@ struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1 {
 
 	struct {
 		struct wl_signal destroy;
-		struct wl_signal new_request; // struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request
+		struct wl_signal capture_request; // struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request_event
 	} events;
 
 	struct {
@@ -99,7 +99,7 @@ struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1 {
 	} WLR_PRIVATE;
 };
 
-struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request {
+struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request_event {
 	struct wlr_ext_foreign_toplevel_handle_v1 *toplevel_handle;
 	struct wl_client *client;
 
@@ -124,7 +124,7 @@ struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1 *
 wlr_ext_foreign_toplevel_image_capture_source_manager_v1_create(struct wl_display *display, uint32_t version);
 
 bool wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request_accept(
-	struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request *request,
+	struct wlr_ext_foreign_toplevel_image_capture_source_manager_v1_request_event *request,
 	struct wlr_ext_image_capture_source_v1 *source);
 
 struct wlr_ext_image_capture_source_v1 *wlr_ext_image_capture_source_v1_create_with_scene_node(
