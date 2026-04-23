@@ -320,6 +320,7 @@ static void xdg_surface_role_commit(struct wlr_surface *wlr_surface) {
 		reset_xdg_surface_role_object(surface);
 		reset_xdg_surface(surface);
 
+		assert(!surface->initialized);
 		assert(!surface->initial_commit);
 		surface->initial_commit = false;
 	} else {

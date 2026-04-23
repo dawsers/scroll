@@ -394,6 +394,7 @@ static void layer_surface_role_commit(struct wlr_surface *wlr_surface) {
 		layer_surface_reset(surface);
 
 		assert(!surface->initialized);
+		assert(!surface->initial_commit);
 		surface->initial_commit = false;
 	} else {
 		surface->initial_commit = !surface->initialized;
