@@ -1412,10 +1412,6 @@ static bool filter_workspace_disable(struct sway_workspace *workspace, void *dat
 	return false;
 }
 
-static bool filter_workspace_enable(struct sway_workspace *workspace, void *data) {
-	return true;
-}
-
 static bool workspace_is_active(struct sway_workspace *workspace) {
 	struct sway_output *output = workspace->output;
 	bool active = output->wlr_output->enabled &&
@@ -1434,10 +1430,12 @@ static bool filter_workspace_active_enable(struct sway_workspace *workspace, voi
 
 static bool container_is_focused(struct sway_workspace *workspace,
 		struct sway_container *container, void *data) {
-	struct sway_container *focused = data ? data : workspace->current.focused_inactive_child;
-	if (!focused) {
+	struct sway_seat *seat = input_manager_current_seat();
+	struct sway_node *focused_node = seat_get_focus_inactive(seat, &workspace->node);
+	if (!focused_node || focused_node->type != N_CONTAINER) {
 		return false;
 	}
+	struct sway_container *focused = focused_node->sway_container;
 	return container == focused ||
 		container == focused->pending.parent ||
 		container->pending.parent == focused ||
@@ -1450,6 +1448,15 @@ static bool filter_container_enable(struct sway_workspace *workspace,
 }
 
 static bool filter_container_active_enable(struct sway_workspace *workspace,
+		struct sway_container *container, void *data) {
+	bool active = workspace_is_active(workspace);
+	if (active) {
+		return filter_container_enable(workspace, container, data);
+	}
+	return false;
+}
+
+static bool filter_container_active_only_enable(struct sway_workspace *workspace,
 		struct sway_container *container, void *data) {
 	bool active = workspace_is_active(workspace);
 	if (active) {
@@ -1519,6 +1526,10 @@ static bool filter_container_criteria(struct sway_workspace *workspace,
 	return true;
 }
 
+static bool filter_workspace_active_or_overview_enable(struct sway_workspace *workspace, void *data) {
+	return workspace_is_active(workspace) || layout_overview_workspaces_enabled();
+}
+
 static void filter_configure(struct sway_root_filters *filters,
 		enum sway_layout_filter filter, enum sway_layout_filter_apply apply) {
 	switch (filter) {
@@ -1528,10 +1539,10 @@ static void filter_configure(struct sway_root_filters *filters,
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
 			filters->workspace_filter = filter_workspace_active_enable;
-			filters->workspace_floating_filter = filter_workspace_active_disable;
+			filters->workspace_floating_filter = filter_workspace_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
-			filters->workspace_filter = filter_workspace_enable;
+			filters->workspace_filter = filter_workspace_active_or_overview_enable;
 			filters->workspace_floating_filter = filter_workspace_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
@@ -1543,10 +1554,10 @@ static void filter_configure(struct sway_root_filters *filters,
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
 			filters->workspace_filter = filter_workspace_active_enable;
-			filters->workspace_tiling_filter = filter_workspace_active_disable;
+			filters->workspace_tiling_filter = filter_workspace_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
-			filters->workspace_filter = filter_workspace_enable;
+			filters->workspace_filter = filter_workspace_active_or_overview_enable;
 			filters->workspace_tiling_filter = filter_workspace_disable;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
@@ -1555,20 +1566,15 @@ static void filter_configure(struct sway_root_filters *filters,
 		}
 		break;
 	case LAYOUT_FILTER_CONTAINER: {
-		struct sway_seat *seat = input_manager_current_seat();
-		struct sway_container *focused = seat_get_focused_container(seat);
 		switch (apply) {
 		case LAYOUT_FILTER_APPLY_ACTIVE:
-			filters->container_filter = filter_container_enable;
-			filters->container_filter_data = focused;
+			filters->container_filter = filter_container_active_enable;
 			break;
 		case LAYOUT_FILTER_APPLY_ALL:
 			filters->container_filter = filter_container_enable;
-			filters->container_filter_data = NULL;
 			break;
 		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			filters->container_filter = filter_container_active_enable;
-			filters->container_filter_data = focused;
+			filters->container_filter = filter_container_active_only_enable;
 			break;
 		}
 		break;

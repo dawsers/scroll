@@ -168,6 +168,7 @@ struct cmd_results *cmd_filter(int argc, char **argv) {
 		apply = LAYOUT_FILTER_APPLY_ACTIVE_ONLY;
 	} else if (strcasecmp(argv[0], "reset") == 0 && argc == 1) {
 		layout_filter_reset();
+		return cmd_results_new(CMD_SUCCESS, NULL);
 	} else {
 		goto fail;
 	}
