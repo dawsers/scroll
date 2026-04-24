@@ -923,6 +923,9 @@ static void select_visible_containers(list_t *containers,
 	}
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *con = children->items[i];
+		if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
+			continue;
+		}
 		if (container_visible(workspace, con)) {
 			struct workspace_switch_container_data *container_data =
 				malloc(sizeof(struct workspace_switch_container_data));
@@ -998,6 +1001,23 @@ static void animate_workspace_switch(struct sway_output *output,
 	animation_end();
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 
+	double min_y_to = to->y, max_y_to = to->y + to->height;
+	if (root->filters->workspace_tiling_filter(to, root->filters->workspace_tiling_filter_data)) {
+		select_visible_containers(data->to_containers, to, to->tiling, &min_y_to, &max_y_to);
+	}
+	if (root->filters->workspace_floating_filter(to, root->filters->workspace_floating_filter_data)) {
+		select_visible_containers(data->to_containers, to, to->floating, &min_y_to, &max_y_to);
+	}
+	double min_y_from = from_y, max_y_from = from_y + from_height;
+	if (data->from) {
+		if (root->filters->workspace_tiling_filter(from, root->filters->workspace_tiling_filter_data)) {
+			select_visible_containers(data->from_containers, from, from->tiling, &min_y_from, &max_y_from);
+		}
+		if (root->filters->workspace_floating_filter(from, root->filters->workspace_floating_filter_data)) {
+			select_visible_containers(data->from_containers, from, from->floating, &min_y_from, &max_y_from);
+		}
+	}
+
 	data->root_filters = root_filters_create(root);
 	data->root_filters->free_animation_activation_filter = workspace_switch_animation_filter;
 	data->root_filters->free_animation_activation_filter_data = data;
@@ -1006,12 +1026,6 @@ static void animate_workspace_switch(struct sway_output *output,
 	data->root_filters->container_filter = workspace_switch_container_filter;
 	data->root_filters->container_filter_data = data;
 
-	double min_y_to = to->y, max_y_to = to->y + to->height;
-	select_visible_containers(data->to_containers, to, to->tiling, &min_y_to, &max_y_to);
-	double min_y_from = from_y, max_y_from = from_y + from_height;
-	if (data->from) {
-		select_visible_containers(data->from_containers, from, from->tiling, &min_y_from, &max_y_from);
-	}
 	double delta;
 	if (down) {
 		delta = output->height + max_y_from - (from_y + from_height)
