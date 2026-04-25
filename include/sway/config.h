@@ -21,6 +21,7 @@
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 #include <pango/pangocairo.h>
 #include "sway/lua.h"
+#include "sway/tree/layout.h"
 
 // TODO: Refactor this shit
 
@@ -307,6 +308,7 @@ struct output_config {
 	double layout_default_height;
 	list_t *layout_widths;
 	list_t *layout_heights;
+	struct sway_scroller_modifiers layout_default_modifiers;
 
 	char *background;
 	char *background_option;
@@ -338,6 +340,7 @@ struct workspace_config {
 	list_t *outputs;
 	int gaps_inner;
 	struct side_gaps gaps_outer;
+	struct sway_scroller_modifiers layout_default_modifiers;
 };
 
 enum pango_markup_config {
@@ -608,6 +611,7 @@ struct sway_config {
 	double layout_default_height;
 	list_t *layout_widths;
 	list_t *layout_heights;
+	struct sway_scroller_modifiers layout_default_modifiers;
 	float jump_labels_color[4];
 	float jump_labels_background[4];
 	double jump_labels_scale;
@@ -822,5 +826,22 @@ void binding_add_translated(struct sway_binding *binding, list_t *bindings);
 
 /* Global config singleton. */
 extern struct sway_config *config;
+
+/**
+ * Initialize a config layout_default_modifiers to usable values
+ */
+void layout_default_modifiers_init(struct sway_scroller_modifiers *modifiers);
+
+/**
+ * Set scroll's default values into a config layout_default_modifiers structure
+ */
+void layout_default_modifiers_set_default(struct sway_scroller_modifiers *modifiers);
+
+/*
+ * Parse arguments into sway_scroller_modifiers struct, returning the number of
+ * valid arguments parsed, or zero if none
+ */
+struct sway_scroller_modifiers;
+int parse_into_modifiers(int argc, char **argv, struct sway_scroller_modifiers *modifiers);
 
 #endif

@@ -258,6 +258,8 @@ static void config_defaults(struct sway_config *config) {
 		*val = sizes[i];
 		list_add(config->layout_heights, val);
 	}
+	layout_default_modifiers_set_default(&config->layout_default_modifiers);
+	config->layout_default_modifiers.set = true;
 	color_to_rgba(config->jump_labels_color, 0x159E3080);
 	color_to_rgba(config->jump_labels_background, 0x00000000);
 	config->jump_labels_scale = 0.5;

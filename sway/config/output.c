@@ -86,6 +86,7 @@ struct output_config *new_output_config(const char *name) {
 	oc->layout_default_height = -1;
 	oc->layout_widths = NULL;
 	oc->layout_heights = NULL;
+	layout_default_modifiers_init(&oc->layout_default_modifiers);
 	oc->hdr = -1;
 	return oc;
 }
@@ -182,6 +183,9 @@ static void supersede_output_config(struct output_config *dst, struct output_con
 	if (src->layout_heights != NULL) {
 		list_free_items_and_destroy(dst->layout_heights);
 		dst->layout_heights = NULL;
+	}
+	if (src->layout_default_modifiers.set) {
+		layout_default_modifiers_init(&dst->layout_default_modifiers);
 	}
 	if (src->hdr != -1) {
 		dst->hdr = -1;
@@ -281,6 +285,9 @@ static void merge_output_config(struct output_config *dst, struct output_config 
 	if (src->layout_heights != NULL) {
 		list_free_items_and_destroy(dst->layout_heights);
 		dst->layout_heights = copy_double_list(src->layout_heights);
+	}
+	if (src->layout_default_modifiers.set) {
+		dst->layout_default_modifiers = src->layout_default_modifiers;
 	}
 	if (src->hdr != -1) {
 		dst->hdr = src->hdr;
@@ -768,6 +775,11 @@ static bool finalize_output_config(struct output_config *oc, struct sway_output 
 	output->scroller_options.default_width = oc ? oc->layout_default_width : -1;
 	output->scroller_options.heights = oc && oc->layout_heights ? copy_double_list(oc->layout_heights) : NULL;
 	output->scroller_options.widths = oc && oc->layout_widths ? copy_double_list(oc->layout_widths) : NULL;
+	if (oc && oc->layout_default_modifiers.set) {
+		output->scroller_options.default_modifiers = oc->layout_default_modifiers;
+	} else {
+		layout_default_modifiers_init(&output->scroller_options.default_modifiers);
+	}
 
 	if (!output->enabled) {
 		output_enable(output);

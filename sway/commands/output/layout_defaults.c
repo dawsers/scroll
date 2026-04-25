@@ -3,6 +3,23 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 
+struct cmd_results *output_cmd_layout_default_mode(int argc, char **argv) {
+	if (!config->handler_context.output_config) {
+		return cmd_results_new(CMD_FAILURE, "Missing output config");
+	}
+	if (!argc) {
+		return cmd_results_new(CMD_INVALID, "Missing layout_type argument.");
+	}
+
+	int success = parse_into_modifiers(argc, argv, &config->handler_context.output_config->layout_default_modifiers);
+	if (success > 0) {
+		config->handler_context.leftovers.argc = argc - success;
+		config->handler_context.leftovers.argv = argv + success;
+		return NULL;
+	}
+	return cmd_results_new(CMD_INVALID, "Invalid layout_default_mode.");
+}
+
 struct cmd_results *output_cmd_layout_type(int argc, char **argv) {
 	if (!config->handler_context.output_config) {
 		return cmd_results_new(CMD_FAILURE, "Missing output config");
@@ -23,7 +40,6 @@ struct cmd_results *output_cmd_layout_type(int argc, char **argv) {
 	config->handler_context.leftovers.argv = argv + 1;
 	return NULL;
 }
-
 
 struct cmd_results *output_cmd_layout_default_height(int argc, char **argv) {
 	if (!config->handler_context.output_config) {

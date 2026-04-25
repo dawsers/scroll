@@ -4,14 +4,6 @@
 #include "sway/tree/container.h"
 #include <wlr/util/edges.h>
 
-struct sway_scroller_output_options {
-	enum sway_container_layout type;
-	double default_width;
-	double default_height;
-	list_t *widths;
-	list_t *heights;
-};
-
 enum sway_layout_reorder {
 	REORDER_AUTO,
 	REORDER_LAZY,
@@ -108,6 +100,31 @@ struct sway_scroller {
 		struct sway_container *container;
 		double width, height;
 	} toggle_size;
+};
+
+struct sway_scroller_modifiers {
+	bool set;
+	bool reorder_set;
+	enum sway_layout_reorder reorder;
+	bool mode_set;
+	enum sway_container_layout mode;
+	bool insert_set;
+	enum sway_layout_insert insert;
+	bool focus_set;
+	bool focus;
+	bool center_horizontal_set;
+	bool center_horizontal;
+	bool center_vertical_set;
+	bool center_vertical;
+};
+
+struct sway_scroller_output_options {
+	enum sway_container_layout type;
+	double default_width;
+	double default_height;
+	list_t *widths;
+	list_t *heights;
+	struct sway_scroller_modifiers default_modifiers;
 };
 
 // Global functions

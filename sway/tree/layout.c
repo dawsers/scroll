@@ -50,7 +50,7 @@ enum wlr_direction layout_to_wlr_direction(enum sway_layout_direction dir) {
 
 double layout_get_default_width(struct sway_workspace *workspace) {
 	struct sway_output *output = workspace->output;
-	if (output->scroller_options.default_width > 0) {
+	if (output && output->scroller_options.default_width > 0) {
 		return output->scroller_options.default_width;
 	}
 	return config->layout_default_width;
@@ -58,7 +58,7 @@ double layout_get_default_width(struct sway_workspace *workspace) {
 
 double layout_get_default_height(struct sway_workspace *workspace) {
 	struct sway_output *output = workspace->output;
-	if (output->scroller_options.default_height > 0) {
+	if (output && output->scroller_options.default_height > 0) {
 		return output->scroller_options.default_height;
 	}
 	return config->layout_default_height;
@@ -519,9 +519,71 @@ bool layout_scale_enabled(struct sway_workspace *workspace) {
 	return layout_scale_get(workspace) > 0.0;
 }
 
+void layout_default_modifiers_init(struct sway_scroller_modifiers *modifiers) {
+	if (modifiers) {
+		memset(modifiers, 0, sizeof(struct sway_scroller_modifiers));
+	}
+}
+
+void layout_default_modifiers_set_default(struct sway_scroller_modifiers *modifiers) {
+	if (modifiers) {
+		modifiers->set = false;
+		modifiers->reorder_set = true;
+		modifiers->reorder = REORDER_AUTO;
+		modifiers->mode_set = false;
+		modifiers->mode = L_NONE;
+		modifiers->insert_set = true;
+		modifiers->insert = INSERT_AFTER;
+		modifiers->focus_set = true;
+		modifiers->focus = true;
+		modifiers->center_horizontal_set = true;
+		modifiers->center_horizontal = false;
+		modifiers->center_vertical_set = true;
+		modifiers->center_vertical = false;
+	}
+}
+
+static void modifiers_merge(struct sway_scroller_modifiers *dst, struct sway_scroller_modifiers *src) {
+	if (!src->set) {
+		return;
+	}
+	if (src->reorder_set) {
+		dst->reorder = src->reorder;
+		dst->reorder_set = true;
+		dst->set = true;
+	}
+	if (src->mode_set) {
+		dst->mode = src->mode;
+		dst->mode_set = true;
+		dst->set = true;
+	}
+	if (src->insert_set) {
+		dst->insert = src->insert;
+		dst->insert_set = true;
+		dst->set = true;
+	}
+	if (src->focus_set) {
+		dst->focus = src->focus;
+		dst->focus_set = true;
+		dst->set = true;
+	}
+	if (src->center_horizontal_set) {
+		dst->center_horizontal = src->center_horizontal;
+		dst->center_horizontal_set = true;
+		dst->set = true;
+	}
+	if (src->center_vertical_set) {
+		dst->center_vertical = src->center_vertical;
+		dst->center_vertical_set = true;
+		dst->set = true;
+	}
+}
+
 void layout_modifiers_init(struct sway_workspace *workspace) {
 	struct sway_scroller *layout = &workspace->layout;
+	struct sway_scroller_modifiers modifiers = config->layout_default_modifiers;
 	if (workspace && workspace->output) {
+		modifiers_merge(&modifiers, &workspace->output->scroller_options.default_modifiers);
 		layout->type = output_get_default_layout(workspace->output);
 	} else {
 		if (config->default_layout != L_NONE) {
@@ -530,12 +592,16 @@ void layout_modifiers_init(struct sway_workspace *workspace) {
 			layout->type = L_HORIZ;
 		}
 	}
-	layout->modifiers.reorder = REORDER_AUTO;
-	layout->modifiers.mode = layout->type;
-	layout->modifiers.insert = INSERT_AFTER;
-	layout->modifiers.focus = true;
-	layout->modifiers.center_horizontal = false;
-	layout->modifiers.center_vertical = false;
+	struct workspace_config *wsc = workspace_find_config(workspace->name);
+	if (wsc) {
+		modifiers_merge(&modifiers, &wsc->layout_default_modifiers);
+	}
+	layout->modifiers.reorder = modifiers.reorder;
+	layout->modifiers.mode = modifiers.mode_set ? modifiers.mode : layout->type;
+	layout->modifiers.insert = modifiers.insert;
+	layout->modifiers.focus = modifiers.focus;
+	layout->modifiers.center_horizontal = modifiers.center_horizontal;
+	layout->modifiers.center_vertical = modifiers.center_vertical;
 }
 
 void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_layout_reorder reorder) {

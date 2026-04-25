@@ -170,6 +170,7 @@ sway_cmd cmd_jump_labels_scale;
 sway_cmd cmd_kill;
 sway_cmd cmd_layout_default_height;
 sway_cmd cmd_layout_default_width;
+sway_cmd cmd_layout_default_mode;
 sway_cmd cmd_layout_heights;
 sway_cmd cmd_layout_transpose;
 sway_cmd cmd_layout_widths;
@@ -349,6 +350,7 @@ sway_cmd output_cmd_unplug;
 sway_cmd output_cmd_layout_type;
 sway_cmd output_cmd_layout_default_width;
 sway_cmd output_cmd_layout_default_height;
+sway_cmd output_cmd_layout_default_mode;
 sway_cmd output_cmd_layout_widths;
 sway_cmd output_cmd_layout_heights;
 

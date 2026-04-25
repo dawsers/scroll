@@ -17,6 +17,7 @@ static const struct cmd_handler output_handlers[] = {
 	{ "enable", output_cmd_enable },
 	{ "hdr", output_cmd_hdr },
 	{ "layout_default_height", output_cmd_layout_default_height },
+	{ "layout_default_mode", output_cmd_layout_default_mode },
 	{ "layout_default_width", output_cmd_layout_default_width },
 	{ "layout_heights", output_cmd_layout_heights },
 	{ "layout_type", output_cmd_layout_type },

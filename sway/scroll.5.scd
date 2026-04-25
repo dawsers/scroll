@@ -269,6 +269,15 @@ The following commands may only be used in the configuration file.
 	Default is _[0.33333333 0.5 0.66666667 1.0]_. These are the fractions
 	_cycle_size_ will use when resizing the width of columns/windows.
 
+*layout_default_mode* <set_mode arguments>
+	Overrides some of scroll's defaults for the initial mode modifiers
+	assigned to a workspace being created. See the *set_mode* command for
+	arguments and meaning.
+
+	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
+	and the mode will be given by the type of layout assigned to the output,
+	or its landscape/portrait configuration if none was assigned.
+
 *maximize_if_single* <true|false>
 	Default value is _false_. If _true_, whenever there is a single tiling
 	window in the workspace, it will be maximized, unless you explicitly resize
@@ -1635,6 +1644,30 @@ The default colors are:
 	workspace, use the _move_ command in combination with the _workspace_
 	criteria (non-empty workspaces only) or _workspace_ command (to switch
 	to the workspace before moving).
+
+*workspace* <name> layout_default_mode <set_mode arguments>
+	Overrides the global and output defaults for the initial mode modifiers
+	assigned when this workspace is created. See the *set_mode* command for
+	arguments and meaning.
+
+	There is also a global command *layout_default_mode*, that affects all
+	workspaces, and another	per-output *layout_default_mode* command that only
+	affects that ourput's workspaces.
+
+	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
+	and the mode will be given by the type of layout assigned to the output,
+	or its landscape/portrait configuration if none was assigned.
+
+	You can combine several of these commands like this:
+
+```
+workspace 1 {
+  gaps inner 4
+  gaps outer 20
+  output DP-2
+  layout_default_mode h after nocenter_horiz focus
+}
+```
 
 *workspace* <name> exec <command>
 	This command has been deprecated in favor of Lua scripting, which provides

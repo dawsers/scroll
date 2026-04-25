@@ -506,6 +506,7 @@ layout_default_width 0.5
 layout_default_height 1.0
 layout_widths [0.33333333 0.5 0.666666667 1.0]
 layout_heights [0.33333333 0.5 0.666666667 1.0]
+layout_default_mode h reorder_auto focus after
 ```
 
 ### Setting Some Options
@@ -789,9 +790,13 @@ what you do, until you set `reorder_auto` again.
 4. `center_vert/nocenter_vert`: It will keep the active window centered
 (or not) in its column. The default value is the one in your configuration.
 
-You can skip any number of parameters when calling the dispatcher, and their
+You can skip any number of parameters when calling the command, and their
 order doesn't matter.
 
+You can set config-time defaults by using the `layout_default_mode` commands.
+There is a global one, another affects only workspaces local to a named output,
+and the last one only affects a named workspace. Search `man 5 scroll` and
+`man 5 scroll-output` for the `layout_default_mode` commands.
 
 ### Focus
 
@@ -2021,15 +2026,15 @@ each one of them:
 `cursor_shake_magnify_sensitivity`, `cycle_size_wrap`,
 `fullscreen_movefocus`, `gesture_scroll_enable`, `gesture_scroll_fingers`,
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
-`jump_labels_keys`, `jump_labels_scale`, `layout_default_height`,
+`jump_labels_keys`, `jump_labels_scale`, `layout_Default_mode`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,
 `scratchpad_minimize`, `workspace_labels_background`, `workspace_labels_color`,
-`workspace_labels_height`
+`workspace_labels_height`, `workspace <name> layout_default_mode`,
 `workspace_next_on_output_create_empty`, `xwayland_output_scale`
 
 ### Runtime Only Commands
 
-`align`, `animations_enable`, `cycle_size`, `decoration`, `fit_size`,
+`align`, `animations_enable`, `cycle_size`, `decoration`, `filter`, `fit_size`,
 `focus begin/end`, `fullscreen application|layout`, `jump`, `layout_transpose`,
 `move beginning|end nomode`, `pin`, `resize` for floating windows,
 `scale_content`, `scale_workspace`,
@@ -2066,7 +2071,7 @@ events: `scroller`, `trails`, `lua`
 ### Outputs
 
 `scale <factor> [force]`, `layout_type`, `layout_default_height`,
-`layout_default_width`, `layout_heights`, `layout_widths`
+`layout_default_width`, `layout_heights`, `layout_widths`, `layout_default_mode`
 
 ### scrollnag
 

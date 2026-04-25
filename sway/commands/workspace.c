@@ -28,6 +28,7 @@ static struct workspace_config *workspace_config_find_or_create(char *ws_name) {
 	wsc->gaps_outer.right = INT_MIN;
 	wsc->gaps_outer.bottom = INT_MIN;
 	wsc->gaps_outer.left = INT_MIN;
+	layout_default_modifiers_init(&wsc->layout_default_modifiers);
 	list_add(config->workspace_configs, wsc);
 	return wsc;
 }
@@ -36,6 +37,118 @@ void free_workspace_config(struct workspace_config *wsc) {
 	free(wsc->workspace);
 	list_free_items_and_destroy(wsc->outputs);
 	free(wsc);
+}
+
+int parse_into_modifiers(int argc, char **argv,
+		struct sway_scroller_modifiers *modifiers) {
+	if (modifiers == NULL) {
+		return 0;
+	}
+	int success = 0;
+	for (int i = 0; i < argc; ++i) {
+		if (strcasecmp(argv[i], "h") == 0) {
+			modifiers->mode = L_HORIZ;
+			modifiers->mode_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "v") == 0) {
+			modifiers->mode = L_VERT;
+			modifiers->mode_set = true;
+			++success;
+		}
+
+		if (strcasecmp(argv[i], "after") == 0) {
+			modifiers->insert = INSERT_AFTER;
+			modifiers->insert_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "before") == 0) {
+			modifiers->insert = INSERT_BEFORE;
+			modifiers->insert_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "end") == 0) {
+			modifiers->insert = INSERT_END;
+			modifiers->insert_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "beginning") == 0 || strcasecmp(argv[i], "beg") == 0) {
+			modifiers->insert = INSERT_BEGINNING;
+			modifiers->insert_set = true;
+			++success;
+		}
+
+        if (strcasecmp(argv[i], "focus") == 0) {
+			modifiers->focus = true;
+			modifiers->focus_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "nofocus") == 0) {
+			modifiers->focus = false;
+			modifiers->focus_set = true;
+			++success;
+		}
+
+        if (strcasecmp(argv[i], "center_horiz") == 0) {
+			modifiers->center_horizontal = true;
+			modifiers->center_horizontal_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "nocenter_horiz") == 0) {
+			modifiers->center_horizontal = false;
+			modifiers->center_horizontal_set = true;
+			++success;
+		}
+        if (strcasecmp(argv[i], "center_vert") == 0) {
+			modifiers->center_vertical = true;
+			modifiers->center_vertical_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "nocenter_vert") == 0) {
+			modifiers->center_vertical = false;
+			modifiers->center_vertical_set = true;
+			++success;
+		}
+
+        if (strcasecmp(argv[i], "reorder_auto") == 0) {
+			modifiers->reorder = REORDER_AUTO;
+			modifiers->reorder_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "noreorder_auto") == 0) {
+			modifiers->reorder = REORDER_LAZY;
+			modifiers->reorder_set = true;
+			++success;
+		}
+	}
+	if (success > 0) {
+		// Modifiers had some fields set
+		modifiers->set = true;
+	}
+	return success;
+}
+
+static struct cmd_results *cmd_workspace_layout_default_mode(int argc, char **argv, int mode_location) {
+	const char expected[] = "Expected 'workspace <name> layout_default_mode "
+		"[<h|v> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]";
+	if (mode_location == 0) {
+		return cmd_results_new(CMD_INVALID, "%s", expected);
+	}
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "workspace", EXPECTED_AT_LEAST, 3))) {
+		return error;
+	}
+	int name_words = 0;
+	for (int i = 0; i < argc; ++i) {
+		if (strcasecmp(argv[i], "layout_default_mode") == 0) {
+			name_words = i;
+			break;
+		}
+	}
+	char *ws_name = join_args(argv, name_words);
+	struct workspace_config *wsc = workspace_config_find_or_create(ws_name);
+	free(ws_name);
+	if (!wsc) {
+		return cmd_results_new(CMD_FAILURE,
+				"Unable to allocate workspace output");
+	}
+	int success = parse_into_modifiers(argc, argv, &wsc->layout_default_modifiers);
+	if (success > 0) {
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
+	return cmd_results_new(CMD_INVALID, "%s", expected);
 }
 
 static void prevent_invalid_outer_gaps(struct workspace_config *wsc) {
@@ -208,6 +321,7 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 
 	int output_location = -1;
 	int gaps_location = -1;
+	int mode_location = -1;
 
 	for (int i = 0; i < argc; ++i) {
 		if (strcasecmp(argv[i], "output") == 0) {
@@ -218,6 +332,12 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 	for (int i = 0; i < argc; ++i) {
 		if (strcasecmp(argv[i], "gaps") == 0) {
 			gaps_location = i;
+			break;
+		}
+	}
+	for (int i = 0; i < argc; ++i) {
+		if (strcasecmp(argv[i], "layout_default_mode") == 0) {
+			mode_location = i;
 			break;
 		}
 	}
@@ -248,6 +368,10 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 		}
 	} else if (gaps_location >= 0) {
 		if ((error = cmd_workspace_gaps(argc, argv, gaps_location))) {
+			return error;
+		}
+	} else if (mode_location >= 0) {
+		if ((error = cmd_workspace_layout_default_mode(argc, argv, mode_location))) {
 			return error;
 		}
 	} else {

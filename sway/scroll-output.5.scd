@@ -251,6 +251,19 @@ must be separated by one space. For example:
 	Overrides the default fractions _cycle_size_ will use when resizing the width
 	of columns/windows on this output.
 
+*output* <name> layout_default_mode <set_mode arguments>
+	Overrides the global defaults for the initial mode modifiers
+	assigned to workspaces created on this output. See the *set_mode* command for
+	arguments and meaning.
+
+	There is also a global command *layout_default_mode*, that affects all
+	workspaces, and another	per-workspace *layout_default_mode* command that only
+	affects that workspace.
+
+	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
+	and the mode will be given by the type of layout assigned to the output,
+	or its landscape/portrait configuration if none was assigned.
+
 *output* <name> hdr on|off|toggle
 	Enables or disables HDR (High Dynamic Range). HDR enables a larger color
 	gamut and brightness range. HDR uses the BT2020 primaries and the PQ

@@ -62,3 +62,16 @@ struct cmd_results *cmd_layout_widths(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "Error parsing layout_widths array");
 	}
 }
+
+struct cmd_results *cmd_layout_default_mode(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "layout_default_mode", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+
+	int success = parse_into_modifiers(argc, argv, &config->layout_default_modifiers);
+	if (success > 0) {
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
+	return cmd_results_new(CMD_FAILURE, "Error parsing layout_default_mode command");
+}
