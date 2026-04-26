@@ -56,7 +56,8 @@ bool dmabuf_import_sync_file(int dmabuf_fd, uint32_t flags, int sync_file_fd) {
 		.fd = sync_file_fd,
 	};
 	if (drmIoctl(dmabuf_fd, DMA_BUF_IOCTL_IMPORT_SYNC_FILE, &data) != 0) {
-		wlr_log_errno(WLR_ERROR, "drmIoctl(IMPORT_SYNC_FILE) failed");
+		enum wlr_log_importance importance = errno == ENOTTY ? WLR_DEBUG : WLR_ERROR;
+		wlr_log_errno(importance, "drmIoctl(IMPORT_SYNC_FILE) failed");
 		return false;
 	}
 	return true;
@@ -68,7 +69,8 @@ int dmabuf_export_sync_file(int dmabuf_fd, uint32_t flags) {
 		.fd = -1,
 	};
 	if (drmIoctl(dmabuf_fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &data) != 0) {
-		wlr_log_errno(WLR_ERROR, "drmIoctl(EXPORT_SYNC_FILE) failed");
+		enum wlr_log_importance importance = errno == ENOTTY ? WLR_DEBUG : WLR_ERROR;
+		wlr_log_errno(importance, "drmIoctl(EXPORT_SYNC_FILE) failed");
 		return -1;
 	}
 	return data.fd;
