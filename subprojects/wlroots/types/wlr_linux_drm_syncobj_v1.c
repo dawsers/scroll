@@ -12,6 +12,7 @@
 #include <xf86drm.h>
 #include "config.h"
 #include "linux-drm-syncobj-v1-protocol.h"
+#include "render/dmabuf.h"
 #include "render/drm_syncobj_merger.h"
 
 #define LINUX_DRM_SYNCOBJ_V1_VERSION 1
@@ -539,4 +540,13 @@ bool wlr_linux_drm_syncobj_v1_state_add_release_point(
 	}
 	return wlr_drm_syncobj_merger_add(state->release_merger,
 		release_timeline, release_point, event_loop);
+}
+
+bool wlr_linux_drm_syncobj_v1_state_add_release_from_implicit_sync(
+		struct wlr_linux_drm_syncobj_surface_v1_state *state,
+		struct wlr_buffer *buffer, struct wl_event_loop *event_loop) {
+	if (state->release_merger != NULL) {
+		return true;
+	}
+	return wlr_drm_syncobj_merger_add_dmabuf(state->release_merger, buffer, event_loop);
 }

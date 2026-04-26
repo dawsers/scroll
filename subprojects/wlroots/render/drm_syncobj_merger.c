@@ -4,8 +4,10 @@
 #include <unistd.h>
 #include <wayland-util.h>
 #include <wlr/render/drm_syncobj.h>
+#include <wlr/types/wlr_buffer.h>
 #include <wlr/util/log.h>
 #include <xf86drm.h>
+#include "render/dmabuf.h"
 #include "render/drm_syncobj_merger.h"
 
 #include "config.h"
@@ -79,14 +81,7 @@ void wlr_drm_syncobj_merger_unref(struct wlr_drm_syncobj_merger *merger) {
 static bool merger_add_exportable(struct wlr_drm_syncobj_merger *merger,
 		struct wlr_drm_syncobj_timeline *src_timeline, uint64_t src_point) {
 	int new_sync = wlr_drm_syncobj_timeline_export_sync_file(src_timeline, src_point);
-	if (merger->sync_fd != -1) {
-		int fd2 = new_sync;
-		new_sync = sync_file_merge(merger->sync_fd, fd2);
-		close(fd2);
-		close(merger->sync_fd);
-	}
-	merger->sync_fd = new_sync;
-	return true;
+	return wlr_drm_syncobj_merger_add_sync_file(merger, new_sync);
 }
 
 struct export_waiter {
@@ -129,5 +124,71 @@ bool wlr_drm_syncobj_merger_add(struct wlr_drm_syncobj_merger *merger,
 	add->src_timeline = wlr_drm_syncobj_timeline_ref(src_timeline);
 	add->src_point = src_point;
 	merger->n_ref++;
+	return true;
+}
+
+bool wlr_drm_syncobj_merger_add_sync_file(struct wlr_drm_syncobj_merger *merger,
+		int fd) {
+	int new_sync = fd;
+	if (merger->sync_fd != -1) {
+		new_sync = sync_file_merge(merger->sync_fd, fd);
+		close(fd);
+		close(merger->sync_fd);
+	}
+	merger->sync_fd = new_sync;
+	return merger->sync_fd != -1;
+}
+
+struct poll_waiter {
+	struct wl_event_source *event_source;
+	struct wlr_drm_syncobj_merger *merger;
+};
+
+static int poll_waiter_handle_done(int fd, uint32_t mask, void *data) {
+	struct poll_waiter *waiter = data;
+	wlr_drm_syncobj_merger_unref(waiter->merger);
+	wl_event_source_remove(waiter->event_source);
+	free(waiter);
+	return 0;
+}
+
+bool wlr_drm_syncobj_merger_add_dmabuf(struct wlr_drm_syncobj_merger *merger,
+		struct wlr_buffer *buffer, struct wl_event_loop *event_loop) {
+	struct wlr_dmabuf_attributes dmabuf_attributes;
+	if (!wlr_buffer_get_dmabuf(buffer, &dmabuf_attributes)) {
+		return true;
+	}
+
+	bool res = true;
+	for (int i = 0; i < dmabuf_attributes.n_planes; ++i) {
+		int sync_fd = dmabuf_export_sync_file(dmabuf_attributes.fd[i], DMA_BUF_SYNC_WRITE);
+		if (sync_fd == -1) {
+			res = false;
+			break;
+		}
+		if (!wlr_drm_syncobj_merger_add_sync_file(merger, sync_fd)) {
+			return false;
+		}
+	}
+
+	if (res) {
+		return true;
+	}
+
+	uint32_t mask = WL_EVENT_ERROR | WL_EVENT_HANGUP | WL_EVENT_WRITABLE;
+	for (int i = 0; i < dmabuf_attributes.n_planes; ++i) {
+		struct poll_waiter *waiter = calloc(1, sizeof(*waiter));
+		if (waiter == NULL) {
+			return false;
+		}
+		waiter->merger = wlr_drm_syncobj_merger_ref(merger);
+		waiter->event_source = wl_event_loop_add_fd(event_loop,
+			dmabuf_attributes.fd[i], mask, poll_waiter_handle_done, waiter);
+		if (waiter->event_source == NULL) {
+			wlr_drm_syncobj_merger_unref(waiter->merger);
+			free(waiter);
+			return false;
+		}
+	}
 	return true;
 }

@@ -74,4 +74,21 @@ bool wlr_linux_drm_syncobj_v1_state_add_release_point(
 	struct wlr_drm_syncobj_timeline *release_timeline, uint64_t release_point,
 	struct wl_event_loop *event_loop);
 
+/**
+ * Register the DMA-BUF release of a buffer for buffer usage.
+ * Non-dmabuf buffers are considered to be immediately available (no wait).
+ *
+ * This function may be called multiple times for the same commit. The client's
+ * release point will be signalled when all registered points are signalled, and
+ * a new buffer has been committed.
+ *
+ * Because the platform may not support DMA-BUF fence merges, a wl_event_loop
+ * must be supplied to schedule a wait internally, if needed
+ *
+ * Waits for write access
+ */
+bool wlr_linux_drm_syncobj_v1_state_add_release_from_implicit_sync(
+	struct wlr_linux_drm_syncobj_surface_v1_state *state,
+	struct wlr_buffer *buffer, struct wl_event_loop *event_loop);
+
 #endif

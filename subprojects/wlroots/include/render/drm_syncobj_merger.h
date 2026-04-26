@@ -3,6 +3,8 @@
 
 #include <wayland-server-core.h>
 
+struct wlr_buffer;
+
 /**
  * Accumulate timeline points, to have a destination timeline point be
  * signalled when all inputs are
@@ -40,5 +42,23 @@ void wlr_drm_syncobj_merger_unref(struct wlr_drm_syncobj_merger *merger);
 bool wlr_drm_syncobj_merger_add(struct wlr_drm_syncobj_merger *merger,
 	struct wlr_drm_syncobj_timeline *dst_timeline, uint64_t dst_point,
 	struct wl_event_loop *loop);
+
+/**
+ * Add a new sync file to wait for.
+ *
+ * Ownership of fd is transferred to the merger.
+ */
+bool wlr_drm_syncobj_merger_add_sync_file(struct wlr_drm_syncobj_merger *merger,
+	int fd);
+
+/**
+ * Add a new DMA-BUF release to wait for.
+ *
+ * Waits for write access.
+ * If the platform does not support DMA-BUF<->sync file interop, the supplied
+ * event_loop is used to schedule a wait.
+ */
+bool wlr_drm_syncobj_merger_add_dmabuf(struct wlr_drm_syncobj_merger *merger,
+	struct wlr_buffer *buffer, struct wl_event_loop *event_loop);
 
 #endif
