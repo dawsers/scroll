@@ -1157,12 +1157,10 @@ bool wlr_xwayland_surface_fetch_icon(
 		return false;
 	}
 
-	if (!xcb_ewmh_get_wm_icon_from_reply(icon_reply, reply)) {
-		free(reply);
-		return false;
-	}
+	bool ok = xcb_ewmh_get_wm_icon_from_reply(icon_reply, reply);
+	free(reply);
 
-	return true;
+	return ok;
 }
 
 static xcb_get_property_cookie_t get_property(struct wlr_xwm *xwm,
