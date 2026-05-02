@@ -58,7 +58,7 @@ void rect_union_finish(struct rect_union *r);
  *
  * Amortized time: O(1)
  */
-void rect_union_add(struct rect_union *r, pixman_box32_t box);
+void rect_union_add(struct rect_union *r, const pixman_box32_t *box);
 
 /**
  * Compute an exact cover of the rectangles added so far, and return

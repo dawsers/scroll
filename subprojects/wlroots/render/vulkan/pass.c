@@ -613,7 +613,7 @@ static void render_pass_mark_box_updated(struct wlr_vk_render_pass *pass,
 	if (!pass->two_pass) {
 		return;
 	}
-	rect_union_add(&pass->updated_region, *box);
+	rect_union_add(&pass->updated_region, box);
 }
 
 static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
