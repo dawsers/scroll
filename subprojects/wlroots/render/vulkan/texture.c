@@ -72,16 +72,16 @@ static bool write_pixels(struct wlr_vk_texture *texture,
 
 	// get staging buffer
 	struct wlr_vk_buffer_span span = vulkan_get_stage_span(renderer, bsize, format_info->bytes_per_block);
-	if (!span.buffer || span.alloc.size != bsize) {
+	if (!span.buffer || span.size != bsize) {
 		wlr_log(WLR_ERROR, "Failed to retrieve staging buffer");
 		free(copies);
 		return false;
 	}
-	char *map = (char*)span.buffer->cpu_mapping + span.alloc.start;
+	char *map = (char*)span.buffer->cpu_mapping + span.offset;
 
 	// upload data
 
-	uint32_t buf_off = span.alloc.start;
+	uint32_t buf_off = span.offset;
 	for (int i = 0; i < rects_len; i++) {
 		pixman_box32_t rect = rects[i];
 		uint32_t width = rect.x2 - rect.x1;

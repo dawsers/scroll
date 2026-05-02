@@ -595,14 +595,7 @@ static bool render_pass_submit(struct wlr_render_pass *wlr_pass) {
 
 	free(render_wait);
 
-	struct wlr_vk_shared_buffer *stage_buf, *stage_buf_tmp;
-	wl_list_for_each_safe(stage_buf, stage_buf_tmp, &renderer->stage.buffers, link) {
-		if (stage_buf->allocs.size == 0) {
-			continue;
-		}
-		wl_list_remove(&stage_buf->link);
-		wl_list_insert(&stage_cb->stage_buffers, &stage_buf->link);
-	}
+	vulkan_stage_mark_submit(renderer, render_timeline_point);
 
 	if (!vulkan_sync_render_pass_release(renderer, pass)) {
 		wlr_log(WLR_ERROR, "Failed to sync render buffer");
@@ -1323,13 +1316,13 @@ static bool create_3d_lut_image(struct wlr_vk_renderer *renderer,
 	size_t size = dim_len * dim_len * dim_len * bytes_per_block;
 	struct wlr_vk_buffer_span span = vulkan_get_stage_span(renderer,
 		size, bytes_per_block);
-	if (!span.buffer || span.alloc.size != size) {
+	if (!span.buffer || span.size != size) {
 		wlr_log(WLR_ERROR, "Failed to retrieve staging buffer");
 		goto fail_imageview;
 	}
 
 	float sample_range = 1.0f / (dim_len - 1);
-	char *map = (char *)span.buffer->cpu_mapping + span.alloc.start;
+	char *map = (char *)span.buffer->cpu_mapping + span.offset;
 	float *dst = (float *)map;
 	for (size_t b_index = 0; b_index < dim_len; b_index++) {
 		for (size_t g_index = 0; g_index < dim_len; g_index++) {
@@ -1359,7 +1352,7 @@ static bool create_3d_lut_image(struct wlr_vk_renderer *renderer,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
 		VK_ACCESS_TRANSFER_WRITE_BIT);
 	VkBufferImageCopy copy = {
-		.bufferOffset = span.alloc.start,
+		.bufferOffset = span.offset,
 		.imageExtent.width = dim_len,
 		.imageExtent.height = dim_len,
 		.imageExtent.depth = dim_len,
