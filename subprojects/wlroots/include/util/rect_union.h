@@ -63,8 +63,10 @@ void rect_union_add(struct rect_union *r, const pixman_box32_t *box);
 /**
  * Compute an exact cover of the rectangles added so far, and return
  * a pointer to a pixman_region32_t giving that cover. The pointer will
- * remain valid until the next time *r is modified. If there was an allocation
- * failure, this function may return a single-rectangle bounding box instead.
+ * remain valid until the next time *r is modified.
+ *
+ * An internal complexity limit is enforced by rect_union. If exceeded, this
+ * function will instead return a single-rectangle bounding box.
  *
  * This may be called multiple times and interleaved with rect_union_add().
  *

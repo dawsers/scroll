@@ -44,13 +44,21 @@ void rect_union_add(struct rect_union *ru, const pixman_box32_t *box) {
 
 	box_union(&ru->bounding_box, box);
 
-	if (!ru->alloc_failure) {
-		pixman_box32_t *entry = wl_array_add(&ru->unsorted, sizeof(*entry));
-		if (entry) {
-			*entry = *box;
-		} else {
-			handle_alloc_failure(ru);
-		}
+	if (ru->alloc_failure) {
+		return;
+	}
+
+	int nrects = (int)(ru->unsorted.size / sizeof(pixman_box32_t));
+	if (nrects >= 1024) {
+		handle_alloc_failure(ru);
+		return;
+	}
+
+	pixman_box32_t *entry = wl_array_add(&ru->unsorted, sizeof(*entry));
+	if (entry) {
+		*entry = *box;
+	} else {
+		handle_alloc_failure(ru);
 	}
 }
 
