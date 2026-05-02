@@ -38,17 +38,6 @@ static void bind_pipeline(struct wlr_vk_render_pass *pass, VkPipeline pipeline) 
 	pass->bound_pipeline = pipeline;
 }
 
-static void get_clip_region(struct wlr_vk_render_pass *pass,
-		const pixman_region32_t *in, pixman_region32_t *out) {
-	if (in != NULL) {
-		pixman_region32_init(out);
-		pixman_region32_copy(out, in);
-	} else {
-		struct wlr_buffer *buffer = pass->render_buffer->wlr_buffer;
-		pixman_region32_init_rect(out, 0, 0, buffer->width, buffer->height);
-	}
-}
-
 static void convert_pixman_box_to_vk_rect(const pixman_box32_t *box, VkRect2D *rect) {
 	*rect = (VkRect2D){
 		.offset = { .x = box->x1, .y = box->y1 },
@@ -620,18 +609,11 @@ error:
 }
 
 static void render_pass_mark_box_updated(struct wlr_vk_render_pass *pass,
-		const struct wlr_box *box) {
+		const pixman_box32_t *box) {
 	if (!pass->two_pass) {
 		return;
 	}
-
-	pixman_box32_t pixman_box = {
-		.x1 = box->x,
-		.x2 = box->x + box->width,
-		.y1 = box->y,
-		.y2 = box->y + box->height,
-	};
-	rect_union_add(&pass->updated_region, pixman_box);
+	rect_union_add(&pass->updated_region, *box);
 }
 
 static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
@@ -651,28 +633,30 @@ static void render_pass_add_rect(struct wlr_render_pass *wlr_pass,
 		options->color.a, // no conversion for alpha
 	};
 
+	struct wlr_box box;
+	wlr_render_rect_options_get_box(options, pass->render_buffer->wlr_buffer, &box);
+
 	pixman_region32_t clip;
-	get_clip_region(pass, options->clip, &clip);
+	if (options->clip) {
+		pixman_region32_init(&clip);
+		pixman_region32_intersect_rect(&clip, options->clip,
+			box.x, box.y, box.width, box.height);
+	} else {
+		pixman_region32_init_rect(&clip,
+			box.x, box.y, box.width, box.height);
+	}
 
 	int clip_rects_len;
 	const pixman_box32_t *clip_rects = pixman_region32_rectangles(&clip, &clip_rects_len);
-	// Record regions possibly updated for use in second subpass
-	for (int i = 0; i < clip_rects_len; i++) {
-		struct wlr_box clip_box = {
-			.x = clip_rects[i].x1,
-			.y = clip_rects[i].y1,
-			.width = clip_rects[i].x2 - clip_rects[i].x1,
-			.height = clip_rects[i].y2 - clip_rects[i].y1,
-		};
-		struct wlr_box intersection;
-		if (!wlr_box_intersection(&intersection, &options->box, &clip_box)) {
-			continue;
-		}
-		render_pass_mark_box_updated(pass, &intersection);
+	if (clip_rects_len == 0) {
+		pixman_region32_fini(&clip);
+		return;
 	}
 
-	struct wlr_box box;
-	wlr_render_rect_options_get_box(options, pass->render_buffer->wlr_buffer, &box);
+	// Record regions possibly updated for use in second subpass
+	for (int i = 0; i < clip_rects_len; i++) {
+		render_pass_mark_box_updated(pass, &clip_rects[i]);
+	}
 
 	switch (options->blend_mode) {
 	case WLR_RENDER_BLEND_MODE_PREMULTIPLIED:;
@@ -769,6 +753,22 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	wlr_matrix_project_box(matrix, &dst_box, options->transform, proj);
 	wlr_matrix_multiply(matrix, pass->projection, matrix);
 
+	pixman_region32_t clip;
+	if (options->clip) {
+		pixman_region32_init(&clip);
+		pixman_region32_intersect_rect(&clip, options->clip,
+			dst_box.x, dst_box.y, dst_box.width, dst_box.height);
+	} else {
+		pixman_region32_init_rect(&clip,
+			dst_box.x, dst_box.y, dst_box.width, dst_box.height);
+	}
+	int clip_rects_len;
+	const pixman_box32_t *clip_rects = pixman_region32_rectangles(&clip, &clip_rects_len);
+	if (clip_rects_len == 0) {
+		pixman_region32_fini(&clip);
+		return;
+	}
+
 	struct wlr_vk_vert_pcr_data vert_pcr_data = {
 		.uv_off = {
 			src_box.x / options->texture->width,
@@ -841,6 +841,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 				WLR_RENDER_BLEND_MODE_NONE : options->blend_mode,
 		});
 	if (!pipe) {
+		pixman_region32_fini(&clip);
 		pass->failed = true;
 		return;
 	}
@@ -848,6 +849,7 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	struct wlr_vk_texture_view *view =
 		vulkan_texture_get_or_create_view(texture, pipe->layout, srgb_image_view);
 	if (!view) {
+		pixman_region32_fini(&clip);
 		pass->failed = true;
 		return;
 	}
@@ -893,33 +895,16 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 		VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(vert_pcr_data),
 		sizeof(frag_pcr_data), &frag_pcr_data);
 
-	pixman_region32_t clip;
-	get_clip_region(pass, options->clip, &clip);
-
-	int clip_rects_len;
-	const pixman_box32_t *clip_rects = pixman_region32_rectangles(&clip, &clip_rects_len);
 	for (int i = 0; i < clip_rects_len; i++) {
 		VkRect2D rect;
 		convert_pixman_box_to_vk_rect(&clip_rects[i], &rect);
 		vkCmdSetScissor(cb, 0, 1, &rect);
 		vkCmdDraw(cb, 4, 1, 0, 0);
-
-		struct wlr_box clip_box = {
-			.x = clip_rects[i].x1,
-			.y = clip_rects[i].y1,
-			.width = clip_rects[i].x2 - clip_rects[i].x1,
-			.height = clip_rects[i].y2 - clip_rects[i].y1,
-		};
-		struct wlr_box intersection;
-		if (!wlr_box_intersection(&intersection, &dst_box, &clip_box)) {
-			continue;
-		}
-		render_pass_mark_box_updated(pass, &intersection);
+		render_pass_mark_box_updated(pass, &clip_rects[i]);
 	}
+	pixman_region32_fini(&clip);
 
 	texture->last_used_cb = pass->command_buffer;
-
-	pixman_region32_fini(&clip);
 
 	if (texture->dmabuf_imported || (options != NULL && options->wait_timeline != NULL)) {
 		struct wlr_vk_render_pass_texture *pass_texture =
@@ -948,27 +933,31 @@ static void render_pass_add_decoration(struct wlr_render_pass *wlr_pass,
 		const struct wlr_render_decoration_options *options) {
 	struct wlr_vk_render_pass *pass = get_render_pass(wlr_pass);
 	VkCommandBuffer cb = pass->command_buffer->vk;
+
+	struct wlr_box box = options->box;
+
 	pixman_region32_t clip;
-	get_clip_region(pass, options->clip, &clip);
+
+	if (options->clip) {
+		pixman_region32_init(&clip);
+		pixman_region32_intersect_rect(&clip, options->clip,
+			box.x, box.y, box.width, box.height);
+	} else {
+		struct wlr_buffer *buffer = pass->render_buffer->wlr_buffer;
+		pixman_region32_init_rect(&clip, 0, 0, buffer->width, buffer->height);
+	}
 
 	int clip_rects_len;
 	const pixman_box32_t *clip_rects = pixman_region32_rectangles(&clip, &clip_rects_len);
-	// Record regions possibly updated for use in second subpass
-	for (int i = 0; i < clip_rects_len; i++) {
-		struct wlr_box clip_box = {
-			.x = clip_rects[i].x1,
-			.y = clip_rects[i].y1,
-			.width = clip_rects[i].x2 - clip_rects[i].x1,
-			.height = clip_rects[i].y2 - clip_rects[i].y1,
-		};
-		struct wlr_box intersection;
-		if (!wlr_box_intersection(&intersection, &options->box, &clip_box)) {
-			continue;
-		}
-		render_pass_mark_box_updated(pass, &intersection);
+	if (clip_rects_len == 0) {
+		pixman_region32_fini(&clip);
+		return;
 	}
 
-	struct wlr_box box = options->box;
+	// Record regions possibly updated for use in second subpass
+	for (int i = 0; i < clip_rects_len; i++) {
+		render_pass_mark_box_updated(pass, &clip_rects[i]);
+	}
 
 	switch (options->blend_mode) {
 	case WLR_RENDER_BLEND_MODE_PREMULTIPLIED:;
@@ -1092,27 +1081,31 @@ static void render_pass_add_shadow(struct wlr_render_pass *wlr_pass,
 		const struct wlr_render_shadow_options *options) {
 	struct wlr_vk_render_pass *pass = get_render_pass(wlr_pass);
 	VkCommandBuffer cb = pass->command_buffer->vk;
+
+	struct wlr_box box = options->box;
+
 	pixman_region32_t clip;
-	get_clip_region(pass, options->clip, &clip);
+
+	if (options->clip) {
+		pixman_region32_init(&clip);
+		pixman_region32_intersect_rect(&clip, options->clip,
+			box.x, box.y, box.width, box.height);
+	} else {
+		struct wlr_buffer *buffer = pass->render_buffer->wlr_buffer;
+		pixman_region32_init_rect(&clip, 0, 0, buffer->width, buffer->height);
+	}
 
 	int clip_rects_len;
 	const pixman_box32_t *clip_rects = pixman_region32_rectangles(&clip, &clip_rects_len);
-	// Record regions possibly updated for use in second subpass
-	for (int i = 0; i < clip_rects_len; i++) {
-		struct wlr_box clip_box = {
-			.x = clip_rects[i].x1,
-			.y = clip_rects[i].y1,
-			.width = clip_rects[i].x2 - clip_rects[i].x1,
-			.height = clip_rects[i].y2 - clip_rects[i].y1,
-		};
-		struct wlr_box intersection;
-		if (!wlr_box_intersection(&intersection, &options->box, &clip_box)) {
-			continue;
-		}
-		render_pass_mark_box_updated(pass, &intersection);
+	if (clip_rects_len == 0) {
+		pixman_region32_fini(&clip);
+		return;
 	}
 
-	struct wlr_box box = options->box;
+	// Record regions possibly updated for use in second subpass
+	for (int i = 0; i < clip_rects_len; i++) {
+		render_pass_mark_box_updated(pass, &clip_rects[i]);
+	}
 
 	switch (options->blend_mode) {
 	case WLR_RENDER_BLEND_MODE_PREMULTIPLIED:;
