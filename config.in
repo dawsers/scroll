@@ -624,16 +624,26 @@ mode "spaces" {
     bindsym Shift+8 space save 8; mode default
     bindsym Shift+9 space save 9; mode default
     bindsym Shift+0 space save 0; mode default
-    bindsym Ctrl+1 space restore 1; mode default
-    bindsym Ctrl+2 space restore 2; mode default
-    bindsym Ctrl+3 space restore 3; mode default
-    bindsym Ctrl+4 space restore 4; mode default
-    bindsym Ctrl+5 space restore 5; mode default
-    bindsym Ctrl+6 space restore 6; mode default
-    bindsym Ctrl+7 space restore 7; mode default
-    bindsym Ctrl+8 space restore 8; mode default
-    bindsym Ctrl+9 space restore 9; mode default
-    bindsym Ctrl+0 space restore 0; mode default
+    bindsym Ctrl+1 space restore_hide 1; mode default
+    bindsym Ctrl+2 space restore_hide 2; mode default
+    bindsym Ctrl+3 space restore_hide 3; mode default
+    bindsym Ctrl+4 space restore_hide 4; mode default
+    bindsym Ctrl+5 space restore_hide 5; mode default
+    bindsym Ctrl+6 space restore_hide 6; mode default
+    bindsym Ctrl+7 space restore_hide 7; mode default
+    bindsym Ctrl+8 space restore_hide 8; mode default
+    bindsym Ctrl+9 space restore_hide 9; mode default
+    bindsym Ctrl+0 space restore_hide 0; mode default
+    bindsym Ctrl+Shift+1 space restore 1; mode default
+    bindsym Ctrl+Shift+2 space restore 2; mode default
+    bindsym Ctrl+Shift+3 space restore 3; mode default
+    bindsym Ctrl+Shift+4 space restore 4; mode default
+    bindsym Ctrl+Shift+5 space restore 5; mode default
+    bindsym Ctrl+Shift+6 space restore 6; mode default
+    bindsym Ctrl+Shift+7 space restore 7; mode default
+    bindsym Ctrl+Shift+8 space restore 8; mode default
+    bindsym Ctrl+Shift+9 space restore 9; mode default
+    bindsym Ctrl+Shift+0 space restore 0; mode default
     bindsym Escape mode "default"
 }
 bindsym $mod+g mode "spaces"

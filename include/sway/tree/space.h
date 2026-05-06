@@ -3,6 +3,12 @@
 
 #include "sway/tree/view.h"
 
+enum sway_space_restore {
+	SPACE_RESTORE_LOAD,
+	SPACE_RESTORE_CLOSE,
+	SPACE_RESTORE_HIDE,
+};
+
 struct sway_space_view {
     struct sway_view *view;
     struct sway_space_container *container;
@@ -33,9 +39,11 @@ struct sway_space {
 void space_save(struct sway_workspace *workspace, const char *name);
 
 // Load the space with name into the current workspace.
-// If reset is false, add the space data to the workspace. If it is true, close
-// any views not belonging to the space
-void space_load(struct sway_workspace *workspace, const char *name, bool reset);
+// If restore is SPACCE_RESTORE_LOAD, add the space data to the workspace.
+// If it is SPACE_RESTORE_CLOSE, close any views not belonging to the space.
+// If it is SPACE_RESTORE_HIDE, hide any views not belonging to the space in the
+// scratchpad.
+void space_load(struct sway_workspace *workspace, const char *name, enum sway_space_restore restore);
 
 
 #endif // _SWAY_SPACE_H

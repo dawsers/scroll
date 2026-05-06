@@ -1196,7 +1196,8 @@ name and manage your own space names which can be arbitrary, multiword strings.
 ``` config
 bindsym $mod+g exec scroll-spaces.sh load
 bindsym $mod+Shift+g exec scroll-spaces.sh save
-bindsym $mod+Ctrl+g exec scroll-spaces.sh restore
+bindsym $mod+Ctrl_Shift+g exec scroll-spaces.sh restore
+bindsym $mod+Ctrl+g exec scroll-spaces.sh restore_hide
 ```
 
 `scroll-spaces.sh`
@@ -1213,6 +1214,9 @@ elif [ $1 == "load" ]; then
 elif [ $1 == "restore" ]; then
     space=$(scrollmsg -t get_spaces | jq -r '.[]' | rofi -p "Restore a space - Windows not belonging to the space will be closed" -dmenu)
     scrollmsg "space restore" "\"$space\""
+elif [ $1 == "restore_hide" ]; then
+    space=$(scrollmsg -t get_spaces | jq -r '.[]' | rofi -p "Restore a space - Windows not belonging to the space will be hidden" -dmenu)
+    scrollmsg "space restore_hide" "\"$space\""
 fi
 ```
 

@@ -263,11 +263,6 @@ int layout_trails_active();
 int layout_trails_active_length();
 bool layout_trails_trailmarked(struct sway_view *view);
 
-// Space
-struct sway_space;
-
-void layout_space_restore(struct sway_space *space, struct sway_workspace *workspace, bool reset);
-
 // Toggle size
 //
 // Return the current toggle_size mode for the workspace

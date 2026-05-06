@@ -866,7 +866,7 @@ set|plus|minus|toggle <amount>
 	established by the *seat* subcommand of the same name. See
 	*scroll-input*(5) for more ways to affect inhibitors.
 
-*space* <save|load|restore> <name>
+*space* <save|load|restore|restore_hide> <name>
 	A _space_ is a configuration of existing windows.
 
 	_save_ stores the configuration of the current workspace, including
@@ -885,6 +885,12 @@ set|plus|minus|toggle <amount>
 	use this if you have opened several disposable applications in your
 	workspace and want to remove the clutter by restoring your original
 	configuration/space.
+
+	_restore_hide_ is like loading a space, but any window in the workspace where
+	loading happens that doesn't belong to the space, will be hidden in the
+	scratchpad. You can	use this if you want to temporarily use a space. First
+	save the current workspace in a space, then _restore_hide_ the new
+	configuration, and when you are done, _restore_hide_ the saved space.
 
 *sticky* enable|disable|toggle
 	"Sticks" a floating window to the current output so that it shows up on all
