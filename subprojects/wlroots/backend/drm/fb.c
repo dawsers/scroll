@@ -144,7 +144,13 @@ static struct wlr_drm_fb *drm_fb_create(struct wlr_drm_backend *drm,
 		struct wlr_buffer *buf, const struct wlr_drm_format_set *formats) {
 	struct wlr_dmabuf_attributes attribs;
 	if (!wlr_buffer_get_dmabuf(buf, &attribs)) {
-		wlr_log(WLR_DEBUG, "Failed to get DMA-BUF from buffer");
+		struct wlr_shm_attributes shm;
+		if (wlr_buffer_get_shm(buf, &shm)) {
+			wlr_log(WLR_DEBUG, "Failed to get DMA-BUF from shm buffer");
+		} else {
+			wlr_log(WLR_DEBUG, "Failed to get DMA-BUF from buffer");
+		}
+
 		return NULL;
 	}
 
