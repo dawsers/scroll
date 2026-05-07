@@ -1633,3 +1633,114 @@ int luaopen_scroll(lua_State *L) {
 	luaL_newlib(L, scroll_lib);
 	return 1;
 }
+
+void lua_execute_view_map_cbs(struct sway_view *view) {
+	for (int i = 0; i < config->lua.cbs_view_map->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_view_map->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, view);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
+void lua_execute_view_unmap_cbs(struct sway_view *view) {
+	for (int i = 0; i < config->lua.cbs_view_unmap->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_view_unmap->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, view);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
+void lua_execute_view_urgent_cbs(struct sway_view *view) {
+	for (int i = 0; i < config->lua.cbs_view_urgent->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_view_urgent->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, view);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
+void lua_execute_view_focus_cbs(struct sway_view *view) {
+	// Lua callbacks
+	for (int i = 0; i < config->lua.cbs_view_focus->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_view_focus->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, view);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
+void lua_execute_view_float_cbs(struct sway_view *view) {
+	for (int i = 0; i < config->lua.cbs_view_float->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_view_float->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, view);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
+void lua_execute_workspace_create_cbs(struct sway_workspace *workspace) {
+	for (int i = 0; i < config->lua.cbs_workspace_create->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_workspace_create->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, workspace);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
+void lua_execute_workspace_focus_cbs(struct sway_workspace *workspace) {
+	for (int i = 0; i < config->lua.cbs_workspace_focus->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_workspace_focus->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, workspace);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}
+
+void lua_execute_ipc_view_cbs(struct sway_view *view, const char *change) {
+	if (view) {
+		for (int i = 0; i < config->lua.cbs_ipc_view->length; ++i) {
+			struct sway_lua_closure *closure = config->lua.cbs_ipc_view->items[i];
+			lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+			lua_pushlightuserdata(config->lua.state, view);
+			lua_pushstring(config->lua.state, change);
+			lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+			lua_call(config->lua.state, 3, 0);
+		}
+	}
+}
+
+void lua_execute_ipc_workspace_cbs(struct sway_workspace *old_ws,
+		struct sway_workspace *new_ws, const char *change) {
+	for (int i = 0; i < config->lua.cbs_ipc_workspace->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_ipc_workspace->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		lua_pushlightuserdata(config->lua.state, old_ws);
+		lua_pushlightuserdata(config->lua.state, new_ws);
+		lua_pushstring(config->lua.state, change);
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 4, 0);
+	}
+}
+
+void lua_execute_jump_end_cbs(struct sway_container *container) {
+	for (int i = 0; i < config->lua.cbs_jump_end->length; ++i) {
+		struct sway_lua_closure *closure = config->lua.cbs_jump_end->items[i];
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
+		if (container) {
+			lua_pushlightuserdata(config->lua.state, container->view);
+		} else {
+			lua_pushnil(config->lua.state);
+		}
+		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
+		lua_call(config->lua.state, 2, 0);
+	}
+}

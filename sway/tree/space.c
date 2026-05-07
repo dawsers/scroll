@@ -91,11 +91,11 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 				node_set_dirty(&ws->node);
 			}
 			container->view->content_scale = space_container->view->content_scale;
+			container->pending.workspace = parent->pending.workspace;
 			arrange_container(container);
 			node_set_dirty(&container->node);
 			list_add(parent->pending.children, container);
 			container->pending.parent = parent;
-			container->pending.workspace = parent->pending.workspace;
 			fill_container(space_container, container);
 			container_update_representation(container);
 			node_set_dirty(&parent->node);

@@ -39,4 +39,20 @@ int luaopen_scroll(lua_State *L);
 // Takes whatever Lua object is top of the stack and assigns it to command_data
 void lua_command_data_create();
 
+struct sway_view;
+struct sway_container;
+struct sway_workspace;
+
+void lua_execute_view_map_cbs(struct sway_view *view);
+void lua_execute_view_unmap_cbs(struct sway_view *view);
+void lua_execute_view_urgent_cbs(struct sway_view *view);
+void lua_execute_view_focus_cbs(struct sway_view *view);
+void lua_execute_view_float_cbs(struct sway_view *view);
+void lua_execute_workspace_create_cbs(struct sway_workspace *workspace);
+void lua_execute_workspace_focus_cbs(struct sway_workspace *workspace);
+void lua_execute_ipc_view_cbs(struct sway_view *view, const char *change);
+void lua_execute_ipc_workspace_cbs(struct sway_workspace *old_ws,
+	struct sway_workspace *new_ws, const char *change);
+void lua_execute_jump_end_cbs(struct sway_container *container);
+
 #endif

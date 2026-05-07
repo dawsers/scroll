@@ -1760,21 +1760,6 @@ static char *generate_label(uint32_t i, list_t *keys, uint32_t nkeys) {
 	return strdup(label);
 }
 
-static void execute_lua_jump_end_callbacks(struct sway_container *focused) {
-	// Lua callbacks
-	for (int i = 0; i < config->lua.cbs_jump_end->length; ++i) {
-		struct sway_lua_closure *closure = config->lua.cbs_jump_end->items[i];
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
-		if (focused) {
-			lua_pushlightuserdata(config->lua.state, focused->view);
-		} else {
-			lua_pushnil(config->lua.state);
-		}
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
-	}
-}
-
 static bool containers_overlap(struct sway_container *con1, struct sway_container *con2) {
 	if (con1->pending.x >= con2->pending.x + con2->pending.width ||
 		con1->pending.x + con1->pending.width <= con2->pending.x ||
@@ -2132,7 +2117,7 @@ static void jump_handle_keyboard_key_end(void *data) {
 		criteria_destroy(jump_data->criteria);
 	}
 	free(jump_data);
-	execute_lua_jump_end_callbacks(focused);
+	lua_execute_jump_end_cbs(focused);
 	animation_set_type(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);

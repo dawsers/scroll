@@ -1054,13 +1054,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view_execute_criteria(view);
 
 	// Lua callbacks
-	for (int i = 0; i < config->lua.cbs_view_map->length; ++i) {
-		struct sway_lua_closure *closure = config->lua.cbs_view_map->items[i];
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
-		lua_pushlightuserdata(config->lua.state, view);
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
-	}
+	lua_execute_view_map_cbs(view);
 
 	if (!fullscreen && ws && ws->fullscreen) {
 		if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
@@ -1106,13 +1100,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 void view_unmap(struct sway_view *view) {
 	view->lua.mapped = false;
 	// Lua callbacks
-	for (int i = 0; i < config->lua.cbs_view_unmap->length; ++i) {
-		struct sway_lua_closure *closure = config->lua.cbs_view_unmap->items[i];
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
-		lua_pushlightuserdata(config->lua.state, view);
-		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
-	}
+	lua_execute_view_unmap_cbs(view);
 
 	wl_signal_emit_mutable(&view->events.unmap, view);
 
@@ -1413,13 +1401,7 @@ void view_set_urgent(struct sway_view *view, bool enable) {
 		container_update_itself_and_parents(view->container);
 
 		// Lua callbacks
-		for (int i = 0; i < config->lua.cbs_view_urgent->length; ++i) {
-			struct sway_lua_closure *closure = config->lua.cbs_view_urgent->items[i];
-			lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
-			lua_pushlightuserdata(config->lua.state, view);
-			lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-			lua_call(config->lua.state, 2, 0);
-		}
+		lua_execute_view_urgent_cbs(view);
 	} else {
 		view->urgent = (struct timespec){ 0 };
 		if (view->urgent_timer) {
