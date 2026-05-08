@@ -546,7 +546,7 @@ bool wlr_linux_drm_syncobj_v1_state_add_release_point(
 bool wlr_linux_drm_syncobj_v1_state_add_release_from_implicit_sync(
 		struct wlr_linux_drm_syncobj_surface_v1_state *state,
 		struct wlr_buffer *buffer, struct wl_event_loop *event_loop) {
-	if (state->release_merger != NULL) {
+	if (state->release_merger == NULL) {
 		return true;
 	}
 	return wlr_drm_syncobj_merger_add_dmabuf(state->release_merger, buffer, event_loop);
