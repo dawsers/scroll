@@ -387,6 +387,7 @@ static void manager_handle_import_timeline(struct wl_client *client,
 	struct wl_resource *timeline_resource = wl_resource_create(client,
 		&wp_linux_drm_syncobj_timeline_v1_interface, version, id);
 	if (timeline_resource == NULL) {
+		wlr_drm_syncobj_timeline_unref(timeline);
 		wl_resource_post_no_memory(resource);
 		return;
 	}
