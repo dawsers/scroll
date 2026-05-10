@@ -20,6 +20,7 @@ struct wlr_color_management_output_v1 {
 	struct wlr_color_manager_v1 *manager;
 	struct wl_list link;
 
+	struct wl_listener output_commit;
 	struct wl_listener output_destroy;
 };
 
@@ -283,9 +284,19 @@ static void cm_output_destroy(struct wlr_color_management_output_v1 *cm_output) 
 		return;
 	}
 	wl_resource_set_user_data(cm_output->resource, NULL); // make inert
+	wl_list_remove(&cm_output->output_commit.link);
 	wl_list_remove(&cm_output->output_destroy.link);
 	wl_list_remove(&cm_output->link);
 	free(cm_output);
+}
+
+static void cm_output_handle_output_commit(struct wl_listener *listener, void *data) {
+	struct wlr_color_management_output_v1 *cm_output = wl_container_of(listener, cm_output, output_commit);
+	const struct wlr_output_event_commit *event = data;
+
+	if (event->state->committed & WLR_OUTPUT_STATE_IMAGE_DESCRIPTION) {
+		wp_color_management_output_v1_send_image_description_changed(cm_output->resource);
+	}
 }
 
 static void cm_output_handle_output_destroy(struct wl_listener *listener, void *data) {
@@ -741,6 +752,9 @@ static void manager_handle_get_output(struct wl_client *client,
 	cm_output->resource = cm_output_resource;
 	cm_output->manager = manager;
 	cm_output->output = output;
+
+	cm_output->output_commit.notify = cm_output_handle_output_commit;
+	wl_signal_add(&output->events.commit, &cm_output->output_commit);
 
 	cm_output->output_destroy.notify = cm_output_handle_output_destroy;
 	wl_signal_add(&output->events.destroy, &cm_output->output_destroy);
