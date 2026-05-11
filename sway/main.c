@@ -1,3 +1,7 @@
+//#define INCLUDE_CRASH_HANDLER
+#ifdef INCLUDE_CRASH_HANDLER
+#include <execinfo.h>
+#endif
 #include <getopt.h>
 #include <pango/pangocairo.h>
 #include <pthread.h>
@@ -153,6 +157,22 @@ static void restore_signals(void) {
 	sigaction(SIGPIPE, &sa_dfl, NULL);
 }
 
+#ifdef INCLUDE_CRASH_HANDLER
+static void handler(int sig) {
+	void *array[10];
+	size_t size;
+	sway_log(SWAY_DEBUG, "Errrrrroooooorrrrr....CRASH");
+
+	// get void*'s for all entries on the stack
+	size = backtrace(array, 10);
+
+	// print out all the frames to stderr
+	fprintf(stderr, "Error: signal %d:\n", sig);
+	backtrace_symbols_fd(&array[2], size - 2, STDERR_FILENO);
+	exit(1);
+}
+#endif
+
 static void init_signals(void) {
 	wl_event_loop_add_signal(server.wl_event_loop, SIGTERM, term_signal, NULL);
 	wl_event_loop_add_signal(server.wl_event_loop, SIGINT, term_signal, NULL);
@@ -162,6 +182,10 @@ static void init_signals(void) {
 	sigaction(SIGCHLD, &sa_ign, NULL);
 	// prevent ipc write errors from crashing sway
 	sigaction(SIGPIPE, &sa_ign, NULL);
+
+#ifdef INCLUDE_CRASH_HANDLER
+	signal(SIGSEGV, handler);
+#endif
 
 	pthread_atfork(NULL, NULL, restore_signals);
 }
