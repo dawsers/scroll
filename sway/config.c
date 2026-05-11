@@ -263,6 +263,7 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->jump_labels_color, 0x159E3080);
 	color_to_rgba(config->jump_labels_background, 0x00000000);
 	config->jump_labels_scale = 0.5;
+	config->jump_labels_swallow = false;
 	if (!(config->jump_labels_keys = create_list())) goto cleanup;
 	list_add(config->jump_labels_keys, strdup("1"));
 	list_add(config->jump_labels_keys, strdup("2"));

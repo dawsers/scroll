@@ -615,6 +615,7 @@ struct sway_config {
 	float jump_labels_color[4];
 	float jump_labels_background[4];
 	double jump_labels_scale;
+	bool jump_labels_swallow;
 	list_t *jump_labels_keys;
 	list_t *jump_labels_keys_text;
 	float workspace_labels_color[4];

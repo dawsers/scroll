@@ -253,6 +253,10 @@ The following commands may only be used in the configuration file.
 *jump_labels_scale* <number>
 	Default is _0.5_. Scale of the label within the window.
 
+*jump_labels_swallow* <true|false>
+	Default is _false_. If _true_, pressing a key while in jump mode will update
+	the labels, showing only those characters still available to press.
+
 *layout_default_height* <number>
 	Default is _1.0_. Sets the default height for new windows
 	("horizontal" layouts) or rows ("vertical" layouts).

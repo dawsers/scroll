@@ -167,6 +167,7 @@ sway_cmd cmd_jump_labels_background;
 sway_cmd cmd_jump_labels_color;
 sway_cmd cmd_jump_labels_keys;
 sway_cmd cmd_jump_labels_scale;
+sway_cmd cmd_jump_labels_swallow;
 sway_cmd cmd_kill;
 sway_cmd cmd_layout_default_height;
 sway_cmd cmd_layout_default_width;

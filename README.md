@@ -1513,6 +1513,10 @@ the jump labels.
 
 `jump_labels_scale`: default is `0.5`. Scale of the label within the window.
 
+`jump_labels_swallow`: default is `false`. If `true`, pressing a key while in
+jump mode will update the labels, showing only those characters still available
+to press.
+
 `jump_labels_keys`: `<string> [<array of strings>]`
 
 Default is `1234`. Characters that will be used to generate possible jump

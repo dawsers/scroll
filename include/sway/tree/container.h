@@ -124,6 +124,7 @@ struct sway_container {
 		struct wlr_scene_tree *tree;
 
 		struct sway_text_node *text;
+		char *label;
 		int32_t id;
 		bool jumping;
 		struct sway_workspace *workspace;

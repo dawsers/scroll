@@ -1689,20 +1689,11 @@ void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply
 	filter_configure(filters, filter, apply);
 }
 
-static void container_toggle_jump_decoration(double wscale,
-		struct sway_container *con, char *text,	double width, double height) {
-	if (!text) {
-		if (con->jump.text) {
-			wlr_scene_node_destroy(con->jump.text->node);
-			con->jump.text = NULL;
-		}
-		return;
-	} else if (!con->jump.text) {
-		con->jump.text = sway_text_node_create(con->jump.tree,
-			text, config->jump_labels_color, false);
-	} else {
-		sway_text_node_set_text(con->jump.text, text);
-	}
+static void container_jump_decoration_apply_scale(struct sway_container *con) {
+	struct sway_workspace *workspace = con->pending.workspace;
+	const double wscale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+	const double width = con->pending.width;
+	const double height = con->pending.height;
 	sway_text_node_set_background(con->jump.text, config->jump_labels_background);
 	double jscale = config->jump_labels_scale;
 	double scale = fmin(width / con->jump.text->width, height / con->jump.text->height);
@@ -1712,6 +1703,46 @@ static void container_toggle_jump_decoration(double wscale,
 	wlr_scene_node_set_position(&con->jump.tree->node, x, y);
 	wlr_scene_node_set_enabled(&con->jump.tree->node, true);
 	node_set_dirty(&con->node);
+}
+
+static void container_create_jump_decoration(struct sway_container *con) {
+	if (!con->jump.text) {
+		con->jump.text = sway_text_node_create(con->jump.tree,
+			//text, config->jump_labels_color, false);
+			con->jump.label, config->jump_labels_color, true);
+	} else {
+		sway_text_node_set_text(con->jump.text, con->jump.label);
+	}
+	container_jump_decoration_apply_scale(con);
+}
+
+static void container_update_jump_decoration(struct sway_container *con, int i) {
+	if (!con->jump.text) {
+		return;
+	}
+	char text[64];
+	if (i > 0) {
+		char before[16], after[16];
+		strcpy(before, con->jump.label);
+		before[i] = 0x0;
+		strcpy(after, con->jump.label + i);
+		sprintf(text, "<span alpha=\"1\">%s</span>%s", before, after);
+	} else {
+		sprintf(text, "<span alpha=\"1\">%s</span>", con->jump.label);
+	}
+	con->jump.text->pango_markup = true;
+	sway_text_node_set_text(con->jump.text, text);
+	container_jump_decoration_apply_scale(con);
+}
+
+static void container_remove_jump_decoration(struct sway_container *con) {
+	if (con->jump.text) {
+		wlr_scene_node_destroy(con->jump.text->node);
+		con->jump.text = NULL;
+		free(con->jump.label);
+		con->jump.label = NULL;
+	}
+	return;
 }
 
 static void override_input(bool override, sway_keyboard_cb_fn callback, void *data,
@@ -1911,11 +1942,8 @@ static void jump_add_windows(struct sway_container *view, void *data) {
 static void jump_generate_labels(struct sway_container *view, void *data) {
 	struct jump_data *jump_data = data;
 	view->jump.id = jump_data->n;
-	char *label = generate_label(jump_data->n++, config->jump_labels_keys_text, jump_data->nkeys);
-	struct sway_workspace *workspace = view->pending.workspace;
-	double wscale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
-	container_toggle_jump_decoration(wscale, view, label, view->pending.width, view->pending.height);
-	free(label);
+	view->jump.label = generate_label(jump_data->n++, config->jump_labels_keys_text, jump_data->nkeys);
+	container_create_jump_decoration(view);
 }
 
 static void jump_for_each_container(struct sway_workspace *workspace,
@@ -1968,9 +1996,21 @@ static void jump_for_each_view(void (*f)(struct sway_container *view, void *data
 	}
 }
 
+static void jump_update_text(struct sway_container *view, void *data) {
+	struct jump_data *jump_data = data;
+	int missing_keys = jump_data->nkeys - jump_data->keys_pressed;
+	int min_idx = jump_data->window_number * pow(config->jump_labels_keys->length, missing_keys);
+	int max_idx = min_idx + pow(config->jump_labels_keys->length, missing_keys);
+	if (view->jump.id < min_idx || view->jump.id >= max_idx) {
+		container_update_jump_decoration(view, 0);
+	} else {
+		container_update_jump_decoration(view, jump_data->keys_pressed);
+	}
+}
+
 static void jump_end(struct sway_container *view, void *data) {
 	struct jump_data *jump_data = data;
-	container_toggle_jump_decoration(1.0, view, NULL, 0, 0);
+	container_remove_jump_decoration(view);
 	if (jump_data->focus && jump_data->new_focused == NULL) {
 		if (view->jump.id == (int32_t)jump_data->window_number) {
 			jump_data->new_focused = view;
@@ -2152,6 +2192,9 @@ static void jump_handle_keyboard_key(struct sway_keyboard *keyboard,
 				focus = true;
 			}
 		} else {
+			if (config->jump_labels_swallow) {
+				jump_for_each_view(jump_update_text, jump_data);
+			}
 			return;
 		}
 	}

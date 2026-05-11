@@ -76,6 +76,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->content_tree = alloc_scene_tree(c->decoration.tree, &failed);
 
 	c->jump.text = NULL;
+	c->jump.label = NULL;
 	c->jump.tree = alloc_scene_tree(c->scene_tree, &failed);
 	wlr_scene_node_set_enabled(&c->jump.tree->node, false);
 	c->jump.id = -1;

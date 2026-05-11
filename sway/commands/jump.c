@@ -68,6 +68,16 @@ struct cmd_results *cmd_jump_labels_keys(int argc, char **argv) {
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
+struct cmd_results *cmd_jump_labels_swallow(int argc, char **argv) {
+	struct cmd_results *error =
+		checkarg(argc, "jump_labels_swallow", EXPECTED_EQUAL_TO, 1);
+	if (error) {
+		return error;
+	}
+	config->jump_labels_swallow = parse_boolean(argv[0], config->jump_labels_swallow);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
 /*
  *  jump
  */

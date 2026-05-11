@@ -127,6 +127,7 @@ static const struct cmd_handler config_handlers[] = {
 	{ "jump_labels_color", cmd_jump_labels_color },
 	{ "jump_labels_keys", cmd_jump_labels_keys },
 	{ "jump_labels_scale", cmd_jump_labels_scale },
+	{ "jump_labels_swallow", cmd_jump_labels_swallow },
 	{ "layout_default_height", cmd_layout_default_height },
 	{ "layout_default_mode", cmd_layout_default_mode },
 	{ "layout_default_width", cmd_layout_default_width },
