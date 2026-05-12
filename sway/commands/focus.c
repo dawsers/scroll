@@ -388,9 +388,9 @@ static struct cmd_results *focus_parent(void) {
 	if (!con || con->pending.fullscreen_mode) {
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
-	struct sway_node *parent = node_get_parent(&con->node);
+	struct sway_container *parent = con->pending.parent;
 	if (parent) {
-		seat_set_focus(seat, parent);
+		seat_set_focus(seat, &parent->node);
 		seat_consider_warp_to_focus(seat);
 	}
 	return cmd_results_new(CMD_SUCCESS, NULL);
