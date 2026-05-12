@@ -1167,14 +1167,6 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 }
 
 static void animate_workspace_floating(struct sway_workspace *ws) {
-	// If the workspaces overview is enabled, make sure floating windows only
-	// show in the output corresponding to their workspace.
-	if (layout_overview_workspaces_enabled()) {
-		root->layers.floating->node.info.wlr_output = ws->output->wlr_output;
-	} else {
-		root->layers.floating->node.info.wlr_output = NULL;
-	}
-
 	if (ws->current.floating->length == 0) {
 		return;
 	}
@@ -1185,6 +1177,13 @@ static void animate_workspace_floating(struct sway_workspace *ws) {
 		struct sway_container *child = ws->current.floating->items[i];
 		if (child->current.fullscreen_mode != FULLSCREEN_NONE) {
 			continue;
+		}
+		// If the workspaces overview is enabled, make sure floating windows only
+		// show in the output corresponding to their workspace.
+		if (layout_overview_workspaces_enabled()) {
+			child->scene_tree->node.info.wlr_output = ws->output->wlr_output;
+		} else {
+			child->scene_tree->node.info.wlr_output = NULL;
 		}
 		animation_update_container(child, ws->width, ws->height, t, x, y, anim_scale);
 		if (layout_scale_enabled(ws)) {
