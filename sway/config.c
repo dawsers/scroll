@@ -762,7 +762,8 @@ void run_deferred_commands(void) {
 	sway_log(SWAY_DEBUG, "Running deferred commands");
 	while (config->cmd_queue->length) {
 		char *line = config->cmd_queue->items[0];
-		list_t *res_list = execute_command(line, NULL, NULL);
+		char *expanded = do_var_replacement(strdup(line));
+		list_t *res_list = execute_command(expanded, NULL, NULL);
 		for (int i = 0; i < res_list->length; ++i) {
 			struct cmd_results *res = res_list->items[i];
 			if (res->status != CMD_SUCCESS) {
@@ -773,6 +774,7 @@ void run_deferred_commands(void) {
 		}
 		list_del(config->cmd_queue, 0);
 		list_free(res_list);
+		free(expanded);
 		free(line);
 	}
 }
