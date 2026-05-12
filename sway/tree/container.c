@@ -493,6 +493,24 @@ void container_destroy(struct sway_container *con) {
 	free(con);
 }
 
+static void container_dereference_from_layouts(struct sway_container *con) {
+	for (int i = 0; i < root->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		for (int j = 0; j < output->workspaces->length; ++j) {
+			struct sway_workspace *workspace = output->workspaces->items[j];
+			if (workspace->layout.fullscreen == con) {
+				workspace->layout.fullscreen = NULL;
+			}
+			if (workspace->layout.pin.container == con) {
+				workspace->layout.pin.container = NULL;
+			}
+			if (workspace->layout.toggle_size.container == con) {
+				workspace->layout.toggle_size.container = NULL;
+			}
+		}
+	}
+}
+
 void container_begin_destroy(struct sway_container *con) {
 	if (con->view) {
 		ipc_event_window(con, "close");
@@ -503,18 +521,7 @@ void container_begin_destroy(struct sway_container *con) {
 		con->pending.workspace->fullscreen = NULL;
 	}
 
-	// If the container was stored in the layout structure for the workspace, clear it.
-	if (con->pending.workspace) {
-		if (con->pending.workspace->layout.fullscreen == con) {
-			con->pending.workspace->layout.fullscreen = NULL;
-		}
-		if (con->pending.workspace->layout.pin.container == con) {
-			con->pending.workspace->layout.pin.container = NULL;
-		}
-		if (con->pending.workspace->layout.toggle_size.container == con) {
-			con->pending.workspace->layout.toggle_size.container = NULL;
-		}
-	}
+	container_dereference_from_layouts(con);
 
 	if (con->scratchpad && con->pending.fullscreen_mode == FULLSCREEN_GLOBAL) {
 		container_fullscreen_disable(con);
