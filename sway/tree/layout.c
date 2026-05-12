@@ -2469,7 +2469,7 @@ static void jump_root_restore_scratchpad_cb(struct jump_data *jump_data) {
 	workspace->floating = jump_data->floating;
 	if (jump_data->focus) {
 		root_scratchpad_show(jump_data->new_focused);
-	} else if (jump_data->old_focused->scratchpad) {
+	} else if (jump_data->old_focused && jump_data->old_focused->scratchpad) {
 		root_scratchpad_show(jump_data->old_focused);
 	}
 }
