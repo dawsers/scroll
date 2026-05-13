@@ -382,28 +382,27 @@ static struct cmd_results *focus_output(struct sway_seat *seat,
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
+// `focus parent` and `focus child` simply change the mode to be compatible
+// with all the asssumptions in other places. Revisit and recover old behavior
+// if we add more layout types and a deeper hierarchy of containers.
 static struct cmd_results *focus_parent(void) {
-	struct sway_seat *seat = config->handler_context.seat;
 	struct sway_container *con = config->handler_context.container;
-	if (!con || con->pending.fullscreen_mode) {
+	if (!con || con->pending.fullscreen_mode || !con->pending.workspace) {
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
-	struct sway_container *parent = con->pending.parent;
-	if (parent) {
-		seat_set_focus(seat, &parent->node);
-		seat_consider_warp_to_focus(seat);
-	}
+	layout_modifiers_set_mode(con->pending.workspace, layout_get_type(con->pending.workspace));
+	arrange_container(con);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
 static struct cmd_results *focus_child(void) {
-	struct sway_seat *seat = config->handler_context.seat;
-	struct sway_node *node = config->handler_context.node;
-	struct sway_node *focus = seat_get_active_tiling_child(seat, node);
-	if (focus) {
-		seat_set_focus(seat, focus);
-		seat_consider_warp_to_focus(seat);
+	struct sway_container *con = config->handler_context.container;
+	if (!con || con->pending.fullscreen_mode || !con->pending.workspace) {
+		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
+	layout_modifiers_set_mode(con->pending.workspace,
+		layout_get_type(con->pending.workspace) == L_HORIZ ? L_VERT : L_HORIZ);
+	arrange_container(con);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
