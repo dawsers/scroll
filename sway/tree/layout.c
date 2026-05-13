@@ -256,9 +256,13 @@ static void overview_pop_positions(struct sway_workspace *workspace,
 	}
 }
 
-void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_overview mode) {
-	if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
-		overview_pop_positions(workspace, layout_overview_mode(workspace));
+void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_overview mode) {
+	enum sway_layout_overview cur = layout_overview_mode(workspace);
+	if (cur == mode) {
+		return;
+	}
+	if (cur != OVERVIEW_DISABLED) {
+		overview_pop_positions(workspace, cur);
 		// Disable and restore old scale value
 		workspace->layout.overview = OVERVIEW_DISABLED;
 		workspace->scale = workspace->layout.mem_scale;
@@ -1894,7 +1898,6 @@ static void organize_windows(struct sway_workspace *workspace, list_t *children)
 		con->pending.x -= dx;
 		con->pending.y -= dy;
 		arrange_container(con);
-		node_set_dirty(&con->node);
 	}
 }
 
@@ -2050,9 +2053,9 @@ static void jump_begin_common_cb(struct jump_data *jump_data) {
 			list_add(jump_data->workspace_data, workspace_data);
 			if (mode != jump_data->overview) {
 				if (mode != OVERVIEW_DISABLED) {
-					layout_overview_toggle(workspace, OVERVIEW_DISABLED);
+					layout_overview_set(workspace, OVERVIEW_DISABLED);
 				}
-				layout_overview_toggle(workspace, jump_data->overview);
+				layout_overview_set(workspace, jump_data->overview);
 			}
 		}
 	}
@@ -2087,38 +2090,25 @@ static void jump_overview_restore_cb(struct jump_data *jump_data) {
 			for (int k = 0; k < jump_data->workspace_data->length; ++k) {
 				struct jump_workspace_data *workspace_data = jump_data->workspace_data->items[k];
 				if (workspace_data->workspace == workspace) {
-					if (jump_data->overview == OVERVIEW_FLOATING) {
-						// Restore floating windows positions
-						// When calling overview, the positions saved will be the ones
-						// already "organized", which are not the initial ones, restore them.
-						for (int i = 0; i < workspace->floating->length; ++i) {
-							struct sway_container *view = workspace->floating->items[i];
-							view->overview.x = view->jump.x;
-							view->overview.y = view->jump.y;
-							node_set_dirty(&view->node);
-						}
-					}
+					// Undo overview if needed
 					enum sway_layout_overview mode = workspace_data->overview;
-					if (mode == layout_overview_mode(workspace)) {
-						if (jump_data->jump_workspace_restore) {
-							jump_data->jump_workspace_restore(workspace_data);
-						}
-						break;
+					if (mode != layout_overview_mode(workspace)) {
+						layout_overview_set(workspace, OVERVIEW_DISABLED);
 					}
-					if (mode == OVERVIEW_DISABLED) {
-						layout_overview_toggle(workspace, OVERVIEW_DISABLED);
-						if (jump_data->jump_workspace_restore) {
-							jump_data->jump_workspace_restore(workspace_data);
-						}
-						break;
+					// Restore container from view->jump.{x, y}
+					for (int i = 0; i < workspace->floating->length; ++i) {
+						struct sway_container *view = workspace->floating->items[i];
+						view->pending.x = view->jump.x;
+						view->pending.y = view->jump.y;
+						arrange_container(view);
 					}
-					if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
-						layout_overview_toggle(workspace, OVERVIEW_DISABLED);
-					}
+					// Restore workspace structure
 					if (jump_data->jump_workspace_restore) {
 						jump_data->jump_workspace_restore(workspace_data);
 					}
-					layout_overview_toggle(workspace, mode);
+					if (mode != OVERVIEW_DISABLED) {
+						layout_overview_set(workspace, mode);
+					}
 					break;
 				}
 			}

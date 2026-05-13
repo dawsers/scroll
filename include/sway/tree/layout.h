@@ -144,7 +144,7 @@ enum sway_container_layout layout_get_type(struct sway_workspace *workspace);
 
 // Toggle overview will only trigger a workspace arrangement where it will call
 // layout_overview_recompute_scale()
-void layout_overview_toggle(struct sway_workspace *workspace, enum sway_layout_overview mode);
+void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_overview mode);
 // This can be called by the layout to recalculate the overview scale every
 // transaction that re-arranges the workspace. It will set it too
 void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps);
