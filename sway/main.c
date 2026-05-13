@@ -161,7 +161,7 @@ static void restore_signals(void) {
 void handler(int sig) {
 	void *array[10];
 	size_t size;
-	sway_log(SWAY_DEBUG, "%s crashed", SWAY_VERSION);
+	fprintf(stderr, "%s crashed", SWAY_VERSION);
 
 	size = backtrace(array, 10);
 	char **messages = backtrace_symbols(array, size);
