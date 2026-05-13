@@ -158,17 +158,21 @@ static void restore_signals(void) {
 }
 
 #ifdef INCLUDE_CRASH_HANDLER
-static void handler(int sig) {
+void handler(int sig) {
 	void *array[10];
 	size_t size;
-	sway_log(SWAY_DEBUG, "Errrrrroooooorrrrr....CRASH");
+	sway_log(SWAY_DEBUG, "%s crashed", SWAY_VERSION);
 
-	// get void*'s for all entries on the stack
 	size = backtrace(array, 10);
-
-	// print out all the frames to stderr
-	fprintf(stderr, "Error: signal %d:\n", sig);
-	backtrace_symbols_fd(&array[2], size - 2, STDERR_FILENO);
+	char **messages = backtrace_symbols(array, size);
+	for (size_t i = 2; i < size; ++i) {
+		fprintf(stderr, "%lu: %s\n", i - 2, messages[i]);
+		char *filename, *offset;
+		sscanf(messages[i], "%m[^(](%m[^)])", &filename, &offset);
+		char syscom[256];
+		sprintf(syscom,"addr2line %s -a -f -i -p -e %s", offset, filename);
+		system(syscom);
+	}
 	exit(1);
 }
 #endif
