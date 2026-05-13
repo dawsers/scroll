@@ -10,7 +10,7 @@
 #mesondefine WLR_HAS_DRM_BACKEND
 /**
  * Whether the libinput backend is compile-time enabled. Equivalent to the
- * pkg-config "have_libinput_backend" vartiable.
+ * pkg-config "have_libinput_backend" variable.
  *
  * Required for <wlr/backend/libinput.h>.
  */
