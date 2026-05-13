@@ -172,6 +172,8 @@ void handler(int sig) {
 		char syscom[256];
 		sprintf(syscom,"addr2line %s -a -f -i -p -e %s", offset, filename);
 		system(syscom);
+		free(filename);
+		free(offset);
 	}
 	exit(1);
 }
