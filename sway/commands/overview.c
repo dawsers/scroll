@@ -103,7 +103,11 @@ struct cmd_results *cmd_scale_workspace(int argc, char **argv) {
 		layout_scale_reset(workspace);
 	} else if (strcasecmp(argv[0], "overview") == 0) {
 		if (!root->jumping) {
-			layout_overview_set(workspace, OVERVIEW_ALL);
+			if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+				layout_overview_set(workspace, OVERVIEW_DISABLED);
+			} else {
+				layout_overview_set(workspace, OVERVIEW_ALL);
+			}
 		}
 	} else {
 		fail = 1;
