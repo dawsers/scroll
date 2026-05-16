@@ -1195,7 +1195,13 @@ static bool apply_resolved_output_configs(struct matched_output_config *configs,
 		struct matched_output_config *cfg = &configs[idx];
 		output_update_position(cfg->output);
 		arrange_layers(cfg->output);
+		// Set the new position for the scene_output
+		wlr_scene_output_set_position(cfg->output->scene_output, cfg->output->lx, cfg->output->ly);
 	}
+
+	// After modifying the positions for the scene outputs, we recalculate visibility
+	wlr_scene_node_set_enabled(&root->root_scene->tree.node, false);
+	wlr_scene_node_set_enabled(&root->root_scene->tree.node, true);
 
 	arrange_root();
 	arrange_locks();
