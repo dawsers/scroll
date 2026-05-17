@@ -40,6 +40,7 @@ protocols = {
 	'ext-workspace-v1': wl_protocol_dir / 'staging/ext-workspace/ext-workspace-v1.xml',
 	'fractional-scale-v1': wl_protocol_dir / 'staging/fractional-scale/fractional-scale-v1.xml',
 	'linux-drm-syncobj-v1': wl_protocol_dir / 'staging/linux-drm-syncobj/linux-drm-syncobj-v1.xml',
+	'pointer-warp-v1': wl_protocol_dir / 'staging/pointer-warp/pointer-warp-v1.xml',
 	'security-context-v1': wl_protocol_dir / 'staging/security-context/security-context-v1.xml',
 	'single-pixel-buffer-v1': wl_protocol_dir / 'staging/single-pixel-buffer/single-pixel-buffer-v1.xml',
 	'xdg-activation-v1': wl_protocol_dir / 'staging/xdg-activation/xdg-activation-v1.xml',

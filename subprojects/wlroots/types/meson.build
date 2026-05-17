@@ -74,6 +74,7 @@ wlr_files += files(
 	'wlr_output_swapchain_manager.c',
 	'wlr_pointer_constraints_v1.c',
 	'wlr_pointer_gestures_v1.c',
+	'wlr_pointer_warp_v1.c',
 	'wlr_pointer.c',
 	'wlr_presentation_time.c',
 	'wlr_primary_selection_v1.c',
