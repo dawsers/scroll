@@ -2817,6 +2817,7 @@ static void layout_scroll_unfloat_pinned_container(struct sway_workspace *worksp
 
 // Gestures
 bool layout_scroll_begin(struct sway_seat *seat) {
+	animation_set_type(ANIMATION_DISABLED);
 	struct sway_workspace *workspace = seat->workspace;
 	// Check if we can scroll
 	double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
@@ -2859,6 +2860,7 @@ bool layout_scroll_begin(struct sway_seat *seat) {
 }
 
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity) {
+	animation_set_type(ANIMATION_DISABLED);
 	struct sway_workspace *workspace = seat->workspace;
 	if (workspace->tiling->length == 0) {
 		return;
@@ -2992,6 +2994,7 @@ static bool scrolling_in_pin_direction(enum sway_container_layout layout,
 }
 
 bool layout_scroll_end(struct sway_seat *seat) {
+	animation_set_type(ANIMATION_DEFAULT);
 	struct sway_workspace *workspace = seat->workspace;
 	if (!workspace->gesture.scrolling) {
 		return false;
