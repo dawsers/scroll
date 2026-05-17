@@ -1,5 +1,6 @@
 #include <wlr/types/wlr_cursor.h>
 #include "sway/desktop/transaction.h"
+#include "sway/desktop/animation.h"
 #include "sway/input/cursor.h"
 #include "sway/input/seat.h"
 #include "sway/tree/layout.h"
@@ -16,6 +17,7 @@ static void finalize_move(struct sway_seat *seat) {
 	// We "move" the container to its own location
 	// so it discovers its output again.
 	container_floating_move_to(e->con, e->con->pending.x, e->con->pending.y);
+	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 	transaction_commit_dirty();
 
 	seatop_begin_default(seat);
@@ -52,6 +54,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 		}
 	}
 	container_floating_move_to(e->con, e->x + (cx - e->cx) / scale, e->y + (cy - e->cy) / scale);
+	animation_set_type(ANIMATION_DISABLED);
 	transaction_commit_dirty();
 }
 
@@ -94,6 +97,7 @@ void seatop_begin_move_floating(struct sway_seat *seat,
 	seat->seatop_data = e;
 
 	container_raise_floating(con);
+	animation_set_type(ANIMATION_DISABLED);
 	transaction_commit_dirty();
 
 	cursor_set_image(cursor, "grab", NULL);
