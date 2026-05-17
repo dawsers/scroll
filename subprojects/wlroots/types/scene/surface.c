@@ -229,48 +229,80 @@ static int min(int a, int b) {
 	return a < b ? a : b;
 }
 
-void wlr_scene_surface_reconfigure(struct wlr_scene_surface *scene_surface) {
-	struct wlr_scene_buffer *scene_buffer = scene_surface->buffer;
+static void scene_surface_get_sizes(struct wlr_scene_surface *scene_surface, struct wlr_fbox *src_box,
+		pixman_region32_t *opaque, int *width, int *height) {
 	struct wlr_surface *surface = scene_surface->surface;
 	struct wlr_surface_state *state = &surface->current;
 
-	struct wlr_fbox src_box;
-	wlr_surface_get_buffer_source_box(surface, &src_box);
+	wlr_surface_get_buffer_source_box(surface, src_box);
 
-	pixman_region32_t opaque;
-	pixman_region32_init(&opaque);
-	pixman_region32_copy(&opaque, &surface->opaque_region);
+	pixman_region32_copy(opaque, &surface->opaque_region);
 
-	int width = state->width;
-	int height = state->height;
+	*width = state->width;
+	*height = state->height;
 
 	if (!wlr_box_empty(&scene_surface->clip)) {
 		struct wlr_box *clip = &scene_surface->clip;
 
 		int buffer_width = state->buffer_width;
 		int buffer_height = state->buffer_height;
-		width = min(clip->width, width - clip->x);
-		height = min(clip->height, height - clip->y);
+		*width = min(clip->width, *width - clip->x);
+		*height = min(clip->height, *height - clip->y);
 
-		wlr_fbox_transform(&src_box, &src_box, state->transform,
+		wlr_fbox_transform(src_box, src_box, state->transform,
 			buffer_width, buffer_height);
 		wlr_output_transform_coords(state->transform, &buffer_width, &buffer_height);
 
-		src_box.x += (clip->x * src_box.width) / state->width;
-		src_box.y += (clip->y * src_box.height) / state->height;
-		src_box.width *= (double)width / state->width;
-		src_box.height *= (double)height / state->height;
-		src_box.x = MIN(MAX(0.0, round(src_box.x)), buffer_width - 1);
-		src_box.y = MIN(MAX(0.0, round(src_box.y)), buffer_height - 1);
-		src_box.width = MIN(round(src_box.width), buffer_width - src_box.x);
-		src_box.height = MIN(round(src_box.height), buffer_height - src_box.y);
+		src_box->x += (clip->x * src_box->width) / state->width;
+		src_box->y += (clip->y * src_box->height) / state->height;
+		src_box->width *= (double)*width / state->width;
+		src_box->height *= (double)*height / state->height;
+		src_box->x = MIN(MAX(0.0, round(src_box->x)), buffer_width - 1);
+		src_box->y = MIN(MAX(0.0, round(src_box->y)), buffer_height - 1);
+		src_box->width = MIN(round(src_box->width), buffer_width - src_box->x);
+		src_box->height = MIN(round(src_box->height), buffer_height - src_box->y);
 
-		wlr_fbox_transform(&src_box, &src_box, wlr_output_transform_invert(state->transform),
+		wlr_fbox_transform(src_box, src_box, wlr_output_transform_invert(state->transform),
 			buffer_width, buffer_height);
 
-		pixman_region32_translate(&opaque, -clip->x, -clip->y);
-		pixman_region32_intersect_rect(&opaque, &opaque, 0, 0, width, height);
+		pixman_region32_translate(opaque, -clip->x, -clip->y);
+		pixman_region32_intersect_rect(opaque, opaque, 0, 0, *width, *height);
 	}
+}
+
+void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface) {
+	struct wlr_scene_buffer *scene_buffer = scene_surface->buffer;
+	struct wlr_surface *surface = scene_surface->surface;
+
+	struct wlr_fbox src_box;
+	pixman_region32_t opaque;
+	pixman_region32_init(&opaque);
+	int width, height;
+	scene_surface_get_sizes(scene_surface, &src_box, &opaque, &width, &height);
+
+	struct wlr_scene_view_data view_data;
+	scene_cbs.view_data(surface, &view_data);
+
+	// Compute a dst that can perfectly fit an aligned buffer in logical space
+	double dst_width = width * view_data.total_scale * view_data.wscale;
+	double dst_height = height * view_data.total_scale * view_data.hscale;
+	wlr_scene_buffer_set_opaque_region(scene_buffer, &opaque);
+	wlr_scene_buffer_set_source_box(scene_buffer, &src_box);
+	wlr_scene_buffer_set_dest_size(scene_buffer, MAX(1, dst_width),
+		MAX(1, dst_height));
+	pixman_region32_fini(&opaque);
+}
+
+static void surface_reconfigure(struct wlr_scene_surface *scene_surface) {
+	struct wlr_scene_buffer *scene_buffer = scene_surface->buffer;
+	struct wlr_surface *surface = scene_surface->surface;
+	struct wlr_surface_state *state = &surface->current;
+
+	struct wlr_fbox src_box;
+	pixman_region32_t opaque;
+	pixman_region32_init(&opaque);
+	int width, height;
+	scene_surface_get_sizes(scene_surface, &src_box, &opaque, &width, &height);
 
 	if (width <= 0 || height <= 0 || (src_box.width < 1.0 && src_box.height < 1.0)) {
 		wlr_scene_buffer_set_buffer(scene_buffer, NULL);
@@ -369,7 +401,7 @@ static void handle_scene_surface_surface_commit(
 		wl_container_of(listener, surface, surface_commit);
 	struct wlr_scene_buffer *scene_buffer = surface->buffer;
 
-	wlr_scene_surface_reconfigure(surface);
+	surface_reconfigure(surface);
 
 	// If the surface has requested a frame done event, honour that. The
 	// frame_callback_list will be populated in this case. We should only
@@ -463,7 +495,7 @@ struct wlr_scene_surface *wlr_scene_surface_create(struct wlr_scene_tree *parent
 	wlr_addon_init(&surface->addon, &scene_buffer->node.addons,
 		scene_buffer, &surface_addon_impl);
 
-	wlr_scene_surface_reconfigure(surface);
+	surface_reconfigure(surface);
 
 	return surface;
 }
@@ -479,5 +511,5 @@ void scene_surface_set_clip(struct wlr_scene_surface *surface, struct wlr_box *c
 		surface->clip = (struct wlr_box){0};
 	}
 
-	wlr_scene_surface_reconfigure(surface);
+	surface_reconfigure(surface);
 }

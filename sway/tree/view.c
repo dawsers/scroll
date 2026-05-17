@@ -1674,18 +1674,18 @@ static void clip_view(struct sway_view *view) {
 	}
 }
 
-static void view_reconfigure_iterator(struct wlr_scene_buffer *buffer,
+static void view_resize_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *user_data) {
 	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
-	wlr_scene_surface_reconfigure(scene_surface);
+	wlr_scene_surface_resize(scene_surface);
 }
 
-void view_reconfigure(struct sway_view *view) {
+void view_resize(struct sway_view *view) {
 	if (!view) {
 		return;
 	}
 	wlr_scene_node_for_each_buffer(&view->content_tree->node,
-		view_reconfigure_iterator, NULL);
+		view_resize_iterator, view);
 
 	clip_view(view);
 }

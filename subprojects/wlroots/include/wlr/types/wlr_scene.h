@@ -904,5 +904,5 @@ void wlr_scene_layer_surface_v1_configure(
 struct wlr_scene_tree *wlr_scene_drag_icon_create(
 	struct wlr_scene_tree *parent, struct wlr_drag_icon *drag_icon);
 
-void wlr_scene_surface_reconfigure(struct wlr_scene_surface *scene_surface);
+void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface);
 #endif
