@@ -134,6 +134,9 @@ struct sway_workspace *launcher_ctx_get_workspace(
 	case N_ROOT:
 		ws = workspace_create(NULL, ctx->fallback_name);
 		break;
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
+		break;
 	}
 
 	return ws;
@@ -170,6 +173,8 @@ static void ctx_handle_node_destroy(struct wl_listener *listener, void *data) {
 		ctx->node = &root->node;
 		break;
 	case N_ROOT:
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
 		// Unreachable
 		break;
 	}
@@ -202,6 +207,8 @@ struct launcher_ctx *launcher_ctx_create(struct wlr_xdg_activation_token_v1 *tok
 		fallback_name = ws ? ws->name : NULL;
 		break;
 	case N_ROOT:
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
 		// Unimplemented
 		free(ctx);
 		return NULL;

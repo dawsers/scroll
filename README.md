@@ -551,6 +551,7 @@ animations {
     # window_move_float
     # overview
     # jump
+    # layer_shell
 }
 
 ```
@@ -1698,6 +1699,8 @@ screen.
 
 `jump`:  used when starting/ending jump mode (except `jump
 workspaces`).
+
+`layer_shell`: curve to animate layer shell surfaces and popups.
 
 Format of an animation curve:
 

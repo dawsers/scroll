@@ -270,9 +270,9 @@ static void scene_surface_get_sizes(struct wlr_scene_surface *scene_surface, str
 	}
 }
 
-void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface) {
+void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface,
+		double total_scale, double anim_wscale, double anim_hscale) {
 	struct wlr_scene_buffer *scene_buffer = scene_surface->buffer;
-	struct wlr_surface *surface = scene_surface->surface;
 
 	struct wlr_fbox src_box;
 	pixman_region32_t opaque;
@@ -281,7 +281,9 @@ void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface) {
 	scene_surface_get_sizes(scene_surface, &src_box, &opaque, &width, &height);
 
 	struct wlr_scene_view_data view_data;
-	scene_cbs.view_data(surface, &view_data);
+	view_data.total_scale = total_scale;
+	view_data.wscale = anim_wscale;
+	view_data.hscale = anim_hscale;
 
 	// Compute a dst that can perfectly fit an aligned buffer in logical space
 	double dst_width = width * view_data.total_scale * view_data.wscale;

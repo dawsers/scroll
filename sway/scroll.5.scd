@@ -118,6 +118,10 @@ The following commands may only be used in the configuration file.
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve used when starting/ending jump mode.
 
+	*layer_shell* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the curve used to animate layer shell surfaces and popups.
+
 	Format of an animation curve:
 
 	The first field is _enabled_. It can be _yes_ or _no_. It enables or

@@ -381,5 +381,6 @@ sway_cmd animations_cmd_window_size;
 sway_cmd animations_cmd_workspace_switch;
 sway_cmd animations_cmd_overview;
 sway_cmd animations_cmd_jump;
+sway_cmd animations_cmd_layer_shell;
 
 #endif

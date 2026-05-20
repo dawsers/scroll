@@ -340,5 +340,8 @@ void arrange_node(struct sway_node *node) {
 	case N_CONTAINER:
 		arrange_container(node->sway_container);
 		break;
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
+		break;
 	}
 }

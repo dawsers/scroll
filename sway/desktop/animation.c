@@ -201,6 +201,7 @@ void animation_create() {
 	animation->config.workspace_switch = NULL;
 	animation->config.overview = NULL;
 	animation->config.jump = NULL;
+	animation->config.layer_shell = NULL;
 
 	config_default_animation_callbacks();
 	animation->current.callbacks = animation->default_callbacks;
@@ -212,6 +213,9 @@ void animation_destroy() {
 	if (animation) {
 		if (animation->outputs) {
 			list_free_items_and_destroy(animation->outputs);
+		}
+		if (animation->config.layer_shell) {
+			animation_path_destroy(animation->config.layer_shell);
 		}
 		if (animation->config.jump) {
 			animation_path_destroy(animation->config.jump);
@@ -325,6 +329,9 @@ bool animation_path_enabled(enum sway_animation_type anim) {
 	case ANIMATION_JUMP:
 		path = animation->config.jump;
 		break;
+	case ANIMATION_LAYER_SHELL:
+		path = animation->config.layer_shell;
+		break;
 	}
 	if (!path) {
 		path = animation->config.anim_default;
@@ -419,6 +426,9 @@ void animation_set_type(enum sway_animation_type anim) {
 		break;
 	case ANIMATION_JUMP:
 		animation->pending.path = animation->config.jump;
+		break;
+	case ANIMATION_LAYER_SHELL:
+		animation->pending.path = animation->config.layer_shell;
 		break;
 	}
 }

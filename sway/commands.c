@@ -249,6 +249,8 @@ static void set_config_node(struct sway_node *node, bool node_overridden) {
 		break;
 	case N_ROOT:
 	case N_OUTPUT:
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
 		break;
 	}
 }

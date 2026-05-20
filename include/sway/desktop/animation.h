@@ -26,6 +26,7 @@ enum sway_animation_type {
 	ANIMATION_WORKSPACE_SWITCH,
 	ANIMATION_OVERVIEW,
 	ANIMATION_JUMP,
+	ANIMATION_LAYER_SHELL,
 };
 
 /**
@@ -44,6 +45,7 @@ struct sway_animation_config {
 	struct sway_animation_path *workspace_switch;
 	struct sway_animation_path *overview;
 	struct sway_animation_path *jump;
+	struct sway_animation_path *layer_shell;
 };
 
 // Animation callback

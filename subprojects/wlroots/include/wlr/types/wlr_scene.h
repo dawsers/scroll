@@ -904,5 +904,10 @@ void wlr_scene_layer_surface_v1_configure(
 struct wlr_scene_tree *wlr_scene_drag_icon_create(
 	struct wlr_scene_tree *parent, struct wlr_drag_icon *drag_icon);
 
-void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface);
+/*
+ * Resize a scene surface using total_scale (workspace and content),
+ * and animation scales wscale and hscale
+ */
+void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface,
+		double total_scale, double anim_wscale, double anim_hscale);
 #endif

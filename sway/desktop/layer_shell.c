@@ -19,6 +19,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/workspace.h"
+#include "sway/desktop/animation.h"
 
 struct wlr_layer_surface_v1 *toplevel_layer_surface_from_surface(
 		struct wlr_surface *surface) {
@@ -162,6 +163,7 @@ static struct sway_layer_surface *sway_layer_surface_create(
 		sway_log(SWAY_ERROR, "Could not allocate a scene_layer surface");
 		return NULL;
 	}
+	node_init(&surface->node, N_LAYER_SURFACE, surface);
 
 	struct wlr_scene_tree *popups = wlr_scene_tree_create(root->layers.popup);
 	if (!popups) {
@@ -185,6 +187,7 @@ static struct sway_layer_surface *sway_layer_surface_create(
 	surface->layer_surface = scene->layer_surface;
 	surface->popups = popups;
 	surface->layer_surface->data = surface;
+	surface->layer_popups = create_list();
 
 	return surface;
 }
@@ -243,6 +246,7 @@ static void handle_node_destroy(struct wl_listener *listener, void *data) {
 	}
 
 	wlr_scene_node_destroy(&layer->popups->node);
+	list_free(layer->layer_popups);
 
 	wl_list_remove(&layer->map.link);
 	wl_list_remove(&layer->unmap.link);
@@ -283,6 +287,9 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	struct wlr_layer_surface_v1 *layer_surface =
 				surface->scene->layer_surface;
 
+	surface->pending.width = layer_surface->current.desired_width;
+	surface->pending.height = layer_surface->current.desired_height;
+
 	// focus on new surface
 	if (layer_surface->current.keyboard_interactive &&
 			(layer_surface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY ||
@@ -299,6 +306,10 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	}
 
 	cursor_rebase_all();
+
+	node_set_dirty(&surface->node);
+	animation_set_type(ANIMATION_LAYER_SHELL);
+	transaction_commit_dirty();
 }
 
 static void handle_unmap(struct wl_listener *listener, void *data) {
@@ -317,6 +328,11 @@ static void handle_unmap(struct wl_listener *listener, void *data) {
 static void popup_handle_destroy(struct wl_listener *listener, void *data) {
 	struct sway_layer_popup *popup =
 		wl_container_of(listener, popup, destroy);
+	struct sway_layer_surface *surface = popup->toplevel;
+	int idx = list_find(surface->layer_popups, popup);
+	if (idx >= 0) {
+		list_del(surface->layer_popups, idx);
+	}
 
 	wl_list_remove(&popup->destroy.link);
 	wl_list_remove(&popup->new_popup.link);
@@ -354,6 +370,20 @@ static void popup_handle_commit(struct wl_listener *listener, void *data) {
 	struct sway_layer_popup *popup = wl_container_of(listener, popup, commit);
 	if (popup->wlr_popup->base->initial_commit) {
 		popup_unconstrain(popup);
+	} else {
+		if (popup->pending.x != popup->wlr_popup->pending.geometry.x ||
+			popup->pending.y != popup->wlr_popup->pending.geometry.y ||
+			popup->pending.width != popup->wlr_popup->pending.geometry.width ||
+			popup->pending.height != popup->wlr_popup->pending.geometry.height) {
+			popup->pending.x = popup->wlr_popup->pending.geometry.x;
+			popup->pending.y = popup->wlr_popup->pending.geometry.y;
+			popup->pending.width = popup->wlr_popup->pending.geometry.width;
+			popup->pending.height = popup->wlr_popup->pending.geometry.height;
+
+			node_set_dirty(&popup->node);
+			animation_set_type(ANIMATION_LAYER_SHELL);
+			transaction_commit_dirty();
+		}
 	}
 }
 
@@ -370,6 +400,7 @@ static struct sway_layer_popup *create_popup(struct wlr_xdg_popup *wlr_popup,
 	if (popup == NULL) {
 		return NULL;
 	}
+	node_init(&popup->node, N_LAYER_POPUP, popup);
 
 	popup->toplevel = toplevel;
 	popup->wlr_popup = wlr_popup;
@@ -389,6 +420,8 @@ static struct sway_layer_popup *create_popup(struct wlr_xdg_popup *wlr_popup,
 	wl_signal_add(&wlr_popup->base->surface->events.commit, &popup->commit);
 	popup->reposition.notify = popup_handle_reposition;
 	wl_signal_add(&wlr_popup->events.reposition, &popup->reposition);
+
+	list_add(toplevel->layer_popups, popup);
 
 	return popup;
 }
@@ -503,4 +536,18 @@ void destroy_layers(struct sway_output *output) {
 		layer->output = NULL;
 		wlr_layer_surface_v1_destroy(layer->layer_surface);
 	}
+}
+
+void layer_surface_get_box(struct sway_layer_surface *surface, struct wlr_box *box) {
+	box->x = surface->pending.x;
+	box->y = surface->pending.y;
+	box->width = surface->pending.width;
+	box->height = surface->pending.height;
+}
+
+void layer_popup_get_box(struct sway_layer_popup *popup, struct wlr_box *box) {
+	box->x = popup->pending.x;
+	box->y = popup->pending.y;
+	box->width = popup->pending.width;
+	box->height = popup->pending.height;
 }

@@ -9,6 +9,7 @@ static const struct cmd_handler animations_config_handlers[] = {
 	{ "default", animations_cmd_default },
 	{ "enabled", animations_cmd_enabled },
 	{ "jump", animations_cmd_jump },
+	{ "layer_shell", animations_cmd_layer_shell },
 	{ "overview", animations_cmd_overview },
 	{ "style", animations_cmd_style },
 	{ "window_fullscreen", animations_cmd_window_fullscreen },
@@ -202,6 +203,15 @@ struct cmd_results *animations_cmd_jump(int argc, char **argv) {
 	}
 	struct sway_animation_config *config = animation_get_config();
 	return parse_animation_curve(argc, argv, &config->jump);
+}
+
+struct cmd_results *animations_cmd_layer_shell(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "layer_shell", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->layer_shell);
 }
 
 struct cmd_results *cmd_animations(int argc, char **argv) {

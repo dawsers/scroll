@@ -348,6 +348,8 @@ static struct cmd_results *cmd_move_container(bool no_auto_back_and_forth,
 		container_move_to_container(container, destination->sway_container);
 		break;
 	case N_ROOT:
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
 		break;
 	}
 

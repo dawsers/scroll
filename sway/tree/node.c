@@ -4,6 +4,7 @@
 #include "sway/tree/node.h"
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
+#include "sway/layers.h"
 #include "log.h"
 
 void node_init(struct sway_node *node, enum sway_node_type type, void *thing) {
@@ -25,6 +26,10 @@ const char *node_type_to_str(enum sway_node_type type) {
 		return "workspace";
 	case N_CONTAINER:
 		return "container";
+	case N_LAYER_SURFACE:
+		return "layer_surface";
+	case N_LAYER_POPUP:
+		return "layer_popup";
 	}
 	return "";
 }
@@ -51,6 +56,10 @@ char *node_get_name(struct sway_node *node) {
 		return node->sway_workspace->name;
 	case N_CONTAINER:
 		return node->sway_container->title;
+	case N_LAYER_SURFACE:
+		return node->sway_layer_surface->layer_surface->namespace;
+	case N_LAYER_POPUP:
+		return node->sway_layer_popup->toplevel->layer_surface->namespace;
 	}
 	return NULL;
 }
@@ -69,6 +78,12 @@ void node_get_box(struct sway_node *node, struct wlr_box *box) {
 	case N_CONTAINER:
 		container_get_box(node->sway_container, box);
 		break;
+	case N_LAYER_SURFACE:
+		layer_surface_get_box(node->sway_layer_surface, box);
+		break;
+	case N_LAYER_POPUP:
+		layer_popup_get_box(node->sway_layer_popup, box);
+		break;
 	}
 }
 
@@ -84,6 +99,10 @@ struct sway_output *node_get_output(struct sway_node *node) {
 		return node->sway_output;
 	case N_ROOT:
 		return NULL;
+	case N_LAYER_SURFACE:
+		return node->sway_layer_surface->output;
+	case N_LAYER_POPUP:
+		return node->sway_layer_popup->toplevel->output;
 	}
 	return NULL;
 }
@@ -96,6 +115,8 @@ enum sway_container_layout node_get_layout(struct sway_node *node) {
 		return layout_modifiers_get_mode(node->sway_workspace);
 	case N_OUTPUT:
 	case N_ROOT:
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
 		return L_NONE;
 	}
 	return L_NONE;
@@ -124,6 +145,10 @@ struct sway_node *node_get_parent(struct sway_node *node) {
 		return &root->node;
 	case N_ROOT:
 		return NULL;
+	case N_LAYER_SURFACE:
+		return NULL;
+	case N_LAYER_POPUP:
+		return NULL;
 	}
 	return NULL;
 }
@@ -136,6 +161,9 @@ list_t *node_get_children(struct sway_node *node) {
 		return node->sway_workspace->tiling;
 	case N_OUTPUT:
 	case N_ROOT:
+		return NULL;
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
 		return NULL;
 	}
 	return NULL;

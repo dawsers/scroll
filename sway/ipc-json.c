@@ -42,6 +42,10 @@ static const char *ipc_json_node_type_description(enum sway_node_type node_type)
 		return "workspace";
 	case N_CONTAINER:
 		return "con";
+	case N_LAYER_SURFACE:
+		return "layer_surface";
+	case N_LAYER_POPUP:
+		return "layer_popup";
 	}
 	return "none";
 }
@@ -833,6 +837,9 @@ json_object *ipc_json_describe_node(struct sway_node *node) {
 	case N_WORKSPACE:
 		ipc_json_describe_workspace(node->sway_workspace, object);
 		break;
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
+		break;
 	}
 
 	return object;
@@ -876,6 +883,9 @@ json_object *ipc_json_describe_node_recursive(struct sway_node *node) {
 						ipc_json_describe_node_recursive(&child->node));
 			}
 		}
+		break;
+	case N_LAYER_SURFACE:
+	case N_LAYER_POPUP:
 		break;
 	}
 	json_object_object_add(object, "nodes", children);

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_xdg_shell.h>
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
@@ -12,6 +13,7 @@
 #include "sway/input/input-manager.h"
 #include "sway/output.h"
 #include "sway/server.h"
+#include "sway/layers.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
@@ -36,6 +38,7 @@ struct sway_transaction_instruction {
 		struct sway_output_state output_state;
 		struct sway_workspace_state workspace_state;
 		struct sway_container_state container_state;
+		struct sway_layer_surface_state layer_state;
 	};
 	uint32_t serial;
 	bool server_request;
@@ -65,6 +68,8 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 		if (node->destroying && node->ntxnrefs == 0 && !node->dirty) {
 			switch (node->type) {
 			case N_ROOT:
+			case N_LAYER_SURFACE:
+			case N_LAYER_POPUP:
 				sway_assert(false, "Never reached");
 				break;
 			case N_OUTPUT:
@@ -167,6 +172,18 @@ static void copy_container_state(struct sway_container *container,
 	}
 }
 
+static void copy_layer_surface_state(struct sway_layer_surface *surface,
+		struct sway_transaction_instruction *instruction) {
+	struct sway_layer_surface_state *state = &instruction->layer_state;
+	memcpy(state, &surface->pending, sizeof(struct sway_layer_surface_state));
+}
+
+static void copy_layer_popup_state(struct sway_layer_popup *popup,
+		struct sway_transaction_instruction *instruction) {
+	struct sway_layer_surface_state *state = &instruction->layer_state;
+	memcpy(state, &popup->pending, sizeof(struct sway_layer_surface_state));
+}
+
 static void transaction_add_node(struct sway_transaction *transaction,
 		struct sway_node *node, bool server_request) {
 	struct sway_transaction_instruction *instruction = NULL;
@@ -211,6 +228,12 @@ static void transaction_add_node(struct sway_transaction *transaction,
 	case N_CONTAINER:
 		copy_container_state(node->sway_container, instruction);
 		break;
+	case N_LAYER_SURFACE:
+		copy_layer_surface_state(node->sway_layer_surface, instruction);
+		break;
+	case N_LAYER_POPUP:
+		copy_layer_popup_state(node->sway_layer_popup, instruction);
+		break;
 	}
 }
 
@@ -253,6 +276,16 @@ static void apply_container_state(struct sway_container *container,
 			view_center_and_clip_surface(view);
 		}
 	}
+}
+
+static void apply_layer_surface_state(struct sway_layer_surface *surface,
+		struct sway_layer_surface_state *state) {
+	memcpy(&surface->current, state, sizeof(struct sway_layer_surface_state));
+}
+
+static void apply_layer_popup_state(struct sway_layer_popup *popup,
+		struct sway_layer_surface_state *state) {
+	memcpy(&popup->current, state, sizeof(struct sway_layer_surface_state));
 }
 
 static void arrange_title_bar(struct sway_container *con,
@@ -1240,6 +1273,85 @@ static void disable_workspace(struct sway_workspace *ws) {
 	}
 }
 
+static void layer_surface_resize_iterator(struct wlr_scene_buffer *buffer,
+		int sx, int sy, void *user_data) {
+	struct sway_layer_surface *surface = user_data;
+	const double total_scale = 1.0;
+	const double wscale = surface->animation.wt > 0.0 ? surface->animation.wt / fmax(1.0, surface->animation.w1) : 0.0;
+	const double hscale = surface->animation.ht > 0.0 ? surface->animation.ht / fmax(1.0, surface->animation.h1) : 0.0;
+	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
+	wlr_scene_surface_resize(scene_surface, total_scale, wscale, hscale);
+}
+
+static void layer_popup_resize_iterator(struct wlr_scene_buffer *buffer,
+		int sx, int sy, void *user_data) {
+	struct sway_layer_popup *popup = user_data;
+	const double total_scale = 1.0;
+	const double width = fmax(1.0, popup->animation.wt);
+	const double height = fmax(1.0, popup->animation.ht);
+	const double wscale = width / fmax(1.0, popup->animation.w1);
+	const double hscale = height / fmax(1.0, popup->animation.h1);
+	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
+	wlr_scene_surface_resize(scene_surface, total_scale, wscale, hscale);
+	double x, y;
+	if (popup->toplevel->layer_surface->current.desired_height == 0) {
+		x = popup->pending.x >= popup->toplevel->pending.x ? 0.0: popup->animation.wt - width;
+	} else {
+		x = 0.5 * (popup->animation.w1 - width);
+	}
+	if (popup->toplevel->layer_surface->current.desired_width == 0) {
+		y = popup->pending.y >= popup->toplevel->pending.y ? 0.0 : popup->animation.h1 - height;
+	} else {
+		y = 0.5 * (popup->animation.h1 - height);
+	}
+	wlr_scene_node_set_position(&buffer->node, x, y);
+}
+
+static void animate_layer(struct wlr_scene_tree *tree, double t) {
+	struct wlr_scene_node *node;
+	wl_list_for_each(node, &tree->children, link) {
+		struct sway_layer_surface *surface = scene_descriptor_try_get(node,
+			SWAY_SCENE_DESC_LAYER_SHELL);
+		// surface could be null during destruction
+		if (!surface) {
+			continue;
+		}
+
+		if (!surface->scene->layer_surface->initialized) {
+			continue;
+		}
+		if (surface->layer_surface->current.desired_width != 0 &&
+			surface->layer_surface->current.desired_height != 0) {
+			surface->animation.wt = fmax(1, linear_scale(surface->animation.w0, surface->animation.w1, t));
+			surface->animation.ht = fmax(1, linear_scale(surface->animation.h0, surface->animation.h1, t));
+			animation_set_animation_enabled(surface->animation.w1 != surface->animation.w0);
+			animation_set_animation_enabled(surface->animation.h1 != surface->animation.h0);
+			surface->layer_surface->current.desired_width = round(surface->animation.wt);
+			surface->layer_surface->current.desired_height = round(surface->animation.ht);
+			wlr_scene_node_for_each_buffer(&surface->tree->node, layer_surface_resize_iterator, surface);
+		}
+		for (int i = 0; i < surface->layer_popups->length; ++i) {
+			struct sway_layer_popup *popup = surface->layer_popups->items[i];
+			popup->animation.wt = fmax(1, linear_scale(popup->animation.w0, popup->animation.w1, t));
+			popup->animation.ht = fmax(1, linear_scale(popup->animation.h0, popup->animation.h1, t));
+			animation_set_animation_enabled(popup->animation.w1 != popup->animation.w0);
+			animation_set_animation_enabled(popup->animation.h1 != popup->animation.h0);
+			wlr_scene_node_for_each_buffer(&popup->scene->node, layer_popup_resize_iterator, popup);
+		}
+	}
+}
+
+static void animate_layers(struct sway_output *output) {
+	double t, x, y, anim_scale;
+	animation_get_values(&t, &x, &y, &anim_scale);
+
+	animate_layer(output->layers.shell_overlay, t);
+	animate_layer(output->layers.shell_top, t);
+	animate_layer(output->layers.shell_bottom, t);
+	animate_layer(output->layers.shell_background, t);
+	arrange_layers(output);
+}
+
 static void arrange_output(struct sway_output *output) {
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
@@ -1310,6 +1422,8 @@ static void arrange_output(struct sway_output *output) {
 }
 
 static void animate_output(struct sway_output *output) {
+	animate_layers(output);
+
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
@@ -1503,6 +1617,12 @@ static void set_animation_data(struct sway_transaction *transaction) {
 			}
 			break;
 			}
+		case N_LAYER_SURFACE:
+			animation_add_output(node->sway_layer_surface->output->wlr_output);
+			break;
+		case N_LAYER_POPUP:
+			animation_add_output(node->sway_layer_popup->toplevel->output->wlr_output);
+			break;
 		}
 	}
 }
@@ -1541,6 +1661,14 @@ static void transaction_apply(struct sway_transaction *transaction) {
 		case N_CONTAINER:
 			apply_container_state(node->sway_container,
 					&instruction->container_state);
+			break;
+		case N_LAYER_SURFACE:
+			apply_layer_surface_state(node->sway_layer_surface,
+					&instruction->layer_state);
+			break;
+		case N_LAYER_POPUP:
+			apply_layer_popup_state(node->sway_layer_popup,
+					&instruction->layer_state);
 			break;
 		}
 
@@ -1904,12 +2032,53 @@ static void workspace_save_animation_variables(struct sway_workspace *ws) {
 	children_save_animation_variables(ws->floating);
 }
 
+static void layer_save_animation_variables(struct wlr_scene_tree *tree) {
+	struct wlr_scene_node *node;
+	wl_list_for_each(node, &tree->children, link) {
+		struct sway_layer_surface *surface = scene_descriptor_try_get(node,
+			SWAY_SCENE_DESC_LAYER_SHELL);
+		// surface could be null during destruction
+		if (!surface) {
+			continue;
+		}
+
+		if (!surface->scene->layer_surface->initialized) {
+			continue;
+		}
+
+		surface->animation.x0 = surface->current.x;
+		surface->animation.y0 = surface->current.y;
+		surface->animation.w0 = surface->current.width;
+		surface->animation.h0 = surface->current.height;
+		surface->animation.w1 = surface->pending.width;
+		surface->animation.h1 = surface->pending.height;
+
+		for (int i = 0; i < surface->layer_popups->length; ++i) {
+			struct sway_layer_popup *popup = surface->layer_popups->items[i];
+			popup->animation.x0 = popup->current.x;
+			popup->animation.y0 = popup->current.y;
+			popup->animation.w0 = popup->current.width;
+			popup->animation.h0 = popup->current.height;
+			popup->animation.w1 = popup->pending.width;
+			popup->animation.h1 = popup->pending.height;
+		}
+	}
+}
+
+static void layers_save_animation_variables(struct sway_output *output) {
+	layer_save_animation_variables(output->layers.shell_overlay);
+	layer_save_animation_variables(output->layers.shell_top);
+	layer_save_animation_variables(output->layers.shell_bottom);
+	layer_save_animation_variables(output->layers.shell_background);
+}
+
 static void save_animation_variables() {
 	struct sway_container *fs = root->fullscreen_global;
 
 	if (!fs) {
 		for (int j = 0; j < root->outputs->length; j++) {
 			struct sway_output *output = root->outputs->items[j];
+			layers_save_animation_variables(output);
 
 			for (int i = 0; i < output->workspaces->length; i++) {
 				struct sway_workspace *child = output->workspaces->items[i];

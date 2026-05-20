@@ -20,6 +20,8 @@ enum sway_node_type {
 	N_OUTPUT,
 	N_WORKSPACE,
 	N_CONTAINER,
+	N_LAYER_SURFACE,
+	N_LAYER_POPUP,
 };
 
 enum sway_node_focus_warp {
@@ -35,6 +37,8 @@ struct sway_node {
 		struct sway_output *sway_output;
 		struct sway_workspace *sway_workspace;
 		struct sway_container *sway_container;
+		struct sway_layer_surface *sway_layer_surface;
+		struct sway_layer_popup *sway_layer_popup;
 	};
 
 	/**
