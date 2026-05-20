@@ -32,8 +32,8 @@ static struct wlr_output *get_surface_frame_pacing_output(struct wlr_surface *su
 	struct wlr_output *frame_pacing_output = NULL;
 	struct wlr_surface_output *surface_output;
 	wl_list_for_each(surface_output, &surface->current_outputs, link) {
-		if (frame_pacing_output == NULL ||
-				surface_output->output->refresh > frame_pacing_output->refresh) {
+		if (!surface_output->suspended && (frame_pacing_output == NULL ||
+				surface_output->output->refresh > frame_pacing_output->refresh)) {
 			frame_pacing_output = surface_output->output;
 		}
 	}
@@ -99,11 +99,9 @@ static void handle_scene_buffer_outputs_update(
 	struct wlr_scene_outputs_update_event *event = data;
 	struct wlr_scene *scene = scene_node_get_root(&surface->buffer->node);
 
-	// If the surface is no longer visible on any output, keep the last sent
-	// preferred configuration to avoid unnecessary redraws
-	if (event->size == 0) {
-		return;
-	}
+	// If the surface is no longer visible on any output in the scene, keep the
+	// last sent preferred configuration to avoid unnecessary redraws
+	bool suspend = event->size == 0;
 
 	// To avoid sending redundant leave/enter events when a surface is hidden and then shown
 	// without moving to a different output the following policy is implemented:
@@ -123,9 +121,22 @@ static void handle_scene_buffer_outputs_update(
 				break;
 			}
 		}
-		if (!active) {
-			wlr_surface_send_leave(surface->surface, entered_output->output);
+
+		struct wlr_scene_output *scene_output;
+		wl_list_for_each(scene_output, &scene->outputs, link) {
+			if (scene_output->output == entered_output->output) {
+				entered_output->suspended = suspend;
+				if (!suspend && !active) {
+					wlr_surface_send_leave(surface->surface, entered_output->output);
+				}
+				break;
+			}
 		}
+	}
+
+	// No reason to update the preferred configuration if we aren't sending leave/enter events.
+	if (suspend) {
+		return;
 	}
 
 	for (size_t i = 0; i < event->size; i++) {
