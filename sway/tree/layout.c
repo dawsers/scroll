@@ -2869,34 +2869,14 @@ void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float se
 	dx *= sensitivity * scale;
 	dy *= sensitivity * scale;
 
-	enum sway_layout_direction scrolling_direction;
-	if (fabs(dx) > fabs(dy)) {
-		scrolling_direction = dx > 0.0 ? DIR_RIGHT : DIR_LEFT;
-		workspace->gesture.dx += dx;
+	workspace->gesture.dx += dx;
+	workspace->gesture.dy += dy;
+	if (layout_get_type(workspace) == L_HORIZ) {
+		scroll_container(get_mouse_container(seat), 0.0, dy);
+		scroll_workspace(workspace, dx, 0.0);
 	} else {
-		scrolling_direction = dy > 0.0 ? DIR_DOWN : DIR_UP; 
-		workspace->gesture.dy += dy;
-	}
-
-	switch (scrolling_direction) {
-	case DIR_UP:
-	case DIR_DOWN:
-		if (layout_get_type(workspace) == L_HORIZ) {
-			scroll_container(get_mouse_container(seat), dx, dy);
-		} else {
-			scroll_workspace(workspace, dx, dy);
-		}
-		break;
-	case DIR_LEFT:
-	case DIR_RIGHT:
-		if (layout_get_type(workspace) == L_HORIZ) {
-			scroll_workspace(workspace, dx, dy);
-		} else {
-			scroll_container(get_mouse_container(seat), dx, dy);
-		}
-		break;
-	default:
-		break;
+		scroll_container(get_mouse_container(seat), dx, 0.0);
+		scroll_workspace(workspace, 0.0, dy);
 	}
 }
 
