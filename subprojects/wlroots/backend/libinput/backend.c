@@ -15,6 +15,12 @@ static struct wlr_libinput_backend *get_libinput_backend_from_backend(
 	return backend;
 }
 
+struct libinput *wlr_backend_get_libinput(struct wlr_backend *wlr_backend) {
+	struct wlr_libinput_backend *backend =
+		get_libinput_backend_from_backend(wlr_backend);
+	return backend->libinput_context;
+}
+
 static int libinput_open_restricted(const char *path,
 		int flags, void *_backend) {
 	struct wlr_libinput_backend *backend = _backend;
@@ -86,13 +92,6 @@ static bool backend_start(struct wlr_backend *wlr_backend) {
 	struct wlr_libinput_backend *backend =
 		get_libinput_backend_from_backend(wlr_backend);
 	wlr_log(WLR_DEBUG, "Starting libinput backend");
-
-	backend->libinput_context = libinput_udev_create_context(&libinput_impl,
-		backend, backend->session->udev);
-	if (!backend->libinput_context) {
-		wlr_log(WLR_ERROR, "Failed to create libinput context");
-		return false;
-	}
 
 	if (libinput_udev_assign_seat(backend->libinput_context,
 			backend->session->seat) != 0) {
@@ -187,11 +186,19 @@ struct wlr_backend *wlr_libinput_backend_create(struct wlr_session *session) {
 		wlr_log(WLR_ERROR, "Allocation failed: %s", strerror(errno));
 		return NULL;
 	}
+
 	wlr_backend_init(&backend->backend, &backend_impl);
-
 	wl_list_init(&backend->devices);
-
 	backend->session = session;
+
+	backend->libinput_context = libinput_udev_create_context(&libinput_impl,
+		backend, backend->session->udev);
+	if (!backend->libinput_context) {
+		wlr_log(WLR_ERROR, "Failed to create libinput context");
+		wlr_backend_finish(&backend->backend);
+		free(backend);
+		return NULL;
+	}
 
 	backend->session_signal.notify = session_signal;
 	wl_signal_add(&session->events.active, &backend->session_signal);

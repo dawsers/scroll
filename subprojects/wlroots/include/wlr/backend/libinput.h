@@ -28,6 +28,10 @@ struct libinput_device *wlr_libinput_get_device_handle(
  */
 struct libinput_tablet_tool *wlr_libinput_get_tablet_tool_handle(
 		struct wlr_tablet_tool *wlr_tablet_tool);
+/**
+ * Gets the underlying struct libinput for direct access to the libinput context.
+ */
+struct libinput *wlr_backend_get_libinput(struct wlr_backend *wlr_backend);
 
 bool wlr_backend_is_libinput(const struct wlr_backend *backend);
 bool wlr_input_device_is_libinput(struct wlr_input_device *device);
