@@ -2771,6 +2771,22 @@ bool xwm_atoms_contains(struct wlr_xwm *xwm, xcb_atom_t *atoms,
 }
 
 void wlr_xwayland_surface_ping(struct wlr_xwayland_surface *surface) {
+	if (surface->pinging) {
+		return;
+	}
+
+	// don't ping if client not supports
+	bool supports_ping = false;
+	for(size_t i = 0; i < surface->protocols_len; i++) {
+		if (surface->protocols[i] == surface->xwm->atoms[NET_WM_PING]) {
+			supports_ping = true;
+			break;
+		}
+	}
+	if (!supports_ping) {
+		return;
+	}
+
 	xcb_client_message_data_t data = { 0 };
 	data.data32[0] = surface->xwm->atoms[NET_WM_PING];
 	data.data32[1] = XCB_CURRENT_TIME;
