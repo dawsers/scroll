@@ -1320,8 +1320,7 @@ static void animate_layer(struct wlr_scene_tree *tree, double t) {
 		if (!surface->scene->layer_surface->initialized) {
 			continue;
 		}
-		if (surface->layer_surface->current.desired_width != 0 &&
-			surface->layer_surface->current.desired_height != 0) {
+		if (surface->animation.w1 != 0.0 && surface->animation.h1 != 0.0) {
 			surface->animation.wt = fmax(1, linear_scale(surface->animation.w0, surface->animation.w1, t));
 			surface->animation.ht = fmax(1, linear_scale(surface->animation.h0, surface->animation.h1, t));
 			animation_set_animation_enabled(surface->animation.w1 != surface->animation.w0);
@@ -1345,6 +1344,7 @@ static void animate_layers(struct sway_output *output) {
 	double t, x, y, anim_scale;
 	animation_get_values(&t, &x, &y, &anim_scale);
 
+	animation_set_animation_enabled(false);
 	animate_layer(output->layers.shell_overlay, t);
 	animate_layer(output->layers.shell_top, t);
 	animate_layer(output->layers.shell_bottom, t);
