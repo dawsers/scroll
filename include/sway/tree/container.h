@@ -443,4 +443,6 @@ void container_insert_update_parent_fullscreen_layout(struct sway_container *par
 void container_detach_update_parent_fullscreen_layout(struct sway_container *parent,
 		struct sway_container *child);
 
+struct sway_view *container_get_active_view(struct sway_container *container);
+
 #endif

@@ -2111,3 +2111,12 @@ void container_swap(struct sway_container *con1, struct sway_container *con2) {
 		container_set_fullscreen(con1, fs2);
 	}
 }
+
+struct sway_view *container_get_active_view(struct sway_container *container) {
+	struct sway_container *active = container;
+	while (active && active->view == NULL) {
+		active = active->pending.focused_inactive_child ?
+			active->pending.focused_inactive_child : active->current.focused_inactive_child;
+	}
+	return active ? active->view : NULL;
+}

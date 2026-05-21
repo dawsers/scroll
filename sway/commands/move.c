@@ -466,6 +466,11 @@ static struct cmd_results *cmd_move_in_direction(
 		return cmd_results_new(CMD_FAILURE,
 				"Cannot move workspaces in a direction");
 	}
+
+	if (nomode) {
+		container = container_get_active_view(container)->container;
+	}
+
 	if (container_is_floating(container)) {
 		if (container->pending.fullscreen_mode) {
 			return cmd_results_new(CMD_FAILURE,

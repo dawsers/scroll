@@ -3323,7 +3323,8 @@ bool layout_selection_move(struct sway_workspace *new_workspace) {
 			} else {
 				focus =  (struct sway_container *) new_workspace->floating->items[0];
 			}
-			seat_set_focus_container(seat, focus);
+			struct sway_view *view = container_get_active_view(focus);
+			seat_set_focus_container(seat, view->container);
 		} else {
 			switch_workspace(new_workspace);
 		}
