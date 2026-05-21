@@ -179,7 +179,6 @@ bool wlr_drm_syncobj_merger_add_dmabuf(struct wlr_drm_syncobj_merger *merger,
 		return true;
 	}
 
-	uint32_t mask = WL_EVENT_ERROR | WL_EVENT_HANGUP | WL_EVENT_WRITABLE;
 	for (int i = 0; i < dmabuf_attributes.n_planes; ++i) {
 		struct poll_waiter *waiter = calloc(1, sizeof(*waiter));
 		if (waiter == NULL) {
@@ -187,7 +186,7 @@ bool wlr_drm_syncobj_merger_add_dmabuf(struct wlr_drm_syncobj_merger *merger,
 		}
 		waiter->merger = wlr_drm_syncobj_merger_ref(merger);
 		waiter->event_source = wl_event_loop_add_fd(event_loop,
-			dmabuf_attributes.fd[i], mask, poll_waiter_handle_done, waiter);
+				dmabuf_attributes.fd[i], WL_EVENT_WRITABLE, poll_waiter_handle_done, waiter);
 		if (waiter->event_source == NULL) {
 			wlr_drm_syncobj_merger_unref(waiter->merger);
 			free(waiter);
