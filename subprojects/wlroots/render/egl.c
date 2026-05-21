@@ -295,6 +295,8 @@ static bool egl_init_display(struct wlr_egl *egl, EGLDisplay display,
 
 	egl->exts.EXT_create_context_robustness =
 		check_egl_ext(display_exts_str, "EGL_EXT_create_context_robustness");
+	egl->exts.KHR_context_flush_control =
+		check_egl_ext(display_exts_str, "EGL_KHR_context_flush_control");
 
 	const char *device_exts_str = NULL, *driver_name = NULL;
 	if (egl->exts.EXT_device_query) {
@@ -409,7 +411,7 @@ static bool egl_init(struct wlr_egl *egl, EGLenum platform,
 	}
 
 	size_t atti = 0;
-	EGLint attribs[7];
+	EGLint attribs[32];
 	attribs[atti++] = EGL_CONTEXT_CLIENT_VERSION;
 	attribs[atti++] = 2;
 
@@ -427,6 +429,11 @@ static bool egl_init(struct wlr_egl *egl, EGLenum platform,
 	if (egl->exts.EXT_create_context_robustness) {
 		attribs[atti++] = EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT;
 		attribs[atti++] = EGL_LOSE_CONTEXT_ON_RESET_EXT;
+	}
+
+	if (egl->exts.KHR_context_flush_control) {
+		attribs[atti++] = EGL_CONTEXT_RELEASE_BEHAVIOR_KHR;
+		attribs[atti++] = EGL_CONTEXT_RELEASE_BEHAVIOR_NONE_KHR;
 	}
 
 	attribs[atti++] = EGL_NONE;
