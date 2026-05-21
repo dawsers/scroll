@@ -1021,16 +1021,23 @@ static bool compare_feedback_format_tables(struct wlr_linux_dmabuf_feedback_v1_c
 	if (a == NULL || b == NULL || a->table_size != b->table_size) {
 		return false;
 	}
+	bool same = false;
 	char *buffer_a = calloc(1, a->table_size);
-	read(a->table_fd, buffer_a, a->table_size);
-	lseek(a->table_fd, 0, SEEK_SET);
+	if (read(a->table_fd, buffer_a, a->table_size) < 0) {
+		goto error_a;
+	}
 	char *buffer_b = calloc(1, b->table_size);
-	read(b->table_fd, buffer_b, b->table_size);
-	lseek(b->table_fd, 0, SEEK_SET);
-	bool same = memcmp(buffer_a, buffer_b, a->table_size) == 0;
-	free(buffer_a);
-	free(buffer_b);
+	if (read(b->table_fd, buffer_b, b->table_size) < 0) {
+		goto error_b;
+	}
+	same = memcmp(buffer_a, buffer_b, a->table_size) == 0;
 
+error_b:
+	lseek(b->table_fd, 0, SEEK_SET);
+	free(buffer_b);
+error_a:
+	lseek(a->table_fd, 0, SEEK_SET);
+	free(buffer_a);
 	return same;
 }
 
