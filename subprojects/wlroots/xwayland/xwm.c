@@ -1480,6 +1480,13 @@ static void xwm_handle_surface_id_message(struct wlr_xwm *xwm,
 	struct wl_resource *resource =
 		wl_client_get_object(xwm->xwayland->server->client, id);
 	if (resource) {
+		if (wl_resource_get_interface(resource) != &wl_surface_interface) {
+			wlr_log(WLR_DEBUG, "Received client message WL_SURFACE_ID "
+				"for X11 window %u but Wayland object is not a wl_surface",
+				ev->window);
+			return;
+		}
+
 		struct wlr_surface *surface = wlr_surface_from_resource(resource);
 		xwayland_surface_associate(xwm, xsurface, surface);
 	} else {
