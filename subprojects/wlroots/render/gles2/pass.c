@@ -201,8 +201,6 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 	src_fbox.width /= options->texture->width;
 	src_fbox.height /= options->texture->height;
 
-	push_gles2_debug(renderer);
-
 	if (options->wait_timeline != NULL) {
 		int sync_file_fd =
 			wlr_drm_syncobj_timeline_export_sync_file(options->wait_timeline, options->wait_point);
@@ -222,6 +220,8 @@ static void render_pass_add_texture(struct wlr_render_pass *wlr_pass,
 			return;
 		}
 	}
+
+	push_gles2_debug(renderer);
 
 	setup_blending(!texture->has_alpha && alpha == 1.0 &&
 		options->radius_top == 0.0f && options->radius_bottom == 0.0f ?
