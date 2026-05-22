@@ -1030,31 +1030,31 @@ static void read_surface_net_wm_state(struct wlr_xwm *xwm,
 		struct wlr_xwayland_surface *xsurface,
 		xcb_get_property_reply_t *reply) {
 	xsurface->fullscreen = 0;
-	const xcb_atom_t *atom = xcb_get_property_value(reply);
+	const xcb_atom_t *atoms = xcb_get_property_value(reply);
 	for (uint32_t i = 0; i < reply->value_len; i++) {
-		if (atom[i] == xwm->atoms[NET_WM_STATE_MODAL]) {
+		if (atoms[i] == xwm->atoms[NET_WM_STATE_MODAL]) {
 			xsurface->modal = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_FULLSCREEN]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_FULLSCREEN]) {
 			xsurface->fullscreen = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_MAXIMIZED_VERT]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_MAXIMIZED_VERT]) {
 			xsurface->maximized_vert = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_MAXIMIZED_HORZ]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_MAXIMIZED_HORZ]) {
 			xsurface->maximized_horz = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_HIDDEN]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_HIDDEN]) {
 			xsurface->minimized = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_STICKY]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_STICKY]) {
 			xsurface->sticky = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_SHADED]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_SHADED]) {
 			xsurface->shaded = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_SKIP_TASKBAR]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_SKIP_TASKBAR]) {
 			xsurface->skip_taskbar = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_SKIP_PAGER]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_SKIP_PAGER]) {
 			xsurface->skip_pager = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_ABOVE]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_ABOVE]) {
 			xsurface->above = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_BELOW]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_BELOW]) {
 			xsurface->below = true;
-		} else if (atom[i] == xwm->atoms[NET_WM_STATE_DEMANDS_ATTENTION]) {
+		} else if (atoms[i] == xwm->atoms[NET_WM_STATE_DEMANDS_ATTENTION]) {
 			xsurface->demands_attention = true;
 		}
 	}
