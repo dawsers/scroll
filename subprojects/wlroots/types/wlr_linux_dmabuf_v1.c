@@ -652,17 +652,15 @@ static void feedback_tranche_send(
 }
 
 static void feedback_send(const struct wlr_linux_dmabuf_feedback_v1_compiled *feedback,
-		struct wl_resource *resource, bool send_table) {
+		struct wl_resource *resource) {
 	struct wl_array dev_array = {
 		.size = sizeof(feedback->main_device),
 		.data = (void *)&feedback->main_device,
 	};
 	zwp_linux_dmabuf_feedback_v1_send_main_device(resource, &dev_array);
 
-	if (send_table) {
-		zwp_linux_dmabuf_feedback_v1_send_format_table(resource,
-			feedback->table_fd, feedback->table_size);
-	}
+	zwp_linux_dmabuf_feedback_v1_send_format_table(resource,
+		feedback->table_fd, feedback->table_size);
 
 	for (size_t i = 0; i < feedback->tranches_len; i++) {
 		feedback_tranche_send(&feedback->tranches[i], resource);
@@ -686,7 +684,7 @@ static void linux_dmabuf_get_default_feedback(struct wl_client *client,
 	wl_resource_set_implementation(feedback_resource, &linux_dmabuf_feedback_impl,
 		NULL, NULL);
 
-	feedback_send(linux_dmabuf->default_feedback, feedback_resource, true);
+	feedback_send(linux_dmabuf->default_feedback, feedback_resource);
 }
 
 static void surface_destroy(struct wlr_linux_dmabuf_v1_surface *surface) {
@@ -778,7 +776,7 @@ static void linux_dmabuf_get_surface_feedback(struct wl_client *client,
 		NULL, surface_feedback_handle_resource_destroy);
 	wl_list_insert(&surface->feedback_resources, wl_resource_get_link(feedback_resource));
 
-	feedback_send(surface_get_feedback(surface), feedback_resource, true);
+	feedback_send(surface_get_feedback(surface), feedback_resource);
 }
 
 static void linux_dmabuf_destroy(struct wl_client *client,
@@ -1015,32 +1013,6 @@ void wlr_linux_dmabuf_v1_set_check_dmabuf_callback(struct wlr_linux_dmabuf_v1 *l
 	linux_dmabuf->check_dmabuf_callback_data = data;
 }
 
-// If the format tables are the same, return true, else false
-static bool compare_feedback_format_tables(struct wlr_linux_dmabuf_feedback_v1_compiled *a,
-		struct wlr_linux_dmabuf_feedback_v1_compiled *b) {
-	if (a == NULL || b == NULL || a->table_size != b->table_size) {
-		return false;
-	}
-	bool same = false;
-	char *buffer_a = calloc(1, a->table_size);
-	if (read(a->table_fd, buffer_a, a->table_size) < 0) {
-		goto error_a;
-	}
-	char *buffer_b = calloc(1, b->table_size);
-	if (read(b->table_fd, buffer_b, b->table_size) < 0) {
-		goto error_b;
-	}
-	same = memcmp(buffer_a, buffer_b, a->table_size) == 0;
-
-error_b:
-	lseek(b->table_fd, 0, SEEK_SET);
-	free(buffer_b);
-error_a:
-	lseek(a->table_fd, 0, SEEK_SET);
-	free(buffer_a);
-	return same;
-}
-
 bool wlr_linux_dmabuf_v1_set_surface_feedback(
 		struct wlr_linux_dmabuf_v1 *linux_dmabuf,
 		struct wlr_surface *wlr_surface,
@@ -1059,14 +1031,12 @@ bool wlr_linux_dmabuf_v1_set_surface_feedback(
 		}
 	}
 
-	bool send_table = !compare_feedback_format_tables(compiled, surface->feedback);
-
 	compiled_feedback_destroy(surface->feedback);
 	surface->feedback = compiled;
 
 	struct wl_resource *resource;
 	wl_resource_for_each(resource, &surface->feedback_resources) {
-		feedback_send(surface_get_feedback(surface), resource, send_table);
+		feedback_send(surface_get_feedback(surface), resource);
 	}
 
 	return true;

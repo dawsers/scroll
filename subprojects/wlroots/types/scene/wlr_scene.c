@@ -583,11 +583,6 @@ static void update_node_update_outputs(struct wlr_scene_node *node,
 		}
 	}
 
-	if (old_primary_output != scene_buffer->primary_output) {
-		scene_buffer->prev_feedback_options =
-			(struct wlr_linux_dmabuf_feedback_v1_init_options){0};
-	}
-
 	if (!scene_buffer->primary_output) {
 		// When no output contains a big enough fraction of the buffer, it means
 		// the primary output has been disconnected or we are exiting.
