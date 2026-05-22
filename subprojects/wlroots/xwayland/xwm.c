@@ -1466,8 +1466,12 @@ static void xwm_handle_surface_id_message(struct wlr_xwm *xwm,
 			ev->window);
 		return;
 	}
-	/* Check if we got notified after wayland surface create event */
+
 	uint32_t id = ev->data.data32[0];
+
+	// Because the X11 and Wayland connections are separate sockets, the
+	// WL_SURFACE_ID and wl_compositor.create_surface messages may be received
+	// in any order.
 	struct wl_resource *resource =
 		wl_client_get_object(xwm->xwayland->server->client, id);
 	if (resource) {
