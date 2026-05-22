@@ -1466,6 +1466,11 @@ static void xwm_handle_surface_id_message(struct wlr_xwm *xwm,
 			ev->window);
 		return;
 	}
+	if (xsurface->surface != NULL) {
+		wlr_log(WLR_DEBUG, "Received multiple client messages WL_SURFACE_ID "
+			"for an already-associated X11 window %u", ev->window);
+		return;
+	}
 
 	uint32_t id = ev->data.data32[0];
 
