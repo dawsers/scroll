@@ -103,7 +103,7 @@ static int write_selection_property_to_wl_client(int fd, uint32_t mask,
 		void *data) {
 	struct wlr_xwm_selection_transfer *transfer = data;
 
-	char *property = xcb_get_property_value(transfer->property_reply);
+	const char *property = xcb_get_property_value(transfer->property_reply);
 	int remainder = xcb_get_property_value_length(transfer->property_reply) -
 		transfer->property_start;
 
@@ -343,7 +343,7 @@ static bool source_get_targets(struct wlr_xwm_selection *selection,
 		return false;
 	}
 
-	xcb_atom_t *value = xcb_get_property_value(reply);
+	const xcb_atom_t *value = xcb_get_property_value(reply);
 	for (uint32_t i = 0; i < reply->value_len; i++) {
 		char *mime_type = NULL;
 
