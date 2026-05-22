@@ -1462,7 +1462,7 @@ static void xwm_handle_surface_id_message(struct wlr_xwm *xwm,
 	struct wlr_xwayland_surface *xsurface = lookup_surface(xwm, ev->window);
 	if (xsurface == NULL) {
 		wlr_log(WLR_DEBUG,
-			"client message WL_SURFACE_ID but no new window %u ?",
+			"Received client message WL_SURFACE_ID but no X11 window %u",
 			ev->window);
 		return;
 	}
