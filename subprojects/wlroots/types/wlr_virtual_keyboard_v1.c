@@ -51,6 +51,12 @@ static void virtual_keyboard_keymap(struct wl_client *client,
 		return;
 	}
 
+	if (format == WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP) {
+		keyboard->has_keymap = true;
+		close(fd);
+		return;
+	}
+
 	struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if (!context) {
 		goto context_fail;
