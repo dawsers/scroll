@@ -667,6 +667,7 @@ static void read_surface_class(struct wlr_xwm *xwm,
 	if (len > 0 && instance_len < len) {
 		surface->instance = strndup(class, instance_len);
 		class += instance_len + 1;
+		len -= instance_len + 1;
 	} else {
 		surface->instance = NULL;
 	}
