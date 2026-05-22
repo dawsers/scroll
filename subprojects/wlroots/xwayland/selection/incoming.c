@@ -344,7 +344,8 @@ static bool source_get_targets(struct wlr_xwm_selection *selection,
 	}
 
 	const xcb_atom_t *value = xcb_get_property_value(reply);
-	for (uint32_t i = 0; i < reply->value_len; i++) {
+	uint32_t value_len = xcb_get_property_value_length(reply) / sizeof(value);
+	for (uint32_t i = 0; i < value_len; i++) {
 		char *mime_type = NULL;
 
 		if (value[i] == xwm->atoms[UTF8_STRING]) {
