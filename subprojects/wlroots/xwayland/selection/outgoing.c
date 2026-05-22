@@ -336,7 +336,11 @@ static void xwm_selection_send_targets(struct wlr_xwm_selection *selection,
 	}
 
 	size_t n = 2 + mime_types->size / sizeof(char *);
-	xcb_atom_t targets[n];
+	xcb_atom_t *targets = malloc(n * sizeof(targets[0]));
+	if (targets == NULL) {
+		wlr_log(WLR_ERROR, "Allocation failure");
+		return;
+	}
 	targets[0] = xwm->atoms[TIMESTAMP];
 	targets[1] = xwm->atoms[TARGETS];
 
@@ -355,6 +359,8 @@ static void xwm_selection_send_targets(struct wlr_xwm_selection *selection,
 		XCB_ATOM_ATOM,
 		32, // format
 		n, targets);
+
+	free(targets);
 
 	xwm_selection_send_notify(selection->xwm, req, true);
 }
