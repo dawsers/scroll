@@ -44,6 +44,13 @@ static void virtual_keyboard_keymap(struct wl_client *client,
 		return;
 	}
 
+	if (!wl_keyboard_keymap_format_is_valid(format, 1)) {
+		wl_resource_post_error(resource,
+			ZWP_VIRTUAL_KEYBOARD_V1_ERROR_INVALID_KEYMAP_FORMAT,
+			"Invalid keymap format");
+		return;
+	}
+
 	struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if (!context) {
 		goto context_fail;

@@ -47,6 +47,7 @@
 
     <enum name="error">
       <entry name="no_keymap" value="0" summary="No keymap was set"/>
+      <entry name="invalid_keymap_format" value="1" summary="Invalid keymap format"/>
     </enum>
 
     <request name="key">
