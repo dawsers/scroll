@@ -162,16 +162,20 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	}
 	if (cy < thresh_top) {
 		edge = WLR_EDGE_TOP;
+		if (thresh_top < box.y) thresh_top = box.y;
 		box.height = drop_layout_border;
 	} else if (cy > thresh_bottom) {
 		edge = WLR_EDGE_BOTTOM;
+		if (thresh_bottom > box.y + box.height) thresh_bottom = box.y + box.height;
 		box.y = box.y + box.height - drop_layout_border;
 		box.height = drop_layout_border;
 	} else if (cx < thresh_left) {
 		edge = WLR_EDGE_LEFT;
+		if (thresh_left < box.x) thresh_left = box.x;
 		box.width = drop_layout_border;
 	} else if (cx > thresh_right) {
 		edge = WLR_EDGE_RIGHT;
+		if (thresh_right > box.x + box.width) thresh_right = box.x + box.width;
 		box.x = box.x + box.width - drop_layout_border;
 		box.width = drop_layout_border;
 	} else {
