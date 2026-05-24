@@ -5,6 +5,7 @@
 #include "sway/tree/workspace.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/animation.h"
+#include "sway/layers.h"
 
 static bool scene_fullscreen_global_enabled() {
 	return root->fullscreen_global;	
@@ -214,6 +215,23 @@ static double scene_view_content_scale(struct wlr_surface *surface) {
 	}
 }
 
+static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
+		struct wlr_scene_layer_surface_data *data) {
+	struct sway_layer_surface *surface = layer_surface->data;
+	if (surface) {
+		data->x = surface->animation.xt;
+		data->y = surface->animation.yt;
+		data->width = surface->animation.wt;
+		data->height = surface->animation.ht;
+		return true;
+	} else {
+		data->x = data->y = 0.0;
+		data->width = layer_surface->current.desired_width;
+		data->height = layer_surface->current.desired_height;
+		return false;
+	}
+}
+
 static void animate(struct wlr_output *output) {
 	if (animation_animating(output)) {
 		animation_animate(output);
@@ -228,5 +246,6 @@ const struct wlr_scene_callbacks scroll_scene_cbs = {
 	.view_data = scene_view_data,
 	.node_get_parent_total_scale = scene_node_get_parent_total_scale,
 	.view_content_scale = scene_view_content_scale,
+	.layer_surface_data = scene_layer_surface_data,
 	.animate = animate,
 };

@@ -188,6 +188,8 @@ static struct sway_layer_surface *sway_layer_surface_create(
 	surface->popups = popups;
 	surface->layer_surface->data = surface;
 	surface->layer_popups = create_list();
+	surface->current = (struct sway_layer_surface_state) {0};
+	surface->pending = (struct sway_layer_surface_state) {0};
 
 	return surface;
 }
@@ -276,6 +278,12 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 	if (layer_surface->initial_commit || committed || layer_surface->surface->mapped != surface->mapped) {
 		surface->mapped = layer_surface->surface->mapped;
 		arrange_layers(surface->output);
+		if (committed & WLR_LAYER_SURFACE_V1_STATE_DESIRED_SIZE) {
+			surface->pending.width = layer_surface->current.desired_width;
+			surface->pending.height = layer_surface->current.desired_height;
+			node_set_dirty(&surface->node);
+			animation_set_type(ANIMATION_LAYER_SHELL);
+		}
 		transaction_commit_dirty();
 	}
 }
@@ -286,9 +294,6 @@ static void handle_map(struct wl_listener *listener, void *data) {
 
 	struct wlr_layer_surface_v1 *layer_surface =
 				surface->scene->layer_surface;
-
-	surface->pending.width = layer_surface->current.desired_width;
-	surface->pending.height = layer_surface->current.desired_height;
 
 	// focus on new surface
 	if (layer_surface->current.keyboard_interactive &&
@@ -306,10 +311,6 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	}
 
 	cursor_rebase_all();
-
-	node_set_dirty(&surface->node);
-	animation_set_type(ANIMATION_LAYER_SHELL);
-	transaction_commit_dirty();
 }
 
 static void handle_unmap(struct wl_listener *listener, void *data) {

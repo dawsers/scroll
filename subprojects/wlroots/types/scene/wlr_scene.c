@@ -6,6 +6,7 @@
 #include <wlr/render/drm_syncobj.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/render/wlr_object.h>
+#include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_color_management_v1.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_damage_ring.h>
@@ -113,6 +114,14 @@ static double default_view_content_scale(struct wlr_surface *surface) {
 	return 1.0;
 }
 
+static bool default_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
+		struct wlr_scene_layer_surface_data *data) {
+	data->x = data->y = 0.0;
+	data->width = layer_surface->current.desired_width;
+	data->height = layer_surface->current.desired_height;
+	return true;
+}
+
 static void default_animate(struct wlr_output *output) {
 	return;
 }
@@ -125,6 +134,7 @@ struct wlr_scene_callbacks scene_cbs = {
 	.view_data = default_view_data,
 	.node_get_parent_total_scale = default_node_get_parent_total_scale,
 	.view_content_scale = default_view_content_scale,
+	.layer_surface_data = default_layer_surface_data,
 	.animate = default_animate,
 };
 

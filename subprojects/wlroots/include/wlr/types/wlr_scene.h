@@ -71,6 +71,11 @@ struct wlr_scene_view_data {
 	float radius_top, radius_bottom;
 };
 
+struct wlr_scene_layer_surface_data {
+	double x, y;
+	double width, height;
+};
+
 /* Implemented by the compositor */
 struct wlr_scene_callbacks {
 	bool (*fullscreen_global_enabled)(void);
@@ -81,6 +86,7 @@ struct wlr_scene_callbacks {
 	bool (*view_data)(struct wlr_surface *surface, struct wlr_scene_view_data *data);
 	bool (*node_get_parent_total_scale)(struct wlr_scene_node *node, double *scale);
 	double (*view_content_scale)(struct wlr_surface *surface);
+	bool (*layer_surface_data)(struct wlr_layer_surface_v1 *layer_surface, struct wlr_scene_layer_surface_data *data);
 	void (*animate)(struct wlr_output *output);
 };
 

@@ -3,6 +3,8 @@
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/util/edges.h>
 
+extern struct wlr_scene_callbacks scene_cbs;
+
 static void scene_layer_surface_handle_tree_destroy(
 		struct wl_listener *listener, void *data) {
 	struct wlr_scene_layer_surface_v1 *scene_layer_surface =
@@ -58,6 +60,11 @@ void wlr_scene_layer_surface_v1_configure(
 		scene_layer_surface->layer_surface;
 	struct wlr_layer_surface_v1_state *state = &layer_surface->current;
 
+	struct wlr_scene_layer_surface_data data;
+	scene_cbs.layer_surface_data(layer_surface, &data);
+	const int width = round(data.width);
+	const int height = round(data.height);
+
 	// If the exclusive zone is set to -1, the layer surface will use the
 	// full area of the output, otherwise it is constrained to the
 	// remaining usable area.
@@ -80,13 +87,13 @@ void wlr_scene_layer_surface_v1_configure(
 			(state->margin.left + state->margin.right);
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT &&
 			state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT) {
-		box.x = bounds.x + bounds.width/2 -box.width/2;
+		box.x = bounds.x + bounds.width/2 - width/2;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) {
 		box.x = bounds.x + state->margin.left;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT) {
-		box.x = bounds.x + bounds.width - box.width - state->margin.right;
+		box.x = bounds.x + bounds.width - width - state->margin.right;
 	} else {
-		box.x = bounds.x + bounds.width/2 - box.width/2;
+		box.x = bounds.x + bounds.width/2 - width/2;
 	}
 
 	// Vertical positioning
@@ -96,13 +103,13 @@ void wlr_scene_layer_surface_v1_configure(
 			(state->margin.top + state->margin.bottom);
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP &&
 			state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM) {
-		box.y = bounds.y + bounds.height/2 - box.height/2;
+		box.y = bounds.y + bounds.height/2 - height/2;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) {
 		box.y = bounds.y + state->margin.top;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM) {
-		box.y = bounds.y + bounds.height - box.height - state->margin.bottom;
+		box.y = bounds.y + bounds.height - height - state->margin.bottom;
 	} else {
-		box.y = bounds.y + bounds.height/2 - box.height/2;
+		box.y = bounds.y + bounds.height/2 - height/2;
 	}
 
 	wlr_scene_node_set_position(&scene_layer_surface->tree->node, box.x, box.y);

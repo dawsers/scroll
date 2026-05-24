@@ -1326,9 +1326,10 @@ static void animate_layer(struct wlr_scene_tree *tree, double t) {
 			surface->animation.ht = fmax(1, linear_scale(surface->animation.h0, surface->animation.h1, t));
 			animation_set_animation_enabled(surface->animation.w1 != surface->animation.w0);
 			animation_set_animation_enabled(surface->animation.h1 != surface->animation.h0);
-			surface->layer_surface->current.desired_width = round(surface->animation.wt);
-			surface->layer_surface->current.desired_height = round(surface->animation.ht);
 			wlr_scene_node_for_each_buffer(&surface->tree->node, layer_surface_resize_iterator, surface);
+		} else {
+			surface->animation.wt = surface->layer_surface->current.desired_width;
+			surface->animation.ht = surface->layer_surface->current.desired_height;
 		}
 		for (int i = 0; i < surface->layer_popups->length; ++i) {
 			struct sway_layer_popup *popup = surface->layer_popups->items[i];
