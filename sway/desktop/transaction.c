@@ -4,6 +4,7 @@
 #include <time.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/types/wlr_fractional_scale_v1.h>
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
@@ -1874,6 +1875,26 @@ static bool should_configure(struct sway_node *node,
 	return true;
 }
 
+static void set_surface_preferred_buffer_scale(struct sway_view *view) {
+	double scale = 1;
+	double content_scale = view_is_content_scaled(view) ? view_get_content_scale(view) : 1.0;
+	if (wl_list_empty(&view->surface->current_outputs)) {
+		struct sway_workspace *workspace = view->container->pending.workspace;
+		if (workspace && workspace->output) {
+			scale = content_scale * workspace->output->wlr_output->scale;
+		}
+	} else {
+		struct wlr_surface_output *surface_output;
+		wl_list_for_each(surface_output, &view->surface->current_outputs, link) {
+			if (surface_output->output->scale * content_scale > scale) {
+				scale = surface_output->output->scale * content_scale;
+			}
+		}
+	}
+	wlr_fractional_scale_v1_notify_scale(view->surface, scale);
+	wlr_surface_set_preferred_buffer_scale(view->surface, ceil(scale));
+}
+
 static void transaction_commit(struct sway_transaction *transaction) {
 	sway_log(SWAY_DEBUG, "Transaction %p committing with %i instructions",
 			transaction, transaction->instructions->length);
@@ -1885,6 +1906,7 @@ static void transaction_commit(struct sway_transaction *transaction) {
 		bool hidden = node_is_view(node) && !node->destroying &&
 			!view_is_visible(node->sway_container->view);
 		if (should_configure(node, instruction)) {
+			set_surface_preferred_buffer_scale(node->sway_container->view);
 			instruction->serial = view_configure(node->sway_container->view,
 					instruction->container_state.content_x,
 					instruction->container_state.content_y,

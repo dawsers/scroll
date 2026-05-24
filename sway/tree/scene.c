@@ -201,6 +201,19 @@ static bool scene_node_get_parent_total_scale(struct wlr_scene_node *node, doubl
 	return false;
 }
 
+static double scene_view_content_scale(struct wlr_surface *surface) {
+	struct sway_view *view = view_from_wlr_surface(surface);
+	if (view) {
+		double scale = view_get_content_scale(view);
+		if (scale < 0.0) {
+			scale = 1.0;
+		}
+		return scale;
+	} else {
+		return 1.0;
+	}
+}
+
 static void animate(struct wlr_output *output) {
 	if (animation_animating(output)) {
 		animation_animate(output);
@@ -214,5 +227,6 @@ const struct wlr_scene_callbacks scroll_scene_cbs = {
 	.workspace_data = scene_workspace_data,
 	.view_data = scene_view_data,
 	.node_get_parent_total_scale = scene_node_get_parent_total_scale,
+	.view_content_scale = scene_view_content_scale,
 	.animate = animate,
 };

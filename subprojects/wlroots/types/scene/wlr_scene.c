@@ -109,6 +109,10 @@ static bool default_node_get_parent_total_scale(struct wlr_scene_node *node, dou
 	return true;
 }
 
+static double default_view_content_scale(struct wlr_surface *surface) {
+	return 1.0;
+}
+
 static void default_animate(struct wlr_output *output) {
 	return;
 }
@@ -120,6 +124,7 @@ struct wlr_scene_callbacks scene_cbs = {
 	.workspace_data = default_workspace_data,
 	.view_data = default_view_data,
 	.node_get_parent_total_scale = default_node_get_parent_total_scale,
+	.view_content_scale = default_view_content_scale,
 	.animate = default_animate,
 };
 

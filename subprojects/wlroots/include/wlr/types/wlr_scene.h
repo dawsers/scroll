@@ -80,6 +80,7 @@ struct wlr_scene_callbacks {
 	bool (*workspace_data)(struct wlr_scene_node *node, struct wlr_scene_workspace_data *data);
 	bool (*view_data)(struct wlr_surface *surface, struct wlr_scene_view_data *data);
 	bool (*node_get_parent_total_scale)(struct wlr_scene_node *node, double *scale);
+	double (*view_content_scale)(struct wlr_surface *surface);
 	void (*animate)(struct wlr_output *output);
 };
 

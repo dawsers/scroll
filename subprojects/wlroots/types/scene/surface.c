@@ -17,10 +17,11 @@ extern struct wlr_scene_callbacks scene_cbs;
 
 static double get_surface_preferred_buffer_scale(struct wlr_surface *surface) {
 	double scale = 1;
+	double content_scale = scene_cbs.view_content_scale(surface);
 	struct wlr_surface_output *surface_output;
 	wl_list_for_each(surface_output, &surface->current_outputs, link) {
-		if (surface_output->output->scale > scale) {
-			scale = surface_output->output->scale;
+		if (surface_output->output->scale * content_scale > scale) {
+			scale = surface_output->output->scale * content_scale;
 		}
 	}
 	return scale;
