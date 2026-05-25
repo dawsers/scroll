@@ -283,7 +283,8 @@ static void scene_surface_get_sizes(struct wlr_scene_surface *scene_surface, str
 }
 
 void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface,
-		double total_scale, double anim_wscale, double anim_hscale) {
+		double total_scale, double anim_wscale, double anim_hscale,
+		float radius_top, float radius_bottom) {
 	struct wlr_scene_buffer *scene_buffer = scene_surface->buffer;
 
 	struct wlr_fbox src_box;
@@ -304,6 +305,7 @@ void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface,
 	wlr_scene_buffer_set_source_box(scene_buffer, &src_box);
 	wlr_scene_buffer_set_dest_size(scene_buffer, MAX(1, dst_width),
 		MAX(1, dst_height));
+	wlr_scene_buffer_set_radius(scene_buffer, radius_top, radius_bottom);
 	pixman_region32_fini(&opaque);
 }
 

@@ -913,8 +913,10 @@ struct wlr_scene_tree *wlr_scene_drag_icon_create(
 
 /*
  * Resize a scene surface using total_scale (workspace and content),
- * and animation scales wscale and hscale
+ * and animation scales wscale and hscale. If the surface is a view, and
+ * has rounded borders, update the radii too.
  */
 void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface,
-		double total_scale, double anim_wscale, double anim_hscale);
+		double total_scale, double anim_wscale, double anim_hscale,
+		float radius_top, float radius_bottom);
 #endif

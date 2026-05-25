@@ -1677,6 +1677,7 @@ static void clip_view(struct sway_view *view) {
 struct resize_data {
 	double total_scale;
 	double anim_wscale, anim_hscale;
+	float radius_top, radius_bottom;
 };
 
 static void view_resize_iterator(struct wlr_scene_buffer *buffer,
@@ -1684,7 +1685,7 @@ static void view_resize_iterator(struct wlr_scene_buffer *buffer,
 	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
 	struct resize_data *data = user_data;
 	wlr_scene_surface_resize(scene_surface, data->total_scale,
-		data->anim_wscale, data->anim_hscale);
+		data->anim_wscale, data->anim_hscale, data->radius_top, data->radius_bottom);
 }
 
 void view_resize(struct sway_view *view) {
@@ -1697,6 +1698,14 @@ void view_resize(struct sway_view *view) {
 		data.total_scale = 1.0;
 	}
 	view_get_animation_scales(view, &data.anim_wscale, &data.anim_hscale);
+	data.radius_top = data.radius_bottom = 0.0;
+	if (view->container && !container_is_fullscreen_or_child(view->container) &&
+		view->container->pending.fullscreen_layout == FULLSCREEN_DISABLED) {
+		if (!view->container->decoration.full->title_bar) {
+			data.radius_top = view->container->decoration.full->border_radius;
+		}
+		data.radius_bottom = view->container->decoration.full->border_radius;
+	}
 
 	wlr_scene_node_for_each_buffer(&view->content_tree->node,
 		view_resize_iterator, &data);
