@@ -135,13 +135,13 @@ static bool is_taken(size_t n, const uint32_t arr[static n], uint32_t key) {
  */
 struct match_state {
 	const size_t num_conns;
-	const uint32_t *restrict conns;
+	const uint32_t *conns;
 	const size_t num_crtcs;
 	size_t score;
 	size_t replaced;
-	uint32_t *restrict res;
-	uint32_t *restrict best;
-	const uint32_t *restrict orig;
+	uint32_t *res;
+	uint32_t *best;
+	const uint32_t *orig;
 	bool exit_early;
 };
 
@@ -236,9 +236,9 @@ static bool match_connectors_with_crtcs_(struct match_state *st,
 }
 
 void match_connectors_with_crtcs(size_t num_conns,
-		const uint32_t conns[static restrict num_conns],
-		size_t num_crtcs, const uint32_t prev_crtcs[static restrict num_crtcs],
-		uint32_t new_crtcs[static restrict num_crtcs]) {
+		const uint32_t conns[static num_conns],
+		size_t num_crtcs, const uint32_t prev_crtcs[static num_crtcs],
+		uint32_t new_crtcs[static num_crtcs]) {
 	uint32_t solution[num_crtcs];
 	for (size_t i = 0; i < num_crtcs; ++i) {
 		solution[i] = UNMATCHED;

@@ -395,8 +395,8 @@ bool wlr_session_change_vt(struct wlr_session *session, unsigned vt) {
 
 /* Tests if 'path' is KMS compatible by trying to open it. Returns the opened
  * device on success. */
-struct wlr_device *session_open_if_kms(struct wlr_session *restrict session,
-		const char *restrict path) {
+struct wlr_device *session_open_if_kms(struct wlr_session *session,
+		const char *path) {
 	if (!path) {
 		return NULL;
 	}

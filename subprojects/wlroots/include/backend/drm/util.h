@@ -34,8 +34,8 @@ void generate_cvt_mode(drmModeModeInfo *mode, int hdisplay, int vdisplay,
  * new_crtcs is populated with the new connector indices.
  */
 void match_connectors_with_crtcs(size_t num_conns,
-	const uint32_t conns[static restrict num_conns],
-	size_t num_crtcs, const uint32_t prev_crtcs[static restrict num_crtcs],
-	uint32_t new_crtcs[static restrict num_crtcs]);
+	const uint32_t conns[static num_conns],
+	size_t num_crtcs, const uint32_t prev_crtcs[static num_crtcs],
+	uint32_t new_crtcs[static num_crtcs]);
 
 #endif
