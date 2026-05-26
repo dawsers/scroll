@@ -46,3 +46,12 @@ struct cmd_results *cmd_xdg_activation_force(int argc, char **argv) {
 	config->xdg_activation_force = parse_boolean(argv[0], config->xdg_activation_force);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
+
+struct cmd_results *cmd_mouse_tiling_resize_limit(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "mouse_tiling_resize_limit", EXPECTED_AT_LEAST, 1);
+	if (error) {
+		return error;
+	}
+	config->mouse_resize_tiling_limit = parse_boolean(argv[0], config->mouse_resize_tiling_limit);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}

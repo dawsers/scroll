@@ -138,6 +138,14 @@ void seatop_begin_resize_tiling(struct sway_seat *seat,
 	e->max_width += 2.0 * e->con->pending.border_thickness;
 	e->min_height = fmax(e->min_height, 1.0) + 2.0 * e->con->pending.border_thickness;
 	e->max_height += 2.0 * e->con->pending.border_thickness;
+	if (config->mouse_resize_tiling_limit) {
+		struct sway_workspace *workspace = e->con->pending.workspace;
+		if (workspace) {
+			const int gaps = workspace->gaps_inner * 2;
+			e->max_width = MIN(e->max_width, workspace->width - gaps);
+			e->max_height = MIN(e->max_height, workspace->height - gaps);
+		}
+	}
 
 	seat->seatop_impl = &seatop_impl;
 	seat->seatop_data = e;

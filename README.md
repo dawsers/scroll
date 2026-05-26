@@ -323,7 +323,8 @@ manager of choice.
 ### Choosing a Desktop Bar
 
 Most bars that support *sway* will work using their configuration for *sway*,
-for example [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell)
+for example [Noctalia Shell](https://github.com/noctalia-dev/noctalia-shell),
+[DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell),
 or [Waybar](https://github.com/Alexays/Waybar). Configure your bar as if you
 were goingto use *sway*, and it will work.
 
@@ -1593,6 +1594,12 @@ screen window in the tiling layout that scrolls with the rest. See the
 whenever there is a single tiling window in the workspace, it will be
 maximized, unless you explicitly resize	it.
 
+`mouse_resize_tiling_limit <true|false>`: Default value is `true`. If `true`,
+resizing a tiled window will have an upper limit equivalent to a fraction of
+1.0. Use `false` if you want to be able to have windows bigger than the
+workspace size, for example if you work with a scaled workspace and need
+bigger windows than the size of the	unscaled workspace.
+
 `scratchpad_minimize`: Default value is `false`. If `true`, minimizing a window
 through its CSD decoration or a taskbar, will send it to the scratchpad. When
 un-minimizing it from a taskbar, it will be inserted again into the tiling
@@ -2039,6 +2046,7 @@ each one of them:
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_Default_mode`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,
+`mouse_resize_tiling_limit`,
 `scratchpad_minimize`, `workspace_labels_background`, `workspace_labels_color`,
 `workspace_labels_height`, `workspace <name> layout_default_mode`,
 `workspace_next_on_output_create_empty`, `xwayland_output_scale`

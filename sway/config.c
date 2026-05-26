@@ -288,6 +288,7 @@ static void config_defaults(struct sway_config *config) {
 	config->xwayland_output_scale = true;
 	config->xdg_activation_force = false;
 	config->scratchpad_minimize = false;
+	config->mouse_resize_tiling_limit = true;
 	config->gesture_scroll_enable = true;
 	config->gesture_scroll_fingers = 3;
 	config->gesture_scroll_sentitivity = 1.0f;

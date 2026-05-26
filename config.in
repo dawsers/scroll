@@ -99,6 +99,7 @@ layout_heights [0.33333333 0.5 0.666666667 1.0]
 # focus_on_window_activation focus
 # xdg_activation_force false
 # scratchpad_minimize false
+# mouse_resize_tiling_limit true
 
 # Animations
 animations {
@@ -113,6 +114,7 @@ animations {
     # window_fullscreen
     # overview
     # jump
+    # layer_shell
 }
 
 ### Key bindings
@@ -268,6 +270,7 @@ bindsym $mod+Shift+backslash mode "wssplit"
     # Overview
     # workspace_labels_color #A54242FF
     # workspace_labels_background #00000000
+    # workspace_labels_height 30
     bindsym --no-repeat $mod+tab scale_workspace overview
     bindsym --whole-window button8 scale_workspace overview
     bindsym --no-repeat $mod+Shift+tab scale_workspaces toggle
@@ -275,8 +278,9 @@ bindsym $mod+Shift+backslash mode "wssplit"
     # Jump
     # jump_labels_color #9e1530FF
     # jump_labels_background #15309eFF
-    # jump_labels_scale 0.9
-    # jump_labels_keys asdf
+    # jump_labels_scale 0.5
+    # jump_labels_keys 1234
+    # jump_labels_swallow false
 mode "jump" {
     bindsym  slash jump tiling; mode default
     bindsym  Shift+slash jump tiling all; mode default

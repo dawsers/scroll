@@ -291,6 +291,13 @@ The following commands may only be used in the configuration file.
 	window in the workspace, it will be maximized, unless you explicitly resize
 	it.
 
+*mouse_resize_tiling_limit* <true|false>
+	Default value is _true_. If _true_, resizing a tiled window will have an
+	upper limit equivalent to a fraction of 1.0. Use _false_ if you want to be
+	able to have windows bigger than the workspace size, for example if you
+	work with a scaled workspace and need bigger windows than the size of the
+	unscaled workspace.
+
 *scratchpad_minimize* <true|false>
 	Default value is _false_. If _true_, minimizing a window through its CSD
 	decoration or a taskbar, will send it to the scratchpad. When un-minimizing
