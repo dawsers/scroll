@@ -48,7 +48,7 @@ struct cmd_results *cmd_xdg_activation_force(int argc, char **argv) {
 }
 
 struct cmd_results *cmd_mouse_tiling_resize_limit(int argc, char **argv) {
-	struct cmd_results *error = checkarg(argc, "mouse_tiling_resize_limit", EXPECTED_AT_LEAST, 1);
+	struct cmd_results *error = checkarg(argc, "mouse_resize_tiling_limit", EXPECTED_AT_LEAST, 1);
 	if (error) {
 		return error;
 	}
