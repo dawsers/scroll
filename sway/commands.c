@@ -82,6 +82,7 @@ static const struct cmd_handler handlers[] = {
 	{ "input", cmd_input },
 	{ "lua", cmd_lua },
 	{ "mode", cmd_mode },
+	{ "mouse_resize_tiling_limit", cmd_mouse_resize_tiling_limit },
 	{ "mouse_warping", cmd_mouse_warping },
 	{ "new_float", cmd_new_float },
 	{ "new_window", cmd_new_window },
