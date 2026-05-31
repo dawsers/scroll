@@ -43,6 +43,8 @@ struct wlr_ext_image_capture_source_v1 {
 		struct wl_signal frame; // struct wlr_ext_image_capture_source_v1_frame_event
 		struct wl_signal destroy;
 	} events;
+
+	void *data;
 };
 
 /**
