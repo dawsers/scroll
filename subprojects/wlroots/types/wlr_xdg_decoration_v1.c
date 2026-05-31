@@ -5,7 +5,7 @@
 #include <wlr/util/log.h>
 #include "xdg-decoration-unstable-v1-protocol.h"
 
-#define DECORATION_MANAGER_VERSION 1
+#define DECORATION_MANAGER_VERSION 2
 
 static const struct zxdg_toplevel_decoration_v1_interface
 	toplevel_decoration_impl;
@@ -171,8 +171,9 @@ static void decoration_manager_handle_get_toplevel_decoration(
 		decoration_manager_from_resource(manager_resource);
 	struct wlr_xdg_toplevel *toplevel =
 		wlr_xdg_toplevel_from_resource(toplevel_resource);
+	uint32_t version = wl_resource_get_version(manager_resource);
 
-	if (wlr_surface_has_buffer(toplevel->base->surface)) {
+	if (version == 1 && wlr_surface_has_buffer(toplevel->base->surface)) {
 		wl_resource_post_error(manager_resource,
 			ZXDG_TOPLEVEL_DECORATION_V1_ERROR_UNCONFIGURED_BUFFER,
 			"xdg_toplevel_decoration must not have a buffer at creation");
@@ -204,7 +205,6 @@ static void decoration_manager_handle_get_toplevel_decoration(
 		return;
 	}
 
-	uint32_t version = wl_resource_get_version(manager_resource);
 	decoration->resource = wl_resource_create(client,
 		&zxdg_toplevel_decoration_v1_interface, version, id);
 	if (decoration->resource == NULL) {
@@ -271,7 +271,9 @@ static void handle_display_destroy(struct wl_listener *listener, void *data) {
 }
 
 struct wlr_xdg_decoration_manager_v1 *
-		wlr_xdg_decoration_manager_v1_create(struct wl_display *display) {
+		wlr_xdg_decoration_manager_v1_create(struct wl_display *display,
+		uint32_t version) {
+	assert(version <= DECORATION_MANAGER_VERSION);
 	struct wlr_xdg_decoration_manager_v1 *manager = calloc(1, sizeof(*manager));
 	if (manager == NULL) {
 		return NULL;
