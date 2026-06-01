@@ -902,11 +902,15 @@ static bool container_visible(struct sway_workspace *workspace,
 typedef void (*add_delta_to_container_func_t)(struct sway_container *con, double delta);
 
 static void add_delta_to_current(struct sway_container *con, double delta) {
-	con->current.y += delta;
+	if (!container_is_sticky_or_child(con)) {
+		con->current.y += delta;
+	}
 }
 
 static void add_delta_to_pending(struct sway_container *con, double delta) {
-	con->pending.y += delta;
+	if (!container_is_sticky_or_child(con)) {
+		con->pending.y += delta;
+	}
 }
 
 static void select_visible_containers(list_t *containers,
