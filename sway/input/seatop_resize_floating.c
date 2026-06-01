@@ -71,7 +71,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	double border_height = 0.0;
 	if (con->current.border == B_NORMAL) {
 		border_height += container_titlebar_height();
-		border_height += state->border_thickness;
+		border_height += state->border_thickness * 2;
 	} else if (con->current.border == B_PIXEL) {
 		border_height += state->border_thickness * 2;
 	}
@@ -127,10 +127,10 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 
 	// Determine the amounts we need to bump everything relative to the current
 	// size.
-	int relative_grow_width = width - con->pending.width;
-	int relative_grow_height = height - con->pending.height;
-	int relative_grow_x = (e->ref_con_lx + grow_x) - con->pending.x;
-	int relative_grow_y = (e->ref_con_ly + grow_y) - con->pending.y;
+	int relative_grow_width = round(width - con->pending.width);
+	int relative_grow_height = round(height - con->pending.height);
+	int relative_grow_x = round((e->ref_con_lx + grow_x) - con->pending.x);
+	int relative_grow_y = round((e->ref_con_ly + grow_y) - con->pending.y);
 
 	// Actually resize stuff
 	con->pending.x += relative_grow_x;

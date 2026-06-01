@@ -76,15 +76,15 @@ static struct cmd_results *resize_adjust_floating(uint32_t axis,
 		max_height = fmax_height;
 	}
 
-	if (con->pending.width + grow_width < min_width) {
-		grow_width = min_width - con->pending.width;
-	} else if (con->pending.width + grow_width > max_width) {
-		grow_width = max_width - con->pending.width;
+	if (con->pending.content_width + grow_width < min_width) {
+		grow_width = min_width - con->pending.content_width;
+	} else if (con->pending.content_width + grow_width > max_width) {
+		grow_width = max_width - con->pending.content_width;
 	}
-	if (con->pending.height + grow_height < min_height) {
-		grow_height = min_height - con->pending.height;
-	} else if (con->pending.height + grow_height > max_height) {
-		grow_height = max_height - con->pending.height;
+	if (con->pending.content_height + grow_height < min_height) {
+		grow_height = min_height - con->pending.content_height;
+	} else if (con->pending.content_height + grow_height > max_height) {
+		grow_height = max_height - con->pending.content_height;
 	}
 	int grow_x = 0, grow_y = 0;
 

@@ -83,7 +83,7 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 			// same size, ending up in another view below the current one.
 			// This manifests as a change of focus when hovering over the title
 			// bar of a floating container that has another one below.
-			const double MARGIN = 5.0;
+			const double MARGIN = 1.0;
 			if (cx > MARGIN && cx < con->pending.content_width - MARGIN &&
 				cy > MARGIN && cy < con->pending.content_height - MARGIN) {
 				return false;

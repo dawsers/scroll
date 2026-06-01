@@ -436,7 +436,6 @@ void view_autoconfigure(struct sway_view *view) {
 
 	con->pending.border_top = con->pending.border_bottom = true;
 	con->pending.border_left = con->pending.border_right = true;
-	double y_offset = 0;
 
 	if (!container_is_floating_or_child(con) && ws) {
 		bool left, right, top, bottom;
@@ -473,17 +472,17 @@ void view_autoconfigure(struct sway_view *view) {
 	case B_CSD:
 	case B_NONE:
 		x = con->pending.x;
-		y = con->pending.y + y_offset;
+		y = con->pending.y;
 		width = con->pending.width;
-		height = con->pending.height - y_offset;
+		height = con->pending.height;
 		break;
 	case B_PIXEL:
 		x = con->pending.x + con->pending.border_thickness * con->pending.border_left;
-		y = con->pending.y + con->pending.border_thickness * con->pending.border_top + y_offset;
+		y = con->pending.y + con->pending.border_thickness * con->pending.border_top;
 		width = con->pending.width
 			- con->pending.border_thickness * con->pending.border_left
 			- con->pending.border_thickness * con->pending.border_right;
-		height = con->pending.height - y_offset
+		height = con->pending.height
 			- con->pending.border_thickness * con->pending.border_top
 			- con->pending.border_thickness * con->pending.border_bottom;
 		break;
@@ -493,15 +492,11 @@ void view_autoconfigure(struct sway_view *view) {
 		width = con->pending.width
 			- con->pending.border_thickness * con->pending.border_left
 			- con->pending.border_thickness * con->pending.border_right;
-		if (y_offset) {
-			y = con->pending.y + y_offset;
-			height = con->pending.height - y_offset
-				- con->pending.border_thickness * con->pending.border_bottom;
-		} else {
-			y = con->pending.y + container_titlebar_height();
-			height = con->pending.height - container_titlebar_height()
-				- con->pending.border_thickness * con->pending.border_bottom;
-		}
+		y = con->pending.y + container_titlebar_height()
+			+ con->pending.border_thickness * con->pending.border_top;
+		height = con->pending.height - container_titlebar_height()
+			- con->pending.border_thickness * con->pending.border_top
+			- con->pending.border_thickness * con->pending.border_bottom;
 		break;
 	}
 

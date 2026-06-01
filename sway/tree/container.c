@@ -1009,8 +1009,8 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		// Returning to tiled
 		if (container->view) {
 			// Store the current size in case the container returns to floating mode
-			container->view->natural_width = container->pending.width;
-			container->view->natural_height = container->pending.height;
+			container->view->natural_width = container->pending.content_width;
+			container->view->natural_height = container->pending.content_height;
 		}
 		if (layout_overview_workspaces_enabled()) {
 			container->scene_tree->node.info.workspace = NULL;
@@ -1053,7 +1053,8 @@ void container_set_geometry_from_content(struct sway_container *con) {
 	if (con->pending.border != B_CSD && !con->pending.fullscreen_mode) {
 		border_width = con->pending.border_thickness * (con->pending.border != B_NONE);
 		top = con->pending.border == B_NORMAL ?
-			container_titlebar_height() : border_width;
+			container_titlebar_height() : 0;
+		top += border_width;
 	}
 	float scale = view_is_content_scaled(con->view) ? view_get_content_scale(con->view) : 1.0f;
 	con->pending.x = con->pending.content_x - border_width;
