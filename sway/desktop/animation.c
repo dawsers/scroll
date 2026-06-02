@@ -387,6 +387,8 @@ const char *animation_get_type(struct sway_animation_path *path) {
 		return "overview";
 	} else if (path == animation->config.jump) {
 		return "jump";
+	} else if (path == animation->config.layer_shell) {
+		return "layer_shell";
 	} else {
 		return "invalid";
 	}
@@ -523,7 +525,11 @@ struct wlr_output *animation_get_current_output(void) {
 	return animation ? animation->current_output : NULL;
 }
 
-bool animation_animating(struct wlr_output *output) {
+bool animation_animating() {
+	return animation->animating;
+}
+
+bool animation_animating_output(struct wlr_output *output) {
 	if (output->data && animation->id != ((struct sway_output *)output->data)->animation_id) {
 		return false;
 	}
@@ -693,6 +699,7 @@ void animation_animate(struct wlr_output *output) {
 			free(animation->outputs->items[idx]);
 			list_del(animation->outputs, idx);
 		}
+		transaction_commit_delayed();
 	}
 
 	if (!is_animating()) {

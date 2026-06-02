@@ -13,6 +13,7 @@
 #include "sway/tree/view.h"
 #include "stringop.h"
 #include "log.h"
+#include "sway/server.h"
 
 // Returns error object, or NULL if check succeeds.
 struct cmd_results *checkarg(int argc, const char *name, enum expected_args type, int val) {
@@ -281,6 +282,8 @@ list_t *execute_command(char *_exec, struct sway_seat *seat,
 
 	config->handler_context.seat = seat;
 
+	// Make all transactions belonging to this command be delayed
+	server.delay_transaction = true;
 	do {
 		for (; isspace(*head); ++head) {}
 		// Extract criteria (valid for this command list only).
@@ -382,6 +385,7 @@ list_t *execute_command(char *_exec, struct sway_seat *seat,
 		free_argv(argc, argv);
 	} while(head);
 cleanup:
+	server.delay_transaction = false;
 	free(exec);
 	list_free(containers);
 	return res_list;

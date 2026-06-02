@@ -233,7 +233,7 @@ static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
 }
 
 static void animate(struct wlr_output *output) {
-	if (animation_animating(output)) {
+	if (animation_animating_output(output)) {
 		animation_animate(output);
 	}
 }

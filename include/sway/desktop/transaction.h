@@ -37,6 +37,11 @@ void transaction_commit_dirty(void);
 void transaction_commit_dirty_client(void);
 
 /**
+ * Notify the transaction system a delayed transaction may be processed.
+ */
+void transaction_commit_delayed(void);
+
+/**
  * Notify the transaction system that a view is ready for the new layout.
  *
  * When all views in the transaction are ready, the layout will be applied.
@@ -63,7 +68,7 @@ void arrange_popups(struct wlr_scene_tree *popups);
 
 /**
  * Sets the default animation callbacks
- **/
+ */
 void config_default_animation_callbacks();
 
 #endif

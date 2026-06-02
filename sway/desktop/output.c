@@ -323,7 +323,7 @@ static int output_repaint_timer_handler(void *data) {
 
 	if (!wlr_output_commit_state(output->wlr_output, &pending)) {
 		sway_log(SWAY_ERROR, "Page-flip failed on output %s", output->wlr_output->name);
-	} else if (animation_animating(output->wlr_output)) {
+	} else if (animation_animating_output(output->wlr_output)) {
 		// During animation, schedule the next frame directly from the
 		// vblank-driven render path instead of relying solely on the
 		// independent 16ms animation timer. This keeps animation frames

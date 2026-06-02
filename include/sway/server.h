@@ -150,6 +150,11 @@ struct sway_server {
 	// the pending transaction.
 	list_t *dirty_nodes;
 
+	// When this is true, the pending transaction will not be committed until
+	// the animation for the previous transaction ends. In the meantime, all
+	// the transaction commits will be merged into the pending transaction.
+	bool delay_transaction;
+
 	struct wl_event_source *delayed_modeset;
 };
 

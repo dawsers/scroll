@@ -131,7 +131,9 @@ void animation_add_all_outputs();
 void animation_set_animation_enabled(bool enable);
 
 // Are we in the middle of an animation?
-bool animation_animating(struct wlr_output *output);
+bool animation_animating();
+// Are we in the middle of an animation for output?
+bool animation_animating_output(struct wlr_output *output);
 
 // Get the current parameters for the active animation
 void animation_get_values(double *t, double *x, double *y,

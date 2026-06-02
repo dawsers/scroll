@@ -2139,7 +2139,7 @@ static void overview_recompute_scales() {
 	}
 }
 
-static void _transaction_commit_dirty(bool server_request) {
+static void _transaction_commit_dirty(bool server_request, bool delayed) {
 	overview_recompute_scales();
 
 	if (!server.dirty_nodes->length) {
@@ -2160,15 +2160,28 @@ static void _transaction_commit_dirty(bool server_request) {
 	}
 	server.dirty_nodes->length = 0;
 
+	if ((delayed || server.delay_transaction) && animation_animating()) {
+		return;
+	}
+
 	save_animation_variables();
 
 	transaction_commit_pending();
 }
 
 void transaction_commit_dirty(void) {
-	_transaction_commit_dirty(true);
+	_transaction_commit_dirty(true, false);
 }
 
 void transaction_commit_dirty_client(void) {
-	_transaction_commit_dirty(false);
+	_transaction_commit_dirty(false, true);
+}
+
+void transaction_commit_delayed(void) {
+	if (!server.pending_transaction) {
+		return;
+	}
+	save_animation_variables();
+
+	transaction_commit_pending();
 }
