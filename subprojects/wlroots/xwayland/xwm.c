@@ -630,6 +630,7 @@ static void xwayland_surface_destroy(struct wlr_xwayland_surface *xsurface) {
 		wl_list_remove(&child->parent_link);
 		wl_list_init(&child->parent_link);
 		child->parent = NULL;
+		wl_signal_emit_mutable(&child->events.set_parent, NULL);
 	}
 
 	wl_list_remove(&xsurface->unpaired_link);
