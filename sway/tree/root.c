@@ -374,6 +374,10 @@ static bool default_output_filter(struct sway_output *output, void *data) {
 	return true;
 }
 
+static bool default_output_fullscreen_filter(struct sway_output *output, void *data) {
+	return false;
+}
+
 static bool default_workspace_filter(struct sway_workspace *workspace, void *data) {
 	struct sway_output *output = workspace->output;
 	bool activated = output->wlr_output->enabled;
@@ -411,6 +415,8 @@ static void filters_set_default(struct sway_root_filters *filters) {
 	filters->free_animation_activation_filter_data = NULL;
 	filters->output_filter = default_output_filter;
 	filters->output_filter_data = NULL;
+	filters->output_fullscreen_filter = default_output_fullscreen_filter;
+	filters->output_fullscreen_filter_data = NULL;
 	filters->workspace_filter = default_workspace_filter;
 	filters->workspace_filter_data = NULL;
 	filters->workspace_tiling_filter = default_workspace_tiling_filter;

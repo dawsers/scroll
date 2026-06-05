@@ -825,6 +825,13 @@ static void workspace_switch_callback_end(void *callback_data) {
 	transaction_commit_dirty();
 }
 
+static bool workspace_switch_output_fullscreen_filter(struct sway_output *output,
+		void *filter_data) {
+	struct workspace_switch_data *data = filter_data;
+	return (data->from && data->from->current.fullscreen) ||
+		(data->to && data->to->current.fullscreen);
+}
+
 static bool switching_output(struct sway_workspace *workspace,
 		struct workspace_switch_data *data) {
 	if (!data) {
@@ -1017,6 +1024,8 @@ static void animate_workspace_switch(struct sway_output *output,
 	}
 
 	data->root_filters = root_filters_create(root);
+	data->root_filters->output_fullscreen_filter = workspace_switch_output_fullscreen_filter;
+	data->root_filters->output_fullscreen_filter_data = data;
 	data->root_filters->free_animation_activation_filter = workspace_switch_animation_filter;
 	data->root_filters->free_animation_activation_filter_data = data;
 	data->root_filters->workspace_filter = workspace_switch_workspace_filter;

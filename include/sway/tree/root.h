@@ -30,6 +30,10 @@ struct sway_root_filters {
 	// Decide whether to add this output to the scene graph (SG)
 	sway_root_output_filter_func_t output_filter;
 	void *output_filter_data;
+	// Decide whether to enable fullscreen mode and background regardless
+	// of the active workspace fullscreen state
+	sway_root_output_filter_func_t output_fullscreen_filter;
+	void *output_fullscreen_filter_data;
 	// Decide whether to add this workspace to the SG
 	sway_root_workspace_filter_func_t workspace_filter;
 	void *workspace_filter_data;

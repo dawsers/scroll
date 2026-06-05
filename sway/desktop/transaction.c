@@ -1355,6 +1355,7 @@ static void animate_layers(struct sway_output *output) {
 }
 
 static void arrange_output(struct sway_output *output) {
+	bool output_fs = root->filters->output_fullscreen_filter(output, root->filters->output_fullscreen_filter_data);
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
@@ -1380,8 +1381,9 @@ static void arrange_output(struct sway_output *output) {
 			wlr_scene_node_set_enabled(&child->layers.tiling->node, !fs && tiling);
 			wlr_scene_node_set_enabled(&child->layers.fullscreen->node, fs);
 
-			if (child->split.split != WORKSPACE_SPLIT_NONE &&
-				(child->current.fullscreen || child->split.sibling->current.fullscreen)) {
+			if ((child->split.split != WORKSPACE_SPLIT_NONE &&
+				(child->current.fullscreen || child->split.sibling->current.fullscreen)) ||
+				output_fs) {
 				wlr_scene_node_set_enabled(&output->layers.shell_background->node, true);
 				wlr_scene_node_set_enabled(&output->layers.shell_bottom->node, true);
 				wlr_scene_node_set_enabled(&output->layers.fullscreen->node, true);
@@ -1439,6 +1441,9 @@ static void animate_output(struct sway_output *output) {
 			bool floating = root->filters->workspace_floating_filter(child, root->filters->workspace_floating_filter_data);
 
 			if (fs) {
+				if (floating) {
+					animate_workspace_floating(child);
+				}
 				animate_fullscreen(child->layers.fullscreen, fs, child);
 			} else {
 				bool tiling = root->filters->workspace_tiling_filter(child, root->filters->workspace_tiling_filter_data);
