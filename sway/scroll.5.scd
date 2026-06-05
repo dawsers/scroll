@@ -797,6 +797,15 @@ set|plus|minus|toggle <amount>
 	the *jump* command, you can press the keys shown on a label, or click on the
 	window to change focus.
 
+*scratchpad_minimize_view* <true|false>
+	Default value is whatever the global option for *scratchpad_minimize* is.
+	_true_ or _false_ override that value.
+	If _true_, minimizing a window through its CSD decoration or a taskbar,
+	will send it to the scratchpad. When un-minimizing it from a taskbar, it
+	will be inserted again into the tiling layout, until then, it will be like
+	any other window in the scratchpad, with the same features and supporting
+	the same commands.
+
 *selection* toggle|reset|workspace|move|to_trail
 	This command manages window/container selections. You can select several
 	windows or containers at a time, even in different workspaces and/or

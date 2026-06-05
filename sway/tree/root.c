@@ -165,7 +165,7 @@ void root_scratchpad_add_container(struct sway_container *con, struct sway_works
 		seat_set_focus(seat, new_focus);
 	}
 
-	if (config->scratchpad_minimize) {
+	if (view_can_minimize_to_scratchpad(con->view)) {
 		root_scratchpad_set_minimize(con, true);
 	}
 
@@ -217,7 +217,7 @@ void root_scratchpad_show(struct sway_container *con) {
 	}
 	workspace_add_floating(new_ws, con);
 
-	if (config->scratchpad_minimize) {
+	if (view_can_minimize_to_scratchpad(con->view)) {
 		root_scratchpad_set_minimize(con, false);
 	}
 
@@ -252,7 +252,7 @@ void root_scratchpad_hide(struct sway_container *con) {
 		return;
 	}
 
-	if (config->scratchpad_minimize) {
+	if (view_can_minimize_to_scratchpad(con->view)) {
 		root_scratchpad_set_minimize(con, true);
 	}
 

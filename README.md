@@ -1604,7 +1604,10 @@ bigger windows than the size of the	unscaled workspace.
 through its CSD decoration or a taskbar, will send it to the scratchpad. When
 un-minimizing it from a taskbar, it will be inserted again into the tiling
 layout, until then, it will be like any other window in the scratchpad, with
-the same features and supporting the same commands.
+the same features and supporting the same commands. There is also a per-window
+override command, `scratchpad_minimize_view`. In cases where a particular
+application has problems with scratchpad minimization, you can set a window
+rule to disable it.
 
 `workspace_next_on_output_create_empty <true|false>`: The default is `true`.
 If `true`, when calling `workspace next_on_output`,	if the current workspace
@@ -2056,7 +2059,7 @@ each one of them:
 `align`, `animations_enable`, `cycle_size`, `decoration`, `filter`, `fit_size`,
 `focus begin/end`, `fullscreen application|layout`, `jump`, `layout_transpose`,
 `move beginning|end nomode`, `pin`, `resize` for floating windows,
-`scale_content`, `scale_workspace`,
+`scale_content`, `scale_workspace`, `scratchpad_minimize_view`,
 `scratchpad jump`, `selection`, `set_mode`, `set_size`, `space`,
 `toggle_size`, `trail`, `trailmark`
 

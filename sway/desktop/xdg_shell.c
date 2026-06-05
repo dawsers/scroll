@@ -306,7 +306,7 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 		wlr_xdg_surface_schedule_configure(xdg_surface);
 		uint32_t caps = WLR_XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN |
 			WLR_XDG_TOPLEVEL_WM_CAPABILITIES_MAXIMIZE;
-		if (config->scratchpad_minimize) {
+		if (view_can_minimize_to_scratchpad(view)) {
 			caps |= WLR_XDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE;
 		}
 		wlr_xdg_toplevel_set_wm_capabilities(view->wlr_xdg_toplevel, caps);
@@ -566,7 +566,7 @@ static void handle_map(struct wl_listener *listener, void *data) {
 	wl_signal_add(&toplevel->events.request_maximize,
 			&xdg_shell_view->request_maximize);
 
-	if (config->scratchpad_minimize) {
+	if (view_can_minimize_to_scratchpad(view)) {
 		xdg_shell_view->request_minimize.notify = handle_request_minimize;
 		wl_signal_add(&toplevel->events.request_minimize,
 				&xdg_shell_view->request_minimize);

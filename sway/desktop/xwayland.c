@@ -740,7 +740,7 @@ static void handle_request_minimize(struct wl_listener *listener, void *data) {
 	}
 
 	struct wlr_xwayland_minimize_event *e = data;
-	if (config->scratchpad_minimize) {
+	if (view_can_minimize_to_scratchpad(view)) {
 		struct sway_container *container = view->container;
 		if (!container->pending.workspace) {
 			while (container->pending.parent) {

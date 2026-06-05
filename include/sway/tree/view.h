@@ -42,6 +42,12 @@ enum sway_view_tearing_mode {
 	TEARING_WINDOW_HINT,
 };
 
+enum sway_view_scratchpad_minimize {
+	SCRATCHPAD_MINIMIZE_DEFAULT,
+	SCRATCHPAD_MINIMIZE_FALSE,
+	SCRATCHPAD_MINIMIZE_TRUE,
+};
+
 struct sway_view_impl {
 	void (*get_constraints)(struct sway_view *view, double *min_width,
 			double *max_width, double *min_height, double *max_height);
@@ -133,6 +139,8 @@ struct sway_view {
 	struct {
 		bool mapped;
 	} lua;
+
+	enum sway_view_scratchpad_minimize scratchpad_minimize;
 };
 
 struct sway_xdg_shell_view {
@@ -398,5 +406,7 @@ void view_get_animation_scales(struct sway_view *view, double *wscale, double *h
  * not scaled.
  */
 double view_get_total_scale(struct sway_view *view);
+
+bool view_can_minimize_to_scratchpad(struct sway_view *view);
 
 #endif

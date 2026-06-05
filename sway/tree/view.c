@@ -110,6 +110,7 @@ bool view_init(struct sway_view *view, enum sway_view_type type,
 	view->allow_request_urgent = true;
 	view->shortcuts_inhibit = SHORTCUTS_INHIBIT_DEFAULT;
 	view->tearing_mode = TEARING_WINDOW_HINT;
+	view->scratchpad_minimize = SCRATCHPAD_MINIMIZE_DEFAULT;
 	wl_signal_init(&view->events.unmap);
 	return true;
 
@@ -983,7 +984,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view->foreign_destroy.notify = handle_foreign_destroy;
 	wl_signal_add(&view->foreign_toplevel->events.destroy,
 			&view->foreign_destroy);
-	if (config->scratchpad_minimize) {
+	if (view_can_minimize_to_scratchpad(view)) {
 		view->foreign_minimize.notify = handle_foreign_minimize;
 		wl_signal_add(&view->foreign_toplevel->events.request_minimize,
 				&view->foreign_minimize);
@@ -1735,4 +1736,14 @@ double view_get_total_scale(struct sway_view *view) {
 		scale = (scale > 0.0f ? scale : 1.0) * view_get_content_scale(view);
 	}
 	return scale;
+}
+
+bool view_can_minimize_to_scratchpad(struct sway_view *view) {
+	if (view) {
+		if ((config->scratchpad_minimize && view->scratchpad_minimize == SCRATCHPAD_MINIMIZE_DEFAULT) ||
+			view->scratchpad_minimize == SCRATCHPAD_MINIMIZE_TRUE) {
+			return true;
+		}
+	}
+	return false;
 }

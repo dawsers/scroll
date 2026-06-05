@@ -7,7 +7,23 @@
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/view.h"
 #include "util.h"
+
+struct cmd_results *cmd_scratchpad_minimize_view(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "scratchpad_minimize_view", EXPECTED_AT_LEAST, 1);
+	if (error) {
+		return error;
+	}
+	struct sway_container *container = config->handler_context.container;
+	if (!container || !container->view) {
+		return cmd_results_new(CMD_INVALID, "scratchpad_minimize_view only applies to views");
+	}
+	struct sway_view *view = container->view;
+	bool scratchpad_minimize = parse_boolean(argv[0], config->scratchpad_minimize);
+	view->scratchpad_minimize = scratchpad_minimize ? SCRATCHPAD_MINIMIZE_TRUE : SCRATCHPAD_MINIMIZE_FALSE;
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
 
 struct cmd_results *cmd_scratchpad_minimize(int argc, char **argv) {
 	struct cmd_results *error = checkarg(argc, "scratchpad_minimize", EXPECTED_AT_LEAST, 1);
