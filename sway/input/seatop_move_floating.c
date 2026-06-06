@@ -16,7 +16,7 @@ static void finalize_move(struct sway_seat *seat) {
 
 	// We "move" the container to its own location
 	// so it discovers its output again.
-	container_floating_move_to(e->con, e->con->pending.x, e->con->pending.y);
+	container_floating_move_to(e->con, e->con->pending.x, e->con->pending.y, true);
 	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 	transaction_commit_dirty();
 
@@ -53,7 +53,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 			scale = layout_scale_get(workspace);
 		}
 	}
-	container_floating_move_to(e->con, e->x + (cx - e->cx) / scale, e->y + (cy - e->cy) / scale);
+	container_floating_move_to(e->con, e->x + (cx - e->cx) / scale, e->y + (cy - e->cy) / scale, true);
 	animation_set_type(ANIMATION_DISABLED);
 	transaction_commit_dirty();
 }

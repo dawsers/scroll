@@ -494,7 +494,7 @@ static struct cmd_results *cmd_move_in_direction(
 		default:
 			return cmd_results_new(CMD_FAILURE, "Invalid direction for floating container");
 		}
-		container_floating_move_to(container, lx, ly);
+		container_floating_move_to(container, lx, ly, false);
 		animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
@@ -566,7 +566,7 @@ static struct cmd_results *cmd_move_to_position_pointer(
 	}
 
 	/* Actually move the container. */
-	container_floating_move_to(container, lx, ly);
+	container_floating_move_to(container, lx, ly, false);
 	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
@@ -627,7 +627,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 			lx = ws->x + (ws->width - container->pending.width) / 2;
 			ly = ws->y + (ws->height - container->pending.height) / 2;
 		}
-		container_floating_move_to(container, lx, ly);
+		container_floating_move_to(container, lx, ly, false);
 		animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
@@ -714,7 +714,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 		lx.amount += ws->x;
 		ly.amount += ws->y;
 	}
-	container_floating_move_to(container, lx.amount, ly.amount);
+	container_floating_move_to(container, lx.amount, ly.amount, false);
 	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

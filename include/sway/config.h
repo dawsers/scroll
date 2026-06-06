@@ -633,6 +633,12 @@ struct sway_config {
 	bool xdg_activation_force;
 	bool scratchpad_minimize;
 	bool mouse_resize_tiling_limit;
+	// Snapping
+	int snap_window_gap;
+	int snap_workspace_gap;
+	bool snap_respect_gaps_inner;
+	bool snap_respect_gaps_outer;
+	bool snap_border_overlap;
 	bool gesture_scroll_enable;
 	uint32_t gesture_scroll_fingers;
 	float gesture_scroll_sentitivity;

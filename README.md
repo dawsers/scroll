@@ -1751,6 +1751,37 @@ animations {
 }
 ```
 
+### Floating Window Options
+
+Aside from a specific `jump` mode for floating windows that shows them with
+no overlap, *scroll* supports snapping of floating window positions when
+dragging them around.
+
+`snap_window_gap <integer>`: Default is `0` (disabled). When dragging a floating
+window, this is the	minimum distance in pixels between the window borders and
+those of any other window, that will trigger a snapping event. Snapping will
+automatically move the dragged window to comply with the snapping options.
+
+`snap_workspace_gap <integer>`: Default is `0` (disabled). When dragging a
+floating window, this is the minimum distance in pixels between the window
+borders and those of the current workspace, that will trigger a snapping event.
+Snapping will automatically move the dragged window to comply with the
+snapping options.
+
+`snap_respect_gaps_inner <true|false>`: Default is `false`. When
+`snap_window_gap` is enabled, setting this option to `true` will make the
+floating window snapping algorithm to also include the `gaps inner` value when
+computing the distance between the two window borders.
+
+`snap_respect_gaps_outer <true|false>`: Default is `false`. When
+`snap_workspace_gap` is enabled, setting this option to `true` will make the
+floating window snapping algorithm to also include the `gaps outer` values for
+the workspace when computing the new location for the floating window.
+
+`snap_border_overlap <true|false>`: Default is `false`. When `snap_window_gap`
+is enabled, setting this option to `true` will make sure the floating window
+snapping algorithm will make the closest borders of the two windows overlap.
+
 ## X11 Aplications and Xwayland
 
 *scroll*, like *sway*, supports the Xwayland compatibility layer for X11
@@ -2049,8 +2080,10 @@ each one of them:
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_Default_mode`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,
-`mouse_resize_tiling_limit`,
-`scratchpad_minimize`, `workspace_labels_background`, `workspace_labels_color`,
+`mouse_resize_tiling_limit`, `scratchpad_minimize`,
+`snap_window_gap`, `snap_workspace_gap`, `snap_respect_gaps_inner`,
+`snap_respect_gaps_outer`, `snap_border_overlap`,
+`workspace_labels_background`, `workspace_labels_color`,
 `workspace_labels_height`, `workspace <name> layout_default_mode`,
 `workspace_next_on_output_create_empty`, `xwayland_output_scale`
 

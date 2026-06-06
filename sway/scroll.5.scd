@@ -315,6 +315,35 @@ The following commands may only be used in the configuration file.
 	It can be disabled by setting the command to a single dash:
 	_scrollnag\_command -_
 
+*snap_window_gap* <integer>
+	Default is _0_ (disabled). When dragging a floating window, this is the
+	minimum distance in pixels between the window borders and those of any other
+	window, that will trigger a snapping event. Snapping will automatically
+	move the dragged window to comply with the snapping options.
+
+*snap_workspace_gap* <integer>
+	Default is _0_ (disabled). When dragging a floating window, this is the
+	minimum distance in pixels between the window borders and those of the
+	current workspace, that will trigger a snapping event. Snapping will
+	automatically move the dragged window to comply with the snapping options.
+
+*snap_respect_gaps_inner* <true|false>
+	Default is _false_. When *snap_window_gap* is enabled, setting this option
+	to _true_ will make the floating window snapping algorithm to also include
+	the gaps inner value when computing the distance between the two window
+	borders.
+
+*snap_respect_gaps_outer* <true|false>
+	Default is _false_. When *snap_workspace_gap* is enabled, setting this
+	option to _true_ will make the floating window snapping algorithm to also
+	include	the gaps outer values for the workspace when computing the new
+	location for the floating window.
+
+*snap_border_overlap* <true|false>
+	Default is _false_. When *snap_window_gap* is enabled, setting this
+	option to _true_ will make sure the floating window snapping algorithm will
+	make the closest borders of the two windows overlap.
+
 *swaybg_command* <command>
 	Executes custom background _command_. Default is _swaybg_. Refer to
 	*scroll-output*(5) for more information.

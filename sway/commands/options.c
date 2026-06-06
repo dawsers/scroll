@@ -55,3 +55,58 @@ struct cmd_results *cmd_mouse_resize_tiling_limit(int argc, char **argv) {
 	config->mouse_resize_tiling_limit = parse_boolean(argv[0], config->mouse_resize_tiling_limit);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
+
+struct cmd_results *cmd_snap_window_gap(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "snap_window_gap", EXPECTED_EQUAL_TO, 1);
+	if (error) {
+		return error;
+	}
+	long snap_window_gap;
+	if (!parse_integer(argv[0], &snap_window_gap)) {
+		return cmd_results_new(CMD_INVALID, "Invalid parameter '%s'", argv[1]);
+	}
+
+	config->snap_window_gap = snap_window_gap;
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_snap_workspace_gap(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "snap_workspace_gap", EXPECTED_EQUAL_TO, 1);
+	if (error) {
+		return error;
+	}
+	long snap_workspace_gap;
+	if (!parse_integer(argv[0], &snap_workspace_gap)) {
+		return cmd_results_new(CMD_INVALID, "Invalid parameter '%s'", argv[1]);
+	}
+
+	config->snap_workspace_gap = snap_workspace_gap;
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_snap_respect_gaps_inner(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "snap_respect_gaps_inner", EXPECTED_AT_LEAST, 1);
+	if (error) {
+		return error;
+	}
+	config->snap_respect_gaps_inner = parse_boolean(argv[0], config->snap_respect_gaps_inner);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_snap_respect_gaps_outer(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "snap_respect_gaps_outer", EXPECTED_AT_LEAST, 1);
+	if (error) {
+		return error;
+	}
+	config->snap_respect_gaps_outer = parse_boolean(argv[0], config->snap_respect_gaps_outer);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_snap_border_overlap(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "snap_border_overlap", EXPECTED_AT_LEAST, 1);
+	if (error) {
+		return error;
+	}
+	config->snap_border_overlap = parse_boolean(argv[0], config->snap_border_overlap);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}

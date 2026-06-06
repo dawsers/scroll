@@ -1082,11 +1082,150 @@ void container_get_box(struct sway_container *container, struct wlr_box *box) {
 	box->height = container->pending.height;
 }
 
+static double min_abs(double a, double b) {
+	return fabs(a) < fabs(b) ? a : b;
+}
+
+static double snap_gaps(struct sway_container *container) {
+	if (config->snap_border_overlap) {
+		return -container->pending.border_thickness;
+	} else {
+		return config->snap_respect_gaps_inner ? 2 * container->pending.workspace->gaps_inner : 0.0;
+	}
+}
+
+static bool snap(double fx, double fy, double fw, double fh,
+		double cx, double cy, double cw, double ch, double *d,
+		int snap_gap, double gaps) {
+	if (fy <= cy + ch + snap_gap &&	fy + fh + snap_gap >= cy) {
+		bool snap = false;
+		double amount = DBL_MAX;
+		double diff = cx - fx;
+		if (fabs(diff + *d) <= snap_gap) {
+			snap = true;
+			amount = min_abs(diff, amount);
+		}
+		diff += cw;
+		if (fabs(diff + *d) <= snap_gap) {
+			snap = true;
+			amount = min_abs(diff + gaps, amount);
+		}
+		diff = cx - (fx + fw);
+		if (fabs(diff + *d) <= snap_gap) {
+			snap = true;
+			amount = min_abs(diff - gaps, amount);
+		}
+		diff += cw;
+		if (fabs(diff + *d) <= snap_gap) {
+			snap = true;
+			amount = min_abs(diff, amount);
+		}
+		if (snap) {
+			*d = amount;
+		}
+		return snap;
+	}
+	return false;
+}
+
+static void container_floating_snap(struct sway_container *floater,
+		double *x_amount, double *y_amount) {
+	bool snap_x = false, snap_y = false;
+	double dx = DBL_MAX, dy = DBL_MAX;
+	if (config->snap_workspace_gap > 0) {
+		struct sway_workspace *workspace = floater->pending.workspace;
+		if (workspace) {
+			const double wx = config->snap_respect_gaps_outer ?
+				workspace->x : workspace->x - workspace->gaps_outer.left;
+			const double ww = config->snap_respect_gaps_outer ?
+				workspace->width : workspace->width + workspace->gaps_outer.left + workspace->gaps_outer.right;
+			const double wy = config->snap_respect_gaps_outer ?
+				workspace->y : workspace->y - workspace->gaps_outer.top;
+			const double wh = config->snap_respect_gaps_outer ?
+				workspace->height : workspace->height + workspace->gaps_outer.top + workspace->gaps_outer.bottom;
+			double d = *x_amount;
+			if (snap(floater->pending.x, floater->pending.y,
+					 floater->pending.width, floater->pending.height,
+					 wx, wy, ww, wh, &d, config->snap_workspace_gap, 0.0)) {
+				snap_x = true;
+				dx = min_abs(d, dx);
+			}
+			d = *y_amount;
+			if (snap(floater->pending.y, floater->pending.x,
+					 floater->pending.height, floater->pending.width,
+					 wy, wx, wh, ww, &d, config->snap_workspace_gap, 0.0)) {
+				snap_y = true;
+				dy = min_abs(d, dy);
+			}
+		}
+	}
+	if (config->snap_window_gap > 0) {
+		for (int i = 0; i < root->outputs->length; ++i) {
+			struct sway_output *output = root->outputs->items[i];
+			struct sway_workspace *workspace = output->current.active_workspace;
+			for (int j = 0; j < workspace->floating->length; ++j) {
+				struct sway_container *container = workspace->floating->items[j];
+				if (floater == container) {
+					continue;
+				}
+				double d = *x_amount;
+				if (snap(floater->pending.x, floater->pending.y,
+						 floater->pending.width, floater->pending.height,
+						 container->pending.x, container->pending.y,
+						 container->pending.width, container->pending.height,
+						 &d, config->snap_window_gap, snap_gaps(container))) {
+					snap_x = true;
+					dx = min_abs(d, dx);
+				}
+				d = *y_amount;
+				if (snap(floater->pending.y, floater->pending.x,
+						 floater->pending.height, floater->pending.width,
+						 container->pending.y, container->pending.x,
+						 container->pending.height, container->pending.width,
+						 &d, config->snap_window_gap, snap_gaps(container))) {
+					snap_y = true;
+					dy = min_abs(d, dy);
+				}
+			}
+			for (int j = 0; j < workspace->tiling->length; ++j) {
+				struct sway_container *container = workspace->tiling->items[j];
+				double d = *x_amount;
+				if (snap(floater->pending.x, floater->pending.y,
+						 floater->pending.width, floater->pending.height,
+						 container->pending.x, container->pending.y,
+						 container->pending.width, container->pending.height,
+						 &d, config->snap_window_gap, snap_gaps(container))) {
+					snap_x = true;
+					dx = min_abs(d, dx);
+				}
+				d = *y_amount;
+				if (snap(floater->pending.y, floater->pending.x,
+						 floater->pending.height, floater->pending.width,
+						 container->pending.y, container->pending.x,
+						 container->pending.height, container->pending.width,
+						 &d, config->snap_window_gap, snap_gaps(container))) {
+					snap_y = true;
+					dy = min_abs(d, dy);
+				}
+			}
+		}
+	}
+	if (snap_x) {
+		*x_amount = dx;
+	}
+	if (snap_y) {
+		*y_amount = dy;
+	}
+}
+
 /**
  * Translate the container's position as well as all children.
  */
 void container_floating_translate(struct sway_container *con,
-		double x_amount, double y_amount) {
+		double x_amount, double y_amount, bool snap) {
+	if (snap) {
+		container_floating_snap(con, &x_amount, &y_amount);
+	}
 	con->pending.x += x_amount;
 	con->pending.y += y_amount;
 	con->pending.content_x += x_amount;
@@ -1095,7 +1234,7 @@ void container_floating_translate(struct sway_container *con,
 	if (con->pending.children) {
 		for (int i = 0; i < con->pending.children->length; ++i) {
 			struct sway_container *child = con->pending.children->items[i];
-			container_floating_translate(child, x_amount, y_amount);
+			container_floating_translate(child, x_amount, y_amount, snap);
 		}
 	}
 
@@ -1184,12 +1323,12 @@ static struct sway_workspace *container_floating_find_workspace(struct sway_outp
 }
 
 void container_floating_move_to(struct sway_container *con,
-		double lx, double ly) {
+		double lx, double ly, bool snap) {
 	if (!sway_assert(container_is_floating(con),
 			"Expected a floating container")) {
 		return;
 	}
-	container_floating_translate(con, lx - con->pending.x, ly - con->pending.y);
+	container_floating_translate(con, lx - con->pending.x, ly - con->pending.y, snap);
 	if (container_is_scratchpad_hidden(con)) {
 		return;
 	}
@@ -1216,7 +1355,7 @@ void container_floating_move_to(struct sway_container *con,
 			double y = con->pending.y;
 			layout_overview_workspaces_global_to_local(old_workspace, &x, &y);
 			layout_overview_workspaces_local_to_global(new_workspace, &x, &y);
-			container_floating_translate(con, x - con->pending.x, y - con->pending.y);
+			container_floating_translate(con, x - con->pending.x, y - con->pending.y, snap);
 			// Modify container->current to be relative to the new workspace, so the
 			// animation starts from the right place
 			layout_overview_workspaces_global_to_local(old_workspace, &con->current.x, &con->current.y);
@@ -1275,7 +1414,7 @@ void container_floating_move_to_center(struct sway_container *con) {
 	struct sway_workspace *ws = con->pending.workspace;
 	double new_lx = ws->x + (ws->width - con->pending.width) / 2;
 	double new_ly = ws->y + (ws->height - con->pending.height) / 2;
-	container_floating_translate(con, new_lx - con->pending.x, new_ly - con->pending.y);
+	container_floating_translate(con, new_lx - con->pending.x, new_ly - con->pending.y, false);
 }
 
 static bool find_urgent_iterator(struct sway_container *con, void *data) {

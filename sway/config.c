@@ -289,6 +289,11 @@ static void config_defaults(struct sway_config *config) {
 	config->xdg_activation_force = false;
 	config->scratchpad_minimize = false;
 	config->mouse_resize_tiling_limit = true;
+	config->snap_window_gap = 0;
+	config->snap_workspace_gap = 0;
+	config->snap_respect_gaps_inner = false;;
+	config->snap_respect_gaps_outer = false;
+	config->snap_border_overlap = false;
 	config->gesture_scroll_enable = true;
 	config->gesture_scroll_fingers = 3;
 	config->gesture_scroll_sentitivity = 1.0f;

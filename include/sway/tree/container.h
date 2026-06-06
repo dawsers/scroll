@@ -291,10 +291,11 @@ bool container_is_floating(struct sway_container *container);
 void container_get_box(struct sway_container *container, struct wlr_box *box);
 
 /**
- * Move a floating container by the specified amount.
+ * Move a floating container by the specified amount, optionally applying
+ * the snapping options.
  */
 void container_floating_translate(struct sway_container *con,
-		double x_amount, double y_amount);
+		double x_amount, double y_amount, bool snap);
 
 /**
  * Choose an output for the floating container's new position.
@@ -302,10 +303,11 @@ void container_floating_translate(struct sway_container *con,
 struct sway_output *container_floating_find_output(struct sway_container *con);
 
 /**
- * Move a floating container to a new layout-local position.
+ * Move a floating container to a new layout-local position., optionally
+ * applying the snapping options.
  */
 void container_floating_move_to(struct sway_container *con,
-		double lx, double ly);
+		double lx, double ly, bool snap);
 
 /**
  * Move a floating container to the center of the workspace.
