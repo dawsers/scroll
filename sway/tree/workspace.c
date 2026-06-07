@@ -966,29 +966,31 @@ static void add_delta_to_containers(list_t *containers,
 	}
 }
 
-static bool workspace_switch_down(struct sway_workspace *from, struct sway_workspace *to) {
+static bool workspace_switch_down(struct sway_output *output,
+		struct sway_workspace *from, struct sway_workspace *to) {
 	int f_idx = workspace_get_number(from);
 	int t_idx = workspace_get_number(to);
-	if (f_idx < 0 || t_idx < 0) {
-		const char *f_name = from->name;
-		const char *t_name = to->name;
-		while (f_name && t_name) {
-			if (*f_name == *t_name) {
-				++f_name;
-				++t_name;
+	if (f_idx < 0) {
+		if (t_idx < 0) {
+			if (from->node.destroying || to->node.destroying) {
+				f_idx = list_find(output->current.workspaces, from);
+				t_idx = list_find(output->current.workspaces, to);
 			} else {
-				return *f_name < *t_name;
+				f_idx = list_find(output->workspaces, from);
+				t_idx = list_find(output->workspaces, to);
 			}
+		} else {
+			return false;
 		}
-		return *f_name < *t_name;
-	} else {
-		return f_idx < t_idx;
+	} else if (t_idx < 0) {
+		return true;
 	}
+	return f_idx < t_idx;
 }
 
 static void animate_workspace_switch(struct sway_output *output,
 		struct sway_workspace *from, struct sway_workspace *to) {
-	bool down = workspace_switch_down(from, to);
+	bool down = workspace_switch_down(output, from, to);
 
 	// Store the from workspace data here, because it may get deleted when
 	// calling animation_end() if it is empty. workspace_switch_callback_end
