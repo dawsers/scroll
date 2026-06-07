@@ -195,6 +195,16 @@ After installing either package, prepare a configuration file
 and you can start *scroll* from a tty. You can also start *scroll* from your
 display manager using the provided `/usr/share/wayland-sessions/scroll.desktop`.
 
+If you are using systemd, there is an extra configuration file installed by
+package managers under `/etc/scroll/config.d/50-systemd-user.conf` which you
+can include from your configuration file if you don't want to set some needed
+environment variables in a system file like `~/.bash_profile` as described in
+this README.
+
+```
+include /etc/scroll/config.d/50-systemd-user.conf
+```
+
 ### Building Requirements
 
 If you want to compile *scroll* yourself, [sway compiling instructions](https://github.com/swaywm/sway#compiling-from-source)
