@@ -1201,6 +1201,14 @@ can use this if you have opened several disposable applications in your
 workspace and want to remove the clutter by restoring your original
 configuration/space.
 
+`restore_hide` will not close any windows in the workspace where loading happens,
+but they will be hidden in the scratchpad. This argument creates a container
+configuration that looks like `restore`, but works like `load`, except that it
+hides the windows that don't belong to the space. You can use this if you want
+to temporarily use a space. First save the current workspace in a space, then
+`restore_hide` the new configuration, and when you are done, `restore_hide` the
+saved space.
+
 You can use the keybindings in the default configuration to manage spaces
 named from 0 to 9, or you can assign key bindings to the following script to
 name and manage your own space names which can be arbitrary, multiword strings.
