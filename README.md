@@ -1183,7 +1183,7 @@ animations {
 ### Spaces
 
 A *space* is a configuration of existing windows. You can control spaces with
-the command `space load|save|restore name`.
+the command `space load|save|restore|restore_hide|delete name`.
 
 Saving a *space* stores the current configuration of the workspace, including
 window geometry and positions, content scale etc.
@@ -1208,8 +1208,9 @@ name and manage your own space names which can be arbitrary, multiword strings.
 ``` config
 bindsym $mod+g exec scroll-spaces.sh load
 bindsym $mod+Shift+g exec scroll-spaces.sh save
-bindsym $mod+Ctrl_Shift+g exec scroll-spaces.sh restore
+bindsym $mod+Ctrl+Shift+g exec scroll-spaces.sh restore
 bindsym $mod+Ctrl+g exec scroll-spaces.sh restore_hide
+bindsym $mod+Alt+g exec scroll-spaces.sh delete
 ```
 
 `scroll-spaces.sh`
@@ -1229,6 +1230,9 @@ elif [ $1 == "restore" ]; then
 elif [ $1 == "restore_hide" ]; then
     space=$(scrollmsg -t get_spaces | jq -r '.[]' | rofi -p "Restore a space - Windows not belonging to the space will be hidden" -dmenu)
     scrollmsg "space restore_hide" "\"$space\""
+elif [ $1 == "delete" ]; then
+    space=$(scrollmsg -t get_spaces | jq -r '.[]' | rofi -p "Delete a space" -dmenu)
+    scrollmsg "space delete" "\"$space\""
 fi
 ```
 

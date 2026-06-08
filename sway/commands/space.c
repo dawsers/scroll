@@ -34,6 +34,8 @@ struct cmd_results *cmd_space(int argc, char **argv) {
 		space_load(workspace, argv[1], SPACE_RESTORE_CLOSE);
 	} else if (strcasecmp(argv[0], "restore_hide") == 0) {
 		space_load(workspace, argv[1], SPACE_RESTORE_HIDE);
+	} else if (strcasecmp(argv[0], "delete") == 0) {
+		space_delete(argv[1]);
 	} else {
 		return cmd_results_new(CMD_INVALID, "%s", expected_syntax);
 	}

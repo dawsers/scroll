@@ -39,11 +39,13 @@ struct sway_space {
 void space_save(struct sway_workspace *workspace, const char *name);
 
 // Load the space with name into the current workspace.
-// If restore is SPACCE_RESTORE_LOAD, add the space data to the workspace.
+// If restore is SPACE_RESTORE_LOAD, add the space data to the workspace.
 // If it is SPACE_RESTORE_CLOSE, close any views not belonging to the space.
 // If it is SPACE_RESTORE_HIDE, hide any views not belonging to the space in the
 // scratchpad.
 void space_load(struct sway_workspace *workspace, const char *name, enum sway_space_restore restore);
 
+// Delete a space if it exists
+void space_delete(const char *name);
 
 #endif // _SWAY_SPACE_H

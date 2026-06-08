@@ -399,3 +399,10 @@ void space_load(struct sway_workspace *workspace, const char *name, enum sway_sp
 	}
 	layout_space_restore(space, workspace, restore);
 }
+
+void space_delete(const char *name) {
+	struct sway_space *space = find_space(name);
+	if (space) {
+		space_destroy(space);
+	}
+}

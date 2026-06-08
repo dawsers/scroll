@@ -919,11 +919,12 @@ set|plus|minus|toggle <amount>
 	established by the *seat* subcommand of the same name. See
 	*scroll-input*(5) for more ways to affect inhibitors.
 
-*space* <save|load|restore|restore_hide> <name>
+*space* <save|load|restore|restore_hide|delete> <name>
 	A _space_ is a configuration of existing windows.
 
 	_save_ stores the configuration of the current workspace, including
 	window/container geometry and positions, content scale etc. under _name_.
+	If there is already a space with _name_, it will overwrite it.
 
 	_load_ recovers the windows that still exist from that space and
 	applies the configuration stored under _name_ to them. This only applies
@@ -944,6 +945,8 @@ set|plus|minus|toggle <amount>
 	scratchpad. You can	use this if you want to temporarily use a space. First
 	save the current workspace in a space, then _restore_hide_ the new
 	configuration, and when you are done, _restore_hide_ the saved space.
+
+	_delete_ deletes the space with _name_ if there is any.
 
 *sticky* enable|disable|toggle
 	"Sticks" a floating window to the current output so that it shows up on all
