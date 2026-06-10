@@ -512,6 +512,16 @@ static void capture_output(struct wl_client *wl_client,
 		return;
 	}
 
+	struct wlr_screencopy_frame_v1 *existing;
+	wl_list_for_each(existing, &client->manager->frames, link) {
+		if (existing->client == client && existing->output == output) {
+			wl_resource_set_user_data(frame->resource, NULL);
+			zwlr_screencopy_frame_v1_send_failed(frame->resource);
+			free(frame);
+			return;
+		}
+	}
+
 	frame->client = client;
 	client->ref++;
 
