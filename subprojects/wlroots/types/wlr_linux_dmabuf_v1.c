@@ -901,9 +901,9 @@ static bool set_default_feedback(struct wlr_linux_dmabuf_v1 *linux_dmabuf,
 	if (device->available_nodes & (1 << DRM_NODE_RENDER)) {
 		const char *name = device->nodes[DRM_NODE_RENDER];
 		main_device_fd = open(name, O_RDWR | O_CLOEXEC);
-		drmFreeDevice(&device);
 		if (main_device_fd < 0) {
 			wlr_log_errno(WLR_ERROR, "Failed to open DRM device %s", name);
+			drmFreeDevice(&device);
 			goto error_compiled;
 		}
 	} else {
@@ -913,8 +913,8 @@ static bool set_default_feedback(struct wlr_linux_dmabuf_v1 *linux_dmabuf,
 		assert(device->available_nodes & (1 << DRM_NODE_PRIMARY));
 		wlr_log(WLR_DEBUG, "DRM device %s has no render node, "
 			"skipping DMA-BUF import checks", device->nodes[DRM_NODE_PRIMARY]);
-		drmFreeDevice(&device);
 	}
+	drmFreeDevice(&device);
 
 	size_t tranches_len =
 		feedback->tranches.size / sizeof(struct wlr_linux_dmabuf_feedback_v1_tranche);
