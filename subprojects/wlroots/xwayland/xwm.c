@@ -808,8 +808,12 @@ static void read_surface_parent(struct wlr_xwm *xwm,
 	}
 
 	struct wlr_xwayland_surface *found_parent = NULL;
-	const xcb_window_t *xid = xcb_get_property_value(reply);
-	if (reply->type != XCB_ATOM_NONE && xid != NULL) {
+	if (reply->type != XCB_ATOM_NONE) {
+		if (xcb_get_property_value_length(reply) != sizeof(xcb_window_t)) {
+			wlr_log(WLR_DEBUG, "Invalid WM_TRANSIENT_FOR property length");
+			return;
+		}
+		const xcb_window_t *xid = xcb_get_property_value(reply);
 		found_parent = lookup_surface(xwm, *xid);
 		if (!has_parent(found_parent, xsurface)) {
 			xsurface->parent = found_parent;
