@@ -1063,7 +1063,14 @@ bool workspace_switch(struct sway_workspace *workspace) {
 
 	sway_log(SWAY_DEBUG, "Switching to workspace %p:%s",
 		workspace, workspace->name);
-	struct sway_workspace *old_ws = seat_get_focused_workspace(seat);
+
+	struct sway_workspace *old_ws = NULL;;
+	if (workspace->output) {
+		old_ws = output_get_active_workspace(workspace->output);
+	}
+	if (!old_ws) {
+		old_ws = seat_get_focused_workspace(seat);
+	}
 
 	struct sway_node *next = seat_get_focus_inactive(seat, &workspace->node);
 	if (next == NULL) {
