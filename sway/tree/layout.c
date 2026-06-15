@@ -411,8 +411,8 @@ void layout_overview_workspaces(bool on) {
 		if (layout_overview_workspaces_enabled()) {
 			overview_workspaces_recompute_scale(output);
 		} else {
-			for (int j = 0; j < output->workspaces->length; ++j) {
-				struct sway_workspace *child = output->workspaces->items[j];
+			for (int j = 0; j < output->current.workspaces->length; ++j) {
+				struct sway_workspace *child = output->current.workspaces->items[j];
 				workspace_name_decoration(child, false);
 				wlr_scene_node_reparent(&child->jump.text_tree->node, root->staging);
 				wlr_scene_node_reparent(&child->jump.name_tree->node, root->staging);
