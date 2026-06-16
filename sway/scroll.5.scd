@@ -2062,6 +2062,11 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 *view_get_app_id(view)*
 	Returns the _app_id_ string for _view_, or nil if any error happens.
+	_app_id_ is only defined for Wayland windows.
+
+*view_get_class(view)*
+	Returns the _class_ string for _view_, or nil if any error happens. _class_
+	is only defined for XWayland windows.
 
 *view_get_title(view)*
 	Returns the _title_ string for _view_, or nil if any error happens.

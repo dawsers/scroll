@@ -402,6 +402,22 @@ static int scroll_view_get_app_id(lua_State *L) {
 	return 1;
 }
 
+static int scroll_view_get_class(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	struct sway_view *view = lua_touserdata(L, -1);
+	if (!view) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const char *app_id = view_get_class(view);
+	lua_pushstring(L, app_id);
+	return 1;
+}
+
 static int scroll_view_get_title(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc == 0) {
@@ -1574,6 +1590,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "view_mapped", scroll_view_mapped },
 	{ "view_get_container", scroll_view_get_container },
 	{ "view_get_app_id", scroll_view_get_app_id },
+	{ "view_get_class", scroll_view_get_class },
 	{ "view_get_title", scroll_view_get_title },
 	{ "view_get_pid", scroll_view_get_pid },
 	{ "view_get_parent_view", scroll_view_get_parent_view },
