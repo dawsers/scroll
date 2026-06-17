@@ -246,6 +246,7 @@ if get_option('default-wallpaper')
 endif
 
 subdir('completions')
+subdir('tests')
 
 summary({
 	'gdk-pixbuf': gdk_pixbuf.found(),
