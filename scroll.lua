@@ -104,6 +104,14 @@ function scroll.view_get_container(view) end
 function scroll.view_get_app_id(view) end
 
 ---
+--- Returns the class string for view, or nil if any error happens
+---
+--- @param view userdata
+---
+--- @return string|nil
+function scroll.view_get_class(view) end
+
+---
 --- Returns the title string for view, or nil if any error happens
 ---
 --- @param view userdata
