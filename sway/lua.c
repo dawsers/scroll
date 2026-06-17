@@ -72,6 +72,15 @@ static int scroll_log(lua_State *L) {
 	return 0;
 }
 
+static void safe_pcall(lua_State *L, int nargs) {
+	int err = lua_pcall(L, nargs, 0, 0);
+	if (err != LUA_OK) {
+		const char *msg = lua_tostring(L, -1);
+		sway_log(SWAY_ERROR, "Lua error: %s", msg ? msg : "unknown error");
+		lua_pop(L, 1);
+	}
+}
+
 static int scroll_state_get_value(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc < 2) {
@@ -272,7 +281,7 @@ static int scroll_command(lua_State *L) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, config->lua.command_data);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 	return 1;
 }
@@ -1657,7 +1666,7 @@ void lua_execute_view_map_cbs(struct sway_view *view) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_pushlightuserdata(config->lua.state, view);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
 
@@ -1667,7 +1676,7 @@ void lua_execute_view_unmap_cbs(struct sway_view *view) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_pushlightuserdata(config->lua.state, view);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
 
@@ -1677,7 +1686,7 @@ void lua_execute_view_urgent_cbs(struct sway_view *view) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_pushlightuserdata(config->lua.state, view);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
 
@@ -1688,7 +1697,7 @@ void lua_execute_view_focus_cbs(struct sway_view *view) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_pushlightuserdata(config->lua.state, view);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
 
@@ -1698,7 +1707,7 @@ void lua_execute_view_float_cbs(struct sway_view *view) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_pushlightuserdata(config->lua.state, view);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
 
@@ -1708,7 +1717,7 @@ void lua_execute_workspace_create_cbs(struct sway_workspace *workspace) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_pushlightuserdata(config->lua.state, workspace);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
 
@@ -1718,7 +1727,7 @@ void lua_execute_workspace_focus_cbs(struct sway_workspace *workspace) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_function);
 		lua_pushlightuserdata(config->lua.state, workspace);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
 
@@ -1730,7 +1739,7 @@ void lua_execute_ipc_view_cbs(struct sway_view *view, const char *change) {
 			lua_pushlightuserdata(config->lua.state, view);
 			lua_pushstring(config->lua.state, change);
 			lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-			lua_call(config->lua.state, 3, 0);
+			safe_pcall(config->lua.state, 3);
 		}
 	}
 }
@@ -1744,7 +1753,7 @@ void lua_execute_ipc_workspace_cbs(struct sway_workspace *old_ws,
 		lua_pushlightuserdata(config->lua.state, new_ws);
 		lua_pushstring(config->lua.state, change);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 4, 0);
+		safe_pcall(config->lua.state, 4);
 	}
 }
 
@@ -1758,6 +1767,6 @@ void lua_execute_jump_end_cbs(struct sway_container *container) {
 			lua_pushnil(config->lua.state);
 		}
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
-		lua_call(config->lua.state, 2, 0);
+		safe_pcall(config->lua.state, 2);
 	}
 }
