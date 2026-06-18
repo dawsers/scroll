@@ -1821,9 +1821,13 @@ lua $lua_scripts/workspace_exec.lua 1 exec kitty
 	windows. See *focus_on_window_activation* to set the state of the activated
 	window to _urgent_ or _focused_.
 
-*lua* script
-	Loads and executes the lua script. See *LUA* for details about the API and
-	some examples.
+*lua* <path> [<args...>]
+	Loads and executes the lua script at _path_ with optional _args_. _path_
+	expands shell syntax (see *wordexp*(3) for details) and must resolve to
+	exactly one file. When invoked during configuration file loading, relative
+	paths are resolved against the directory of the configuration file.
+	Otherwise, they are resolved against the initial working directory of the
+	compositor. See *LUA* for details about the API and some examples.
 
 # CRITERIA
 
