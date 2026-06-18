@@ -251,6 +251,21 @@ static void lua_push_node(lua_State *L, struct sway_node *node) {
 
 
 
+static int scroll_node_get_type(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	struct sway_node *node = lua_to_node(L, -1);
+	if (!node) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushstring(L, node_type_to_str(node->type));
+	return 1;
+}
+
 void lua_command_data_create() {
 	luaL_unref(config->lua.state, LUA_REGISTRYINDEX, config->lua.command_data);
 	config->lua.command_data = luaL_ref(config->lua.state, LUA_REGISTRYINDEX);
@@ -1541,6 +1556,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "state_get_value", scroll_state_get_value },
 	{ "ipc_send", scroll_ipc_send },
 	{ "command", scroll_command },
+	{ "node_get_type", scroll_node_get_type },
 	{ "focused_view", scroll_focused_view },
 	{ "focused_container", scroll_focused_container },
 	{ "focused_workspace", scroll_focused_workspace },

@@ -44,8 +44,21 @@ def test_lua_comprehensive_api(scroll_compositor: ScrollInstance) -> None:
     assert len(ws_list) > 0
     assert ws_list[0] == ws
 
+    # Get node types
+    ws_type: str = scroll_compositor.execute_lua(f"return scroll.node_get_type({ws})")
+    assert ws_type == "workspace"
+
+    output_type: str = scroll_compositor.execute_lua(
+        f"return scroll.node_get_type({output})"
+    )
+    assert output_type == "output"
+
     # Test invalid IDs
     invalid_ws: int = 999999
+    assert (
+        scroll_compositor.execute_lua(f"return scroll.node_get_type({invalid_ws})")
+        is None
+    )
     assert (
         scroll_compositor.execute_lua(f"return scroll.workspace_get_name({invalid_ws})")
         is None

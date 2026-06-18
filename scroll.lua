@@ -56,6 +56,16 @@ function scroll.ipc_send(id, data) end
 function scroll.command(context, command) end
 
 ---
+--- Returns the type of the given node as a string.
+--- Possible values are: "root", "output", "workspace", "container", "layer_surface", "layer_popup".
+--- Returns nil if the node ID is invalid or not found.
+---
+--- @param node integer
+---
+--- @return string|nil
+function scroll.node_get_type(node) end
+
+---
 --- Returns the focused view ID or nil if none.
 ---
 --- @return integer|nil

@@ -2068,6 +2068,11 @@ This is the current supported API:
 scroll.command(nil, "set_size v 0.33333333; move left nomode")
 ```
 
+*node_get_type(node)*
+	Returns the type of the given _node_ as a string. Possible values are:
+	"root", "output", "workspace", "container", "layer_surface", "layer_popup".
+	Returns nil if the node ID is invalid or not found.
+
 *focused_view()*
 	Returns the focused view ID or nil if none
 
