@@ -925,7 +925,6 @@ void layout_move_container_to_workspace(struct sway_container *container, struct
 		container_detach_update_parent_fullscreen_layout(parent, container);
 		container_update_representation(parent);
 		node_set_dirty(&parent->node);
-		container_reap_empty(parent);
 		layout_add_view(workspace, active, container);
 		node_set_dirty(&container->node);
 	}
@@ -1454,8 +1453,6 @@ static bool layout_move_container_nomode(struct sway_container *container, enum 
 			struct sway_container *active = new_parent->current.focused_inactive_child;
 			int new_index = layout_insert_compute_index(new_parent->pending.children, active, pos);
 			layout_insert_into_container(new_parent, container, new_index);
-			// Delete old parent container
-			container_reap_empty(parent);
 		}
 		apply_container_sizes(new_parent, layout_toggle_size_width_fraction(workspace),
 			layout_toggle_size_height_fraction(workspace), OPERATION_FOCUS);
