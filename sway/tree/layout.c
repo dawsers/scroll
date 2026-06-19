@@ -1111,13 +1111,10 @@ static void insert_children_relative(struct sway_container *container, struct sw
 
 static struct sway_container *extract_view(struct sway_container *view) {
 	struct sway_container *parent = view->pending.parent;
-	list_t *siblings = parent->pending.children;
-	int idx = list_find(siblings, view);
-	list_del(siblings, idx);
-	container_detach_update_parent_fullscreen_layout(parent, view);
-	container_update_representation(parent);
-	node_set_dirty(&parent->node);
-	container_reap_empty(parent);
+	container_detach(view);
+	if (parent) {
+		container_reap_empty(parent);
+	}
 	return view;
 }
 

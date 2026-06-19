@@ -1,29 +1,24 @@
 #include "sway/tree/space.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/node.h"
 #include "sway/tree/arrange.h"
 #include "sway/output.h"
 
-static bool find_view(struct sway_container *container, void *data) {
-	struct sway_view *view = data;
-	return container->view == view;
+static void handle_view_unmap(struct wl_listener *listener, void *data) {
+	struct sway_space_view *view = wl_container_of(listener, view, view_unmap);
+	view->view = NULL;
+	wl_list_remove(&view->view_unmap.link);
+	wl_list_init(&view->view_unmap.link);
 }
 
-// Find the view. If it exists, detach its container and return it. If it
-// doesn't, return NULL
-static struct sway_container *find_and_detach_container(struct sway_view *view) {
-	struct sway_container *container = root_find_container(find_view, view);
-	if (container) {
-		if (!container_is_floating(container)) {
-			struct sway_container *parent = container->pending.parent;
-			list_t *siblings = parent->pending.children;
-			list_del(siblings, list_find(siblings, container));
-			node_set_dirty(&parent->pending.workspace->node);
-			container_update_representation(parent);
-			node_set_dirty(&parent->node);
+static void detach_container(struct sway_container *container) {
+	if (!container_is_floating(container)) {
+		struct sway_container *parent = container->pending.parent;
+		container_detach(container);
+		if (parent) {
 			container_reap_empty(parent);
 		}
 	}
-	return container;
 }
 
 static void fill_container(struct sway_space_container *space_container,
@@ -79,8 +74,10 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 	}
 	if (space_container->view) {
 		// Find view, detach its container
-		struct sway_container *container = find_and_detach_container(space_container->view->view);
+		struct sway_view *view = space_container->view->view;
+		struct sway_container *container = view ? view->container : NULL;
 		if (container) {
+			detach_container(container);
 			if (container->scratchpad) {
 				root_scratchpad_show(container);
 				root_scratchpad_remove_container(container);
@@ -90,14 +87,14 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 				list_del(ws->floating, list_find(ws->floating, container));
 				workspace_consider_destroy(ws);
 				node_set_dirty(&ws->node);
-				list_add(view_float, space_container->view->view);
+				list_add(view_float, container->view);
 			}
 			container->view->content_scale = space_container->view->content_scale;
 			container->pending.workspace = parent->pending.workspace;
+			container->pending.parent = parent;
 			arrange_container(container);
 			node_set_dirty(&container->node);
 			list_add(parent->pending.children, container);
-			container->pending.parent = parent;
 			fill_container(space_container, container);
 			container_update_representation(container);
 			node_set_dirty(&parent->node);
@@ -120,8 +117,10 @@ static void layout_space_container_restore_floating(struct sway_workspace *works
 		struct sway_space_container *focused, list_t *view_float) {
 	if (space_container->view) {
 		// Find view, detach its container
-		struct sway_container *container = find_and_detach_container(space_container->view->view);
+		struct sway_view *view = space_container->view->view;
+		struct sway_container *container = view ? view->container : NULL;
 		if (container) {
+			detach_container(container);
 			if (container->scratchpad) {
 				root_scratchpad_show(container);
 				root_scratchpad_remove_container(container);
@@ -135,11 +134,11 @@ static void layout_space_container_restore_floating(struct sway_workspace *works
 				list_add(view_float, container->view);
 			}
 			container->view->content_scale = space_container->view->content_scale;
+			container->pending.parent = NULL;
+			container->pending.workspace = workspace;
 			arrange_container(container);
 			node_set_dirty(&container->node);
 			list_add(workspace->floating, container);
-			container->pending.parent = NULL;
-			container->pending.workspace = workspace;
 			fill_container(space_container, container);
 			container_update_representation(container);
 		}
@@ -163,7 +162,7 @@ static bool container_find_view(struct sway_space_container *container,
 				return true;
 			}
 		}
-	} else if (container->view->view == view) {
+	} else if (container->view && container->view->view == view) {
 		return true;
 	}
 	return false;
@@ -255,10 +254,15 @@ static struct sway_space_view *space_view_create(struct sway_view *sway_view,
 	view->view = sway_view;
 	view->container = container;
 	view->content_scale = content_scale;
+	view->view_unmap.notify = handle_view_unmap;
+	wl_signal_add(&sway_view->events.unmap, &view->view_unmap);
 	return view;
 }
 
 static void space_view_destroy(struct sway_space_view *view) {
+	if (view->view) {
+		wl_list_remove(&view->view_unmap.link);
+	}
 	free(view);
 }
 
