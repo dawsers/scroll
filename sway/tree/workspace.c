@@ -797,6 +797,10 @@ struct workspace_switch_data {
 	struct sway_root_filters *root_filters;
 };
 
+static void commit_dirty_idle_callback(void *data) {
+	transaction_commit_dirty();
+}
+
 static void workspace_switch_callback_end(void *callback_data) {
 	struct workspace_switch_data *data = callback_data;
 	root_filters_destroy(root, data->root_filters);
@@ -823,7 +827,7 @@ static void workspace_switch_callback_end(void *callback_data) {
 	list_free_items_and_destroy(data->to_containers);
 	free(data);
 
-	transaction_commit_dirty();
+	wl_event_loop_add_idle(server.wl_event_loop, commit_dirty_idle_callback, NULL);
 }
 
 static bool workspace_switch_output_fullscreen_filter(struct sway_output *output,
