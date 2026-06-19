@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 #include <vulkan/vulkan.h>
 #include <wlr/util/log.h>
 #include <wlr/version.h>
@@ -252,6 +253,14 @@ static void log_phdev(const VkPhysicalDeviceProperties *props) {
 	wlr_log(WLR_INFO, "  Driver version: %u.%u.%u", dv_major, dv_minor, dv_patch);
 }
 
+struct wlr_vk_phdev_info {
+	VkPhysicalDeviceType type;
+	char name[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE];
+
+	bool has_drm, has_render;
+	dev_t primary_devid, render_devid;
+};
+
 VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd) {
 	VkResult res;
 	uint32_t num_phdevs;
@@ -269,12 +278,7 @@ VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd) 
 		return VK_NULL_HANDLE;
 	}
 
-	struct stat drm_stat = {0};
-	if (drm_fd >= 0 && fstat(drm_fd, &drm_stat) != 0) {
-		wlr_log_errno(WLR_ERROR, "fstat failed");
-		return VK_NULL_HANDLE;
-	}
-
+	struct wlr_vk_phdev_info devices[1 + num_phdevs];
 	for (uint32_t i = 0; i < num_phdevs; ++i) {
 		VkPhysicalDevice phdev = phdevs[i];
 
@@ -330,25 +334,81 @@ VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd) 
 			wlr_log(WLR_INFO, "  Driver name: %s (%s)", driver_props.driverName, driver_props.driverInfo);
 		}
 
+		struct wlr_vk_phdev_info info = {
+			.type = phdev_props.deviceType,
+			.has_drm = has_drm_props,
+		};
+		memcpy(info.name, phdev_props.deviceName, sizeof(phdev_props.deviceName));
+		if (has_drm_props) {
+			info.has_render = drm_props.hasRender;
+			info.primary_devid = makedev(drm_props.primaryMajor, drm_props.primaryMinor);
+			info.render_devid = makedev(drm_props.renderMajor, drm_props.renderMinor);
+		}
+		devices[i] = info;
+	}
+
+	// Find a Vulkan device matching the DRM device's dev_t
+	struct stat drm_stat = {0};
+	if (drm_fd >= 0 && fstat(drm_fd, &drm_stat) != 0) {
+		wlr_log_errno(WLR_ERROR, "fstat failed");
+		return VK_NULL_HANDLE;
+	}
+
+	for (size_t i = 0; i < num_phdevs; ++i) {
+		VkPhysicalDevice phdev = phdevs[i];
+		const struct wlr_vk_phdev_info *info = &devices[i];
+
 		bool found;
 		if (drm_fd >= 0) {
-			if (!has_drm_props) {
+			if (!info->has_drm) {
 				wlr_log(WLR_DEBUG, "  Ignoring physical device \"%s\": "
-					"VK_EXT_physical_device_drm not supported",
-					phdev_props.deviceName);
+					"VK_EXT_physical_device_drm not supported", info->name);
 				continue;
 			}
 
-			dev_t primary_devid = makedev(drm_props.primaryMajor, drm_props.primaryMinor);
-			dev_t render_devid = makedev(drm_props.renderMajor, drm_props.renderMinor);
-			found = primary_devid == drm_stat.st_rdev || render_devid == drm_stat.st_rdev;
+			found = info->primary_devid == drm_stat.st_rdev || info->render_devid == drm_stat.st_rdev;
 		} else {
-			found = phdev_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
+			found = info->type == VK_PHYSICAL_DEVICE_TYPE_CPU;
 		}
 
 		if (found) {
-			wlr_log(WLR_INFO, "Found matching Vulkan physical device: %s",
-				phdev_props.deviceName);
+			wlr_log(WLR_INFO, "Found matching Vulkan physical device: %s", info->name);
+			return phdev;
+		}
+	}
+
+	// If the DRM device we're interested in uses the platform bus, is
+	// KMS-capable, and has no render node associated, search for a sibling
+	// render-capable platform bus device. The platform bus is a good enough
+	// hint that these two devices should be compatible.
+	drmDevice *drm_dev = NULL;
+	if (drmGetDevice2(drm_fd, 0, &drm_dev) != 0) {
+		wlr_log(WLR_ERROR, "drmGetDevice2() failed");
+		return VK_NULL_HANDLE;
+	}
+	bool is_platform_lone_kms = drm_dev->bustype == DRM_BUS_PLATFORM &&
+		!(drm_dev->available_nodes & (1 << DRM_NODE_RENDER)) && drmIsKMS(drm_fd);
+	drmFreeDevice(&drm_dev);
+	if (!is_platform_lone_kms) {
+		return VK_NULL_HANDLE;
+	}
+
+	for (size_t i = 0; i < num_phdevs; ++i) {
+		VkPhysicalDevice phdev = phdevs[i];
+		const struct wlr_vk_phdev_info *info = &devices[i];
+
+		if (!info->has_render) {
+			continue;
+		}
+
+		drmDevice *drm_dev = NULL;
+		if (drmGetDeviceFromDevId(info->render_devid, 0, &drm_dev) != 0) {
+			wlr_log(WLR_ERROR, "drmGetDeviceFromDevId() failed");
+			return VK_NULL_HANDLE;
+		}
+
+		if (drm_dev->bustype == DRM_BUS_PLATFORM) {
+			wlr_log(WLR_INFO, "Found Vulkan physical device on platform bus: %s", info->name);
 			return phdev;
 		}
 	}
