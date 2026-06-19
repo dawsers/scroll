@@ -325,6 +325,15 @@ void workspace_destroy(struct sway_workspace *workspace) {
 void workspace_begin_destroy(struct sway_workspace *workspace) {
 	sway_log(SWAY_DEBUG, "Destroying workspace '%s'", workspace->name);
 	ipc_event_workspace(NULL, workspace, "empty"); // intentional
+	if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+		struct sway_workspace *sibling = workspace->split.sibling;
+		sibling->split.split = WORKSPACE_SPLIT_NONE;
+		sibling->layers.tiling->node.info.output_box = NULL;
+		sibling->split.sibling = NULL;
+		node_set_dirty(&sibling->node);
+		arrange_workspace(sibling);
+	}
+
 	wl_signal_emit_mutable(&workspace->node.events.destroy, &workspace->node);
 
 	wlr_ext_workspace_handle_v1_destroy(workspace->ext_workspace);
