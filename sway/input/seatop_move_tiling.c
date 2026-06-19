@@ -23,12 +23,34 @@ struct seatop_move_tiling_event {
 	bool threshold_reached;
 	bool insert_after_target;
 	struct wlr_scene_rect *indicator_rect;
+	struct wl_listener target_node_destroy; // Clears target_node if destroyed mid-drag
 };
 
 static void handle_end(struct sway_seat *seat) {
 	struct seatop_move_tiling_event *e = seat->seatop_data;
+	wl_list_remove(&e->target_node_destroy.link);
 	wlr_scene_node_destroy(&e->indicator_rect->node);
 	e->indicator_rect = NULL;
+}
+
+// Update target_node and its destruction listener
+static void set_target_node(struct seatop_move_tiling_event *e, struct sway_node *node) {
+	if (e->target_node == node) {
+		return;
+	}
+	wl_list_remove(&e->target_node_destroy.link);
+	e->target_node = node;
+	if (node) {
+		wl_signal_add(&node->events.destroy, &e->target_node_destroy);
+	} else {
+		wl_list_init(&e->target_node_destroy.link);
+	}
+}
+
+static void handle_target_node_destroy(struct wl_listener *listener, void *data) {
+	struct seatop_move_tiling_event *e =
+		wl_container_of(listener, e, target_node_destroy);
+	set_target_node(e, NULL);
 }
 
 static void handle_motion_prethreshold(struct sway_seat *seat) {
@@ -70,13 +92,13 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 
 	if (!node) {
 		// Eg. hovered over a layer surface such as swaybar
-		e->target_node = NULL;
+		set_target_node(e, NULL);
 		e->target_edge = WLR_EDGE_NONE;
 		return;
 	}
 	if (node->type == N_WORKSPACE) {
 		// Empty workspace
-		e->target_node = node;
+		set_target_node(e, node);
 		e->target_edge = WLR_EDGE_NONE;
 
 		struct wlr_box drop_box;
@@ -95,14 +117,14 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	struct sway_container *con = node->sway_container;
 	// If tiling container, exit
 	if (container_is_floating(con)) {
-		e->target_node = NULL;
+		set_target_node(e, NULL);
 		e->target_edge = WLR_EDGE_NONE;
 		return;
 	}
 	// Deny moving within own workspace if this is the only child
 	if (workspace_num_tiling_views(e->con->pending.workspace) == 1 &&
 			con->pending.workspace == e->con->pending.workspace) {
-		e->target_node = NULL;
+		set_target_node(e, NULL);
 		e->target_edge = WLR_EDGE_NONE;
 		return;
 	}
@@ -186,7 +208,7 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 		box.x += drop_layout_border;
 		box.y += drop_layout_border;
 	}
-	e->target_node = &con->node;
+	set_target_node(e, &con->node);
 	e->target_edge = edge;
 	if (layout_overview_workspaces_enabled()) {
 		double x = box.x;
@@ -262,7 +284,7 @@ static void handle_tablet_tool_tip(struct sway_seat *seat,
 static void handle_unref(struct sway_seat *seat, struct sway_container *con) {
 	struct seatop_move_tiling_event *e = seat->seatop_data;
 	if (e->target_node == &con->node) { // Drop target
-		e->target_node = NULL;
+		set_target_node(e, NULL);
 	}
 	if (e->con == con) { // The container being moved
 		seatop_begin_default(seat);
@@ -303,6 +325,8 @@ void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
 	e->con = con;
 	e->ref_lx = seat->cursor->cursor->x;
 	e->ref_ly = seat->cursor->cursor->y;
+	wl_list_init(&e->target_node_destroy.link);
+	e->target_node_destroy.notify = handle_target_node_destroy;
 
 	seat->seatop_impl = &seatop_impl;
 	seat->seatop_data = e;
