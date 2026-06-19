@@ -600,6 +600,8 @@ struct sway_config {
 		struct border_colors pinned_focused;
 		struct border_colors selected;
 		struct border_colors selected_focused;
+		struct border_colors sticky;
+		struct border_colors sticky_focused;
 		struct border_colors placeholder;
 		float background[4];
 	} border_colors;

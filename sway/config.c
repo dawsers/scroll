@@ -468,6 +468,18 @@ static void config_defaults(struct sway_config *config) {
 	color_to_rgba(config->border_colors.selected_focused.indicator, 0x00B000FF);
 	color_to_rgba(config->border_colors.selected_focused.child_border, 0x009090FF);
 
+	color_to_rgba(config->border_colors.sticky.border, 0xBEEEEFFF);
+	color_to_rgba(config->border_colors.sticky.background, 0x000000FF);
+	color_to_rgba(config->border_colors.sticky.text, 0xFFFFFFFF);
+	color_to_rgba(config->border_colors.sticky.indicator, 0xEFEEBEFF);
+	color_to_rgba(config->border_colors.sticky.child_border, 0xBEEEEFFF);
+
+	color_to_rgba(config->border_colors.sticky_focused.border, 0x6E8EEFFF);
+	color_to_rgba(config->border_colors.sticky_focused.background, 0x000000FF);
+	color_to_rgba(config->border_colors.sticky_focused.text, 0xFFFFFFFF);
+	color_to_rgba(config->border_colors.sticky_focused.indicator, 0xEFEEBEFF);
+	color_to_rgba(config->border_colors.sticky_focused.child_border, 0x6E8EEFFF);
+
 	color_to_rgba(config->border_colors.placeholder.border, 0x000000FF);
 	color_to_rgba(config->border_colors.placeholder.background, 0x0C0C0CFF);
 	color_to_rgba(config->border_colors.placeholder.text, 0xFFFFFFFF);

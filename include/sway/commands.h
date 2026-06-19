@@ -119,6 +119,8 @@ sway_cmd cmd_client_pinned;
 sway_cmd cmd_client_pinned_focused;
 sway_cmd cmd_client_selected;
 sway_cmd cmd_client_selected_focused;
+sway_cmd cmd_client_sticky;
+sway_cmd cmd_client_sticky_focused;
 sway_cmd cmd_commands;
 sway_cmd cmd_create_output;
 sway_cmd cmd_cursor_shake_magnify;

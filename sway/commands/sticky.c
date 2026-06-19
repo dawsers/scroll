@@ -23,7 +23,11 @@ struct cmd_results *cmd_sticky(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "No current container");
 	};
 
+	bool is_sticky = container->is_sticky;
 	container->is_sticky = parse_boolean(argv[0], container->is_sticky);
+	if (is_sticky != container->is_sticky) {
+		node_set_dirty(&container->node);
+	}
 
 	if (container_is_sticky_or_child(container) &&
 			!container_is_scratchpad_hidden(container)) {

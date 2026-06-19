@@ -183,6 +183,12 @@ static struct border_colors *container_get_current_colors(
 		} else {
 			colors = &config->border_colors.pinned;
 		}
+	} else if (container_is_sticky_or_child(con)) {
+		if (con->current.focused || container_is_current_parent_focused(con)) {
+			colors = &config->border_colors.sticky_focused;
+		} else {
+			colors = &config->border_colors.sticky;
+		}
 	} else if (con->current.focused || container_is_current_parent_focused(con)) {
 		colors = &config->border_colors.focused;
 	} else if (config->has_focused_tab_title && container_has_focused_child(con)) {

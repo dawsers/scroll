@@ -96,6 +96,16 @@ struct cmd_results *cmd_client_selected_focused(int argc, char **argv) {
 			&config->border_colors.selected_focused, "#00b000ff");
 }
 
+struct cmd_results *cmd_client_sticky(int argc, char **argv) {
+	return handle_command(argc, argv, "client.sticky",
+			&config->border_colors.sticky, "#efeebeff");
+}
+
+struct cmd_results *cmd_client_sticky_focused(int argc, char **argv) {
+	return handle_command(argc, argv, "client.sticky_focused",
+			&config->border_colors.sticky_focused, "#efeebeff");
+}
+
 struct cmd_results *cmd_client_noop(int argc, char **argv) {
 	sway_log(SWAY_INFO, "Warning: %s is ignored by scroll", argv[-1]);
 	return cmd_results_new(CMD_SUCCESS, NULL);

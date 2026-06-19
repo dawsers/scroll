@@ -1279,6 +1279,13 @@ runtime.
 		A selected view/container that is currently focused. See the command
 		*selection*.
 
+	*client.sticky*
+		A sticky view/container. See the command *sticky*.
+
+	*client.sticky_focused*
+		A sticky view/container that is currently focused. See the command
+		*sticky*.
+
 	*client.placeholder*
 		Ignored (present for i3 compatibility).
 
@@ -1379,6 +1386,18 @@ The default colors are:
 :  #ffffff
 :  #00b000
 :  #009090
+|  *sticky*
+:  #beeeef
+:  #000000
+:  #ffffff
+:  #efeebe
+:  #beeeef
+|  *sticky_focused*
+:  #6e8eef
+:  #000000
+:  #ffffff
+:  #efeebe
+:  #6e8eef
 |  *placeholder*
 :  #000000
 :  #0c0c0c

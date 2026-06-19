@@ -58,6 +58,8 @@ static const struct cmd_handler handlers[] = {
 	{ "client.placeholder", cmd_client_noop },
 	{ "client.selected", cmd_client_selected },
 	{ "client.selected_focused", cmd_client_selected_focused },
+	{ "client.sticky", cmd_client_sticky },
+	{ "client.sticky_focused", cmd_client_sticky_focused },
 	{ "client.unfocused", cmd_client_unfocused },
 	{ "client.urgent", cmd_client_urgent },
 	{ "default_border", cmd_default_border },
