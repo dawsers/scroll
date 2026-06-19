@@ -18,6 +18,7 @@
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
+#include "sway/tree/node.h"
 #include "sway/tree/workspace.h"
 #include "sway/desktop/animation.h"
 
@@ -259,6 +260,7 @@ static void handle_node_destroy(struct wl_listener *listener, void *data) {
 	layer->layer_surface->data = NULL;
 
 	wl_list_remove(&layer->link);
+	node_map_remove(&layer->node);
 	free(layer);
 }
 
@@ -339,6 +341,7 @@ static void popup_handle_destroy(struct wl_listener *listener, void *data) {
 	wl_list_remove(&popup->new_popup.link);
 	wl_list_remove(&popup->commit.link);
 	wl_list_remove(&popup->reposition.link);
+	node_map_remove(&popup->node);
 	free(popup);
 }
 

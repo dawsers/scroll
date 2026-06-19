@@ -106,4 +106,9 @@ void node_set_focus_warp(struct sway_node *node, enum sway_node_focus_warp warp)
 
 enum sway_node_focus_warp node_get_focus_warp(struct sway_node *node);
 
+void node_map_remove(struct sway_node *node);
+struct sway_node *node_by_id(size_t id);
+void node_map_init(void);
+void node_map_fini(void);
 #endif
+
