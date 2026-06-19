@@ -156,6 +156,7 @@ struct sway_server {
 	bool delay_transaction;
 
 	struct wl_event_source *delayed_modeset;
+	bool exiting;
 };
 
 extern struct sway_server server;

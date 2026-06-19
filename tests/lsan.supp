@@ -1,2 +1,8 @@
-# Leaks in EGL/DRM initialization due to missing eglTerminate in wlroots (or system libraries)
+# Leaks in EGL/DRM initialization due to missing eglTerminate in wlroots
 leak:egl_init_display
+
+# Suppress tray-related DBus leaks in swaybar
+leak:create_watcher
+leak:init_host
+leak:sni_match_signal_async
+leak:sni_get_property_async

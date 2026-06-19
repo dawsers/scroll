@@ -3,6 +3,12 @@
 #include <string.h>
 #include <stdbool.h>
 #include <getopt.h>
+#ifdef __SANITIZE_ADDRESS__
+#include <sanitizer/lsan_interface.h>
+#endif
+#include <fontconfig/fontconfig.h>
+#include <cairo.h>
+#include <pango/pangocairo.h>
 #include "swaybar/bar.h"
 #include "ipc-client.h"
 #include "log.h"
@@ -94,5 +100,11 @@ int main(int argc, char **argv) {
 	swaybar.running = true;
 	bar_run(&swaybar);
 	bar_teardown(&swaybar);
+#ifdef __SANITIZE_ADDRESS__
+	pango_cairo_font_map_set_default(NULL);
+	cairo_debug_reset_static_data();
+	FcFini();
+	__lsan_do_leak_check();
+#endif
 	return 0;
 }

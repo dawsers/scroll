@@ -65,50 +65,52 @@ bool status_handle_readable(struct status_line *status) {
 
 		// the header must be sent completely the first time round
 		char *newline = strchr(status->buffer, '\n');
-		json_object *header, *version;
-		if (newline != NULL
-				&& (header = json_tokener_parse(status->buffer))
-				&& json_object_object_get_ex(header, "version", &version)
-				&& json_object_get_int(version) == 1) {
-			sway_log(SWAY_DEBUG, "Using i3bar protocol.");
-			status->protocol = PROTOCOL_I3BAR;
+		json_object *header = NULL, *version;
+		if (newline != NULL && (header = json_tokener_parse(status->buffer))) {
+			if (json_object_object_get_ex(header, "version", &version) &&
+					json_object_get_int(version) == 1) {
+				sway_log(SWAY_DEBUG, "Using i3bar protocol.");
+				status->protocol = PROTOCOL_I3BAR;
 
-			json_object *click_events;
-			if (json_object_object_get_ex(header, "click_events", &click_events)
-					&& json_object_get_boolean(click_events)) {
-				sway_log(SWAY_DEBUG, "Enabling click events.");
-				status->click_events = true;
-				if (write(status->write_fd, "[\n", 2) != 2) {
-					status_error(status, "[failed to write to status command]");
-					json_object_put(header);
-					return true;
+				json_object *click_events;
+				if (json_object_object_get_ex(header, "click_events", &click_events) &&
+						json_object_get_boolean(click_events)) {
+					sway_log(SWAY_DEBUG, "Enabling click events.");
+					status->click_events = true;
+					if (write(status->write_fd, "[\n", 2) != 2) {
+						status_error(status, "[failed to write to status command]");
+						json_object_put(header);
+						return true;
+					}
 				}
-			}
 
-			json_object *float_event_coords;
-			if (json_object_object_get_ex(header, "float_event_coords", &float_event_coords)
-					&& json_object_get_boolean(float_event_coords)) {
-				sway_log(SWAY_DEBUG, "Enabling floating-point coordinates.");
-				status->float_event_coords = true;
-			}
+				json_object *float_event_coords;
+				if (json_object_object_get_ex(header, "float_event_coords", &float_event_coords) &&
+						json_object_get_boolean(float_event_coords)) {
+					sway_log(SWAY_DEBUG, "Enabling floating-point coordinates.");
+					status->float_event_coords = true;
+				}
 
-			json_object *signal;
-			if (json_object_object_get_ex(header, "stop_signal", &signal)) {
-				status->stop_signal = json_object_get_int(signal);
-				sway_log(SWAY_DEBUG, "Setting stop signal to %d", status->stop_signal);
-			}
-			if (json_object_object_get_ex(header, "cont_signal", &signal)) {
-				status->cont_signal = json_object_get_int(signal);
-				sway_log(SWAY_DEBUG, "Setting cont signal to %d", status->cont_signal);
-			}
+				json_object *signal;
+				if (json_object_object_get_ex(header, "stop_signal", &signal)) {
+					status->stop_signal = json_object_get_int(signal);
+					sway_log(SWAY_DEBUG, "Setting stop signal to %d", status->stop_signal);
+				}
+				if (json_object_object_get_ex(header, "cont_signal", &signal)) {
+					status->cont_signal = json_object_get_int(signal);
+					sway_log(SWAY_DEBUG, "Setting cont signal to %d", status->cont_signal);
+				}
 
-			json_object_put(header);
+				json_object_put(header);
 
-			wl_list_init(&status->blocks);
-			status->tokener = json_tokener_new();
-			status->buffer_index = strlen(newline + 1);
-			memmove(status->buffer, newline + 1, status->buffer_index + 1);
-			return i3bar_handle_readable(status);
+				wl_list_init(&status->blocks);
+				status->tokener = json_tokener_new();
+				status->buffer_index = strlen(newline + 1);
+				memmove(status->buffer, newline + 1, status->buffer_index + 1);
+				return i3bar_handle_readable(status);
+			} else {
+				json_object_put(header);
+			}
 		}
 
 		sway_log(SWAY_DEBUG, "Using text protocol.");

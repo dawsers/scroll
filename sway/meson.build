@@ -250,6 +250,7 @@ sway_sources = files(
 sway_deps = [
 	cairo,
 	drm,
+	fontconfig,
 	jsonc,
 	libevdev,
 	libinput,

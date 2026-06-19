@@ -6,6 +6,7 @@
 #include <pango/pangocairo.h>
 #include <pthread.h>
 #include <signal.h>
+#include <fontconfig/fontconfig.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,9 @@
 #include <sys/wait.h>
 #include <sys/un.h>
 #include <unistd.h>
+#ifdef __SANITIZE_ADDRESS__
+#include <sanitizer/lsan_interface.h>
+#endif
 #include <wlr/util/log.h>
 #include <wlr/version.h>
 #include "sway/config.h"
@@ -34,6 +38,8 @@
 static bool terminate_request = false;
 static int exit_value = 0;
 static struct rlimit original_nofile_rlimit = {0};
+static struct wl_event_source *sigterm_source = NULL;
+static struct wl_event_source *sigint_source = NULL;
 struct sway_server server = {0};
 struct sway_debug debug = {0};
 
@@ -181,8 +187,8 @@ void handler(int sig) {
 #endif
 
 static void init_signals(void) {
-	wl_event_loop_add_signal(server.wl_event_loop, SIGTERM, term_signal, NULL);
-	wl_event_loop_add_signal(server.wl_event_loop, SIGINT, term_signal, NULL);
+	sigterm_source = wl_event_loop_add_signal(server.wl_event_loop, SIGTERM, term_signal, NULL);
+	sigint_source = wl_event_loop_add_signal(server.wl_event_loop, SIGINT, term_signal, NULL);
 
 	struct sigaction sa_ign = { .sa_handler = SIG_IGN };
 	// avoid need to reap children
@@ -429,7 +435,22 @@ int main(int argc, char **argv) {
 shutdown:
 	sway_log(SWAY_INFO, "Shutting down scroll");
 
+	if (sigterm_source) {
+		wl_event_source_remove(sigterm_source);
+	}
+	if (sigint_source) {
+		wl_event_source_remove(sigint_source);
+	}
+
 	server_fini(&server);
+
+#ifdef __SANITIZE_ADDRESS__
+	pango_cairo_font_map_set_default(NULL);
+	cairo_debug_reset_static_data();
+	FcFini();
+	__lsan_do_leak_check();
+#endif
+
 	root_destroy(root);
 	root = NULL;
 	animation_destroy();
@@ -441,8 +462,6 @@ shutdown:
 	if (nag_gpu.client != NULL) {
 		wl_client_destroy(nag_gpu.client);
 	}
-
-	pango_cairo_font_map_set_default(NULL);
 
 	return exit_value;
 }
