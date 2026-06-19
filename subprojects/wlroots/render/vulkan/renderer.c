@@ -179,6 +179,7 @@ static void destroy_render_format_setup(struct wlr_vk_renderer *renderer,
 
 	VkDevice dev = renderer->dev->dev;
 	vkDestroyRenderPass(dev, setup->render_pass, NULL);
+	vkDestroyRenderPass(dev, setup->render_pass_clear, NULL);
 	vkDestroyPipeline(dev, setup->output_pipe_identity, NULL);
 	vkDestroyPipeline(dev, setup->output_pipe_srgb, NULL);
 	vkDestroyPipeline(dev, setup->output_pipe_pq, NULL);
@@ -2837,6 +2838,14 @@ static struct wlr_vk_render_format_setup *find_or_create_render_setup(
 		res = vkCreateRenderPass(dev, &rp_info, NULL, &setup->render_pass);
 		if (res != VK_SUCCESS) {
 			wlr_vk_error("Failed to create 2-step render pass", res);
+			goto error;
+		}
+
+		attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		res = vkCreateRenderPass(dev, &rp_info, NULL, &setup->render_pass_clear);
+		if (res != VK_SUCCESS) {
+			wlr_vk_error("Failed to create 2-step clear render pass", res);
 			goto error;
 		}
 

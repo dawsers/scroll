@@ -222,6 +222,7 @@ struct wlr_vk_render_format_setup {
 	bool use_blending_buffer;
 	bool use_srgb;
 	VkRenderPass render_pass;
+	VkRenderPass render_pass_clear;
 
 	VkPipeline output_pipe_identity;
 	VkPipeline output_pipe_srgb;
