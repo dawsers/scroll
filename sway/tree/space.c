@@ -406,3 +406,10 @@ void space_delete(const char *name) {
 		space_destroy(space);
 	}
 }
+
+void space_destroy_all(void) {
+	while (root->spaces->length > 0) {
+		struct sway_space *space = root->spaces->items[root->spaces->length - 1];
+		space_destroy(space);
+	}
+}

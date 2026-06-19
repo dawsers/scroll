@@ -14,6 +14,7 @@
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/space.h"
 #include "list.h"
 #include "log.h"
 #include "util.h"
@@ -90,6 +91,7 @@ struct sway_root *root_create(struct wl_display *wl_display) {
 }
 
 void root_destroy(struct sway_root *root) {
+	space_destroy_all();
 	list_free(root->spaces);
 	list_free(root->scratchpad);
 	list_free(root->non_desktop_outputs);

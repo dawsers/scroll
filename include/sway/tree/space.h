@@ -48,4 +48,7 @@ void space_load(struct sway_workspace *workspace, const char *name, enum sway_sp
 // Delete a space if it exists
 void space_delete(const char *name);
 
+// Delete all spaces
+void space_destroy_all(void);
+
 #endif // _SWAY_SPACE_H
