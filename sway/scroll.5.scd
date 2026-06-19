@@ -2027,14 +2027,17 @@ print(val)
 
 Each time you run the script, it will increment and print the value for "test".
 
-When writing Lua scripts, you can access pointers to scroll's workspaces,
-containers or views. A view (window) has an immutable pointer throughout its
+When writing Lua scripts, you can access IDs of scroll's workspaces,
+containers or views. A view (window) has an immutable ID throughout its
 lifetime, from creation (mapping) to destruction (unmapping). A container,
 instead, can be destroyed or transformed when moving, changing workspace or in
-several other ciscumstances. So if you want to store some references in the
-state from one run of your script to another, store view pointers, never
+several other circumstances. So if you want to store some references in the
+state from one run of your script to another, store view IDs, never
 containers. You can always get the valid enclosing container for a view using
 the API when you need it.
+
+Using an ID of a destroyed workspace or container will not crash the compositor;
+the API functions will safely return nil or default values.
 
 This is the current supported API:
 
@@ -2062,22 +2065,22 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 ```
 
 *focused_view()*
-	Returns the focused view pointer or nil if none
+	Returns the focused view ID or nil if none
 
 *focused_container()*
-	Returns the focused container pointer or nil if none
+	Returns the focused container ID or nil if none
 
 *focused_workspace()*
-	Returns the focused workspace pointer or nil if none
+	Returns the focused workspace ID or nil if none
 
 *urgent_view()*
-	Returns the current urgent view pointer or nil if none.
+	Returns the current urgent view ID or nil if none.
 
 *view_mapped(view)*
 	Returns _true_ if the _view_ is mapped (exists), otherwise returns _false_.
 
 *view_get_container(view)*
-	Returns the container pointer associated to _view_.
+	Returns the container ID associated to _view_.
 
 *view_get_app_id(view)*
 	Returns the _app_id_ string for _view_, or nil if any error happens.
@@ -2118,7 +2121,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	Sets the focus on _container_.
 
 *container_get_workspace(container)*
-	Returns the _container's_ parent workspace pointer, or nil if none.
+	Returns the _container's_ parent workspace ID, or nil if none.
 
 *container_get_marks(container)*
 	Returns an array with all the marks associated to _container_.
@@ -2251,7 +2254,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	Returns an integer number with the _workspace_'s height in pixels.
 
 *workspace_get_pin(workspace)*
-	Returns the _workspace's_ pinned container pointer, or nil if none.
+	Returns the _workspace's_ pinned container ID, or nil if none.
 
 *workspace_get_split(workspace)*
 	Returns a table with the split state for _workspace_. The
@@ -2263,10 +2266,10 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 	_gap_: integer number
 
-	_sibling_: the sibling workspace's pointer
+	_sibling_: the sibling workspace's ID
 
 *workspace_get_output(workspace)*
-	Returns the _workspace's_ output pointer, or nil if none.
+	Returns the _workspace's_ output ID, or nil if none.
 
 *output_get_enabled(output)*
 	Returns _true_ if the output (display) is enabled, or _false_ otherwise.

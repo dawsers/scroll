@@ -49,56 +49,56 @@ function scroll.ipc_send(id, data) end
 ---
 --- Returns all the results/errors in an array.
 ---
---- @param context userdata|nil
+--- @param context integer|nil
 --- @param command string
 ---
 --- @return string[]
 function scroll.command(context, command) end
 
 ---
---- Returns the focused view pointer or nil if none.
+--- Returns the focused view ID or nil if none.
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.focused_view() end
 
 ---
---- Returns the focused container pointer or nil if none.
+--- Returns the focused container ID or nil if none.
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.focused_container() end
 
 ---
---- Returns the focused workspace pointer or nil if none.
+--- Returns the focused workspace ID or nil if none.
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.focused_workspace() end
 
 ---
---- Returns the current urgent view pointer or nil if none.
+--- Returns the current urgent view ID or nil if none.
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.urgent_view() end
 
 ---
 --- Returns true if view is mapped (exists), otherwise returns false
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return boolean
 function scroll.view_mapped(view) end
 
 ---
---- Returns a pointer to the container associated to view, or nil if none.
+--- Returns the container ID associated to view, or nil if none.
 ---
---- @param view userdata
+--- @param view integer
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.view_get_container(view) end
 
 ---
 --- Returns the app_id string for view, or nil if any error happens
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return string|nil
 function scroll.view_get_app_id(view) end
@@ -114,7 +114,7 @@ function scroll.view_get_class(view) end
 ---
 --- Returns the title string for view, or nil if any error happens
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return string|nil
 function scroll.view_get_title(view) end
@@ -122,7 +122,7 @@ function scroll.view_get_title(view) end
 ---
 --- Returns the pid number for view, or nil if any error happens
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return integer|nil
 function scroll.view_get_pid(view) end
@@ -131,15 +131,15 @@ function scroll.view_get_pid(view) end
 --- Returns the view whose pid is the parent of the application running
 --- in view, or nil if it has no parent view.
 ---
---- @param view userdata
+--- @param view integer
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.view_get_parent_view(view) end
 
 ---
 --- If the view has the urgent attribute set, return true, otherwise false.
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return boolean
 function scroll.view_get_urgent(view) end
@@ -147,7 +147,7 @@ function scroll.view_get_urgent(view) end
 ---
 --- Sets the view urgent attribute
 ---
---- @param view userdata
+--- @param view integer
 --- @param urgent boolean
 ---
 --- @return integer
@@ -157,7 +157,7 @@ function scroll.view_set_urgent(view, urgent) end
 --- Returns `xdg_shell` if the application running in view is a Wayland
 --- application. If it is an X windows application, returns `xwayland`.
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return string|nil
 function scroll.view_get_shell(view) end
@@ -165,7 +165,7 @@ function scroll.view_get_shell(view) end
 ---
 --- Returns the tag string property for view, or nil if any error happens.
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return string|nil
 function scroll.view_get_tag(view) end
@@ -173,7 +173,7 @@ function scroll.view_get_tag(view) end
 ---
 --- Close/kill view
 ---
---- @param view userdata
+--- @param view integer
 ---
 --- @return number
 function scroll.view_close(view) end
@@ -181,23 +181,23 @@ function scroll.view_close(view) end
 ---
 --- Sets the focus on container.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return integer
 function scroll.container_set_focus(container) end
 
 ---
---- Returns the container's parent workspace pointer, or nil if none.
+--- Returns the container's parent workspace ID, or nil if none.
 ---
---- @param container userdata
+--- @param container integer
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.container_get_workspace(container) end
 
 ---
 --- Returns an array with all the marks associated to container.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return string[]
 function scroll.container_get_marks(container) end
@@ -205,7 +205,7 @@ function scroll.container_get_marks(container) end
 ---
 --- Returns true if the container is floating, false if it is tiled.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return boolean
 function scroll.container_get_floating(container) end
@@ -213,7 +213,7 @@ function scroll.container_get_floating(container) end
 ---
 --- Returns the numerical value for the container's opacity.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return number
 function scroll.container_get_opacity(container) end
@@ -221,7 +221,7 @@ function scroll.container_get_opacity(container) end
 ---
 --- Returns true if the container is sticky, otherwise false.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return boolean
 function scroll.container_get_sticky(container) end
@@ -229,7 +229,7 @@ function scroll.container_get_sticky(container) end
 ---
 --- Returns true if the container is in the scratchpad, otherwise false.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return boolean
 function scroll.container_get_scratchpad(container) end
@@ -238,7 +238,7 @@ function scroll.container_get_scratchpad(container) end
 --- Returns the value for the container's width fraction.
 --- This value is used to compute the width of the container.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return number
 function scroll.container_get_width_fraction(container) end
@@ -247,7 +247,7 @@ function scroll.container_get_width_fraction(container) end
 --- Returns the value for the container's height fraction.
 --- This value is used to compute the height of the container.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return number
 function scroll.container_get_height_fraction(container) end
@@ -255,7 +255,7 @@ function scroll.container_get_height_fraction(container) end
 ---
 --- Returns a floating point value with the container's width in pixels.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return number
 function scroll.container_get_width(container) end
@@ -263,7 +263,7 @@ function scroll.container_get_width(container) end
 ---
 --- Returns a floating point value with the container's height in pixels.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return number
 function scroll.container_get_height(container) end
@@ -273,7 +273,7 @@ function scroll.container_get_height(container) end
 --- Values can be `none`, `workspace` (covers only its workspace extents)
 --- or `global` (covers all outputs).
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return string
 function scroll.container_get_fullscreen_mode(container) end
@@ -283,7 +283,7 @@ function scroll.container_get_fullscreen_mode(container) end
 --- Values can be `disabled` or `enabled`.
 --- See the `fullscreen application` command for details.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return string
 function scroll.container_get_fullscreen_app_mode(container) end
@@ -296,7 +296,7 @@ function scroll.container_get_fullscreen_app_mode(container) end
 --- but this state can still be "disabled", so the compositor knows the
 --- container should become non-full screen when the request ends.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return string
 function scroll.container_get_fullscreen_view_mode(container) end
@@ -306,7 +306,7 @@ function scroll.container_get_fullscreen_view_mode(container) end
 --- Values can be `disabled` or `enabled`.
 --- See the `fullscreen layout` command for details.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return string
 function scroll.container_get_fullscreen_layout_mode(container) end
@@ -316,7 +316,7 @@ function scroll.container_get_fullscreen_layout_mode(container) end
 --- Values can be `none`, `beginning` or `end`.
 --- See the pin command for details.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return string
 function scroll.container_get_pin_mode(container) end
@@ -325,9 +325,9 @@ function scroll.container_get_pin_mode(container) end
 --- Returns the container parent of container or nil if it is a top
 --- level container.
 ---
---- @param container userdata
+--- @param container integer
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.container_get_parent(container) end
 
 ---
@@ -335,9 +335,9 @@ function scroll.container_get_parent(container) end
 --- Only top level containers have children. Only bottom level containers
 --- have views.
 ---
---- @params container userdata
+--- @params container integer
 ---
---- @return userdata[]
+--- @return integer[]
 function scroll.container_get_children(container) end
 
 ---
@@ -345,15 +345,15 @@ function scroll.container_get_children(container) end
 --- If a top level container, it will return the views of all its children,
 --- if a bottom level container, its only view.
 ---
---- @param container userdata
+--- @param container integer
 ---
---- @return userdata[]
+--- @return integer[]
 function scroll.container_get_views(container) end
 
 ---
 --- Returns an integer value with the unique container id, or nil if error.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return integer|nil
 function scroll.container_get_id(container) end
@@ -361,7 +361,7 @@ function scroll.container_get_id(container) end
 ---
 --- Sets the focus on the last active container of workspace.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
 --- @return integer
 function scroll.workspace_set_focus(workspace) end
@@ -369,7 +369,7 @@ function scroll.workspace_set_focus(workspace) end
 ---
 --- Returns a string with the name of the workspace, or nil if error.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
 --- @return string|nil
 function scroll.workspace_get_name(workspace) end
@@ -377,17 +377,17 @@ function scroll.workspace_get_name(workspace) end
 ---
 --- Returns an array with all the tiling containers inside the workspace.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
---- @return userdata[]
+--- @return integer[]
 function scroll.workspace_get_tiling(workspace) end
 
 ---
 --- Returns an array with all the floating containers inside the workspace.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
---- @return userdata[]
+--- @return integer[]
 function scroll.workspace_get_floating(workspace) end
 
 ---
@@ -401,7 +401,7 @@ function scroll.workspace_get_floating(workspace) end
 ---   center_horizontal: true|false
 ---   center_vertical: true|false
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
 --- @return table
 function scroll.workspace_get_mode(workspace) end
@@ -418,7 +418,7 @@ function scroll.workspace_get_mode(workspace) end
 ---   center_horizontal: true|false
 ---   center_vertical: true|false
 ---
---- @param workspace userdata
+--- @param workspace integer
 --- @param modifiers table
 ---
 --- @return integer
@@ -427,7 +427,7 @@ function scroll.workspace_set_mode(workspace, modifiers) end
 ---
 --- Returns the layout type, `horizontal` or `vertical`.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
 --- @return string|nil
 function scroll.workspace_get_layout_type(workspace) end
@@ -436,7 +436,7 @@ function scroll.workspace_get_layout_type(workspace) end
 --- Sets the workspace's layout type to layout_type,
 --- which can be `horizontal` or `vertical`.
 ---
---- @param workspace userdata
+--- @param workspace integer
 --- @param layout_type string
 ---
 --- @return integer
@@ -445,7 +445,7 @@ function scroll.workspace_set_layout_type(workspace, layout_type) end
 ---
 --- Returns an integer number with the workspace's width in pixels.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
 --- @return integer|nil
 function scroll.workspace_get_width(workspace) end
@@ -453,17 +453,17 @@ function scroll.workspace_get_width(workspace) end
 ---
 --- Returns an integer number with the workspace's height in pixels.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
 --- @return integer|nil
 function scroll.workspace_get_height(workspace) end
 
 ---
---- Returns the workspace's pinned container pointer, or nil if none.
+--- Returns the workspace's pinned container ID, or nil if none.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.workspace_get_pin(workspace) end
 
 ---
@@ -473,25 +473,25 @@ function scroll.workspace_get_pin(workspace) end
 ---   split: "none"|"top"|"bottom"|"left"|"right"
 ---   fraction: number
 ---   gap: integer
----   sibling: the sibling workspace's pointer
+---   sibling: the sibling workspace's ID
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
 --- @return table
 function scroll.workspace_get_split(workspace) end
 
 ---
---- Returns the workspace's output pointer, or nil if none.
+--- Returns the workspace's output ID, or nil if none.
 ---
---- @param workspace userdata
+--- @param workspace integer
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.workspace_get_output(workspace) end
 
 ---
 --- Returns true if the output (display) is enabled, or false otherwise.
 ---
---- @param output userdata
+--- @param output integer
 ---
 --- @return boolean
 function scroll.output_get_enabled(output) end
@@ -499,7 +499,7 @@ function scroll.output_get_enabled(output) end
 ---
 --- Returns the name of the output's interface. For example 'DP-3'.
 ---
---- @param output userdata
+--- @param output integer
 ---
 --- @return string|nil
 function scroll.output_get_name(output) end
@@ -507,35 +507,35 @@ function scroll.output_get_name(output) end
 ---
 --- Returns the workspace currently active on output.
 ---
---- @param output userdata
+--- @param output integer
 ---
---- @return userdata|nil
+--- @return integer|nil
 function scroll.output_get_active_workspace(output) end
 
 ---
 --- Returns an array with all the existing workspaces assigned to output.
 ---
---- @praam output userdata
+--- @praam output integer
 ---
---- @return userdata[]
+--- @return integer[]
 function scroll.output_get_workspaces(output) end
 
 ---
 --- Returns an array with all the outputs (displays).
 ---
---- @return userdata[]
+--- @return integer[]
 function scroll.root_get_outputs() end
 
 ---
 --- Returns an array with all the containers in the scratchpad.
 ---
---- @return userdata[]
+--- @return integer[]
 function scroll.scratchpad_get_containers() end
 
 ---
 --- Shows container if it is in the scratchpad.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return integer
 function scroll.scratchpad_show(container) end
@@ -543,7 +543,7 @@ function scroll.scratchpad_show(container) end
 ---
 --- Hide container if it is in the scratchpad.
 ---
---- @param container userdata
+--- @param container integer
 ---
 --- @return integer
 function scroll.scratchpad_hide(container) end
