@@ -21,7 +21,7 @@
 // total gap by the number of containers, so each has the same gap, but we
 // cannot do this with scroll, or the content would be resized if we add or
 // remove containers.
-static void apply_horiz_layout(list_t *children, struct sway_container *active, struct wlr_box *box) {
+static void apply_horiz_layout(list_t *children, struct wlr_box *box) {
 	if (!children->length) {
 		return;
 	}
@@ -60,7 +60,7 @@ static void apply_horiz_layout(list_t *children, struct sway_container *active, 
 	}
 }
 
-static void apply_vert_layout(list_t *children, struct sway_container *active, struct wlr_box *box) {
+static void apply_vert_layout(list_t *children, struct wlr_box *box) {
 	if (!children->length) {
 		return;
 	}
@@ -106,18 +106,18 @@ static void arrange_floating(list_t *floating) {
 	}
 }
 
-static void arrange_children(list_t *children, struct sway_container *active,
+static void arrange_children(list_t *children,
 		enum sway_container_layout layout, struct wlr_box *parent) {
 	// Calculate x, y, width and height of children
 	switch (layout) {
 	case L_HORIZ:
-		apply_horiz_layout(children, active, parent);
+		apply_horiz_layout(children, parent);
 		break;
 	case L_VERT:
-		apply_vert_layout(children, active, parent);
+		apply_vert_layout(children, parent);
 		break;
 	case L_NONE:
-		apply_horiz_layout(children, active, parent);
+		apply_horiz_layout(children, parent);
 		break;
 	}
 
@@ -146,9 +146,7 @@ void arrange_container(struct sway_container *container) {
 	// but we need the correct coordinates of the parent
 	box.x = container->pending.x;
 	box.y = container->pending.y;
-	struct sway_container *active = container->pending.focused_inactive_child ?
-		container->pending.focused_inactive_child : container->current.focused_inactive_child;
-	arrange_children(container->pending.children, active, container->pending.layout, &box);
+	arrange_children(container->pending.children, container->pending.layout, &box);
 	node_set_dirty(&container->node);
 }
 
@@ -282,7 +280,7 @@ void arrange_workspace(struct sway_workspace *workspace) {
 	} else {
 		struct wlr_box box;
 		workspace_get_box(workspace, &box);
-		arrange_children(workspace->tiling, workspace->current.focused_inactive_child, layout_get_type(workspace), &box);
+		arrange_children(workspace->tiling, layout_get_type(workspace), &box);
 		arrange_floating(workspace->floating);
 	}
 }
