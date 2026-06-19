@@ -36,6 +36,12 @@ void transaction_commit_dirty(void);
  */
 void transaction_commit_dirty_client(void);
 
+/*
+ * Same as transaction_commit_dirty, but signalling this transaction can be
+ * delayed until the current animation finishes.
+ */
+void transaction_commit_dirty_delayed(void);
+
 /**
  * Notify the transaction system a delayed transaction may be processed.
  */

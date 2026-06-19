@@ -2182,6 +2182,10 @@ void transaction_commit_dirty_client(void) {
 	_transaction_commit_dirty(false, true);
 }
 
+void transaction_commit_dirty_delayed(void) {
+	_transaction_commit_dirty(true, true);
+}
+
 void transaction_commit_delayed(void) {
 	if (!server.pending_transaction) {
 		return;

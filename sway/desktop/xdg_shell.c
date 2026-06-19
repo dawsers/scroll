@@ -380,7 +380,7 @@ static void handle_set_title(struct wl_listener *listener, void *data) {
 	struct sway_view *view = &xdg_shell_view->view;
 	view_update_title(view, false);
 	view_execute_criteria(view);
-	transaction_commit_dirty();
+	transaction_commit_dirty_delayed();
 }
 
 static void handle_set_app_id(struct wl_listener *listener, void *data) {
@@ -389,7 +389,7 @@ static void handle_set_app_id(struct wl_listener *listener, void *data) {
 	struct sway_view *view = &xdg_shell_view->view;
 	view_update_app_id(view);
 	view_execute_criteria(view);
-	transaction_commit_dirty();
+	transaction_commit_dirty_delayed();
 }
 
 static void handle_new_popup(struct wl_listener *listener, void *data) {
@@ -662,5 +662,5 @@ void xdg_toplevel_tag_manager_v1_handle_set_tag(struct wl_listener *listener, vo
 	free(xdg_shell_view->tag);
 	xdg_shell_view->tag = strdup(event->tag);
 	view_execute_criteria(view);
-	transaction_commit_dirty();
+	transaction_commit_dirty_delayed();
 }
