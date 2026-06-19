@@ -164,6 +164,14 @@ static void handle_scene_buffer_output_sample(
 		wl_container_of(listener, surface, output_sample);
 	const struct wlr_scene_output_sample_event *event = data;
 	struct wlr_output *output = event->output->output;
+
+	struct wlr_linux_drm_syncobj_surface_v1_state *syncobj_surface_state =
+	wlr_linux_drm_syncobj_v1_get_surface_state(surface->surface);
+	if (syncobj_surface_state != NULL && event->release_timeline != NULL) {
+		wlr_linux_drm_syncobj_v1_state_add_release_point(syncobj_surface_state,
+			event->release_timeline, event->release_point, output->event_loop);
+	}
+
 	if (get_surface_frame_pacing_output(surface->surface) != output) {
 		return;
 	}
@@ -172,13 +180,6 @@ static void handle_scene_buffer_output_sample(
 		wlr_presentation_surface_scanned_out_on_output(surface->surface, output);
 	} else {
 		wlr_presentation_surface_textured_on_output(surface->surface, output);
-	}
-
-	struct wlr_linux_drm_syncobj_surface_v1_state *syncobj_surface_state =
-		wlr_linux_drm_syncobj_v1_get_surface_state(surface->surface);
-	if (syncobj_surface_state != NULL && event->release_timeline != NULL) {
-		wlr_linux_drm_syncobj_v1_state_add_release_point(syncobj_surface_state,
-			event->release_timeline, event->release_point, output->event_loop);
 	}
 }
 
