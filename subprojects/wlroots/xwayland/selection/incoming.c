@@ -344,7 +344,7 @@ static bool source_get_targets(struct wlr_xwm_selection *selection,
 	}
 
 	const xcb_atom_t *value = xcb_get_property_value(reply);
-	uint32_t value_len = xcb_get_property_value_length(reply) / sizeof(value);
+	uint32_t value_len = xcb_get_property_value_length(reply) / sizeof(value[0]);
 	for (uint32_t i = 0; i < value_len; i++) {
 		char *mime_type = NULL;
 
