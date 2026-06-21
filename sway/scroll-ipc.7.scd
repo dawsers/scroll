@@ -1576,16 +1576,104 @@ An object called "trails", containing the following properties:
 ## 122. GET_SPACES
 
 *MESSAGE*++
-Retrieve the names of the existing spaces
+Retrieve existing spaces information
 
 *REPLY*++
-An array with the names of the existing spaces.
+An array of space objects, each containing the following properties:
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- name
+:  string
+:  Name of the space
+|- tiling
+:  array
+:  Array of tiling space container objects
+|- floating
+:  array
+:  Array of floating space container objects
+
+Each space container object has the following properties:
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- children
+:  array
+:  If it has children, an array with its space containers
+|- view
+:  space view object
+:  If it has no children (leaf), the space view object
+
+A space view object has the following properties:
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- con_id
+:  integer
+:  Container id of the view
+|- app_id or class
+:  string
+:  If a Wayland app, its app_id, if XWayland, its class
+|- title
+:  string
+:  Title of the window
 
 *Example Reply:*
 ```
 [
-	"1",
-	"2"
+  {
+    "name": "1",
+    "tiling": [
+      {
+        "children": [
+          {
+            "view": {
+              "con_id": 6,
+              "app_id": "kitty",
+              "title": "~\/work"
+            }
+          }
+        ]
+      },
+      {
+        "children": [
+          {
+            "view": {
+              "con_id": 8,
+              "app_id": "kitty",
+              "title": "top"
+            }
+          },
+          {
+            "view": {
+              "con_id": 10,
+              "app_id": "kitty",
+              "title": "\/"
+            }
+          }
+        ]
+      }
+    ],
+    "floating": [
+      {
+        "view": {
+          "con_id": 11,
+          "app_id": "kitty",
+          "title": "nvim"
+        }
+      },
+      {
+        "view": {
+          "con_id": 13,
+          "app_id": "firefox",
+          "title": ""
+        }
+      }
+    ]
+  }
 ]
 ```
 

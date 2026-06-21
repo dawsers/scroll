@@ -16,6 +16,7 @@
 #include "sway/tree/container.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/space.h"
 #include "sway/output.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/cursor.h"
@@ -1554,6 +1555,68 @@ json_object *ipc_json_describe_trails() {
 	json_object_object_add(object, "length", json_object_new_int(layout_trails_length()));
 	json_object_object_add(object, "active", json_object_new_int(layout_trails_active()));
 	json_object_object_add(object, "trail_length", json_object_new_int(layout_trails_active_length()));
+
+	return object;
+}
+
+static bool find_view(struct sway_container *container, void *data) {
+	struct sway_view *view = data;
+	return container->view == view;
+}
+
+static json_object *ipc_json_describe_space_container(struct sway_space_container *space_container) {
+	json_object *object = json_object_new_object();
+	if (space_container->children) {
+		json_object *json_containers = json_object_new_array();
+		for (int i = 0; i < space_container->children->length; ++i) {
+			struct sway_space_container *child = space_container->children->items[i];
+			json_object_array_add(json_containers, ipc_json_describe_space_container(child));
+		}
+		json_object_object_add(object, "children", json_containers);
+	}
+	if (space_container->view) {
+		struct sway_view *view = space_container->view->view;
+		struct sway_container *container = root_find_container(find_view, view);
+		if (container) {
+			json_object *json_view = json_object_new_object();
+			json_object_object_add(json_view, "con_id", json_object_new_int64(container->node.id));
+
+			const char *identifier = view_get_class(view);
+			if (!identifier) {
+				const char *app_id = view_get_app_id(view);
+				json_object_object_add(json_view, "app_id",	app_id ? json_object_new_string(app_id) : NULL);
+			} else {
+				json_object_object_add(json_view, "class", json_object_new_string(identifier));
+			}
+			const char *title = view_get_title(view);
+			if (title) {
+				json_object_object_add(json_view, "title", json_object_new_string(title));
+			}
+			json_object_object_add(object, "view", json_view);
+		}
+	}
+
+	return object;
+}
+
+json_object *ipc_json_describe_space(struct sway_space *space) {
+	json_object *object = json_object_new_object();
+
+	json_object_object_add(object, "name", json_object_new_string(space->name));
+
+	json_object *json_tiling_containers = json_object_new_array();
+	for (int i = 0; i < space->tiling->length; ++i) {
+		struct sway_space_container *container = space->tiling->items[i];
+		json_object_array_add(json_tiling_containers, ipc_json_describe_space_container(container));
+	}
+	json_object_object_add(object, "tiling", json_tiling_containers);
+
+	json_object *json_floating_containers = json_object_new_array();
+	for (int i = 0; i < space->floating->length; ++i) {
+		struct sway_space_container *container = space->floating->items[i];
+		json_object_array_add(json_floating_containers, ipc_json_describe_space_container(container));
+	}
+	json_object_object_add(object, "floating", json_floating_containers);
 
 	return object;
 }

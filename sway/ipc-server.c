@@ -944,7 +944,7 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 		json_object *spaces = json_object_new_array();
 		for (int i = 0; i < root->spaces->length; ++i) {
 			struct sway_space *space = root->spaces->items[i];
-			json_object_array_add(spaces, json_object_new_string(space->name));
+			json_object_array_add(spaces, ipc_json_describe_space(space));
 		}
 		const char *json_string = json_object_to_json_string(spaces);
 		ipc_send_reply(client, payload_type, json_string,
