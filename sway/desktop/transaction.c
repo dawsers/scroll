@@ -1066,7 +1066,7 @@ static void animate_view(struct sway_container *con,
 
 static void arrange_container(struct sway_container *con,
 		bool title_bar, int gaps, struct sway_workspace *workspace) {
-	if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
+	if (con->view && !root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
 		wlr_scene_node_set_enabled(&con->scene_tree->node, false);
 		return;
 	}

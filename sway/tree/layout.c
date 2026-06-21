@@ -1811,9 +1811,13 @@ static void filter_configure(struct sway_root_filters *filters,
 	node_set_dirty(&root->node);
 }
 
+static void set_dirty(struct sway_container *container, void *data) {
+	node_set_dirty(&container->node);
+}
+
 void layout_filter_reset() {
 	root_filters_reset(root);
-	node_set_dirty(&root->node);
+	root_for_each_container(set_dirty, NULL);
 }
 
 void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply apply) {
@@ -3675,7 +3679,6 @@ void layout_selection_to_trail() {
 				if (con->view && con->selected) {
 					con->selected = false;
 					layout_trailmark_toggle(con->view);
-					node_set_dirty(&con->node);
 				}
 				if (con->pending.children) {
 					for (int j = 0; j < con->pending.children->length; ++j) {
@@ -3683,7 +3686,6 @@ void layout_selection_to_trail() {
 						if (child->view && (child->selected || selected)) {
 							child->selected = false;
 							layout_trailmark_toggle(child->view);
-							node_set_dirty(&child->node);
 						}
 					}
 				}
@@ -3701,7 +3703,6 @@ void layout_selection_to_trail() {
 						if (child->view && (child->selected || selected)) {
 							child->selected = false;
 							layout_trailmark_toggle(child->view);
-							node_set_dirty(&child->node);
 						}
 					}
 				}
@@ -3819,6 +3820,7 @@ void layout_trailmark_toggle(struct sway_view *view) {
 			trail->active--;
 		}
 	}
+	node_set_dirty(&view->container->node);
 	ipc_event_trails();
 	ipc_event_window(view->container, "trailmark");
 }
