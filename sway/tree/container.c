@@ -2265,3 +2265,12 @@ struct sway_view *container_get_active_view(struct sway_container *container) {
 	}
 	return active ? active->view : NULL;
 }
+
+static bool test_id(struct sway_container *container, void *data) {
+	size_t *id = data;
+	return container->node.id == *id;
+}
+
+struct sway_container *container_get_by_id(size_t id) {
+	return root_find_container(test_id, &id);
+}

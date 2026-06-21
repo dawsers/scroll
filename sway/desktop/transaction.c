@@ -708,11 +708,29 @@ static void arrange_children(struct sway_workspace *workspace,
 		return;
 	}
 
-	int active_idx = list_find(children, active);
-	if (active_idx == -1) {
-		active_idx = 0;
-		active = children->items[active_idx];
+	int active_idx = -1;
+	bool jumping = layout_overview_mode(workspace) == OVERVIEW_JUMP;
+	if (jumping) {
+		for (int i = 0; i < children->length; ++i) {
+			struct sway_container *child = children->items[i];
+			if (!root->filters->container_filter(workspace, child, root->filters->container_filter_data)) {
+				continue;
+			}
+			active_idx = i;
+			active = children->items[active_idx];
+			break;
+		}
+	} else {
+		active_idx = list_find(children, active);
+		if (active_idx == -1) {
+			active_idx = 0;
+			active = children->items[active_idx];
+		}
 	}
+	if (active_idx < 0) {
+		return;
+	}
+
 	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
 
 	struct sway_container *pin = layout_pin_enabled(workspace) ?
@@ -723,7 +741,7 @@ static void arrange_children(struct sway_workspace *workspace,
 	}
 
 	double offset;
-	if (workspace->gesture.scrolling || layout_modifiers_get_reorder(workspace) == REORDER_LAZY) {
+	if (workspace->gesture.scrolling || layout_modifiers_get_reorder(workspace) == REORDER_LAZY || jumping) {
 		offset = layout == L_HORIZ ? active->pending.x : active->pending.y;
 	} else {
 		if (active->pending.fullscreen_layout == FULLSCREEN_ENABLED && !layout_scale_enabled(workspace)) {
@@ -750,10 +768,10 @@ static void arrange_children(struct sway_workspace *workspace,
 		double off = offset;
 		for (int i = active_idx; i < children->length; ++i) {
 			struct sway_container *child = children->items[i];
-			struct sway_container *parent = child->pending.parent;
-			if (parent && parent->jump.jumping) {
-				off = child->pending.y;
+			if (jumping && !root->filters->container_filter(workspace, child, root->filters->container_filter_data)) {
+				continue;
 			}
+			struct sway_container *parent = child->pending.parent;
 			child->current.y = child->pending.y = off;
 			if (parent) {
 				child->current.x = parent->current.x;
@@ -767,11 +785,11 @@ static void arrange_children(struct sway_workspace *workspace,
 		off = offset;
 		for (int i = active_idx - 1; i >= 0; i--) {
 			struct sway_container *child = children->items[i];
+			if (jumping && !root->filters->container_filter(workspace, child, root->filters->container_filter_data)) {
+				continue;
+			}
 			struct sway_container *parent = child->pending.parent;
 			off -= scale * (child->pending.height + 2 * gaps);
-			if (parent && parent->jump.jumping) {
-				off = child->pending.y;
-			}
 			child->current.y = child->pending.y = off;
 			if (parent) {
 				child->current.x = parent->current.x;
@@ -785,10 +803,10 @@ static void arrange_children(struct sway_workspace *workspace,
 		double off = offset;
 		for (int i = active_idx; i < children->length; ++i) {
 			struct sway_container *child = children->items[i];
-			struct sway_container *parent = child->pending.parent;
-			if (parent && parent->jump.jumping) {
-				off = child->pending.x;
+			if (jumping && !root->filters->container_filter(workspace, child, root->filters->container_filter_data)) {
+				continue;
 			}
+			struct sway_container *parent = child->pending.parent;
 			// Update child for next iteration. Transactions don't re-arrange
 			// the layout (arrange.c:apply_xxx()), so we need to set it here,
 			// otherwise the next call will have the positions wrong and the
@@ -806,11 +824,11 @@ static void arrange_children(struct sway_workspace *workspace,
 		off = offset;
 		for (int i = active_idx - 1; i >= 0; i--) {
 			struct sway_container *child = children->items[i];
+			if (jumping && !root->filters->container_filter(workspace, child, root->filters->container_filter_data)) {
+				continue;
+			}
 			struct sway_container *parent = child->pending.parent;
 			off -= scale * (child->pending.width + 2 * gaps);
-			if (parent && parent->jump.jumping) {
-				off = child->pending.x;
-			}
 			child->current.x = child->pending.x = off;
 			if (parent) {
 				child->current.y = parent->current.y;
@@ -1067,6 +1085,8 @@ static void arrange_container(struct sway_container *con,
 				con->current.children, con->current.focused_inactive_child,
 				con->content_tree, gaps);
 		}
+	} else if (layout_overview_mode(workspace) == OVERVIEW_JUMP) {
+		layout_container_jump_decoration_apply_scale(con);
 	}
 }
 
@@ -1154,12 +1174,36 @@ static void animate_fullscreen(struct wlr_scene_tree *tree,
 	view_resize(fs->view);
 }
 
+static void scaled_floating_position(struct sway_workspace *ws, double scale,
+		const double x_in, const double y_in, double *x_out, double *y_out) {
+	double wox, woy, wow, woh;
+	if (ws->split.split == WORKSPACE_SPLIT_NONE) {
+		wox = ws->output->lx;
+		woy = ws->output->ly;
+		wow = ws->output->width;
+		woh = ws->output->height;
+	} else {
+		wox = ws->split.output_area.x;
+		woy = ws->split.output_area.y;
+		wow = ws->split.output_area.width;
+		woh = ws->split.output_area.height;
+	}
+	const double minx = wox + 0.5 * (1.0 - scale) * wow;
+	const double miny = woy + 0.5 * (1.0 - scale) * woh;
+	*x_out = minx + scale * (x_in - wox);
+	*y_out = miny + scale * (y_in - woy);
+}
+
 static void arrange_workspace_floating(struct sway_workspace *ws) {
 	for (int i = 0; i < ws->current.floating->length; i++) {
 		struct sway_container *floater = ws->current.floating->items[i];
 		struct wlr_scene_tree *layer = root->layers.floating;
 
 		if (floater->current.fullscreen_mode != FULLSCREEN_NONE) {
+			continue;
+		}
+		if (!root->filters->container_filter(ws, floater, root->filters->container_filter_data)) {
+			wlr_scene_node_set_enabled(&floater->scene_tree->node, false);
 			continue;
 		}
 
@@ -1188,10 +1232,7 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 		if (layout_scale_enabled(ws)) {
 			double x, y;
 			const float scale = layout_scale_get(ws);
-			const double minx = ws->output->lx + 0.5 * (1.0 - scale) * ws->output->width;
-			x = minx + scale * (floater->animation.x0 - ws->output->lx);
-			const double miny = ws->output->ly + 0.5 * (1.0 - scale) * ws->output->height;
-			y = miny + scale * (floater->animation.y0 - ws->output->ly);
+			scaled_floating_position(ws, scale, floater->animation.x0, floater->animation.y0, &x, &y);
 			wlr_scene_node_set_position(&floater->scene_tree->node, x, y);
 		} else {
 			wlr_scene_node_set_position(&floater->scene_tree->node,
@@ -1212,6 +1253,9 @@ static void animate_workspace_floating(struct sway_workspace *ws) {
 		if (child->current.fullscreen_mode != FULLSCREEN_NONE) {
 			continue;
 		}
+		if (!root->filters->container_filter(ws, child, root->filters->container_filter_data)) {
+			continue;
+		}
 		// If the workspaces overview is enabled, make sure floating windows only
 		// show in the output corresponding to their workspace.
 		if (layout_overview_workspaces_enabled()) {
@@ -1223,10 +1267,7 @@ static void animate_workspace_floating(struct sway_workspace *ws) {
 		if (layout_scale_enabled(ws)) {
 			double x, y;
 			const float scale = layout_scale_get(ws);
-			const double minx = ws->output->lx + 0.5 * (1.0 - scale) * ws->output->width;
-			x = minx + scale * (child->animation.xt - ws->output->lx);
-			const double miny = ws->output->ly + 0.5 * (1.0 - scale) * ws->output->height;
-			y = miny + scale * (child->animation.yt - ws->output->ly);
+			scaled_floating_position(ws, scale, child->animation.xt, child->animation.yt, &x, &y);
 			wlr_scene_node_set_position(&child->scene_tree->node, x, y);
 		} else {
 			wlr_scene_node_set_position(&child->scene_tree->node,
@@ -2137,7 +2178,7 @@ static void overview_recompute_scales() {
 				}
 				enum sway_layout_overview mode = layout_overview_mode(child);
 				if (mode != OVERVIEW_DISABLED) {
-					layout_overview_recompute_scale(child, child->gaps_inner);
+					layout_overview_recompute_scale(child);
 				}
 			}
 		}
@@ -2145,11 +2186,11 @@ static void overview_recompute_scales() {
 }
 
 static void _transaction_commit_dirty(bool server_request, bool delayed) {
-	overview_recompute_scales();
-
 	if (!server.dirty_nodes->length) {
 		return;
 	}
+
+	overview_recompute_scales();
 
 	if (!server.pending_transaction) {
 		server.pending_transaction = transaction_create();

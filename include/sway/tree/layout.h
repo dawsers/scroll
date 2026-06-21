@@ -50,7 +50,8 @@ enum sway_layout_overview {
 	OVERVIEW_DISABLED,
 	OVERVIEW_TILING,
 	OVERVIEW_FLOATING,
-	OVERVIEW_ALL
+	OVERVIEW_ALL,
+	OVERVIEW_JUMP
 };
 
 enum sway_toggle_size {
@@ -72,6 +73,7 @@ enum sway_layout_filter {
 	LAYOUT_FILTER_CONTAINER,
 	LAYOUT_FILTER_TRAILMARK,
 	LAYOUT_FILTER_VISIBLE,
+	LAYOUT_FILTER_SCRATCHPAD,
 };
 
 struct sway_scroller {
@@ -147,7 +149,7 @@ enum sway_container_layout layout_get_type(struct sway_workspace *workspace);
 void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_overview mode);
 // This can be called by the layout to recalculate the overview scale every
 // transaction that re-arranges the workspace. It will set it too
-void layout_overview_recompute_scale(struct sway_workspace *workspace, int gaps);
+void layout_overview_recompute_scale(struct sway_workspace *workspace);
 // Return current overview mode
 enum sway_layout_overview layout_overview_mode(struct sway_workspace *workspace);
 
@@ -198,6 +200,8 @@ void layout_jump_trailmark(bool all);
 void layout_jump_all(bool all);
 struct criteria;
 void layout_jump_criteria(struct criteria *critera);
+
+void layout_container_jump_decoration_apply_scale(struct sway_container *con);
 
 void layout_filter_reset();
 void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply apply);

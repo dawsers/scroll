@@ -126,7 +126,6 @@ struct sway_container {
 		struct sway_text_node *text;
 		char *label;
 		int32_t id;
-		bool jumping;
 		struct sway_workspace *workspace;
 		struct sway_container *parent;
 		double x, y;	// original positions for floating windows
@@ -446,5 +445,7 @@ void container_detach_update_parent_fullscreen_layout(struct sway_container *par
 		struct sway_container *child);
 
 struct sway_view *container_get_active_view(struct sway_container *container);
+
+struct sway_container *container_get_by_id(size_t id);
 
 #endif

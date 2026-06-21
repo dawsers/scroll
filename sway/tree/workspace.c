@@ -872,11 +872,8 @@ static bool workspace_switch_workspace_filter(struct sway_workspace *workspace, 
 	return true;
 }
 
-static bool workspace_switch_container_filter(struct sway_workspace *workspace,
+static bool workspace_switch_container_filter_child(struct sway_workspace *workspace,
 		struct sway_container *container, void *filter_data) {
-	if (!switching_output(workspace, filter_data)) {
-		return true;
-	}
 	struct workspace_switch_data *data = filter_data;
 	for (int i = 0; i < data->from_containers->length; ++i) {
 		struct workspace_switch_container_data *container_data = data->from_containers->items[i];
@@ -892,6 +889,31 @@ static bool workspace_switch_container_filter(struct sway_workspace *workspace,
 	}
 	return false;
 }
+
+static bool filter_container_and_children(sway_root_container_filter_func_t container_filter,
+		struct sway_workspace *workspace, struct sway_container *container, void *data) {
+	if (container->pending.children) {
+		for (int i = 0; i < container->pending.children->length; ++i) {
+			struct sway_container *con = container->pending.children->items[i];
+			if (filter_container_and_children(container_filter, workspace, con, data)) {
+				return true;
+			}
+		}
+	} else if (container->view) {
+		return container_filter(workspace, container, data);
+	}
+	return false;
+}
+
+static bool workspace_switch_container_filter(struct sway_workspace *workspace,
+		struct sway_container *container, void *filter_data) {
+	if (!switching_output(workspace, filter_data)) {
+		return true;
+	}
+	return filter_container_and_children(workspace_switch_container_filter_child,
+		workspace, container, filter_data);
+}
+
 
 static bool container_visible(struct sway_workspace *workspace,
 		struct sway_container *container) {
