@@ -252,6 +252,9 @@ void root_scratchpad_hide(struct sway_container *con) {
 		return;
 	}
 
+	bool restore_focus = !focus || focus == &con->node ||
+		node_has_ancestor(focus, &con->node);
+
 	if (view_can_minimize_to_scratchpad(con->view)) {
 		root_scratchpad_set_minimize(con, true);
 	}
@@ -262,7 +265,7 @@ void root_scratchpad_hide(struct sway_container *con) {
 	container_for_each_child(con, disable_fullscreen, NULL);
 	container_detach(con);
 	arrange_workspace(ws);
-	if (&con->node == focus || node_has_ancestor(focus, &con->node)) {
+	if (restore_focus) {
 		seat_set_focus(seat, seat_get_focus_inactive(seat, &ws->node));
 	}
 	list_move_to_end(root->scratchpad, con);
