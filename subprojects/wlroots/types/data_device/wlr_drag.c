@@ -290,7 +290,8 @@ static uint32_t drag_handle_touch_up(struct wlr_seat_touch_grab *grab,
 		return 0;
 	}
 
-	if (drag->focus_client) {
+	if (drag->focus_client && drag->source->current_dnd_action &&
+			drag->source->accepted) {
 		drag_drop(drag, time);
 	} else if (drag->source->impl->dnd_finish) {
 		// This will end the grab and free `drag`
