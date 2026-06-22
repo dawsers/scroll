@@ -1519,12 +1519,10 @@ void container_fullscreen_disable(struct sway_container *con) {
 	}
 	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
 
-	if (container_is_floating(con)) {
-		con->pending.x = con->saved_x;
-		con->pending.y = con->saved_y;
-		con->pending.width = con->saved_width;
-		con->pending.height = con->saved_height;
-	}
+	con->pending.x = con->saved_x;
+	con->pending.y = con->saved_y;
+	con->pending.width = con->saved_width;
+	con->pending.height = con->saved_height;
 
 	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
 		if (con->pending.workspace) {
