@@ -343,19 +343,19 @@ static bool source_get_targets(struct wlr_xwm_selection *selection,
 		return false;
 	}
 
-	const xcb_atom_t *value = xcb_get_property_value(reply);
-	uint32_t value_len = xcb_get_property_value_length(reply) / sizeof(value[0]);
-	for (uint32_t i = 0; i < value_len; i++) {
+	const xcb_atom_t *atoms = xcb_get_property_value(reply);
+	uint32_t atoms_len = xcb_get_property_value_length(reply) / sizeof(atoms[0]);
+	for (uint32_t i = 0; i < atoms_len; i++) {
 		char *mime_type = NULL;
 
-		if (value[i] == xwm->atoms[UTF8_STRING]) {
+		if (atoms[i] == xwm->atoms[UTF8_STRING]) {
 			mime_type = strdup("text/plain;charset=utf-8");
-		} else if (value[i] == xwm->atoms[TEXT]) {
+		} else if (atoms[i] == xwm->atoms[TEXT]) {
 			mime_type = strdup("text/plain");
-		} else if (value[i] != xwm->atoms[TARGETS] &&
-				value[i] != xwm->atoms[TIMESTAMP]) {
+		} else if (atoms[i] != xwm->atoms[TARGETS] &&
+				atoms[i] != xwm->atoms[TIMESTAMP]) {
 			xcb_get_atom_name_cookie_t name_cookie =
-				xcb_get_atom_name(xwm->xcb_conn, value[i]);
+				xcb_get_atom_name(xwm->xcb_conn, atoms[i]);
 			xcb_get_atom_name_reply_t *name_reply =
 				xcb_get_atom_name_reply(xwm->xcb_conn, name_cookie, NULL);
 			if (name_reply == NULL) {
@@ -391,7 +391,7 @@ static bool source_get_targets(struct wlr_xwm_selection *selection,
 				break;
 			}
 			*mime_type_ptr = mime_type;
-			*atom_ptr = value[i];
+			*atom_ptr = atoms[i];
 		}
 	}
 
