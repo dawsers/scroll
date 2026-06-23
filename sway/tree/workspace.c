@@ -1274,6 +1274,9 @@ static void set_workspace(struct sway_container *container, void *data) {
 }
 
 void workspace_detach(struct sway_workspace *workspace) {
+	if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+		workspace_split_reset(workspace);
+	}
 	struct sway_output *output = workspace->output;
 	int index = list_find(output->workspaces, workspace);
 	if (index != -1) {
@@ -1598,9 +1601,6 @@ void workspace_move_to_output(struct sway_workspace *workspace,
 		struct sway_output *output) {
 	if (workspace->output == output) {
 		return;
-	}
-	if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
-		workspace_split_reset(workspace);
 	}
 	struct sway_output *old_output = workspace->output;
 	workspace_detach(workspace);
