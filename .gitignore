@@ -10,3 +10,4 @@ build-*/
 .lvimrc
 config-debug
 wayland-*-protocol.*
+__pycache__

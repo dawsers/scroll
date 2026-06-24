@@ -18,6 +18,7 @@
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
+#include "sway/tree/node.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/xdg_decoration.h"
@@ -479,6 +480,7 @@ void container_destroy(struct sway_container *con) {
 				"which is still referenced by transactions")) {
 		return;
 	}
+	node_map_remove(&con->node);
 	free(con->title);
 	free(con->formatted_title);
 	free(con->title_format);
@@ -2264,11 +2266,10 @@ struct sway_view *container_get_active_view(struct sway_container *container) {
 	return active ? active->view : NULL;
 }
 
-static bool test_id(struct sway_container *container, void *data) {
-	size_t *id = data;
-	return container->node.id == *id;
+struct sway_container *container_get_by_id(size_t id) {
+	struct sway_node *node = node_by_id(id);
+	return (node && node->type == N_CONTAINER && !node->destroying) ?
+		node->sway_container :
+		NULL;
 }
 
-struct sway_container *container_get_by_id(size_t id) {
-	return root_find_container(test_id, &id);
-}

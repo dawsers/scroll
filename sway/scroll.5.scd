@@ -1821,9 +1821,13 @@ lua $lua_scripts/workspace_exec.lua 1 exec kitty
 	windows. See *focus_on_window_activation* to set the state of the activated
 	window to _urgent_ or _focused_.
 
-*lua* script
-	Loads and executes the lua script. See *LUA* for details about the API and
-	some examples.
+*lua* <path> [<args...>]
+	Loads and executes the lua script at _path_ with optional _args_. _path_
+	expands shell syntax (see *wordexp*(3) for details) and must resolve to
+	exactly one file. When invoked during configuration file loading, relative
+	paths are resolved against the directory of the configuration file.
+	Otherwise, they are resolved against the initial working directory of the
+	compositor. See *LUA* for details about the API and some examples.
 
 # CRITERIA
 
@@ -2027,14 +2031,17 @@ print(val)
 
 Each time you run the script, it will increment and print the value for "test".
 
-When writing Lua scripts, you can access pointers to scroll's workspaces,
-containers or views. A view (window) has an immutable pointer throughout its
+When writing Lua scripts, you can access IDs of scroll's workspaces,
+containers or views. A view (window) has an immutable ID throughout its
 lifetime, from creation (mapping) to destruction (unmapping). A container,
 instead, can be destroyed or transformed when moving, changing workspace or in
-several other ciscumstances. So if you want to store some references in the
-state from one run of your script to another, store view pointers, never
+several other circumstances. So if you want to store some references in the
+state from one run of your script to another, store view IDs, never
 containers. You can always get the valid enclosing container for a view using
 the API when you need it.
+
+Using an ID of a destroyed workspace or container will not crash the compositor;
+the API functions will safely return nil or default values.
 
 This is the current supported API:
 
@@ -2061,23 +2068,28 @@ This is the current supported API:
 scroll.command(nil, "set_size v 0.33333333; move left nomode")
 ```
 
+*node_get_type(node)*
+	Returns the type of the given _node_ as a string. Possible values are:
+	"root", "output", "workspace", "container", "layer_surface", "layer_popup".
+	Returns nil if the node ID is invalid or not found.
+
 *focused_view()*
-	Returns the focused view pointer or nil if none
+	Returns the focused view ID or nil if none
 
 *focused_container()*
-	Returns the focused container pointer or nil if none
+	Returns the focused container ID or nil if none
 
 *focused_workspace()*
-	Returns the focused workspace pointer or nil if none
+	Returns the focused workspace ID or nil if none
 
 *urgent_view()*
-	Returns the current urgent view pointer or nil if none.
+	Returns the current urgent view ID or nil if none.
 
 *view_mapped(view)*
 	Returns _true_ if the _view_ is mapped (exists), otherwise returns _false_.
 
 *view_get_container(view)*
-	Returns the container pointer associated to _view_.
+	Returns the container ID associated to _view_.
 
 *view_get_app_id(view)*
 	Returns the _app_id_ string for _view_, or nil if any error happens.
@@ -2118,7 +2130,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	Sets the focus on _container_.
 
 *container_get_workspace(container)*
-	Returns the _container's_ parent workspace pointer, or nil if none.
+	Returns the _container's_ parent workspace ID, or nil if none.
 
 *container_get_marks(container)*
 	Returns an array with all the marks associated to _container_.
@@ -2251,7 +2263,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 	Returns an integer number with the _workspace_'s height in pixels.
 
 *workspace_get_pin(workspace)*
-	Returns the _workspace's_ pinned container pointer, or nil if none.
+	Returns the _workspace's_ pinned container ID, or nil if none.
 
 *workspace_get_split(workspace)*
 	Returns a table with the split state for _workspace_. The
@@ -2263,10 +2275,10 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 	_gap_: integer number
 
-	_sibling_: the sibling workspace's pointer
+	_sibling_: the sibling workspace's ID
 
 *workspace_get_output(workspace)*
-	Returns the _workspace's_ output pointer, or nil if none.
+	Returns the _workspace's_ output ID, or nil if none.
 
 *output_get_enabled(output)*
 	Returns _true_ if the output (display) is enabled, or _false_ otherwise.

@@ -1,0 +1,2 @@
+# Leaks in EGL/DRM initialization due to missing eglTerminate in wlroots (or system libraries)
+leak:egl_init_display

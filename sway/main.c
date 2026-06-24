@@ -24,6 +24,7 @@
 #include "sway/desktop/transaction.h"
 #include "sway/desktop/animation.h"
 #include "sway/tree/root.h"
+#include "sway/tree/node.h"
 #include "sway/ipc-server.h"
 #include "ipc-client.h"
 #include "log.h"
@@ -432,6 +433,7 @@ shutdown:
 	root_destroy(root);
 	root = NULL;
 	animation_destroy();
+	node_map_fini();
 
 	free(config_path);
 	free_config(config);
