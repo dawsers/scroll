@@ -741,6 +741,9 @@ static int layout_insert_compute_index(list_t *list, void *active, enum sway_lay
 	case INSERT_AFTER:
 	default: {
 		int index = list_find(list, active);
+		if (index < 0) {
+			return list->length;
+		}
 		return pos == INSERT_AFTER ? index + 1 : index;
 	}
 	case INSERT_BEGINNING:
@@ -779,7 +782,8 @@ static void position_new_container(struct sway_workspace *workspace,
 static void layout_container_add_view(struct sway_container *active, struct sway_container *view,
 			enum sway_container_layout layout, enum sway_layout_insert pos) {
 	struct sway_container *parent = active->pending.parent ? active->pending.parent : active;
-	struct sway_container *ref = parent == active ? parent->pending.focused_inactive_child : active;
+	struct sway_container *ref =
+		parent == active ? container_get_focused_inactive_child(parent) : active;
 	container_insert_update_parent_fullscreen_layout(parent, view);
 	int index = layout_insert_compute_index(parent->pending.children, ref, pos);
 	container_insert_child(parent, view, index);
@@ -874,6 +878,9 @@ void layout_add_view(struct sway_workspace *workspace, struct sway_container *ac
 	if (layout_get_type(workspace) == mode || workspace->tiling->length == 0) {
 		layout_workspace_add_view(workspace, active, view, pos);
 	} else {
+		if (!active && workspace->tiling->length > 0) {
+			active = workspace->tiling->items[workspace->tiling->length - 1];
+		}
 		layout_container_add_view(active, view, mode, pos);
 	}
 }
@@ -922,6 +929,7 @@ void layout_move_container_to_workspace(struct sway_container *container, struct
 		struct sway_container *parent = container->pending.parent;
 		list_t *siblings = parent->pending.children;
 		list_del(siblings, list_find(siblings, container));
+		container->pending.parent = NULL;
 		container_detach_update_parent_fullscreen_layout(parent, container);
 		container_update_representation(parent);
 		node_set_dirty(&parent->node);
@@ -986,6 +994,7 @@ void layout_drag_container_to_workspace(struct sway_container *container, struct
 		list_t *siblings = parent->pending.children;
 		if (siblings->length > 1) {
 			list_del(siblings, list_find(siblings, container));
+			container->pending.parent = NULL;
 			container_update_representation(parent);
 			node_set_dirty(&parent->node);
 			apply_container_sizes(parent, layout_toggle_size_width_fraction(workspace),
@@ -1185,6 +1194,8 @@ static void	swap_views(struct sway_container *container, struct sway_container *
 	struct sway_workspace *tworkspace = target->pending.workspace;
 	list_del(cparent->pending.children, cidx);
 	list_del(tparent->pending.children, tidx);
+	container->pending.parent = NULL;
+	target->pending.parent = NULL;
 	container_detach_update_parent_fullscreen_layout(cparent, container);
 	container_detach_update_parent_fullscreen_layout(tparent, target);
 	container_insert_update_parent_fullscreen_layout(cparent, target);
@@ -1375,6 +1386,7 @@ static struct sway_container *layer_container_detach(struct sway_container *chil
 	struct sway_container *parent = child->pending.parent;
 	list_t *siblings = parent->pending.children;
 	list_del(siblings, list_find(siblings, child));
+	child->pending.parent = NULL;
 	container_detach_update_parent_fullscreen_layout(parent, child);
 	struct sway_container *new_parent = layout_wrap_into_container(child, parent->pending.layout);
 	container_update_representation(parent);
@@ -1449,6 +1461,7 @@ static bool layout_move_container_nomode(struct sway_container *container, enum 
 			list_del(workspace->tiling, index);
 			// Remove container from old parent
 			list_del(parent->pending.children, 0);
+			container->pending.parent = NULL;
 			// Insert container into neighbor
 			enum sway_layout_insert pos = layout_modifiers_get_insert(workspace);
 			struct sway_container *active = new_parent->current.focused_inactive_child;

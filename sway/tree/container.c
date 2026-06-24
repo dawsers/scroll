@@ -2257,11 +2257,19 @@ void container_swap(struct sway_container *con1, struct sway_container *con2) {
 	}
 }
 
+struct sway_container *container_get_focused_inactive_child(struct sway_container *container) {
+	if (container->view) {
+		return container;
+	}
+	struct sway_seat *seat = input_manager_current_seat();
+	struct sway_node *focus = seat_get_active_tiling_child(seat, &container->node);
+	return (focus && focus->type == N_CONTAINER) ? focus->sway_container : NULL;
+}
+
 struct sway_view *container_get_active_view(struct sway_container *container) {
 	struct sway_container *active = container;
 	while (active && active->view == NULL) {
-		active = active->pending.focused_inactive_child ?
-			active->pending.focused_inactive_child : active->current.focused_inactive_child;
+		active = container_get_focused_inactive_child(active);
 	}
 	return active ? active->view : NULL;
 }
