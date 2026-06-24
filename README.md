@@ -779,7 +779,7 @@ At window creation time, *scroll* can apply several modifiers to the
 current working mode (*h/v*). `set_mode` supports extra arguments:
 
 ``` config
-set_mode [<h|v|t> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]
+set_mode [<h|v|t> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <align_horiz_initial|align_horiz_if_fits> <align_vert_initial|align_vert_if_fits> <align_horiz_left|align_horiz_center|align_horiz_right> <align_vert_top|align_vert_middle|align_vert_bottom>]
 ```
 
 1. `<h|v|t>`: set horizontal, vertical, or toggle the current mode.
@@ -799,8 +799,12 @@ mode to `noreorder_auto`, and the window will keep its position regardless of
 what you do, until you set `reorder_auto` again.
 5. `center_horiz/nocenter_horiz`: It will keep the active column centered
 (or not) on the screen. The default value is the one in your configuration.
-4. `center_vert/nocenter_vert`: It will keep the active window centered
+6. `center_vert/nocenter_vert`: It will keep the active window centered
 (or not) in its column. The default value is the one in your configuration.
+7. `align_horiz_<left|center|right>`: Set alignment for horizontal mode when all windows fit.
+8. `align_vert_<top|middle|bottom>`: Set alignment for vertical mode when all windows fit.
+9. `align_horiz_<initial|if_fits>`: Set alignment policy for horizontal mode. `initial` only aligns the first window and then preserves positions; `if_fits` always aligns when they fit.
+10. `align_vert_<initial|if_fits>`: Set alignment policy for vertical mode.
 
 You can skip any number of parameters when calling the command, and their
 order doesn't matter.

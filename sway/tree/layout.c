@@ -608,6 +608,14 @@ void layout_default_modifiers_set_default(struct sway_scroller_modifiers *modifi
 		modifiers->center_horizontal = false;
 		modifiers->center_vertical_set = true;
 		modifiers->center_vertical = false;
+		modifiers->align_horiz_set = true;
+		modifiers->align_horiz = ALIGN_HORIZ_CENTER;
+		modifiers->align_vert_set = true;
+		modifiers->align_vert = ALIGN_VERT_MIDDLE;
+		modifiers->align_horiz_policy_set = true;
+		modifiers->align_horiz_policy = ALIGN_POLICY_IF_FIT;
+		modifiers->align_vert_policy_set = true;
+		modifiers->align_vert_policy = ALIGN_POLICY_IF_FIT;
 	}
 }
 
@@ -645,6 +653,26 @@ static void modifiers_merge(struct sway_scroller_modifiers *dst, struct sway_scr
 		dst->center_vertical_set = true;
 		dst->set = true;
 	}
+	if (src->align_horiz_set) {
+		dst->align_horiz = src->align_horiz;
+		dst->align_horiz_set = true;
+		dst->set = true;
+	}
+	if (src->align_vert_set) {
+		dst->align_vert = src->align_vert;
+		dst->align_vert_set = true;
+		dst->set = true;
+	}
+	if (src->align_horiz_policy_set) {
+		dst->align_horiz_policy = src->align_horiz_policy;
+		dst->align_horiz_policy_set = true;
+		dst->set = true;
+	}
+	if (src->align_vert_policy_set) {
+		dst->align_vert_policy = src->align_vert_policy;
+		dst->align_vert_policy_set = true;
+		dst->set = true;
+	}
 }
 
 void layout_modifiers_init(struct sway_workspace *workspace) {
@@ -670,6 +698,10 @@ void layout_modifiers_init(struct sway_workspace *workspace) {
 	layout->modifiers.focus = modifiers.focus;
 	layout->modifiers.center_horizontal = modifiers.center_horizontal;
 	layout->modifiers.center_vertical = modifiers.center_vertical;
+	layout->modifiers.align_horiz = modifiers.align_horiz;
+	layout->modifiers.align_vert = modifiers.align_vert;
+	layout->modifiers.align_horiz_policy = modifiers.align_horiz_policy;
+	layout->modifiers.align_vert_policy = modifiers.align_vert_policy;
 }
 
 void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_layout_reorder reorder) {
@@ -735,6 +767,48 @@ bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace) {
 	return workspace->layout.modifiers.center_vertical;
 }
 
+void layout_modifiers_set_align_horiz(
+		struct sway_workspace *workspace, enum sway_layout_align_horiz align) {
+	workspace->layout.modifiers.align_horiz = align;
+	ipc_event_scroller("align_horiz", workspace);
+}
+
+enum sway_layout_align_horiz layout_modifiers_get_align_horiz(struct sway_workspace *workspace) {
+	return workspace->layout.modifiers.align_horiz;
+}
+
+void layout_modifiers_set_align_vert(
+		struct sway_workspace *workspace, enum sway_layout_align_vert align) {
+	workspace->layout.modifiers.align_vert = align;
+	ipc_event_scroller("align_vert", workspace);
+}
+
+enum sway_layout_align_vert layout_modifiers_get_align_vert(struct sway_workspace *workspace) {
+	return workspace->layout.modifiers.align_vert;
+}
+
+void layout_modifiers_set_align_horiz_policy(
+		struct sway_workspace *workspace, enum sway_layout_align_policy policy) {
+	workspace->layout.modifiers.align_horiz_policy = policy;
+	ipc_event_scroller("align_horiz_policy", workspace);
+}
+
+enum sway_layout_align_policy layout_modifiers_get_align_horiz_policy(
+		struct sway_workspace *workspace) {
+	return workspace->layout.modifiers.align_horiz_policy;
+}
+
+void layout_modifiers_set_align_vert_policy(
+		struct sway_workspace *workspace, enum sway_layout_align_policy policy) {
+	workspace->layout.modifiers.align_vert_policy = policy;
+	ipc_event_scroller("align_vert_policy", workspace);
+}
+
+enum sway_layout_align_policy layout_modifiers_get_align_vert_policy(
+		struct sway_workspace *workspace) {
+	return workspace->layout.modifiers.align_vert_policy;
+}
+
 static int layout_insert_compute_index(list_t *list, void *active, enum sway_layout_insert pos) {
 	switch (pos) {
 	case INSERT_BEFORE:
@@ -761,19 +835,22 @@ static void position_new_container(struct sway_workspace *workspace,
 
 	int active_idx = list_find(children, active);
 	if (active_idx >= 0) {
+		double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+		int gaps = workspace->gaps_inner;
 		if (layout_modifiers_get_mode(workspace) == L_HORIZ) {
 			if (container_idx < active_idx) {
 				double width = container->width_fraction * workspace->width;
-				container->pending.x = active->pending.x - width;
+				container->pending.x = active->pending.x - width - 2 * scale * gaps;
 			} else {
-				container->pending.x = active->pending.x + active->current.width;
+				container->pending.x = active->pending.x + active->current.width + 2 * scale * gaps;
 			}
 		} else {
 			if (container_idx < active_idx) {
 				double height = container->height_fraction * workspace->height;
-				container->pending.y = active->pending.y - height;
+				container->pending.y = active->pending.y - height - 2 * scale * gaps;
 			} else {
-				container->pending.y = active->pending.y + active->current.height;
+				container->pending.y =
+						active->pending.y + active->current.height + 2 * scale * gaps;
 			}
 		}
 	}
@@ -842,20 +919,48 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	struct sway_container *parent = layout_wrap_into_container(view, mode);
 	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
 	// Set the container and view width/height
-	if (view->width_fraction <= 0.0) {
+	bool is_first = workspace->tiling->length == 0;
+	bool width_was_unset = view->width_fraction <= 0.0;
+	if (width_was_unset) {
 		view->width_fraction = layout_get_default_width(workspace);
 		// Start the animation from the center of the workspace
 		view->current.x = workspace->x + 0.5 * workspace->width;
-		view->pending.x = workspace->x + scale * workspace->gaps_inner;
 		parent->current.x = view->current.x;
+	}
+	if (width_was_unset || (is_first && layout_get_type(workspace) == L_HORIZ)) {
+		double start = 0;
+		if (is_first && layout_get_type(workspace) == L_HORIZ) {
+			enum sway_layout_align_horiz align = layout_modifiers_get_align_horiz(workspace);
+			double view_width = view->width_fraction * workspace->width;
+			if (align == ALIGN_HORIZ_CENTER) {
+				start = 0.5 * (workspace->width - view_width);
+			} else if (align == ALIGN_HORIZ_RIGHT) {
+				start = workspace->width - view_width;
+			}
+		}
+		view->pending.x = workspace->x + start + scale * workspace->gaps_inner;
 		parent->pending.x = view->pending.x;
 	}
 	parent->width_fraction = view->width_fraction;
-	if (view->height_fraction <= 0.0) {
+
+	bool height_was_unset = view->height_fraction <= 0.0;
+	if (height_was_unset) {
 		view->height_fraction = layout_get_default_height(workspace);
 		view->current.y = workspace->y + 0.5 * workspace->height;
-		view->pending.y = workspace->y + scale * workspace->gaps_inner;
 		parent->current.y = view->current.y;
+	}
+	if (height_was_unset || (is_first && layout_get_type(workspace) == L_VERT)) {
+		double start = 0;
+		if (is_first && layout_get_type(workspace) == L_VERT) {
+			enum sway_layout_align_vert align = layout_modifiers_get_align_vert(workspace);
+			double view_height = view->height_fraction * workspace->height;
+			if (align == ALIGN_VERT_MIDDLE) {
+				start = 0.5 * (workspace->height - view_height);
+			} else if (align == ALIGN_VERT_BOTTOM) {
+				start = workspace->height - view_height;
+			}
+		}
+		view->pending.y = workspace->y + start + scale * workspace->gaps_inner;
 		parent->pending.y = view->pending.y;
 	}
 	parent->height_fraction = view->height_fraction;

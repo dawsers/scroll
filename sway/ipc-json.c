@@ -1542,6 +1542,33 @@ json_object *ipc_json_describe_scroller(struct sway_workspace *workspace) {
 	json_object_object_add(object, "center_horizontal", json_object_new_boolean(center_horizontal));
 	bool center_vertical = layout_modifiers_get_center_vertical(workspace);
 	json_object_object_add(object, "center_vertical", json_object_new_boolean(center_vertical));
+
+	enum sway_layout_align_horiz align_horiz = layout_modifiers_get_align_horiz(workspace);
+	const char *align_horiz_str = "center";
+	if (align_horiz == ALIGN_HORIZ_LEFT) {
+		align_horiz_str = "left";
+	} else if (align_horiz == ALIGN_HORIZ_RIGHT) {
+		align_horiz_str = "right";
+	}
+	json_object_object_add(object, "align_horiz", json_object_new_string(align_horiz_str));
+
+	enum sway_layout_align_vert align_vert = layout_modifiers_get_align_vert(workspace);
+	const char *align_vert_str = "middle";
+	if (align_vert == ALIGN_VERT_TOP) {
+		align_vert_str = "top";
+	} else if (align_vert == ALIGN_VERT_BOTTOM) {
+		align_vert_str = "bottom";
+	}
+	json_object_object_add(object, "align_vert", json_object_new_string(align_vert_str));
+
+	enum sway_layout_align_policy policy_horiz = layout_modifiers_get_align_horiz_policy(workspace);
+	json_object_object_add(object, "align_horiz_policy",
+			json_object_new_string(policy_horiz == ALIGN_POLICY_INITIAL ? "initial" : "if_fits"));
+
+	enum sway_layout_align_policy policy_vert = layout_modifiers_get_align_vert_policy(workspace);
+	json_object_object_add(object, "align_vert_policy",
+			json_object_new_string(policy_vert == ALIGN_POLICY_INITIAL ? "initial" : "if_fits"));
+
 	enum sway_layout_reorder reorder = layout_modifiers_get_reorder(workspace);
 	json_object_object_add(object, "reorder",
 		json_object_new_string(reorder == REORDER_AUTO ? "auto" : "lazy"));

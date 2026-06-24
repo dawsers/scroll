@@ -76,6 +76,23 @@ enum sway_layout_filter {
 	LAYOUT_FILTER_SCRATCHPAD,
 };
 
+enum sway_layout_align_horiz {
+	ALIGN_HORIZ_LEFT,
+	ALIGN_HORIZ_CENTER,
+	ALIGN_HORIZ_RIGHT,
+};
+
+enum sway_layout_align_vert {
+	ALIGN_VERT_TOP,
+	ALIGN_VERT_MIDDLE,
+	ALIGN_VERT_BOTTOM,
+};
+
+enum sway_layout_align_policy {
+	ALIGN_POLICY_IF_FIT,
+	ALIGN_POLICY_INITIAL,
+};
+
 struct sway_scroller {
 	enum sway_container_layout type;
 
@@ -86,6 +103,10 @@ struct sway_scroller {
 		bool focus;
 		bool center_horizontal;
 		bool center_vertical;
+		enum sway_layout_align_horiz align_horiz;
+		enum sway_layout_align_vert align_vert;
+		enum sway_layout_align_policy align_horiz_policy;
+		enum sway_layout_align_policy align_vert_policy;
 	} modifiers;
 
 	enum sway_layout_overview overview;
@@ -118,6 +139,14 @@ struct sway_scroller_modifiers {
 	bool center_horizontal;
 	bool center_vertical_set;
 	bool center_vertical;
+	bool align_horiz_set;
+	enum sway_layout_align_horiz align_horiz;
+	bool align_vert_set;
+	enum sway_layout_align_vert align_vert;
+	bool align_horiz_policy_set;
+	enum sway_layout_align_policy align_horiz_policy;
+	bool align_vert_policy_set;
+	enum sway_layout_align_policy align_vert_policy;
 };
 
 struct sway_scroller_output_options {
@@ -173,6 +202,14 @@ void layout_modifiers_set_focus(struct sway_workspace *workspace, bool focus);
 void layout_modifiers_set_center_horizontal(struct sway_workspace *workspace, bool center);
 void layout_modifiers_set_center_vertical(struct sway_workspace *workspace, bool center);
 void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_layout_reorder reorder);
+void layout_modifiers_set_align_horiz(
+		struct sway_workspace *workspace, enum sway_layout_align_horiz align);
+void layout_modifiers_set_align_vert(
+		struct sway_workspace *workspace, enum sway_layout_align_vert align);
+void layout_modifiers_set_align_horiz_policy(
+		struct sway_workspace *workspace, enum sway_layout_align_policy policy);
+void layout_modifiers_set_align_vert_policy(
+		struct sway_workspace *workspace, enum sway_layout_align_policy policy);
 
 enum sway_container_layout layout_modifiers_get_mode(struct sway_workspace *workspace);
 enum sway_layout_insert layout_modifiers_get_insert(struct sway_workspace *workspace);
@@ -180,6 +217,12 @@ bool layout_modifiers_get_focus(struct sway_workspace *workspace);
 bool layout_modifiers_get_center_horizontal(struct sway_workspace *workspace);
 bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace);
 enum sway_layout_reorder layout_modifiers_get_reorder(struct sway_workspace *workspace);
+enum sway_layout_align_horiz layout_modifiers_get_align_horiz(struct sway_workspace *workspace);
+enum sway_layout_align_vert layout_modifiers_get_align_vert(struct sway_workspace *workspace);
+enum sway_layout_align_policy layout_modifiers_get_align_horiz_policy(
+		struct sway_workspace *workspace);
+enum sway_layout_align_policy layout_modifiers_get_align_vert_policy(
+		struct sway_workspace *workspace);
 
 // Layout API
 void layout_add_view(struct sway_workspace *workspace, struct sway_container *active, struct sway_container *view);

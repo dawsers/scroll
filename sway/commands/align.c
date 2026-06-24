@@ -22,9 +22,9 @@ static bool parse_direction(const char *name,
 		*out = DIR_LEFT;
 	} else if (strcasecmp(name, "right") == 0) {
 		*out = DIR_RIGHT;
-	} else if (strcasecmp(name, "up") == 0) {
+	} else if (strcasecmp(name, "up") == 0 || strcasecmp(name, "top") == 0) {
 		*out = DIR_UP;
-	} else if (strcasecmp(name, "down") == 0) {
+	} else if (strcasecmp(name, "down") == 0 || strcasecmp(name, "bottom") == 0) {
 		*out = DIR_DOWN;
 	} else if (strcasecmp(name, "center") == 0) {
 		*out = DIR_CENTER;
@@ -103,9 +103,10 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 
 	enum sway_layout_direction direction = DIR_INVALID;
 	if (!parse_direction(argv[0], &direction)) {
-		return cmd_results_new(CMD_INVALID, "Expected 'align <left|right|center|up|down|middle|reset>' ");
+		return cmd_results_new(
+				CMD_INVALID, "Expected 'align <left|right|center|top|bottom|middle|reset>' ");
 	}
-	
+
 	enum sway_container_layout layout = layout_get_type(workspace);
 	enum sway_container_layout mode = layout_modifiers_get_mode(workspace);
 	struct sway_container *parent = container->pending.parent ? container->pending.parent : container;

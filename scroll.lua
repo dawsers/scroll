@@ -440,6 +440,10 @@ function scroll.workspace_get_floating(workspace) end
 ---   focus: true|false
 ---   center_horizontal: true|false
 ---   center_vertical: true|false
+---   align_horiz: "left"|"center"|"right"
+---   align_vert: "top"|"middle"|"bottom"
+---   align_horiz_policy: "initial"|"if_fits"
+---   align_vert_policy: "initial"|"if_fits"
 ---
 --- @param workspace integer
 ---
@@ -457,6 +461,10 @@ function scroll.workspace_get_mode(workspace) end
 ---   focus: true|false
 ---   center_horizontal: true|false
 ---   center_vertical: true|false
+---   align_horiz: "left"|"center"|"right"
+---   align_vert: "top"|"middle"|"bottom"
+---   align_horiz_policy: "initial"|"if_fits"
+---   align_vert_policy: "initial"|"if_fits"
 ---
 --- @param workspace integer
 --- @param modifiers table

@@ -392,12 +392,12 @@ The following commands may only be used in the configuration file.
 The following commands cannot be used directly in the configuration file.
 They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1).
 
-*align* <left|right|center|up|down|middle|reset>
+*align* <left|right|center|top|bottom|middle|reset>
 	Columns are generally aligned in automatic mode, always making the active
 	one visible, and trying to make at least the previously focused one visible
 	too if it fits the viewport, if not, the one adjacent on the other side.
 	However, you can always align any column to the center, left or right
-	of the monitor (in horizontal mode), or up (top), down (bottom) or to
+	of the monitor (in horizontal mode), or top (up), bottom (down) or to
 	the center in vertical mode. For example center a column for easier
 	reading, regardless of what happens to the other columns. If you want to
 	go back to automatic mode, you need to use the _set_mode_ modifier
@@ -879,7 +879,11 @@ set|plus|minus|toggle <amount>
 
 *set_mode* [<h|v|t> <after|before|end|beg> <focus|nofocus>
 <center_horiz|nocenter_horiz> <center_vert|nocenter_vert>
-<reorder_auto|noreorder_auto>]
+<reorder_auto|noreorder_auto>
+<align_horiz_initial|align_horiz_if_fits>
+<align_vert_initial|align_vert_if_fits>
+<align_horiz_left|align_horiz_center|align_horiz_right>
+<align_vert_top|align_vert_middle|align_vert_bottom>]
 	Modes and mode modifiers are per workspace.
 	At window creation time, scroll can apply several modifiers to the current
 	working mode (h/v). It supports extra arguments:
@@ -906,6 +910,14 @@ set|plus|minus|toggle <amount>
 
 	_center_vert/nocenter_vert_: It will keep the active window centered
 	(or not) in its column.
+
+	_align\_horiz\_<left|center|right>_: Set alignment for horizontal mode when all windows fit.
+
+	_align\_vert\_<top|middle|bottom>_: Set alignment for vertical mode when all windows fit.
+
+	_align\_horiz\_<initial|if\_fits>_: Set alignment policy for horizontal mode. _initial_ only aligns the first window and then preserves positions; _if\_fits_ always aligns when they fit.
+
+	_align\_vert\_<initial|if\_fits>_: Set alignment policy for vertical mode.
 
 	You can skip any number of parameters when calling the command, and
 	their order doesn't matter.

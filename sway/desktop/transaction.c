@@ -348,7 +348,7 @@ static double get_active_position_pin(struct sway_workspace *workspace,
 			for (int i = active_idx - 1; i >= 0; i--) {
 				struct sway_container *con = children->items[i];
 				if (con != pin) {
-					double cw = scale * (con->current.width +  2.0 * gaps);
+					double cw = scale * (con->pending.width + 2.0 * gaps);
 					cx0 += cw;
 					if (cx0 + caw > workspace_end) {
 						break;
@@ -377,7 +377,7 @@ static double get_active_position_pin(struct sway_workspace *workspace,
 			for (int i = active_idx + 1; i < children->length; ++i) {
 				struct sway_container *con = children->items[i];
 				if (con != pin) {
-					double cw = scale * (con->current.width +  2.0 * gaps);
+					double cw = scale * (con->pending.width + 2.0 * gaps);
 					cx1 -= cw;
 					if (cx1 - caw < workspace_beg) {
 						break;
@@ -411,7 +411,7 @@ static double get_active_position_pin(struct sway_workspace *workspace,
 			for (int i = active_idx - 1; i >= 0; i--) {
 				struct sway_container *con = children->items[i];
 				if (con != pin) {
-					double ch = scale * (con->current.height +  2.0 * gaps);
+					double ch = scale * (con->pending.height + 2.0 * gaps);
 					cy0 += ch;
 					if (cy0 + cah > workspace_end) {
 						break;
@@ -440,7 +440,7 @@ static double get_active_position_pin(struct sway_workspace *workspace,
 			for (int i = active_idx + 1; i < children->length; ++i) {
 				struct sway_container *con = children->items[i];
 				if (con != pin) {
-					double ch = scale * (con->current.height +  2.0 * gaps);
+					double ch = scale * (con->pending.height + 2.0 * gaps);
 					cy1 -= ch;
 					if (cy1 - cah < workspace_beg) {
 						break;
@@ -465,6 +465,40 @@ static double get_active_position_pin(struct sway_workspace *workspace,
 static double get_active_position(struct sway_workspace *workspace,
 		enum sway_container_layout layout, list_t *children, int active_idx,
 		int gaps, float scale) {
+	double tsize = 0;
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *con = children->items[i];
+		tsize +=
+				scale * ((layout == L_HORIZ ? con->pending.width : con->pending.height) + 2 * gaps);
+	}
+	tsize = round(tsize);
+
+	double wsize = layout == L_HORIZ ? workspace->width : workspace->height;
+	if (tsize <= wsize) {
+		double lsize = 0;
+		for (int i = 0; i < active_idx; ++i) {
+			struct sway_container *con = children->items[i];
+			lsize += scale *
+					((layout == L_HORIZ ? con->pending.width : con->pending.height) + 2 * gaps);
+		}
+		lsize = round(lsize);
+
+		struct sway_container *active = children->items[active_idx];
+		double active_val = layout == L_HORIZ ? active->pending.x : active->pending.y;
+		double ws_val = layout == L_HORIZ ? workspace->x : workspace->y;
+
+		double min_active = ws_val + scale * gaps + lsize;
+		double max_active = ws_val + wsize - tsize + scale * gaps + lsize;
+
+		if (active_val < min_active) {
+			return min_active;
+		} else if (active_val > max_active) {
+			return max_active;
+		} else {
+			return active_val;
+		}
+	}
+
 	// We consider all the possible positions where each container is at the
 	// left/top edge and at the right/bottom edge. We choose the one that leaves
 	// the active container inside the viewport, moves the active as little as
@@ -488,7 +522,7 @@ static double get_active_position(struct sway_workspace *workspace,
 		double x1 = workspace->x + scale * gaps;
 		for (int c = active_idx; c < children->length; ++c) {
 			struct sway_container *con = children->items[c];
-			x1 += scale * (con->current.width + gaps);
+			x1 += scale * (con->pending.width + gaps);
 			// For those that fit, locate each one at the end of the viewport,
 			// and check the previous ones don't leave any empty space.
 			if (x1 <= workspace_end) {
@@ -497,10 +531,9 @@ static double get_active_position(struct sway_workspace *workspace,
 				double movement = DBL_MAX;
 				double cx0 = workspace->x + workspace->width;
 				bool space = true;
-				bool fits = false;
 				for (int i = c_r; i >= 0; i--) {
 					struct sway_container *con = children->items[i];
-					cx0 -= scale * (con->current.width + 2.0 * gaps);
+					cx0 -= scale * (con->pending.width + 2.0 * gaps);
 					if (i == active_idx) {
 						movement = (cx0 + scale * gaps) - a_x;
 					}
@@ -510,11 +543,8 @@ static double get_active_position(struct sway_workspace *workspace,
 							break;
 						}
 					}
-					if (c_r == children->length - 1 && i == 0) {
-						fits = true;
-					}
 				}
-				if ((!space || fits) && fabs(movement) < fabs(best_movement)) {
+				if (!space && fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -527,7 +557,7 @@ static double get_active_position(struct sway_workspace *workspace,
 		double x0 = workspace->x + workspace->width - scale * gaps;
 		for (int c = active_idx; c >= 0; --c) {
 			struct sway_container *con = children->items[c];
-			x0 -= scale * (con->current.width + gaps);
+			x0 -= scale * (con->pending.width + gaps);
 			// For those that fit, locate each one at the beginning of the viewport,
 			// and check the next ones don't leave any empty space.
 			if (x0 >= workspace_beg) {
@@ -536,24 +566,20 @@ static double get_active_position(struct sway_workspace *workspace,
 				double movement = DBL_MAX;
 				double cx1 = workspace->x;
 				bool space = true;
-				bool fits = false;
 				for (int i = c_l; i < children->length; ++i) {
 					if (i == active_idx) {
 						movement = (cx1 + scale * gaps) - a_x;
 					}
 					struct sway_container *con = children->items[i];
-					cx1 += scale * (con->current.width + 2.0 * gaps);
+					cx1 += scale * (con->pending.width + 2.0 * gaps);
 					if (cx1 >= workspace_end) {
 						space = false;
 						if (cx1 > workspace_end) {
 							break;
 						}
 					}
-					if (c_l == 0 && i == children->length - 1) {
-						fits = true;
-					}
 				}
-				if ((!space || fits) && fabs(movement) < fabs(best_movement)) {
+				if (!space && fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -572,31 +598,27 @@ static double get_active_position(struct sway_workspace *workspace,
 		double y0 = workspace->y + workspace->height - scale * gaps;
 		for (int c = active_idx; c >= 0; --c) {
 			struct sway_container *con = children->items[c];
-			y0 -= scale * (con->current.height + gaps);
+			y0 -= scale * (con->pending.height + gaps);
 			if (y0 >= workspace_beg) {
 				c_l = c;
 				// Test from c_l to the end
 				double movement = DBL_MAX;
 				double cy1 = workspace->y;
 				bool space = true;
-				bool fits = false;
 				for (int i = c_l; i < children->length; ++i) {
 					if (i == active_idx) {
 						movement = (cy1 + scale * gaps) - a_y;
 					}
 					struct sway_container *con = children->items[i];
-					cy1 += scale * (con->current.height + 2.0 * gaps);
+					cy1 += scale * (con->pending.height + 2.0 * gaps);
 					if (cy1 >= workspace_end) {
 						space = false;
 						if (cy1 > workspace_end) {
 							break;
 						}
 					}
-					if (c_l == 0 && i == children->length - 1) {
-						fits = true;
-					}
 				}
-				if ((!space || fits) &&	fabs(movement) < fabs(best_movement)) {
+				if (!space && fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -607,17 +629,16 @@ static double get_active_position(struct sway_workspace *workspace,
 		double y1 = workspace->y + scale * gaps;
 		for (int c = active_idx; c < children->length; ++c) {
 			struct sway_container *con = children->items[c];
-			y1 += scale * (con->current.height + gaps);
+			y1 += scale * (con->pending.height + gaps);
 			if (y1 <= workspace_end) {
 				c_r = c;
 				// Test from c_r to the beginning
 				double movement = DBL_MAX;
 				double cy0 = workspace->y + workspace->height;
 				bool space = true;
-				bool fits = false;
 				for (int i = c_r; i >= 0; i--) {
 					struct sway_container *con = children->items[i];
-					cy0 -= scale * (con->current.height + 2.0 * gaps);
+					cy0 -= scale * (con->pending.height + 2.0 * gaps);
 					if (i == active_idx) {
 						movement = (cy0 + scale * gaps) - a_y;
 					}
@@ -627,11 +648,8 @@ static double get_active_position(struct sway_workspace *workspace,
 							break;
 						}
 					}
-					if (c_r == children->length - 1 && i == 0) {
-						fits = true;
-					}
 				}
-				if ((!space || fits) &&	fabs(movement) < fabs(best_movement)) {
+				if (!space && fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -663,51 +681,81 @@ static double compute_active_offset(struct sway_workspace *workspace,
 	if (layout == L_HORIZ) {
 		bool center = layout_modifiers_get_center_horizontal(workspace);
 		if (center) {
-			return workspace->x + 0.5 * (width - scale * active->current.width);
+			return workspace->x + 0.5 * (width - scale * active->pending.width);
 		}
-		// Center row if space available
-        double lwidth = 0, rwidth = 0;
-        for (int i = 0; i < active_idx; ++i) {
-			struct sway_container *con = children->items[i];
-            lwidth += scale * (con->current.width + 2 * gaps);
-        }
-		lwidth = round(lwidth);
-        for (int i = active_idx; i < children->length; ++i) {
-			struct sway_container *con = children->items[i];
-            rwidth += scale * (con->current.width + 2 * gaps);
-        }
-		rwidth = round(rwidth);
-        double twidth = lwidth + rwidth;
-        if (twidth <= width + 1) {
-			if (config->center_horizontal_if_fits) {
-	            double start = 0.5 * (width - twidth);
-		        return workspace->x + start + lwidth + scale * gaps;
+		enum sway_layout_align_policy policy = layout_modifiers_get_align_horiz_policy(workspace);
+		if (policy == ALIGN_POLICY_IF_FIT ||
+				(policy == ALIGN_POLICY_INITIAL && children->length == 1 &&
+						active->current.width == 0)) {
+			double lwidth = 0, rwidth = 0;
+			for (int i = 0; i < active_idx; ++i) {
+				struct sway_container *con = children->items[i];
+				lwidth += scale * (con->pending.width + 2 * gaps);
 			}
-        }
+			lwidth = round(lwidth);
+			for (int i = active_idx; i < children->length; ++i) {
+				struct sway_container *con = children->items[i];
+				rwidth += scale * (con->pending.width + 2 * gaps);
+			}
+			rwidth = round(rwidth);
+			double twidth = lwidth + rwidth;
+			if (twidth <= width + 1) {
+				double start = 0;
+				enum sway_layout_align_horiz align = layout_modifiers_get_align_horiz(workspace);
+				bool do_align = true;
+				if (align == ALIGN_HORIZ_CENTER) {
+					if (config->center_horizontal_if_fits) {
+						start = 0.5 * (width - twidth);
+					} else {
+						do_align = false;
+					}
+				} else if (align == ALIGN_HORIZ_RIGHT) {
+					start = width - twidth;
+				}
+				if (do_align) {
+					return workspace->x + start + lwidth + scale * gaps;
+				}
+			}
+		}
 	} else {
 		bool center = layout_modifiers_get_center_vertical(workspace);
 		if (center) {
 			return workspace->y + 0.5 * (height - scale * active->pending.height);
 		}
-		// Center row if space available
-        double lheight = 0, rheight = 0;
-        for (int i = 0; i < active_idx; ++i) {
-			struct sway_container *con = children->items[i];
-            lheight += scale * (con->current.height + 2 * gaps);
-        }
-		lheight = round(lheight);
-        for (int i = active_idx; i < children->length; ++i) {
-			struct sway_container *con = children->items[i];
-            rheight += scale * (con->current.height + 2 * gaps);
-        }
-		rheight = round(rheight);
-        double theight = lheight + rheight;
-        if (theight <= height + 1) {
-			if (config->center_vertical_if_fits) {
-	            double start = 0.5 * (height - theight);
-		        return workspace->y + start + lheight + scale * gaps;
+		enum sway_layout_align_policy policy = layout_modifiers_get_align_vert_policy(workspace);
+		if (policy == ALIGN_POLICY_IF_FIT ||
+				(policy == ALIGN_POLICY_INITIAL && children->length == 1 &&
+						active->current.height == 0)) {
+			double lheight = 0, rheight = 0;
+			for (int i = 0; i < active_idx; ++i) {
+				struct sway_container *con = children->items[i];
+				lheight += scale * (con->pending.height + 2 * gaps);
 			}
-        }
+			lheight = round(lheight);
+			for (int i = active_idx; i < children->length; ++i) {
+				struct sway_container *con = children->items[i];
+				rheight += scale * (con->pending.height + 2 * gaps);
+			}
+			rheight = round(rheight);
+			double theight = lheight + rheight;
+			if (theight <= height + 1) {
+				double start = 0;
+				enum sway_layout_align_vert align = layout_modifiers_get_align_vert(workspace);
+				bool do_align = true;
+				if (align == ALIGN_VERT_MIDDLE) {
+					if (config->center_vertical_if_fits) {
+						start = 0.5 * (height - theight);
+					} else {
+						do_align = false;
+					}
+				} else if (align == ALIGN_VERT_BOTTOM) {
+					start = height - theight;
+				}
+				if (do_align) {
+					return workspace->y + start + lheight + scale * gaps;
+				}
+			}
+		}
 	}
 	if (pin) {
 		return get_active_position_pin(workspace, layout, children, active_idx, gaps, scale, pin);
@@ -1764,7 +1812,7 @@ static void animate_children(struct sway_workspace *workspace,
 			child->animation.yt = child->animation.y0;
 			animation_set_animation_enabled(false);
 			// 1.0 to account for rounding errors when the workspace is scaled
-			const double movement = fabs(off -child->animation.y0);
+			const double movement = fabs(off - child->animation.y0);
 			if (movement > 1.0) {
 				child->animation.yt += linear_scale(0.0, off - child->animation.y0, x);
 				animation_set_animation_enabled(true);
@@ -1776,7 +1824,8 @@ static void animate_children(struct sway_workspace *workspace,
 					animation_set_animation_enabled(true);
 				}
 			}
-			wlr_scene_node_set_position(&child->scene_tree->node, xt, child->animation.yt - workspace->y);
+			wlr_scene_node_set_position(
+					&child->scene_tree->node, xt, child->animation.yt - workspace->y);
 			child->current.y = off;
 			child->pending.y = off;
 			if (parent) {
@@ -1797,7 +1846,7 @@ static void animate_children(struct sway_workspace *workspace,
 			child->animation.wt = fmax(1, linear_scale(child->animation.w0, child->animation.w1, t));
 			child->animation.xt = child->animation.x0;
 			animation_set_animation_enabled(false);
-			const double movement = fabs(off -child->animation.x0);
+			const double movement = fabs(off - child->animation.x0);
 			if (movement > 1.0) {
 				child->animation.xt += linear_scale(0.0, off - child->animation.x0, x);
 				animation_set_animation_enabled(true);
@@ -1810,7 +1859,8 @@ static void animate_children(struct sway_workspace *workspace,
 				}
 			}
 			wlr_scene_node_set_enabled(&child->decoration.tree->node, true);
-			wlr_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, yt);
+			wlr_scene_node_set_position(
+					&child->scene_tree->node, child->animation.xt - workspace->x, yt);
 			// Update child for next iteration. Transactions don't re-arrange
 			// the layout (arrange.c:apply_xxx()), so we need to set it here,
 			// otherwise the next call will have the positions wrong and the

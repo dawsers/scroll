@@ -1144,6 +1144,42 @@ static int scroll_workspace_get_mode(lua_State *L) {
 	lua_pushboolean(L, layout_modifiers_get_center_vertical(workspace) ? 1 : 0);
 	lua_setfield(L, -2, "center_vertical");
 
+	enum sway_layout_align_horiz align_horiz = layout_modifiers_get_align_horiz(workspace);
+	switch (align_horiz) {
+	case ALIGN_HORIZ_LEFT:
+		lua_pushstring(L, "left");
+		break;
+	case ALIGN_HORIZ_CENTER:
+		lua_pushstring(L, "center");
+		break;
+	case ALIGN_HORIZ_RIGHT:
+		lua_pushstring(L, "right");
+		break;
+	}
+	lua_setfield(L, -2, "align_horiz");
+
+	enum sway_layout_align_vert align_vert = layout_modifiers_get_align_vert(workspace);
+	switch (align_vert) {
+	case ALIGN_VERT_TOP:
+		lua_pushstring(L, "top");
+		break;
+	case ALIGN_VERT_MIDDLE:
+		lua_pushstring(L, "middle");
+		break;
+	case ALIGN_VERT_BOTTOM:
+		lua_pushstring(L, "bottom");
+		break;
+	}
+	lua_setfield(L, -2, "align_vert");
+
+	enum sway_layout_align_policy policy_horiz = layout_modifiers_get_align_horiz_policy(workspace);
+	lua_pushstring(L, policy_horiz == ALIGN_POLICY_INITIAL ? "initial" : "if_fits");
+	lua_setfield(L, -2, "align_horiz_policy");
+
+	enum sway_layout_align_policy policy_vert = layout_modifiers_get_align_vert_policy(workspace);
+	lua_pushstring(L, policy_vert == ALIGN_POLICY_INITIAL ? "initial" : "if_fits");
+	lua_setfield(L, -2, "align_vert_policy");
+
 	return 1;
 }
 
@@ -1202,6 +1238,50 @@ static int scroll_workspace_set_mode(lua_State *L) {
 
 	if (lua_getfield(L, 2, "center_vertical") == LUA_TBOOLEAN) {
 		layout_modifiers_set_center_vertical(workspace, lua_toboolean(L, 3));
+	}
+	lua_pop(L, 1);
+
+	if (lua_getfield(L, 2, "align_horiz") == LUA_TSTRING) {
+		const char *val = lua_tostring(L, 3);
+		if (strcmp(val, "left") == 0) {
+			layout_modifiers_set_align_horiz(workspace, ALIGN_HORIZ_LEFT);
+		} else if (strcmp(val, "center") == 0) {
+			layout_modifiers_set_align_horiz(workspace, ALIGN_HORIZ_CENTER);
+		} else if (strcmp(val, "right") == 0) {
+			layout_modifiers_set_align_horiz(workspace, ALIGN_HORIZ_RIGHT);
+		}
+	}
+	lua_pop(L, 1);
+
+	if (lua_getfield(L, 2, "align_vert") == LUA_TSTRING) {
+		const char *val = lua_tostring(L, 3);
+		if (strcmp(val, "top") == 0) {
+			layout_modifiers_set_align_vert(workspace, ALIGN_VERT_TOP);
+		} else if (strcmp(val, "middle") == 0) {
+			layout_modifiers_set_align_vert(workspace, ALIGN_VERT_MIDDLE);
+		} else if (strcmp(val, "bottom") == 0) {
+			layout_modifiers_set_align_vert(workspace, ALIGN_VERT_BOTTOM);
+		}
+	}
+	lua_pop(L, 1);
+
+	if (lua_getfield(L, 2, "align_horiz_policy") == LUA_TSTRING) {
+		const char *val = lua_tostring(L, 3);
+		if (strcmp(val, "initial") == 0) {
+			layout_modifiers_set_align_horiz_policy(workspace, ALIGN_POLICY_INITIAL);
+		} else if (strcmp(val, "if_fits") == 0) {
+			layout_modifiers_set_align_horiz_policy(workspace, ALIGN_POLICY_IF_FIT);
+		}
+	}
+	lua_pop(L, 1);
+
+	if (lua_getfield(L, 2, "align_vert_policy") == LUA_TSTRING) {
+		const char *val = lua_tostring(L, 3);
+		if (strcmp(val, "initial") == 0) {
+			layout_modifiers_set_align_vert_policy(workspace, ALIGN_POLICY_INITIAL);
+		} else if (strcmp(val, "if_fits") == 0) {
+			layout_modifiers_set_align_vert_policy(workspace, ALIGN_POLICY_IF_FIT);
+		}
 	}
 	lua_pop(L, 1);
 
