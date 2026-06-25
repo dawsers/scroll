@@ -628,6 +628,8 @@ struct sway_config {
 	bool align_reset_auto;
 	bool cycle_size_wrap;
 	bool maximize_if_single;
+	bool center_horizontal_if_fits;
+	bool center_vertical_if_fits;
 	bool cursor_shake_magnify;
 	double cursor_shake_magnify_sensitivity;
 	bool workspace_next_on_output_create_empty;

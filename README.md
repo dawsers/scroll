@@ -1648,6 +1648,14 @@ clients that don't implement the xdg-activation protocol correctly will be able
 to activate focus on other windows. See `focus_on_window_activation` to set the
 state of the activated window to `urgent` or `focused`.
 
+`center_horizontal_if_fits <true|false|toggle>`: The default value is `true`.
+If `true`, whenever all the columns in the workspace fit in the viewport, they
+will be centered, leaving the same amount of empty space on both sides.
+
+`center_vertical_if_fits <true|false|toggle>`: The default value is `true`.
+If `true`, whenever all the windows in a column	fit in the viewport, they will
+be centered, leaving the same amount of	empty space at the top and bottom.
+
 ### Decoration Options
 
 *scroll* uses different decorations (borders, title bars etc.) than *sway*. It
@@ -2124,6 +2132,7 @@ each one of them:
 Colors for pinned and selected containers. Indicator changes to show next
 insertion location.
 
+`center_horizontal_if_fits`, `center_vertical_if_fits`,
 `default_decoration`, `default_border csd`, `default_floating_border csd`,
 `focus_follows_mouse full`, `focus_wrapping stay`,
 `fullscreen_on_request default|layout`, `titlebar_border_radius`,

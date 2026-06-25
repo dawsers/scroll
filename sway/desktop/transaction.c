@@ -497,6 +497,7 @@ static double get_active_position(struct sway_workspace *workspace,
 				double movement = DBL_MAX;
 				double cx0 = workspace->x + workspace->width;
 				bool space = true;
+				bool fits = false;
 				for (int i = c_r; i >= 0; i--) {
 					struct sway_container *con = children->items[i];
 					cx0 -= scale * (con->current.width + 2.0 * gaps);
@@ -509,8 +510,11 @@ static double get_active_position(struct sway_workspace *workspace,
 							break;
 						}
 					}
+					if (c_r == children->length - 1 && i == 0) {
+						fits = true;
+					}
 				}
-				if (!space && fabs(movement) < fabs(best_movement)) {
+				if ((!space || fits) && fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -532,6 +536,7 @@ static double get_active_position(struct sway_workspace *workspace,
 				double movement = DBL_MAX;
 				double cx1 = workspace->x;
 				bool space = true;
+				bool fits = false;
 				for (int i = c_l; i < children->length; ++i) {
 					if (i == active_idx) {
 						movement = (cx1 + scale * gaps) - a_x;
@@ -544,8 +549,11 @@ static double get_active_position(struct sway_workspace *workspace,
 							break;
 						}
 					}
+					if (c_l == 0 && i == children->length - 1) {
+						fits = true;
+					}
 				}
-				if (!space && fabs(movement) < fabs(best_movement)) {
+				if ((!space || fits) && fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -571,6 +579,7 @@ static double get_active_position(struct sway_workspace *workspace,
 				double movement = DBL_MAX;
 				double cy1 = workspace->y;
 				bool space = true;
+				bool fits = false;
 				for (int i = c_l; i < children->length; ++i) {
 					if (i == active_idx) {
 						movement = (cy1 + scale * gaps) - a_y;
@@ -583,8 +592,11 @@ static double get_active_position(struct sway_workspace *workspace,
 							break;
 						}
 					}
+					if (c_l == 0 && i == children->length - 1) {
+						fits = true;
+					}
 				}
-				if (!space && fabs(movement) < fabs(best_movement)) {
+				if ((!space || fits) &&	fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -602,6 +614,7 @@ static double get_active_position(struct sway_workspace *workspace,
 				double movement = DBL_MAX;
 				double cy0 = workspace->y + workspace->height;
 				bool space = true;
+				bool fits = false;
 				for (int i = c_r; i >= 0; i--) {
 					struct sway_container *con = children->items[i];
 					cy0 -= scale * (con->current.height + 2.0 * gaps);
@@ -614,8 +627,11 @@ static double get_active_position(struct sway_workspace *workspace,
 							break;
 						}
 					}
+					if (c_r == children->length - 1 && i == 0) {
+						fits = true;
+					}
 				}
-				if (!space && fabs(movement) < fabs(best_movement)) {
+				if ((!space || fits) &&	fabs(movement) < fabs(best_movement)) {
 					move = true;
 					best_movement = movement;
 				}
@@ -663,8 +679,10 @@ static double compute_active_offset(struct sway_workspace *workspace,
 		rwidth = round(rwidth);
         double twidth = lwidth + rwidth;
         if (twidth <= width + 1) {
-            double start = 0.5 * (width - twidth);
-            return workspace->x + start + lwidth + scale * gaps;
+			if (config->center_horizontal_if_fits) {
+	            double start = 0.5 * (width - twidth);
+		        return workspace->x + start + lwidth + scale * gaps;
+			}
         }
 	} else {
 		bool center = layout_modifiers_get_center_vertical(workspace);
@@ -685,8 +703,10 @@ static double compute_active_offset(struct sway_workspace *workspace,
 		rheight = round(rheight);
         double theight = lheight + rheight;
         if (theight <= height + 1) {
-            double start = 0.5 * (height - theight);
-            return workspace->y + start + lheight + scale * gaps;
+			if (config->center_vertical_if_fits) {
+	            double start = 0.5 * (height - theight);
+		        return workspace->y + start + lheight + scale * gaps;
+			}
         }
 	}
 	if (pin) {

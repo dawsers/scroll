@@ -2,6 +2,33 @@
 #include "sway/config.h"
 #include "util.h"
 
+struct cmd_results *cmd_maximize_if_single(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "maximize_if_single", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	config->maximize_if_single = parse_boolean(argv[0], config->maximize_if_single);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_center_horizontal_if_fits(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "center_horizontal_if_fits", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	config->center_horizontal_if_fits = parse_boolean(argv[0], config->center_horizontal_if_fits);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_center_vertical_if_fits(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "center_vertical_if_fits", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	config->center_vertical_if_fits = parse_boolean(argv[0], config->center_vertical_if_fits);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
 struct cmd_results *cmd_cursor_shake_magnify(int argc, char **argv) {
 	struct cmd_results *error =
 		checkarg(argc, "cursor_shake_magnify", EXPECTED_EQUAL_TO, 1);

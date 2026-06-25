@@ -49,6 +49,8 @@ static const struct cmd_handler handlers[] = {
 	{ "bindgesture", cmd_bindgesture },
 	{ "bindswitch", cmd_bindswitch },
 	{ "bindsym", cmd_bindsym },
+	{ "center_horizontal_if_fits", cmd_center_horizontal_if_fits },
+	{ "center_vertical_if_fits", cmd_center_vertical_if_fits },
 	{ "client.background", cmd_client_noop },
 	{ "client.focused", cmd_client_focused },
 	{ "client.focused_inactive", cmd_client_focused_inactive },

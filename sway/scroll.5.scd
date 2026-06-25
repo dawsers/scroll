@@ -1249,6 +1249,16 @@ runtime.
 
 ```
 
+*center_horizontal_if_fits* <true|false|toggle>
+	Default value is _true_. If _true_, whenever all the columns in the
+	workspace fit in the viewport, they will be centered, leaving the same
+	amount of empty space on both sides.
+
+*center_vertical_if_fits* <true|false|toggle>
+	Default value is _true_. If _true_, whenever all the windows in a column
+	fit in the viewport, they will be centered, leaving the same amount of
+	empty space at the top and bottom.
+
 *client.background* <color>
 	This command is ignored and is only present for i3 compatibility.
 

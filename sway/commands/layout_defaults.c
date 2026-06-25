@@ -6,15 +6,6 @@
 #include "util.h"
 #include "sway/commands.h"
 
-struct cmd_results *cmd_maximize_if_single(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "maximize_if_single", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	config->maximize_if_single = parse_boolean(argv[0], config->maximize_if_single);
-	return cmd_results_new(CMD_SUCCESS, NULL);
-}
-
 struct cmd_results *cmd_layout_default_height(int argc, char **argv) {
 	struct cmd_results *error;
 	if ((error = checkarg(argc, "layout_default_height", EXPECTED_AT_LEAST, 1))) {
