@@ -93,6 +93,8 @@ layout_heights [0.33333333 0.5 0.666666667 1.0]
 # fullscreen_movefocus true nofollow
 # fullscreen_on_request default
 # maximize_if_single false
+# center_horizontal_if_fits true
+# center_vertical_if_fits true
 # workspace_next_on_output_create_empty true
 # xwayland_output_scale true
 # focus_wrapping no
