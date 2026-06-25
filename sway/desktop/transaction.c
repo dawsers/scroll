@@ -1307,6 +1307,10 @@ static void arrange_workspace_tiling(struct sway_workspace *ws,
 			ws->current.focused_inactive_child, ws->layers.tiling,
 			ws->gaps_inner);
 	}
+	struct sway_container *pin = layout_pin_enabled(ws) ? layout_pin_get_container(ws) : NULL;
+	if (pin) {
+		wlr_scene_node_raise_to_top(&pin->scene_tree->node);
+	}
 }
 
 static void animate_workspace_tiling(struct sway_workspace *ws) {
