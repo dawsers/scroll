@@ -2161,6 +2161,22 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 *container_get_height(container)*
 	Returns a floating point value with the _container_'s height in pixels.
 
+*container_get_geometry(container)*
+	Returns a table with the _container_'s geometry (in layout coordinates),
+	reflecting the final position after any animations complete, or *nil* if
+	the container is invalid.
+	The keys of that table are "x", "y", "width" and "height", and the values
+	are floating point numbers.
+
+
+*container_get_animated_geometry(container)*
+	Returns a table with the _container_'s animated geometry (in layout coordinates),
+	or *nil* if the container is invalid.
+	This reflects the current animated position and size if an animation is running.
+	The keys of that table are "x", "y", "width" and "height", and the values
+	are floating point numbers.
+
+
 *container_get_fullscreen_mode(container)*
 	Returns a string with the _fullscreen_ state for _container_. Values can be
 	"none", "workspace" (covers only its workspace extents) or "global" (covers

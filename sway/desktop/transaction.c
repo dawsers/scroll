@@ -1748,11 +1748,14 @@ static void animate_children(struct sway_workspace *workspace,
 				child->animation.yt += linear_scale(0.0, off - child->animation.y0, x);
 				animation_set_animation_enabled(true);
 			}
+			double xt = 0;
 			if (y != 0.0) {
-				child->animation.yt += y * anim_scale * workspace->height;
-				animation_set_animation_enabled(true);
+				if (fabs(off - child->animation.y0) > 1.0) {
+					xt += y * anim_scale * workspace->width;
+					animation_set_animation_enabled(true);
+				}
 			}
-			wlr_scene_node_set_position(&child->scene_tree->node, 0, child->animation.yt - workspace->y);
+			wlr_scene_node_set_position(&child->scene_tree->node, xt, child->animation.yt - workspace->y);
 			child->current.y = off;
 			child->pending.y = off;
 			if (parent) {
@@ -1777,12 +1780,15 @@ static void animate_children(struct sway_workspace *workspace,
 				child->animation.xt += linear_scale(0.0, off - child->animation.x0, x);
 				animation_set_animation_enabled(true);
 			}
+			double yt = 0;
 			if (y != 0.0) {
-				child->animation.xt += y * anim_scale * workspace->width;
-				animation_set_animation_enabled(true);
+				if (fabs(off - child->animation.x0) > 1.0) {
+					yt += y * anim_scale * workspace->height;
+					animation_set_animation_enabled(true);
+				}
 			}
 			wlr_scene_node_set_enabled(&child->decoration.tree->node, true);
-			wlr_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, 0);
+			wlr_scene_node_set_position(&child->scene_tree->node, child->animation.xt - workspace->x, yt);
 			// Update child for next iteration. Transactions don't re-arrange
 			// the layout (arrange.c:apply_xxx()), so we need to set it here,
 			// otherwise the next call will have the positions wrong and the

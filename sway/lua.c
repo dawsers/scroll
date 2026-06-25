@@ -9,6 +9,7 @@
 #include "sway/tree/workspace.h"
 #include "sway/tree/node.h"
 #include "sway/output.h"
+#include "sway/desktop/animation.h"
 #include "sway/ipc-server.h"
 
 #if 0
@@ -749,6 +750,69 @@ static int scroll_container_get_height(lua_State *L) {
 	lua_pushnumber(L, container->pending.height);
 	return 1;
 }
+
+static int scroll_container_get_geometry(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	struct sway_container *container = lua_to_container(L, -1);
+	if (!container) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_createtable(L, 0, 4);
+	lua_pushnumber(L, container->pending.x);
+	lua_setfield(L, -2, "x");
+	lua_pushnumber(L, container->pending.y);
+	lua_setfield(L, -2, "y");
+	lua_pushnumber(L, container->pending.width);
+	lua_setfield(L, -2, "width");
+	lua_pushnumber(L, container->pending.height);
+	lua_setfield(L, -2, "height");
+	return 1;
+}
+
+static int scroll_container_get_animated_geometry(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	struct sway_container *container = lua_to_container(L, -1);
+	if (!container) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_createtable(L, 0, 4);
+	double lx, ly;
+	if (container->scene_tree && wlr_scene_node_coords(&container->scene_tree->node, &lx, &ly)) {
+		lua_pushnumber(L, lx);
+		lua_setfield(L, -2, "x");
+		lua_pushnumber(L, ly);
+		lua_setfield(L, -2, "y");
+	} else {
+		lua_pushnumber(L, container->current.x);
+		lua_setfield(L, -2, "x");
+		lua_pushnumber(L, container->current.y);
+		lua_setfield(L, -2, "y");
+	}
+
+	if (animation_animating()) {
+		lua_pushnumber(L, container->animation.wt);
+		lua_setfield(L, -2, "width");
+		lua_pushnumber(L, container->animation.ht);
+		lua_setfield(L, -2, "height");
+	} else {
+		lua_pushnumber(L, container->current.width);
+		lua_setfield(L, -2, "width");
+		lua_pushnumber(L, container->current.height);
+		lua_setfield(L, -2, "height");
+	}
+	return 1;
+}
+
 
 static int scroll_container_get_fullscreen_mode(lua_State *L) {
 	int argc = lua_gettop(L);
@@ -1584,6 +1648,8 @@ static luaL_Reg const scroll_lib[] = {
 	{ "container_get_height_fraction", scroll_container_get_height_fraction },
 	{ "container_get_width", scroll_container_get_width },
 	{ "container_get_height", scroll_container_get_height },
+	{ "container_get_geometry", scroll_container_get_geometry },
+	{ "container_get_animated_geometry", scroll_container_get_animated_geometry },
 	{ "container_get_fullscreen_mode", scroll_container_get_fullscreen_mode },
 	{ "container_get_fullscreen_app_mode", scroll_container_get_fullscreen_app_mode },
 	{ "container_get_fullscreen_view_mode", scroll_container_get_fullscreen_view_mode },
