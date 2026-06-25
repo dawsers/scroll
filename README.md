@@ -2163,3 +2163,35 @@ events: `scroller`, `trails`, `lua`
 ### scrollnag
 
 `--edge center`, `--width`
+
+## Testing
+
+A pytest-based integration test suite is included in the `tests/` directory.
+
+To run the test suite directly:
+
+```sh
+pytest -v
+```
+
+This will automatically configure and build the project using Meson/Ninja in a local `build/` 
+directory, set up a headless compositor instance, and run the tests.
+
+### Interactive Testing
+
+You can run `scroll` interactively with AddressSanitizer (ASan) enabled and the default configuration by running:
+
+```sh
+./tests/interactive.sh
+```
+
+This script will:
+- Build `scroll` with ASan enabled (similar to automated tests).
+- Prepend the directories containing the built binaries (`scroll`, `scrollmsg`, `scrollbar`, `scrollnag`) to your `PATH` so they can be found by `scroll` and its children.
+- Run `scroll` using the default `config.in` configuration.
+
+You can override the configuration file by passing `-c` or `--config` arguments:
+
+```sh
+./tests/interactive.sh -c /path/to/custom/config
+```
