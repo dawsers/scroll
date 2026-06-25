@@ -136,8 +136,7 @@ bool animation_animating();
 bool animation_animating_output(struct wlr_output *output);
 
 // Get the current parameters for the active animation
-void animation_get_values(double *t, double *x, double *y,
-	double *offset_scale);
+void animation_get_values(double *t, double *x, double *y);
 
 
 // Create a 3D animation curve
