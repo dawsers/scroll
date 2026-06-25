@@ -2281,3 +2281,18 @@ struct sway_container *container_get_by_id(size_t id) {
 		NULL;
 }
 
+bool container_in_viewport(struct sway_container *container) {
+	struct sway_workspace *workspace = container->pending.workspace;
+	if (!workspace) {
+		return false;
+	}
+	struct wlr_box box_c, box_o;
+	container_get_box(container, &box_c);
+	bool floating = container_is_floating(container);
+	if (floating) {
+		root_get_box(root, &box_o);
+	} else {
+		output_get_box(workspace->output, &box_o);
+	}
+	return wlr_box_contains_box(&box_o, &box_c);
+}

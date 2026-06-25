@@ -97,7 +97,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 	}
 
 	if (strcasecmp(argv[0], "reset") == 0) {
-		layout_modifiers_set_reorder(workspace, REORDER_AUTO);
+		layout_workspace_set_align(workspace, ALIGN_NONE);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
@@ -110,7 +110,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 	enum sway_container_layout mode = layout_modifiers_get_mode(workspace);
 	struct sway_container *parent = container->pending.parent ? container->pending.parent : container;
 	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
-	layout_modifiers_set_reorder(workspace, REORDER_LAZY);
+	layout_workspace_set_align(workspace, config->align_reset_auto ? ALIGN_AUTO : ALIGN_ALWAYS);
 	int gap = workspace->gaps_inner;
 
 	switch (direction) {

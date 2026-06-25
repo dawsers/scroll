@@ -794,9 +794,8 @@ this parameter decides whether it will get focus or not.
 4. Reorder automatic mode: `reorder_auto` (default) or `noreorder_auto`. By
 default, *scroll* will reorder windows every time you change focus, move or
 create new windows. But sometimes you want to keep the current window in a
-certain position, for example when using `align`. `align` turns reordering
-mode to `noreorder_auto`, and the window will keep its position regardless of
-what you do, until you set `reorder_auto` again.
+certain position. Use `noreorder_auto`, and the window will keep its position
+regardless of what you do, until you set `reorder_auto` again.
 5. `center_horiz/nocenter_horiz`: It will keep the active column centered
 (or not) on the screen. The default value is the one in your configuration.
 4. `center_vert/nocenter_vert`: It will keep the active window centered
@@ -867,11 +866,11 @@ can always align any column to the *center*, *left* or *right* of the monitor
 (in *horizontal* mode), or *up* (top), *down* (bottom) or to the *center* in
 *vertical* mode. For example center a column for easier reading, regardless of
 what happens to the other columns. If you want to go back to automatic mode,
-you need to use the mode modifier `reorder_auto` or call `align reset`. The
-only time when alignment will be lost is if you open a new window. However,
-there is also a configuration option, `align_reset_auto yes|no`. It is `no` by
-default. If set to `yes`, every time you change focus, the alignment will be
-reset automatically, for a behavior similar to hyprscroller's.
+you need to call `align reset`. The only time alignment is lost is if you
+open a new window. However, there is also a configuration option,
+`align_reset_auto yes|no`. It is `yes` by default, which means every time you
+change focus, if the new window is outside of the viewport, the alignment will
+be reset automatically.
 
 You can also center a window on your workspace using *middle*, it
 will center its column, and also the window within the column.

@@ -83,6 +83,7 @@ void layout_init(struct sway_workspace *workspace) {
 	layout_modifiers_init(workspace);
 	workspace->layout.overview = OVERVIEW_DISABLED;
 	workspace->layout.mem_scale = -1.0f;  // disabled
+	workspace->layout.align = ALIGN_NONE;
 	layout_toggle_size_init(workspace);
 	ipc_event_scroller("new", workspace);
 }
@@ -735,6 +736,14 @@ bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace) {
 	return workspace->layout.modifiers.center_vertical;
 }
 
+void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align) {
+	workspace->layout.align = align;
+}
+
+enum sway_layout_align layout_workspace_get_align(struct sway_workspace *workspace) {
+	return workspace->layout.align;
+}
+
 static int layout_insert_compute_index(list_t *list, void *active, enum sway_layout_insert pos) {
 	switch (pos) {
 	case INSERT_BEFORE:
@@ -862,9 +871,6 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	// Insert the container
 	workspace_insert_tiling_direct(workspace, parent, idx);
 
-	// When adding a new view, reset REORDER to AUTO
-	layout_modifiers_set_reorder(workspace, REORDER_AUTO);
-
 	if (active) {
 		position_new_container(workspace, workspace->tiling,
 			active->pending.parent ? active->pending.parent : active, parent, idx);
@@ -883,6 +889,12 @@ void layout_add_view(struct sway_workspace *workspace, struct sway_container *ac
 		}
 		layout_container_add_view(active, view, mode, pos);
 	}
+	// When adding a new view, reset REORDER to AUTO and ALIGN to NONE
+	// The reason is position_new_container() doesn't compute the exact
+	// location of the new window, and it would be used in
+	// transaction.c:arrange_children()" as anchor.
+	layout_modifiers_set_reorder(workspace, REORDER_AUTO);
+	layout_workspace_set_align(workspace, ALIGN_NONE);
 }
 
 static void layout_workspace_add_container(struct sway_workspace *workspace, struct sway_container *active, struct sway_container *container,

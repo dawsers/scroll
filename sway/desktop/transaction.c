@@ -761,7 +761,8 @@ static void arrange_children(struct sway_workspace *workspace,
 	}
 
 	double offset;
-	if (workspace->gesture.scrolling || layout_modifiers_get_reorder(workspace) == REORDER_LAZY || jumping) {
+	if (workspace->gesture.scrolling ||	layout_modifiers_get_reorder(workspace) == REORDER_LAZY || jumping ||
+		layout_workspace_get_align(workspace) != ALIGN_NONE) {
 		offset = layout == L_HORIZ ? active->pending.x : active->pending.y;
 	} else {
 		if (active->pending.fullscreen_layout == FULLSCREEN_ENABLED && !layout_scale_enabled(workspace)) {

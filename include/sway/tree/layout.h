@@ -41,6 +41,12 @@ enum sway_layout_insert {
 	INSERT_END
 };
 
+enum sway_layout_align {
+	ALIGN_NONE,
+	ALIGN_AUTO,
+	ALIGN_ALWAYS,
+};
+
 enum sway_layout_pin {
 	PIN_BEGINNING,
 	PIN_END
@@ -102,6 +108,8 @@ struct sway_scroller {
 		struct sway_container *container;
 		double width, height;
 	} toggle_size;
+
+	enum sway_layout_align align;
 };
 
 struct sway_scroller_modifiers {
@@ -180,6 +188,9 @@ bool layout_modifiers_get_focus(struct sway_workspace *workspace);
 bool layout_modifiers_get_center_horizontal(struct sway_workspace *workspace);
 bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace);
 enum sway_layout_reorder layout_modifiers_get_reorder(struct sway_workspace *workspace);
+
+void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align);
+enum sway_layout_align layout_workspace_get_align(struct sway_workspace *workspace);
 
 // Layout API
 void layout_add_view(struct sway_workspace *workspace, struct sway_container *active, struct sway_container *view);

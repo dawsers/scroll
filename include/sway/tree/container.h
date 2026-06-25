@@ -449,4 +449,12 @@ struct sway_view *container_get_active_view(struct sway_container *container);
 
 struct sway_container *container_get_by_id(size_t id);
 
+/*
+ * If the container's coordinates are fully in the viewport, return true,
+ * otherwise false.
+ * The viewport is considered their workspace's output for tiled containers,
+ * and the whole output layout for floating containers.
+ */
+bool container_in_viewport(struct sway_container *container);
+
 #endif
