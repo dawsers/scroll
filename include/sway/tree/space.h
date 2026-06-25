@@ -11,6 +11,7 @@ enum sway_space_restore {
 
 struct sway_space_view {
     struct sway_view *view;
+    struct wl_listener view_unmap;
     struct sway_space_container *container;
 	float content_scale;
 };

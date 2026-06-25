@@ -1559,10 +1559,6 @@ json_object *ipc_json_describe_trails() {
 	return object;
 }
 
-static bool find_view(struct sway_container *container, void *data) {
-	struct sway_view *view = data;
-	return container->view == view;
-}
 
 static json_object *ipc_json_describe_space_container(struct sway_space_container *space_container) {
 	json_object *object = json_object_new_object();
@@ -1576,23 +1572,25 @@ static json_object *ipc_json_describe_space_container(struct sway_space_containe
 	}
 	if (space_container->view) {
 		struct sway_view *view = space_container->view->view;
-		struct sway_container *container = root_find_container(find_view, view);
-		if (container) {
-			json_object *json_view = json_object_new_object();
-			json_object_object_add(json_view, "con_id", json_object_new_int64(container->node.id));
+		if (view) {
+			struct sway_container *container = view->container;
+			if (container) {
+				json_object *json_view = json_object_new_object();
+				json_object_object_add(json_view, "con_id", json_object_new_int64(container->node.id));
 
-			const char *identifier = view_get_class(view);
-			if (!identifier) {
-				const char *app_id = view_get_app_id(view);
-				json_object_object_add(json_view, "app_id",	app_id ? json_object_new_string(app_id) : NULL);
-			} else {
-				json_object_object_add(json_view, "class", json_object_new_string(identifier));
+				const char *identifier = view_get_class(view);
+				if (!identifier) {
+					const char *app_id = view_get_app_id(view);
+					json_object_object_add(json_view, "app_id",	app_id ? json_object_new_string(app_id) : NULL);
+				} else {
+					json_object_object_add(json_view, "class", json_object_new_string(identifier));
+				}
+				const char *title = view_get_title(view);
+				if (title) {
+					json_object_object_add(json_view, "title", json_object_new_string(title));
+				}
+				json_object_object_add(object, "view", json_view);
 			}
-			const char *title = view_get_title(view);
-			if (title) {
-				json_object_object_add(json_view, "title", json_object_new_string(title));
-			}
-			json_object_object_add(object, "view", json_view);
 		}
 	}
 
