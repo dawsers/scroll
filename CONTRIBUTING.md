@@ -99,6 +99,10 @@ with a few notable differences.
 Try to keep your code conforming to C11 and POSIX as much as possible, and do
 not use GNU extensions.
 
+A `.clang-format` configuration is provided in the root directory. You can use
+it with tools like `git-clang-format` to format your changes. However, please
+do not reformat existing code that you are not modifying.
+
 ### Brackets
 
 Brackets always go on the same line, including in functions.
