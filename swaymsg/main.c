@@ -716,6 +716,8 @@ int main(int argc, char **argv) {
 		type = IPC_GET_SPACES;
 	} else if (strcasecmp(cmdtype, "get_bindings") == 0) {
 		type = IPC_GET_BINDINGS;
+	} else if (strcasecmp(cmdtype, "mint_activation_token") == 0) {
+		type = IPC_MINT_ACTIVATION_TOKEN;
 	} else {
 		if (quiet) {
 			exit(EXIT_FAILURE);
