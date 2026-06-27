@@ -65,7 +65,8 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 		yb = cont->pending.y + (cont->pending.border == B_NORMAL ? scale * container_titlebar_height() : 0.0);
 	}
 	enum wlr_edges edge = 0;
-	const double border_thickness = MAX(1.0, scale * cont->pending.border_thickness);
+	const double border_thickness = cont->pending.border_thickness > 0 ?
+		MAX(1.0, scale * cont->pending.border_thickness) : 0.0;
 	if (cont->pending.border_left && cx < x + border_thickness) {
 		edge |= WLR_EDGE_LEFT;
 	}
