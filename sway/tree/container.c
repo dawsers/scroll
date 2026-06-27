@@ -218,6 +218,9 @@ static bool container_is_current_floating(struct sway_container *container) {
 static void scene_border_set_colors(struct wlr_scene_decoration *decoration,
 		const float top[4], const float bottom[4], const float left[4],
 		const float right[4], float opacity) {
+	if (!decoration->border) {
+		return;
+	}
 	const float pre_top[] = {
 		top[0] * top[3] * opacity,
 		top[1] * top[3] * opacity,

@@ -1035,9 +1035,15 @@ void wlr_scene_decoration_set_size(struct wlr_scene_decoration *decoration, doub
 	scene_node_update(&decoration->node, NULL);
 }
 
+void wlr_scene_decoration_set_border_enable(struct wlr_scene_decoration *decoration, bool enable) {
+	if (decoration->border != enable) {
+		decoration->border = enable;
+		scene_node_update(&decoration->node, NULL);
+	}
+}
+
 void wlr_scene_decoration_set_border_color(struct wlr_scene_decoration *decoration, const float top[static 4],
 		const float bottom[static 4], const float left[static 4], const float right[static 4]) {
-	decoration->border = true;
 	if (memcmp(decoration->border_top_color, top, sizeof(decoration->border_top_color)) == 0 &&
 		memcmp(decoration->border_bottom_color, bottom, sizeof(decoration->border_bottom_color)) == 0 &&
 		memcmp(decoration->border_left_color, left, sizeof(decoration->border_left_color)) == 0 &&
@@ -2473,20 +2479,21 @@ static bool scene_node_invisible(struct wlr_scene_node *node) {
 		return buffer->buffer == NULL && buffer->texture == NULL;
 	} else if (node->type == WLR_SCENE_NODE_DECORATION) {
 		struct wlr_scene_decoration *decoration = wlr_scene_decoration_from_node(node);
-		bool title_visible = decoration->title_bar && decoration->title_bar_color[3] != 0.f;
-		bool border_visible;
+		if (decoration->title_bar && decoration->title_bar_color[3] != 0.f) {
+			return false;
+		}
+		if (decoration->dim && decoration->dim_color[3] != 0.f) {
+			return false;
+		}
 		if (decoration->border) {
 			if (decoration->border_width <= 0.0 ||
 				(decoration->border_top_color[3] == 0.f && decoration->border_bottom_color[3] == 0.f &&
 				 decoration->border_left_color[3] == 0.f && decoration->border_right_color[3] == 0.f)) {
-				border_visible = false;
+				return true;
 			} else {
-				border_visible = true;
+				return false;
 			}
 		} else {
-			border_visible = false;
-		}
-		if (!title_visible && !border_visible) {
 			return true;
 		}
 	} else if (node->type == WLR_SCENE_NODE_SHADOW) {

@@ -584,6 +584,11 @@ struct wlr_scene_decoration *wlr_scene_decoration_create(struct wlr_scene_tree *
 void wlr_scene_decoration_set_size(struct wlr_scene_decoration *deco, double width, double height);
 
 /**
+ * Enable or disable the border of an existing decoration node.
+ */
+void wlr_scene_decoration_set_border_enable(struct wlr_scene_decoration *decoration, bool enable);
+
+/**
  * Add a border to an existing decoration node with the given colors.
  *
  * The color argument must be a premultiplied color value.
