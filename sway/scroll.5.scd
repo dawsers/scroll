@@ -2075,6 +2075,11 @@ This is the current supported API:
 	If the first parameter is _nil_, use the default context, usually the
 	focused container or workspace. Returns all the results/errors in an array.
 
+*exec_process(command)*
+	Execute a _command_ in the shell. If successful, tt will return a table
+	with members _pid_ (the	PID of the running _command_), and _activation_token_
+	(the activation token generated when running the command).
+
 ```
 scroll.command(nil, "set_size v 0.33333333; move left nomode")
 ```

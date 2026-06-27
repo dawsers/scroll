@@ -10,6 +10,7 @@
 #include "sway/tree/node.h"
 #include "sway/output.h"
 #include "sway/desktop/animation.h"
+#include "sway/desktop/launcher.h"
 #include "sway/ipc-server.h"
 
 #if 0
@@ -329,6 +330,52 @@ static int scroll_command(lua_State *L) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
 		safe_pcall(config->lua.state, 2);
 	}
+	return 1;
+}
+
+static int scroll_exec_process(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc == 0) {
+		lua_createtable(L, 0, 0);
+		return 1;
+	}
+
+	const char *cmd = luaL_checkstring(L, 1);
+	struct launcher_ctx *ctx = launcher_ctx_create_internal();
+
+	// Fork process
+	pid_t child = fork();
+	if (child == 0) {
+		setsid();
+
+		if (ctx) {
+			const char *token = launcher_ctx_get_token_name(ctx);
+			setenv("XDG_ACTIVATION_TOKEN", token, 1);
+			setenv("DESKTOP_STARTUP_ID", token, 1);
+		}
+
+		execlp("sh", "sh", "-c", cmd, (void*)NULL);
+		sway_log_errno(SWAY_ERROR, "execve failed");
+		_exit(0); // Close child process
+	} else if (child < 0) {
+		launcher_ctx_destroy(ctx);
+		lua_createtable(L, 0, 0);
+		return 1;
+	}
+
+	if (ctx != NULL) {
+		ctx->pid = child;
+	}
+
+	lua_newtable(L);
+	lua_pushinteger(L, ctx->pid);
+	lua_setfield(L, -2, "pid");
+	if (ctx->token) {
+		lua_pushstring(L, launcher_ctx_get_token_name(ctx));
+	} else {
+		lua_pushnil(L);
+	}
+	lua_setfield(L, -2, "activation_token");
 	return 1;
 }
 
@@ -1619,6 +1666,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "state_set_value", scroll_state_set_value },
 	{ "state_get_value", scroll_state_get_value },
 	{ "ipc_send", scroll_ipc_send },
+	{ "exec_process", scroll_exec_process },
 	{ "command", scroll_command },
 	{ "node_get_type", scroll_node_get_type },
 	{ "focused_view", scroll_focused_view },
