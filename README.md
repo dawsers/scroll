@@ -866,10 +866,9 @@ can always align any column to the *center*, *left* or *right* of the monitor
 (in *horizontal* mode), or *up* (top), *down* (bottom) or to the *center* in
 *vertical* mode. For example center a column for easier reading, regardless of
 what happens to the other columns. If you want to go back to automatic mode,
-you need to call `align reset`. The only time alignment is lost is if you
-open a new window. However, there is also a configuration option,
+you need to call `align reset`. However, there is also a configuration option,
 `align_reset_auto yes|no`. It is `yes` by default, which means every time you
-change focus, if the new window is outside of the viewport, the alignment will
+change focus to a window outside of the viewport, the alignment will
 be reset automatically.
 
 You can also center a window on your workspace using *middle*, it
@@ -1568,8 +1567,9 @@ and equal to the gap between workspaces.
 ### General Options
 
 `align_reset_auto`: default is `yes` (`true`). If `true`, every time you
-change focus, any active alignment (`align` command) will be reset automatically,
-without any need to call `align reset`, for a behavior similar to hyprscroller's.
+change focus to a window outside of the viewport, any active alignment
+(`align` command) will be reset automatically, without any need to call
+`align reset`.
 
 `cursor_shake_magnify <true|false>`: Default value is `false`. If `true`,
 shaking the cursor will magnify it. It can be useful to find the location of

@@ -737,7 +737,10 @@ bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace) {
 }
 
 void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align) {
-	workspace->layout.align = align;
+	if (align != workspace->layout.align) {
+		workspace->layout.align = align;
+		node_set_dirty(&workspace->node);
+	}
 }
 
 enum sway_layout_align layout_workspace_get_align(struct sway_workspace *workspace) {
@@ -762,28 +765,40 @@ static int layout_insert_compute_index(list_t *list, void *active, enum sway_lay
 	}
 }
 
-// Try to set the new container in an approximate position where it will
-// not remove the old active from view if they are neighbors.
 static void position_new_container(struct sway_workspace *workspace,
 		list_t *children, struct sway_container *active,
 		struct sway_container *container, int container_idx) {
 
 	int active_idx = list_find(children, active);
 	if (active_idx >= 0) {
+		double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+		double distance = 0;
 		if (layout_modifiers_get_mode(workspace) == L_HORIZ) {
 			if (container_idx < active_idx) {
-				double width = container->width_fraction * workspace->width;
-				container->pending.x = active->pending.x - width;
+				for (int i = active_idx - 1; i >= container_idx; i--) {
+					struct sway_container *con = children->items[i];
+					distance -= scale * con->width_fraction * workspace->width;
+				}
 			} else {
-				container->pending.x = active->pending.x + active->current.width;
+				for (int i = active_idx; i < container_idx; ++i) {
+					struct sway_container *con = children->items[i];
+					distance += scale * con->width_fraction * workspace->width;
+				}
 			}
+			container->pending.x = active->pending.x + distance;
 		} else {
 			if (container_idx < active_idx) {
-				double height = container->height_fraction * workspace->height;
-				container->pending.y = active->pending.y - height;
+				for (int i = active_idx - 1; i >= container_idx; i--) {
+					struct sway_container *con = children->items[i];
+					distance -= scale * con->height_fraction * workspace->height;
+				}
 			} else {
-				container->pending.y = active->pending.y + active->current.height;
+				for (int i = active_idx; i < container_idx; ++i) {
+					struct sway_container *con = children->items[i];
+					distance += scale * con->height_fraction * workspace->height;
+				}
 			}
+			container->pending.y = active->pending.y + distance;
 		}
 	}
 }
@@ -874,6 +889,8 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	if (active) {
 		position_new_container(workspace, workspace->tiling,
 			active->pending.parent ? active->pending.parent : active, parent, idx);
+		view->pending.x = parent->pending.x;
+		view->pending.y = parent->pending.y;
 	}
 }
 
@@ -889,12 +906,6 @@ void layout_add_view(struct sway_workspace *workspace, struct sway_container *ac
 		}
 		layout_container_add_view(active, view, mode, pos);
 	}
-	// When adding a new view, reset REORDER to AUTO and ALIGN to NONE
-	// The reason is position_new_container() doesn't compute the exact
-	// location of the new window, and it would be used in
-	// transaction.c:arrange_children()" as anchor.
-	layout_modifiers_set_reorder(workspace, REORDER_AUTO);
-	layout_workspace_set_align(workspace, ALIGN_NONE);
 }
 
 static void layout_workspace_add_container(struct sway_workspace *workspace, struct sway_container *active, struct sway_container *container,

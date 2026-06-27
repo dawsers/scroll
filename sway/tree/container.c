@@ -2288,6 +2288,9 @@ bool container_in_viewport(struct sway_container *container) {
 	}
 	struct wlr_box box_c, box_o;
 	container_get_box(container, &box_c);
+	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
+	box_c.width *= scale;
+	box_c.height *= scale;
 	bool floating = container_is_floating(container);
 	if (floating) {
 		root_get_box(root, &box_o);

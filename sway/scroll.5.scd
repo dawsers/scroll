@@ -62,8 +62,8 @@ The following commands may only be used in the configuration file.
 
 *align_reset_auto* <true|false>
 	The default value is _true_. If _true_, alignment is reset when changing
-	focus to a window outside of the viewport. If _false_, alignment will only
-	be reset when creating a new window or manually through *align reset*.
+	focus to a window outside of the viewport. If _false_, alignment can only
+	be reset through *align reset*.
 
 *animations* <animations-subcommands...>
 	Subcommands are:
@@ -401,8 +401,7 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 	of the monitor (in horizontal mode), or up (top), down (bottom) or to
 	the center in vertical mode. For example center a column for easier
 	reading, regardless of what happens to the other columns. If you want to
-	go back to automatic mode, you need to call _align_ reset. The only time
-	alignment is lost is if	you open a new window.
+	go back to automatic mode, you need to call _align_ reset.
 
 	See *align_reset_auto* for a configuration command to also reset alignment
 	when changing focus to a window outside of the viewport.
