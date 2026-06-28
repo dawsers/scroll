@@ -336,7 +336,7 @@ static int scroll_command(lua_State *L) {
 static int scroll_exec_process(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc == 0) {
-		lua_createtable(L, 0, 0);
+		lua_pushnil(L);
 		return 1;
 	}
 
@@ -359,23 +359,24 @@ static int scroll_exec_process(lua_State *L) {
 		_exit(0); // Close child process
 	} else if (child < 0) {
 		launcher_ctx_destroy(ctx);
-		lua_createtable(L, 0, 0);
+		lua_pushnil(L);
 		return 1;
 	}
 
 	if (ctx != NULL) {
 		ctx->pid = child;
-	}
-
-	lua_newtable(L);
-	lua_pushinteger(L, ctx->pid);
-	lua_setfield(L, -2, "pid");
-	if (ctx->token) {
-		lua_pushstring(L, launcher_ctx_get_token_name(ctx));
+		lua_newtable(L);
+		lua_pushinteger(L, ctx->pid);
+		lua_setfield(L, -2, "pid");
+		if (ctx->token) {
+			lua_pushstring(L, launcher_ctx_get_token_name(ctx));
+		} else {
+			lua_pushnil(L);
+		}
+		lua_setfield(L, -2, "activation_token");
 	} else {
 		lua_pushnil(L);
 	}
-	lua_setfield(L, -2, "activation_token");
 	return 1;
 }
 
