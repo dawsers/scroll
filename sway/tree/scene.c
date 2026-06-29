@@ -142,7 +142,8 @@ static bool scene_view_data(struct wlr_surface *surface, struct wlr_scene_view_d
 		}
 		view_get_animation_scales(view, &data->wscale, &data->hscale);
 		if (view->container && !container_is_fullscreen_or_child(view->container) &&
-			view->container->pending.fullscreen_layout == FULLSCREEN_DISABLED) {
+			view->container->pending.fullscreen_layout == FULLSCREEN_DISABLED &&
+			!view->using_csd) {
 			if (!view->container->decoration.full->title_bar) {
 				data->radius_top = view->container->decoration.full->border_radius;
 			}

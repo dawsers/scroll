@@ -1656,7 +1656,7 @@ static void clip_view(struct sway_view *view) {
 		bool clip_to_geometry = true;
 
 		if (container_is_floating(view->container)) {
-			clip_to_geometry = !view->xdg_decoration;
+			clip_to_geometry = !view->using_csd;
 		}
 		if (clip_to_geometry) {
 			struct wlr_box clip = {
@@ -1696,7 +1696,8 @@ void view_resize(struct sway_view *view) {
 	view_get_animation_scales(view, &data.anim_wscale, &data.anim_hscale);
 	data.radius_top = data.radius_bottom = 0.0;
 	if (view->container && !container_is_fullscreen_or_child(view->container) &&
-		view->container->pending.fullscreen_layout == FULLSCREEN_DISABLED) {
+		view->container->pending.fullscreen_layout == FULLSCREEN_DISABLED &&
+		!view->using_csd) {
 		if (!view->container->decoration.full->title_bar) {
 			data.radius_top = view->container->decoration.full->border_radius;
 		}

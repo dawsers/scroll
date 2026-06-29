@@ -284,13 +284,15 @@ void container_update(struct sway_container *con) {
 					memcpy(bottom, con->pending.border_bottom ? colors->indicator : transparent, sizeof(bottom));
 				}
 				break;
+			default:
 				break;
 			}
 		}
 	}
 
 	if (con->view) {
-		bool border = con->pending.border != B_NONE && con->pending.border_thickness > 0;
+		bool border = con->pending.border != B_NONE && con->pending.border_thickness > 0 &&
+			con->pending.border != B_CSD;
 		wlr_scene_decoration_set_border_enable(con->decoration.full, border);
 		scene_border_set_colors(con->decoration.full, top, bottom, left, right, alpha);
 		if (con->pending.decoration.dim && !(con->current.focused || container_is_current_parent_focused(con))) {

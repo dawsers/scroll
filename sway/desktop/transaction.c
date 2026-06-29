@@ -987,7 +987,8 @@ static void animate_view(struct sway_container *con,
 	double border_left = con->current.border_left ? border_width : 0;
 	wlr_scene_decoration_set_size(con->decoration.full, width, height);
 	wlr_scene_decoration_set_border_width(con->decoration.full, border_width);
-	wlr_scene_decoration_set_border_radius(con->decoration.full, con->pending.decoration.border_radius * scale);
+	wlr_scene_decoration_set_border_radius(con->decoration.full, con->view->using_csd ?
+		0.0 : con->pending.decoration.border_radius * scale);
 	double shadow_offset[2] = {
 		con->pending.decoration.shadow_offset_x,
 		con->pending.decoration.shadow_offset_y
