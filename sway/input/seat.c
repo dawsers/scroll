@@ -1352,6 +1352,7 @@ void seat_set_focus_surface(struct sway_seat *seat,
 		struct sway_node *focus = seat_get_focus(seat);
 		if (focus) {
 			seat_send_unfocus(focus, seat);
+			node_set_dirty(focus);
 		}
 		seat->has_focus = false;
 	}
