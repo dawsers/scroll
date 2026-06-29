@@ -218,7 +218,7 @@ static double scene_view_content_scale(struct wlr_surface *surface) {
 static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
 		struct wlr_scene_layer_surface_data *data) {
 	struct sway_layer_surface *surface = layer_surface->data;
-	if (surface) {
+	if (surface && animation_animating()) {
 		data->x = surface->animation.xt;
 		data->y = surface->animation.yt;
 		data->width = surface->animation.wt;
