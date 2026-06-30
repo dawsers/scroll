@@ -653,4 +653,18 @@ function scroll.add_callback(event, cb_func, cb_data) end
 --- @return integer
 function scroll.remove_callback(id) end
 
+---
+--- Returns true if there is an active animation running.
+---
+--- @return boolean
+---
+function scroll.animating() end
+
+---
+--- Returns true if there are pending transactions that haven't been applied yet.
+---
+--- @return boolean
+---
+function scroll.pending_transactions() end
+
 return scroll

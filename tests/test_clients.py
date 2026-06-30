@@ -1,9 +1,9 @@
 import os
-import subprocess
-import time
 from pathlib import Path
-import pytest
+import subprocess
 from conftest import ScrollInstance
+import pytest
+from test_utils import wait_for_client_map
 
 
 def test_wayland_client(scroll_compositor: ScrollInstance) -> None:
@@ -23,31 +23,12 @@ def test_wayland_client(scroll_compositor: ScrollInstance) -> None:
         [str(client_path), title, app_id], env=env
     )
 
-    view_info: dict | None = None
-    tries: int = 0
-    while tries < 50:
-        view_info = scroll_compositor.execute_lua("""
-            local view = scroll.focused_view()
-            if view then
-                return {
-                    id = view,
-                    title = scroll.view_get_title(view),
-                    app_id = scroll.view_get_app_id(view)
-                }
-            end
-        """)
-        if (
-            view_info
-            and view_info.get("title") == title
-            and view_info.get("app_id") == app_id
-        ):
-            break
-
-        time.sleep(0.1)
-        tries += 1
-
-    assert tries < 50, "Timed out waiting for client to map or verify"
-    assert view_info is not None
+    view_id = wait_for_client_map(scroll_compositor, title)
+    app_id_actual = scroll_compositor.execute_lua(
+        f"return scroll.view_get_app_id({view_id})"
+    )
+    assert app_id_actual == app_id
+    view_info = {"id": view_id}
 
     scroll_compositor.execute_lua(f"scroll.view_close({view_info['id']})")
 
@@ -68,13 +49,7 @@ def test_x11_client(scroll_compositor: ScrollInstance) -> None:
     xauthority: str | None = scroll_compositor.getenv("XAUTHORITY")
 
     # Wait for Xwayland to be ready
-    xwayland_ready_tries: int = 0
-    while xwayland_ready_tries < 50:
-        if "Xserver is ready" in scroll_compositor.read_log():
-            break
-        time.sleep(0.1)
-        xwayland_ready_tries += 1
-    assert xwayland_ready_tries < 50, "Timed out waiting for Xwayland to be ready"
+    scroll_compositor.wait_for_log_pattern("Xserver is ready", from_start=True)
 
     client_path: Path = Path("./build/tests/x11-test-client").resolve()
     if not client_path.exists():
@@ -93,36 +68,16 @@ def test_x11_client(scroll_compositor: ScrollInstance) -> None:
         [str(client_path), title, instance, class_name], env=env
     )
 
-    view_info: dict | None = None
-    tries: int = 0
-    while tries < 50:
-        view_info = scroll_compositor.execute_lua("""
-            local view = scroll.focused_view()
-            if view then
-                return {
-                    id = view,
-                    title = scroll.view_get_title(view),
-                    class = scroll.view_get_class(view),
-                    shell = scroll.view_get_shell(view)
-                }
-            end
-        """)
-        if (
-            view_info
-            and view_info.get("title") == title
-            and view_info.get("class") == class_name
-        ):
-            assert view_info.get("shell") == "xwayland"
-            break
-
-        time.sleep(0.1)
-        tries += 1
-
-    if tries >= 50:
-        Path("build/test_x11_compositor.log").write_text(scroll_compositor.read_log())
-        print("Wrote compositor log to build/test_x11_compositor.log")
-    assert tries < 50, "Timed out waiting for X11 client to map or verify"
-    assert view_info is not None
+    view_id = wait_for_client_map(scroll_compositor, title)
+    class_actual = scroll_compositor.execute_lua(
+        f"return scroll.view_get_class({view_id})"
+    )
+    shell_actual = scroll_compositor.execute_lua(
+        f"return scroll.view_get_shell({view_id})"
+    )
+    assert class_actual == class_name
+    assert shell_actual == "xwayland"
+    view_info = {"id": view_id}
 
     scroll_compositor.execute_lua(f"scroll.view_close({view_info['id']})")
 
