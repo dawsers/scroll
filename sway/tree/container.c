@@ -999,6 +999,15 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		workspace_add_floating(workspace, container);
 		if (container->view) {
 			view_set_tiled(container->view, false);
+			if (container->view->using_csd) {
+				container->saved_border = container->pending.border;
+				container->pending.border = B_CSD;
+				if (container->view->xdg_decoration) {
+					struct sway_xdg_decoration *deco = container->view->xdg_decoration;
+					wlr_xdg_toplevel_decoration_v1_set_mode(deco->wlr_xdg_decoration,
+							WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+				}
+			}
 		}
 		container_floating_set_default_size(container);
 		container_floating_resize_and_center(container);
@@ -1039,6 +1048,14 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		layout_add_view(workspace, reference, container);
 		if (container->view) {
 			view_set_tiled(container->view, true);
+			if (container->view->using_csd) {
+				container->pending.border = container->saved_border;
+				if (container->view->xdg_decoration) {
+					struct sway_xdg_decoration *deco = container->view->xdg_decoration;
+					wlr_xdg_toplevel_decoration_v1_set_mode(deco->wlr_xdg_decoration,
+							WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+				}
+			}
 		}
 	}
 
