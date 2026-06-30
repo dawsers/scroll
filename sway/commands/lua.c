@@ -97,10 +97,18 @@ cleanup:
 		return res;
 	}
 
+	struct sway_container *old_context_container = config->lua.context_container;
+	if (config->handler_context.node_overridden) {
+		config->lua.context_container = config->handler_context.container;
+	} else {
+		config->lua.context_container = NULL;
+	}
+
 	int err = luaL_loadfile(config->lua.state, expanded_path);
 	if (err != LUA_OK) {
 		struct cmd_results *res = cmd_results_new(CMD_FAILURE, "Error %d loading lua script %s", err, expanded_path);
 		free(expanded_path);
+		config->lua.context_container = old_context_container;
 		return res;
 	}
 
@@ -129,9 +137,10 @@ cleanup:
 		}
 		goto finish;
 	}
-	res =  cmd_results_new(CMD_SUCCESS, NULL);
+	res = cmd_results_new(CMD_SUCCESS, NULL);
 
 finish:
+	config->lua.context_container = old_context_container;
 	free(expanded_path);
 	return res;
 }
@@ -140,6 +149,13 @@ struct cmd_results *cmd_lua_eval(int argc, char **argv) {
 	struct cmd_results *error = NULL;
 	if ((error = checkarg(argc, "lua_eval", EXPECTED_AT_LEAST, 2))) {
 		return error;
+	}
+
+	struct sway_container *old_context_container = config->lua.context_container;
+	if (config->handler_context.node_overridden) {
+		config->lua.context_container = config->handler_context.container;
+	} else {
+		config->lua.context_container = NULL;
 	}
 
 	struct cmd_results *res = NULL;
@@ -180,8 +196,9 @@ struct cmd_results *cmd_lua_eval(int argc, char **argv) {
 		}
 		goto cleanup;
 	}
-	res =  cmd_results_new(CMD_SUCCESS, NULL);
+	res = cmd_results_new(CMD_SUCCESS, NULL);
 
 cleanup:
+	config->lua.context_container = old_context_container;
 	return res;
 }
