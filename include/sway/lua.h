@@ -54,5 +54,6 @@ void lua_execute_ipc_view_cbs(struct sway_view *view, const char *change);
 void lua_execute_ipc_workspace_cbs(struct sway_workspace *old_ws,
 	struct sway_workspace *new_ws, const char *change);
 void lua_execute_jump_end_cbs(struct sway_container *container);
+struct sway_lua_script *sway_lua_get_or_create_script(const char *name);
 
 #endif

@@ -1840,6 +1840,10 @@ lua $lua_scripts/workspace_exec.lua 1 exec kitty
 	Otherwise, they are resolved against the initial working directory of the
 	compositor. See *LUA* for details about the API and some examples.
 
+*lua_eval* <code> [<args...>]
+	Executes the inline Lua _code_ string with optional _args_. See *LUA* for
+	details about the API and some examples.
+
 # CRITERIA
 
 A criteria is a string in the form of, for example:
