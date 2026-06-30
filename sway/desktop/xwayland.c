@@ -702,18 +702,13 @@ static void handle_request_configure(struct wl_listener *listener, void *data) {
 		view->natural_width = ev->width;
 		view->natural_height = ev->height;
 		container_floating_resize_and_center(view->container);
-
-		configure(view, view->container->pending.content_x,
-				view->container->pending.content_y,
-				round(view->container->pending.content_width),
-				round(view->container->pending.content_height));
-		node_set_dirty(&view->container->node);
-	} else {
-		configure(view, view->container->current.content_x,
-				view->container->current.content_y,
-				round(view->container->current.content_width),
-				round(view->container->current.content_height));
 	}
+
+	configure(view, view->container->pending.content_x,
+			view->container->pending.content_y,
+			round(view->container->pending.content_width),
+			round(view->container->pending.content_height));
+	node_set_dirty(&view->container->node);
 }
 
 static void handle_request_fullscreen(struct wl_listener *listener, void *data) {
