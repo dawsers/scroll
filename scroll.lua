@@ -653,4 +653,27 @@ function scroll.add_callback(event, cb_func, cb_data) end
 --- @return integer
 function scroll.remove_callback(id) end
 
+---
+--- Returns true if there is an active animation running.
+---
+--- This is primarily intended for use via the IPC interface for testing and
+--- debugging. It is generally not useful when called synchronously within a
+--- Lua script, as animations only start after the script execution completes.
+---
+--- @return boolean
+---
+function scroll.animating() end
+
+---
+--- Returns true if there are pending transactions that haven't been applied yet.
+---
+--- This is primarily intended for use via the IPC interface for testing and
+--- debugging. It is generally not useful when called synchronously within a
+--- Lua script, as transactions are not processed while the script is running
+--- and blocking the main thread.
+---
+--- @return boolean
+---
+function scroll.pending_transactions() end
+
 return scroll

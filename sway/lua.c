@@ -14,6 +14,7 @@
 #include "sway/desktop/launcher.h"
 #include "sway/ipc-server.h"
 #include "sway/desktop/transaction.h"
+#include "sway/server.h"
 
 #if 0
 static void print_table(lua_State *L, int index);
@@ -1727,7 +1728,20 @@ static int scroll_remove_callback(lua_State *L) {
 	return 0;
 }
 
+static int scroll_animating(lua_State *L) {
+	lua_pushboolean(L, animation_animating());
+	return 1;
+}
+
+static int scroll_pending_transactions(lua_State *L) {
+	bool pending = server.queued_transaction != NULL || server.pending_transaction != NULL ||
+			server.dirty_nodes->length > 0;
+	lua_pushboolean(L, pending);
+	return 1;
+}
+
 // Module functions
+/* clang-format off */
 static luaL_Reg const scroll_lib[] = {
 	{ "log", scroll_log },
 	{ "state_set_value", scroll_state_set_value },
@@ -1798,8 +1812,11 @@ static luaL_Reg const scroll_lib[] = {
 	{ "scratchpad_hide", scroll_scratchpad_hide },
 	{ "add_callback", scroll_add_callback },
 	{ "remove_callback", scroll_remove_callback },
+	{ "animating", scroll_animating },
+	{ "pending_transactions", scroll_pending_transactions },
 	{ NULL, NULL }
 };
+/* clang-format on */
 
 // Module Loader
 int luaopen_scroll(lua_State *L) {

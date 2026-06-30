@@ -12,6 +12,7 @@ def test_lua_use_after_free_prevented(scroll_compositor: ScrollInstance) -> None
 
     # 3. Switch back to workspace 1 (workspace 2 should be destroyed if empty)
     scroll_compositor.execute_lua('scroll.command(nil, "workspace 1")')
+    scroll_compositor.wait_for_idle()
 
     # 4. Now try to get name of ws2. It should return nil (None in Python), but NOT crash.
     ws2_name = scroll_compositor.execute_lua(f"return scroll.workspace_get_name({ws2})")

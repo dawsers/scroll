@@ -2402,7 +2402,27 @@ local process_data = scroll.exec_process("kitty")
 	Removes a callback set earlier using *add_callback*. _id_ is the unique
 	identifier returned by *add_callback*.
 
-Examples:
+## TESTING AND DEBUGGING API
+
+These functions are primarily intended for use via the IPC interface (see
+*scroll-ipc*(7)) for testing and debugging purposes, and are generally not
+useful when called synchronously from standard Lua scripts or event callbacks.
+
+Because scroll's Lua integration executes scripts synchronously on the main
+compositor thread, the event loop is blocked during execution. This means that
+any compositor actions triggered by the script (such as applying window layouts
+or starting animations) will only occur after the script completes.
+Consequently, calling these functions synchronously within a script will not
+reflect the state changes of commands run immediately before them.
+
+*animating()*
+	Returns _true_ if there is an active animation running.
+
+*pending_transactions()*
+	Returns _true_ if there are pending transactions that haven't been applied
+	yet.
+
+## EXAMPLES
 
 Calling this script from the configuration file, you will get focus on every
 window that gets the *urgent* attribute:
