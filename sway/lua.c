@@ -1958,3 +1958,44 @@ struct sway_lua_script *sway_lua_get_or_create_script(const char *name) {
 	list_add(config->lua.scripts, script);
 	return script;
 }
+
+void sway_lua_push_json_to_lua(lua_State *L, struct json_object *obj) {
+	if (!obj) {
+		lua_pushnil(L);
+		return;
+	}
+	switch (json_object_get_type(obj)) {
+	case json_type_null:
+		lua_pushnil(L);
+		break;
+	case json_type_boolean:
+		lua_pushboolean(L, json_object_get_boolean(obj));
+		break;
+	case json_type_double:
+		lua_pushnumber(L, json_object_get_double(obj));
+		break;
+	case json_type_int:
+		lua_pushinteger(L, json_object_get_int64(obj));
+		break;
+	case json_type_string:
+		lua_pushstring(L, json_object_get_string(obj));
+		break;
+	case json_type_array: {
+		size_t len = json_object_array_length(obj);
+		lua_createtable(L, (int)len, 0);
+		for (size_t i = 0; i < len; ++i) {
+			sway_lua_push_json_to_lua(L, json_object_array_get_idx(obj, i));
+			lua_rawseti(L, -2, (int)(i + 1));
+		}
+		break;
+	}
+	case json_type_object: {
+		lua_createtable(L, 0, 0);
+		json_object_object_foreach(obj, key, val) {
+			sway_lua_push_json_to_lua(L, val);
+			lua_setfield(L, -2, key);
+		}
+		break;
+	}
+	}
+}

@@ -96,6 +96,9 @@ supported. *For all replies, any properties not listed are subject to removal.*
 |- 123
 :  GET_BINDINGS
 :  Get a list with the bindings for the current binding mode
+|- 124
+:  LUA_EXEC
+:  Execute Lua script file or inline code
 
 ## 0. RUN_COMMAND
 
@@ -1820,6 +1823,53 @@ The array contains objects with the following properties:
 }
 ```
 
+## 124. LUA_EXEC
+
+*MESSAGE*++
+Request the compositor to execute a Lua script file or inline Lua code.
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- file
+:  string
+:[ Optional. Path to the Lua script file to load. Must specify exactly one of
+   _file_ or _code_.
+|- code
+:  string
+:[ Optional. Inline Lua code string to execute. Must specify exactly one of
+   _file_ or _code_.
+|- args
+:  array of values
+:  Optional. List of arguments to pass to the script.
+
+*REPLY*++
+An object containing the execution success flag and either the return values
+or an error message.
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- success
+:  boolean
+:[ Whether the Lua script executed successfully without runtime errors
+|- result
+:  value or array of values
+:[ The return value(s) of the script, converted to JSON. If 0 values were
+   returned, this is null. If 1 value was returned, this is the value itself.
+   If multiple values were returned, this is a JSON array of the values (only
+   on success).
+|- error
+:  string
+:  A human readable error message (only on failure)
+
+*Example Reply:*
+```
+{
+  "success": true,
+  "result": 42
+}
+```
 # EVENTS
 
 Events are a way for clients to get notified of changes to scroll. A client can
