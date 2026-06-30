@@ -408,6 +408,12 @@ static int scroll_focused_container(lua_State *L) {
 	return 1;
 }
 
+static int scroll_context_container(lua_State *L) {
+	struct sway_container *container = config->lua.context_container;
+	lua_push_node(L, container ? &container->node : NULL);
+	return 1;
+}
+
 static int scroll_focused_workspace(lua_State *L) {
 	struct sway_node *node = get_focused_node();
 	struct sway_workspace *workspace = NULL;
@@ -1754,6 +1760,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "node_get_type", scroll_node_get_type },
 	{ "focused_view", scroll_focused_view },
 	{ "focused_container", scroll_focused_container },
+	{ "context_container", scroll_context_container },
 	{ "focused_workspace", scroll_focused_workspace },
 	{ "urgent_view", scroll_urgent_view },
 	{ "view_mapped", scroll_view_mapped },

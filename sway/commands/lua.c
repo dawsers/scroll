@@ -77,10 +77,16 @@ cleanup:
 
 	int top = lua_gettop(config->lua.state);
 
+	struct sway_container *old_context_container = config->lua.context_container;
+	if (config->handler_context.node_overridden) {
+		config->lua.context_container = config->handler_context.container;
+	} else {
+		config->lua.context_container = NULL;
+	}
+
 	int err = luaL_loadfile(config->lua.state, expanded_path);
 	if (err != LUA_OK) {
 		const char *str = luaL_checkstring(config->lua.state, -1);
-		struct cmd_results *res;
 		if (str) {
 			res = cmd_results_new(
 					CMD_FAILURE, "Error %s loading lua script %s", str, expanded_path);
@@ -88,17 +94,14 @@ cleanup:
 			res = cmd_results_new(
 					CMD_FAILURE, "Error %d loading lua script %s", err, expanded_path);
 		}
-		free(expanded_path);
-		lua_settop(config->lua.state, top);
-		return res;
+		goto restore_context;
 	}
 
 	// Search if there is already a state for this script
 	struct sway_lua_script *script = sway_lua_get_or_create_script(expanded_path);
 	if (!script) {
-		free(expanded_path);
-		lua_settop(config->lua.state, top);
-		return cmd_results_new(CMD_FAILURE, "Failed to allocate memory");
+		res = cmd_results_new(CMD_FAILURE, "Failed to allocate memory");
+		goto restore_context;
 	}
 
 	// Create args table before running the script
@@ -112,20 +115,21 @@ cleanup:
 	err = lua_pcall(config->lua.state, 2, LUA_MULTRET, 0);
 	if (err != LUA_OK) {
 		const char *str = luaL_checkstring(config->lua.state, -1);
-		struct cmd_results *res;
 		if (str) {
 			res = cmd_results_new(CMD_FAILURE, "Error %s executing lua script %s", str, expanded_path);
 		} else {
 			res = cmd_results_new(CMD_FAILURE, "Error %d executing lua script %s", err, expanded_path);
 		}
-		free(expanded_path);
-		lua_settop(config->lua.state, top);
-		return res;
+		goto restore_context;
 	}
 
+	res = cmd_results_new(CMD_SUCCESS, NULL);
+
+restore_context:
+	config->lua.context_container = old_context_container;
 	free(expanded_path);
 	lua_settop(config->lua.state, top);
-	return cmd_results_new(CMD_SUCCESS, NULL);
+	return res;
 }
 
 struct cmd_results *cmd_lua_eval(int argc, char **argv) {
@@ -136,24 +140,31 @@ struct cmd_results *cmd_lua_eval(int argc, char **argv) {
 
 	int top = lua_gettop(config->lua.state);
 
+	struct sway_container *old_context_container = config->lua.context_container;
+	if (config->handler_context.node_overridden) {
+		config->lua.context_container = config->handler_context.container;
+	} else {
+		config->lua.context_container = NULL;
+	}
+
+	struct cmd_results *res = NULL;
+
 	int err = luaL_loadstring(config->lua.state, argv[0]);
 	if (err != LUA_OK) {
 		const char *str = luaL_checkstring(config->lua.state, -1);
-		struct cmd_results *res;
 		if (str) {
 			res = cmd_results_new(CMD_FAILURE, "Error %s loading lua string", str);
 		} else {
 			res = cmd_results_new(CMD_FAILURE, "Error %d loading lua string", err);
 		}
-		lua_settop(config->lua.state, top);
-		return res;
+		goto restore_context;
 	}
 
 	// Search if there is already a state for this script
 	struct sway_lua_script *script = sway_lua_get_or_create_script("");
 	if (!script) {
-		lua_settop(config->lua.state, top);
-		return cmd_results_new(CMD_FAILURE, "Failed to allocate memory");
+		res = cmd_results_new(CMD_FAILURE, "Failed to allocate memory");
+		goto restore_context;
 	}
 
 	// Create args table before running the script
@@ -167,16 +178,18 @@ struct cmd_results *cmd_lua_eval(int argc, char **argv) {
 	err = lua_pcall(config->lua.state, 2, LUA_MULTRET, 0);
 	if (err != LUA_OK) {
 		const char *str = luaL_checkstring(config->lua.state, -1);
-		struct cmd_results *res;
 		if (str) {
 			res = cmd_results_new(CMD_FAILURE, "Error %s executing lua string", str);
 		} else {
 			res = cmd_results_new(CMD_FAILURE, "Error %d executing lua string", err);
 		}
-		lua_settop(config->lua.state, top);
-		return res;
+		goto restore_context;
 	}
 
+	res = cmd_results_new(CMD_SUCCESS, NULL);
+
+restore_context:
+	config->lua.context_container = old_context_container;
 	lua_settop(config->lua.state, top);
-	return cmd_results_new(CMD_SUCCESS, NULL);
+	return res;
 }

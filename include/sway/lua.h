@@ -32,6 +32,7 @@ struct sway_lua {
 	list_t *cbs_jump_end;
 	int command_data;
 	list_t *cbs_command_end;
+	struct sway_container *context_container;
 };
 
 int luaopen_scroll(lua_State *L);
