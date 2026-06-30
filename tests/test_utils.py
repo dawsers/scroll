@@ -8,83 +8,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from scrollipc import ScrollIPC
 
-RUNNER_LUA_CONTENT: str = """
-local args = ...
-local output_path = args[1]
-local user_code_path = args[2]
-
-local function escape_str(s)
-    return '"' .. s:gsub('\\\\', '\\\\\\\\'):gsub('"', '\\\\"'):gsub('\\n', '\\\\n'):gsub('\\r', '\\\\r'):gsub('\\t', '\\\\t') .. '"'
-end
-
-local function serialize(val)
-    if val == nil then return "null" end
-    if type(val) == "boolean" then return val and "true" or "false" end
-    if type(val) == "number" then return tostring(val) end
-    if type(val) == "string" then return escape_str(val) end
-    if type(val) == "table" then
-        local is_list = true
-        local max_idx = 0
-        local count = 0
-        for k, v in pairs(val) do
-            count = count + 1
-            if type(k) ~= "number" or k < 1 or math.floor(k) ~= k then
-                is_list = false
-                break
-            end
-            if k > max_idx then max_idx = k end
-        end
-        if is_list and max_idx == count then
-            local parts = {}
-            for i = 1, max_idx do
-                table.insert(parts, serialize(val[i]))
-            end
-            return "[" .. table.concat(parts, ",") .. "]"
-        else
-            local parts = {}
-            for k, v in pairs(val) do
-                if type(k) == "string" then
-                    table.insert(parts, escape_str(k) .. ":" .. serialize(v))
-                end
-            end
-            return "{" .. table.concat(parts, ",") .. "}"
-        end
-    end
-    return "null"
-end
-
-local chunk, err = loadfile(user_code_path)
-local success, result
-local results
-if chunk then
-    results = { pcall(chunk) }
-    success = results[1]
-else
-    success = false
-    results = { false, "Error loading code: " .. tostring(err) }
-end
-
-local f = io.open(output_path, "w")
-if success then
-    f:write("SUCCESS\\n")
-    if #results <= 1 then
-        f:write("null")
-    elseif #results == 2 then
-        f:write(serialize(results[2]))
-    else
-        local parts = {}
-        for i = 2, #results do
-            table.insert(parts, serialize(results[i]))
-        end
-        f:write("[" .. table.concat(parts, ",") .. "]")
-    end
-else
-    f:write("ERROR\\n")
-    f:write(tostring(results[2]))
-end
-f:close()
-"""
-
 
 class ScrollInstance:
     proc: subprocess.Popen
@@ -116,44 +39,12 @@ class ScrollInstance:
         self.wait_for_idle()
 
     def execute_lua(self, code: str) -> Any:
-        import json
-
-        runner_path = self.temp_dir / "exec_runner.lua"
-        if not runner_path.exists():
-            runner_path.write_text(RUNNER_LUA_CONTENT)
-
-        if not hasattr(self, "_lua_execute_counter"):
-            self._lua_execute_counter = 0
-        counter = self._lua_execute_counter
-        self._lua_execute_counter += 1
-
-        user_code_path = self.temp_dir / f"user_code_{counter}.lua"
-        output_path = self.temp_dir / f"exec_{counter}.out"
-
-        user_code_path.write_text(code)
-
-        res = self.cmd(f"lua {runner_path} {output_path} {user_code_path}")
-        assert res[0]["success"], f"Failed to run lua command: {res}"
-
-        assert output_path.exists(), (
-            f"Output file not created: {output_path}. Compositor log:\\n{self.read_log()}"
-        )
-        output_content = output_path.read_text()
-
-        lines = output_content.splitlines()
-        if not lines:
-            raise RuntimeError(
-                f"Lua runner output is empty. Compositor log:\\n{self.read_log()}"
-            )
-        status = lines[0]
-        result_str = "\\n".join(lines[1:])
-
-        if status == "SUCCESS":
-            if not result_str:
-                return None
-            return json.loads(result_str)
+        payload: dict = {"code": code}
+        res: dict = self.ipc.lua_exec(payload)
+        if res["success"]:
+            return res.get("result")
         else:
-            raise RuntimeError(f"Lua execution failed: {result_str}")
+            raise RuntimeError(f"Lua execution failed: {res.get('error')}")
 
     def getenv(self, var: str) -> str | None:
         return self.execute_lua(f'return os.getenv("{var}")')

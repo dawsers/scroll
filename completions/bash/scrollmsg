@@ -20,6 +20,8 @@ _scrollmsg()
     'get_config'
     'send_tick'
     'subscribe'
+    'lua'
+    'lua_eval'
   )
 
   short=(

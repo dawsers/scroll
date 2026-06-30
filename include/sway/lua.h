@@ -56,4 +56,9 @@ void lua_execute_ipc_workspace_cbs(struct sway_workspace *old_ws,
 void lua_execute_jump_end_cbs(struct sway_container *container);
 struct sway_lua_script *sway_lua_get_or_create_script(const char *name);
 
+struct json_object;
+struct json_object *sway_lua_value_to_json(lua_State *L, int i);
+struct json_object *sway_lua_table_to_json(lua_State *L, int index);
+void sway_lua_push_json_to_lua(lua_State *L, struct json_object *obj);
+
 #endif
