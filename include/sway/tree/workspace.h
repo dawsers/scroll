@@ -116,6 +116,9 @@ struct sway_workspace *workspace_auto_back_and_forth(
 
 bool workspace_switch(struct sway_workspace *workspace);
 
+void animate_workspace_switch(
+		struct sway_output *output, struct sway_workspace *from, struct sway_workspace *to);
+
 struct sway_workspace *workspace_by_number(const char* name);
 
 struct sway_workspace *workspace_by_name(const char*);

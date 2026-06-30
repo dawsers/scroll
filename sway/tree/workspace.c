@@ -1016,8 +1016,8 @@ static bool workspace_switch_down(struct sway_output *output,
 	return f_idx < t_idx;
 }
 
-static void animate_workspace_switch(struct sway_output *output,
-		struct sway_workspace *from, struct sway_workspace *to) {
+void animate_workspace_switch(
+		struct sway_output *output, struct sway_workspace *from, struct sway_workspace *to) {
 	if (output->workspace_switching && !animation_animating()) {
 		sway_log(SWAY_ERROR, "Switching workspace twice in the same transaction");
 		return;
@@ -1025,11 +1025,8 @@ static void animate_workspace_switch(struct sway_output *output,
 	output->workspace_switching = true;
 	bool down = workspace_switch_down(output, from, to);
 
-	// Store the from workspace data here, because it may get deleted when
-	// calling animation_end() if it is empty. workspace_switch_callback_end
-	// calls transaction_commit_dirty(), which will destroy workspaces marked
-	// for deletion, and empty workspaces that are not active are marked for
-	// deletion.
+	// Store the from workspace data. If it was already destroying at the time of commit,
+	// we set it to NULL because it has no containers to animate.
 	struct workspace_switch_data *data = malloc(sizeof(struct workspace_switch_data));
 	const double from_y = from->y;
 	const int from_height = from->height;
@@ -1039,7 +1036,6 @@ static void animate_workspace_switch(struct sway_output *output,
 	data->from_containers = create_list();
 	data->to_containers = create_list();
 
-	animation_end();
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 
 	double min_y_to = to->y, max_y_to = to->y + to->height;
@@ -1112,18 +1108,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	}
 	seat_set_focus(seat, next);
 
-	// old_ws may not have an output because it is being destroyed if empty
-	if (!layout_overview_workspaces_enabled() && old_ws != workspace && (
-		(old_ws->output && old_ws->output == workspace->output) ||
-		(old_ws->output && !workspace->output) ||
-		(!old_ws->output && workspace->output)) &&
-		workspace->split.sibling != old_ws &&
-		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
-		struct sway_output *output = old_ws->output ? old_ws->output : workspace->output;
-		animate_workspace_switch(output, old_ws, workspace);
-	} else {
-		arrange_workspace(workspace);
-	}
+	arrange_workspace(workspace);
 
 	// Garbage collection of empty workspaces
 	root_for_each_workspace(workspace_consider_destroy_iter, NULL);

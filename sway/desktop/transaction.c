@@ -2299,6 +2299,19 @@ static void _transaction_commit_dirty(bool server_request, bool delayed) {
 		return;
 	}
 
+	for (int i = 0; i < root->outputs->length; i++) {
+		struct sway_output *output = root->outputs->items[i];
+		struct sway_workspace *old_ws = output->current.active_workspace;
+		struct sway_workspace *new_ws = output_get_active_workspace(output);
+		if (old_ws && new_ws && old_ws != new_ws) {
+			if (!layout_overview_workspaces_enabled() && animation_enabled() &&
+					animation_path_enabled(ANIMATION_WORKSPACE_SWITCH) &&
+					!new_ws->node.destroying && new_ws->split.sibling != old_ws) {
+				animate_workspace_switch(output, old_ws, new_ws);
+			}
+		}
+	}
+
 	save_animation_variables();
 
 	transaction_commit_pending();
