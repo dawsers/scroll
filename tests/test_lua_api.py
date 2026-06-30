@@ -1,4 +1,5 @@
 from conftest import ScrollInstance
+from test_utils import wayland_client, wait_for_client_map
 
 
 def test_lua_comprehensive_api(scroll_compositor: ScrollInstance) -> None:
@@ -91,3 +92,54 @@ def test_lua_comprehensive_api(scroll_compositor: ScrollInstance) -> None:
     assert len(invalid_output_ws) == 0
 
     assert scroll_compositor.proc.poll() is None
+
+
+def test_lua_context_container(scroll_compositor: ScrollInstance) -> None:
+    # 1. Without criteria, context_container should return nil (None in Python)
+    ctx_con_glob: int | None = scroll_compositor.execute_lua(
+        "return scroll.context_container()"
+    )
+    assert ctx_con_glob is None
+
+    # 2. With criteria, context_container should return the matching container ID
+    with wayland_client(scroll_compositor, "client1"):
+        view_id = wait_for_client_map(scroll_compositor, "client1")
+        con_id = scroll_compositor.execute_lua(
+            f"return scroll.view_get_container({view_id})"
+        )
+        assert con_id is not None
+
+        # Execute lua command with criteria matching client1
+        scroll_compositor.cmd(
+            f'[con_id={con_id}] lua_eval "_G.ctx_con_crit = scroll.context_container()"'
+        )
+        ctx_con_crit = scroll_compositor.execute_lua("return _G.ctx_con_crit")
+        assert ctx_con_crit == con_id
+
+        # 3. Nested calls with different contexts
+        with wayland_client(scroll_compositor, "client2"):
+            wait_for_client_map(scroll_compositor, "client2")
+            con2_id = scroll_compositor.execute_lua("return scroll.focused_container()")
+            assert con2_id is not None
+            assert con2_id != con_id
+
+            # Execute outer script with con_id criteria matching con_id
+            # Using lua_eval for both outer and nested calls!
+            scroll_compositor.cmd(
+                f'[con_id={con_id}] lua_eval "'
+                f"_G.nested_context = nil; "
+                f"_G.outer_context = scroll.context_container(); "
+                f"scroll.command({con2_id}, [[lua_eval '_G.nested_context = scroll.context_container()']]); "
+                f'_G.outer_context_post = scroll.context_container()"'
+            )
+
+            # Retrieve results
+            outer_context = scroll_compositor.execute_lua("return _G.outer_context")
+            nested_context = scroll_compositor.execute_lua("return _G.nested_context")
+            outer_context_post = scroll_compositor.execute_lua(
+                "return _G.outer_context_post"
+            )
+
+            assert outer_context == con_id
+            assert nested_context == con2_id
+            assert outer_context_post == con_id

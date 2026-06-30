@@ -2103,6 +2103,11 @@ local process_data = scroll.exec_process("kitty")
 *focused_container()*
 	Returns the focused container ID or nil if none
 
+*context_container()*
+	Returns the container ID of the execution context if the command/script
+	was run via criteria (e.g. `[class="XTerm"] lua script.lua`), or nil if
+	there is no context (run globally).
+
 *focused_workspace()*
 	Returns the focused workspace ID or nil if none
 
