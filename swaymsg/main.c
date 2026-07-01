@@ -1,4 +1,4 @@
-
+#define _XOPEN_SOURCE 700
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -600,6 +600,7 @@ int main(int argc, char **argv) {
 	static bool monitor = false;
 	char *socket_path = NULL;
 	char *cmdtype = NULL;
+	bool is_eval = false;
 
 	sway_log_init(SWAY_INFO, NULL);
 
@@ -716,6 +717,11 @@ int main(int argc, char **argv) {
 		type = IPC_GET_SPACES;
 	} else if (strcasecmp(cmdtype, "get_bindings") == 0) {
 		type = IPC_GET_BINDINGS;
+	} else if (strcasecmp(cmdtype, "lua") == 0) {
+		type = IPC_LUA_EXEC;
+	} else if (strcasecmp(cmdtype, "lua_eval") == 0) {
+		type = IPC_LUA_EXEC;
+		is_eval = true;
 	} else {
 		if (quiet) {
 			exit(EXIT_FAILURE);
@@ -734,7 +740,39 @@ int main(int argc, char **argv) {
 	}
 
 	char *command = NULL;
-	if (optind < argc) {
+	if (type == IPC_LUA_EXEC) {
+		if (optind >= argc) {
+			fprintf(stderr, is_eval ? "Missing lua code\n" : "Missing lua file path\n");
+			exit(EXIT_FAILURE);
+		}
+
+		struct json_object *payload = json_object_new_object();
+
+		if (is_eval) {
+			json_object_object_add(payload, "code", json_object_new_string(argv[optind]));
+		} else {
+			char *resolved_path = realpath(argv[optind], NULL);
+			if (resolved_path == NULL) {
+				fprintf(stderr, "File not found: %s\n", argv[optind]);
+				exit(EXIT_FAILURE);
+			}
+			json_object_object_add(payload, "file", json_object_new_string(resolved_path));
+			free(resolved_path);
+		}
+
+		struct json_object *args_array = json_object_new_array();
+		for (int i = optind + 1; i < argc; ++i) {
+			struct json_object *arg_obj = json_tokener_parse(argv[i]);
+			if (arg_obj == NULL) {
+				arg_obj = json_object_new_string(argv[i]);
+			}
+			json_object_array_add(args_array, arg_obj);
+		}
+		json_object_object_add(payload, "args", args_array);
+
+		command = strdup(json_object_to_json_string(payload));
+		json_object_put(payload);
+	} else if (optind < argc) {
 		command = join_args(argv + optind, argc - optind);
 	} else {
 		command = strdup("");

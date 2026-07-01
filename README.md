@@ -1835,8 +1835,10 @@ Place [this definition file](https://github.com/dawsers/scroll/blob/master/scrol
 in one of your development Lua runtime directories for the Lua LSP server to
 have access to the API information.
 
-Using the command `lua` you can run Lua scripts that access window manager
-properties, execute commands or add callbacks to window events.
+Using the command `lua` (for script files) or `lua_eval` (for inline scripts)
+you can run Lua scripts that access window manager properties, execute commands
+or add callbacks to window events. All calls to `lua_eval` share the same
+persistent state.
 
 You can assign scripts to keyboard bindings, or add them to your
 configuration for execution when the configuration loads.

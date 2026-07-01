@@ -1102,12 +1102,13 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	seat_set_focus(seat, next);
 
 	// old_ws may not have an output because it is being destroyed if empty
-	if (!layout_overview_workspaces_enabled() && old_ws != workspace && (
-		(old_ws->output && old_ws->output == workspace->output) ||
-		(old_ws->output && !workspace->output) ||
-		(!old_ws->output && workspace->output)) &&
-		workspace->split.sibling != old_ws &&
-		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
+	if (!layout_overview_workspaces_enabled() && old_ws != workspace &&
+			((old_ws->output && old_ws->output == workspace->output) ||
+					(old_ws->output && !workspace->output) ||
+					(!old_ws->output && workspace->output)) &&
+			workspace->split.sibling != old_ws && animation_enabled() &&
+			animation_path_enabled(ANIMATION_WORKSPACE_SWITCH) && !workspace->node.destroying &&
+			!old_ws->node.destroying) {
 		struct sway_output *output = old_ws->output ? old_ws->output : workspace->output;
 		animate_workspace_switch(output, old_ws, workspace);
 	} else {

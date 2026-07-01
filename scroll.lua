@@ -78,6 +78,14 @@ function scroll.focused_view() end
 function scroll.focused_container() end
 
 ---
+--- Returns the container ID of the execution context if the command/script
+--- was run via criteria (e.g. `[class="XTerm"] lua script.lua`), or nil if
+--- there is no context (run globally).
+---
+--- @return integer|nil
+function scroll.context_container() end
+
+---
 --- Returns the focused workspace ID or nil if none.
 ---
 --- @return integer|nil
@@ -652,5 +660,19 @@ function scroll.add_callback(event, cb_func, cb_data) end
 ---
 --- @return integer
 function scroll.remove_callback(id) end
+
+---
+--- Returns true if there is an active animation running.
+---
+--- @return boolean
+---
+function scroll.animating() end
+
+---
+--- Returns true if there are pending transactions that haven't been applied yet.
+---
+--- @return boolean
+---
+function scroll.pending_transactions() end
 
 return scroll

@@ -1,5 +1,9 @@
 // See https://i3wm.org/docs/ipc.html for protocol information
 #include <linux/input-event-codes.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
+#include "sway/lua.h"
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -977,6 +981,136 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 		const char *json_string = json_object_to_json_string(json_mode);
 		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
 		json_object_put(json_mode);
+		goto exit_cleanup;
+	}
+
+	case IPC_LUA_EXEC: {
+		struct json_object *request = json_tokener_parse(buf);
+		if (request == NULL || !json_object_is_type(request, json_type_object)) {
+			const char *error = "{\"success\": false, \"error\": \"Failed to parse JSON request\"}";
+			ipc_send_reply(client, payload_type, error, (uint32_t)strlen(error));
+			if (request) {
+				json_object_put(request);
+			}
+			goto exit_cleanup;
+		}
+
+		struct json_object *file_obj = NULL;
+		struct json_object *code_obj = NULL;
+		struct json_object *args_obj = NULL;
+
+		json_object_object_get_ex(request, "file", &file_obj);
+		json_object_object_get_ex(request, "code", &code_obj);
+		json_object_object_get_ex(request, "args", &args_obj);
+
+		if ((file_obj == NULL && code_obj == NULL) || (file_obj != NULL && code_obj != NULL)) {
+			const char *error = "{\"success\": false, \"error\": \"Must specify exactly one of "
+								"'file' or 'code'\"}";
+			ipc_send_reply(client, payload_type, error, (uint32_t)strlen(error));
+			json_object_put(request);
+			goto exit_cleanup;
+		}
+
+		if (args_obj != NULL && !json_object_is_type(args_obj, json_type_array)) {
+			const char *error = "{\"success\": false, \"error\": \"'args' must be a JSON array\"}";
+			ipc_send_reply(client, payload_type, error, (uint32_t)strlen(error));
+			json_object_put(request);
+			goto exit_cleanup;
+		}
+
+		int top = lua_gettop(config->lua.state);
+
+		int err = LUA_OK;
+		const char *script_name = NULL;
+
+		if (file_obj != NULL) {
+			script_name = json_object_get_string(file_obj);
+			err = luaL_loadfile(config->lua.state, script_name);
+		} else {
+			script_name = "";
+			err = luaL_loadstring(config->lua.state, json_object_get_string(code_obj));
+		}
+
+		if (err != LUA_OK) {
+			const char *str = luaL_checkstring(config->lua.state, -1);
+			json_object *reply = json_object_new_object();
+			json_object_object_add(reply, "success", json_object_new_boolean(false));
+			if (str) {
+				json_object_object_add(reply, "error", json_object_new_string(str));
+			} else {
+				json_object_object_add(
+						reply, "error", json_object_new_string("Failed to load lua code"));
+			}
+			const char *json_string = json_object_to_json_string(reply);
+			ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
+			json_object_put(reply);
+			json_object_put(request);
+			lua_settop(config->lua.state, top);
+			goto exit_cleanup;
+		}
+
+		struct sway_lua_script *script = sway_lua_get_or_create_script(script_name);
+		if (!script) {
+			const char *error = "{\"success\": false, \"error\": \"Failed to allocate memory\"}";
+			ipc_send_reply(client, payload_type, error, (uint32_t)strlen(error));
+			json_object_put(request);
+			lua_settop(config->lua.state, top);
+			goto exit_cleanup;
+		}
+
+		int nargs = args_obj ? (int)json_object_array_length(args_obj) : 0;
+		lua_createtable(config->lua.state, nargs, 0);
+		for (int i = 0; i < nargs; ++i) {
+			sway_lua_push_json_to_lua(config->lua.state, json_object_array_get_idx(args_obj, i));
+			lua_rawseti(config->lua.state, -2, i + 1);
+		}
+		lua_pushlightuserdata(config->lua.state, script);
+
+		err = lua_pcall(config->lua.state, 2, LUA_MULTRET, 0);
+		transaction_commit_dirty();
+		if (err != LUA_OK) {
+			const char *str = luaL_checkstring(config->lua.state, -1);
+			json_object *reply = json_object_new_object();
+			json_object_object_add(reply, "success", json_object_new_boolean(false));
+			if (str) {
+				json_object_object_add(reply, "error", json_object_new_string(str));
+			} else {
+				json_object_object_add(
+						reply, "error", json_object_new_string("Failed to execute lua code"));
+			}
+			const char *json_string = json_object_to_json_string(reply);
+			ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
+			json_object_put(reply);
+			json_object_put(request);
+			lua_settop(config->lua.state, top);
+			goto exit_cleanup;
+		}
+
+		int top_after = lua_gettop(config->lua.state);
+		int num_results = top_after - top;
+
+		json_object *reply = json_object_new_object();
+		json_object_object_add(reply, "success", json_object_new_boolean(true));
+
+		if (num_results == 0) {
+			json_object_object_add(reply, "result", NULL);
+		} else if (num_results == 1) {
+			json_object_object_add(reply, "result", sway_lua_value_to_json(config->lua.state, -1));
+		} else {
+			json_object *result_array = json_object_new_array();
+			for (int i = 0; i < num_results; ++i) {
+				json_object_array_add(
+						result_array, sway_lua_value_to_json(config->lua.state, top + i + 1));
+			}
+			json_object_object_add(reply, "result", result_array);
+		}
+
+		const char *json_string = json_object_to_json_string(reply);
+		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
+		json_object_put(reply);
+		json_object_put(request);
+
+		lua_settop(config->lua.state, top);
 		goto exit_cleanup;
 	}
 

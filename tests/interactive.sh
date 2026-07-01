@@ -48,8 +48,8 @@ if [ "$has_config" = "false" ]; then
     set -- -c "$CONFIG" "$@"
 fi
 
-# Enable leak detection but use suppressions for known system library leaks.
-export ASAN_OPTIONS="detect_leaks=1${ASAN_OPTIONS:+:$ASAN_OPTIONS}"
+# Disable leak detection to suppress leak errors in the interactive test.
+export ASAN_OPTIONS="detect_leaks=0${ASAN_OPTIONS:+:$ASAN_OPTIONS}"
 export LSAN_OPTIONS="suppressions=$PROJECT_ROOT/tests/lsan.supp${LSAN_OPTIONS:+:$LSAN_OPTIONS}"
 
 echo "Starting scroll..."

@@ -108,7 +108,17 @@ _scrollmsg_ [options...] [message]
 
 *send\_tick*
 	Sends a tick event to all subscribed clients.
+*lua*
+	Executes a Lua script file. The first argument specifies the path to the Lua
+	file. Subsequent arguments are parsed as JSON values and passed to the script
+	as arguments. The return value(s) of the script are converted back to JSON and
+	returned.
 
+*lua\_eval*
+	Executes inline Lua code. The first argument specifies the inline Lua code
+	string. Subsequent arguments are parsed as JSON values and passed to the script
+	as arguments. The return value(s) of the script are converted back to JSON and
+	returned.
 *subscribe*
 	Subscribe to a list of event types. The argument for this type should be
 	provided in the form of a valid JSON array. If any of the types are invalid
