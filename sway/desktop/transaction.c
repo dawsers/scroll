@@ -1423,6 +1423,7 @@ static void animate_layers(struct sway_output *output) {
 }
 
 static void arrange_output(struct sway_output *output) {
+	arrange_layers(output);
 	bool output_fs = root->filters->output_fullscreen_filter(output, root->filters->output_fullscreen_filter_data);
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
