@@ -1535,6 +1535,12 @@ The default colors are:
 	should be greater than titlebar_border_thickness. If _vertical_ value is
 	not specified it is set to the _horizontal_ value.
 
+*for_exec_window* "<commands>" <exec command>
+	Execute _exec command_ and whenever the window created by that process
+	appears, run the list of _commands_ (specified as a quoted string) on it.
+	The window is matched based on the xdg activation token, or process ID
+	(PID) as a fallback.
+
 *for_window* <criteria> <command>
 	Whenever a window that matches _criteria_ appears, run list of commands.
 	See *CRITERIA* for more details.
@@ -1888,6 +1894,15 @@ The following attributes may be matched with:
 *all*
 	Matches all windows.
 
+*initial_activation_token*
+	Compare value against the activation token. Only exact matches are
+	supported. Can only be used with *for_window* and cannot be combined
+	with other criteria. It is used to match a window that was launched
+	with the corresponding activation token (either Wayland XDG activation
+	or X11 startup ID). Specifying this criteria makes the rule
+	automatically expire when the token expires (either because a window
+	maps and consumes it, or it times out, typically after 30 seconds).
+
 *app_id*
 	Compare value against the app id. Can be a regular expression. If value is
 	\_\_focused\_\_, then the app id must be the same as that of the currently
@@ -2081,7 +2096,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 
 *exec_process(command)*
 	Execute a _command_ in the shell. If successful, tt will return a table
-	with members _pid_ (the	PID of the running _command_), and _activation_token_
+	with members _pid_ (the	PID of the running _command_), and _initial_activation_token_
 	(the activation token generated when running the command).
 
 ```

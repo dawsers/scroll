@@ -84,6 +84,9 @@ supported. *For all replies, any properties not listed are subject to removal.*
 |- 101
 :  GET_SEATS
 :  Get the list of seats
+|- 102
+:  MINT_ACTIVATION_TOKEN
+:  Mint a new XDG activation token
 |- 120
 :  GET_SCROLLER
 :  Get the list of scroller properties
@@ -405,6 +408,10 @@ node and will have the following properties:
 :  string
 :  (Only windows) For an xdg-shell window, the name of the application, if set.
    Otherwise, _null_
+|- initial_activation_token
+:  string
+:  (Only windows) The activation token of the window, if it was launched with
+   one. Otherwise, _null_
 |- pid
 :  integer
 :  (Only windows) The PID of the application that owns the window
@@ -737,6 +744,7 @@ node and will have the following properties:
 							"fullscreen_mode": 0,
 							"pid": 23959,
 							"app_id": null,
+							"initial_activation_token": null,
 							"visible": true,
 							"shell": "xwayland",
 							"inhibit_idle": true,
@@ -797,6 +805,7 @@ node and will have the following properties:
 							"fullscreen_mode": 0,
 							"pid": 25370,
 							"app_id": "termite",
+							"initial_activation_token": null,
 							"visible": true,
 							"shell": "xdg_shell",
 							"inhibit_idle": false,
@@ -1484,6 +1493,35 @@ one seat. Each object has the following properties:
 ]
 ```
 
+## 102. MINT_ACTIVATION_TOKEN
+
+*MESSAGE*++
+Request the compositor to mint a new XDG activation token.
+
+*REPLY*++
+An object indicating success, and the generated token string.
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- success
+:  boolean
+:[ Whether the request succeeded
+|- token
+:  string
+:  The generated activation token (only on success)
+|- error
+:  string
+:  A human readable error message (only on failure)
+
+*Example Reply:*
+```
+{
+  "success": true,
+  "token": "scroll-3cbaea5a9d821213fdf109503023023"
+}
+```
+
 ## 120. GET_SCROLLER
 
 *MESSAGE*++
@@ -1820,6 +1858,7 @@ The array contains objects with the following properties:
 }
 ```
 
+
 # EVENTS
 
 Events are a way for clients to get notified of changes to scroll. A client can
@@ -2088,6 +2127,7 @@ The following change types are currently available:
 		"type": "con",
 		"pid": 19787,
 		"app_id": null,
+		"initial_activation_token": null,
 		"window_properties": {
 			"class": "URxvt",
 			"instance": "urxvt",

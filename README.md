@@ -1957,7 +1957,7 @@ and the [FAQ](https://github.com/emersion/xdg-desktop-portal-wlr/wiki/FAQ).
 desktop bar.
 
 See `include/ipc.h` for `IPC_GET_SCROLLER`, `IPC_EVENT_SCROLLER`, `IPC_EVENT_LUA`,
-`IPG_GET_TRAILS` and `IPC_EVENT_TRAILS`.
+`IPC_GET_TRAILS`, `IPC_EVENT_TRAILS` and `IPC_MINT_ACTIVATION_TOKEN`.
 
 You can get data for mode/mode modifiers, overview and scale mode as well as
 trails and whether a view has an active trailmark.
