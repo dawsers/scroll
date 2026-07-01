@@ -1,7 +1,5 @@
-import time
 import json
-from conftest import ScrollInstance
-from test_utils import wayland_client, wait_for_client_map
+from test_utils import wayland_client, wait_for_client_map, ScrollInstance
 
 
 def test_focused_inactive_null_crash(fresh_compositor: ScrollInstance) -> None:
@@ -35,7 +33,7 @@ def test_focused_inactive_null_crash(fresh_compositor: ScrollInstance) -> None:
 
             # 5. Move w1 to workspace 2 (this detaches it, making col's focused_inactive_child NULL)
             fresh_compositor.cmd(f"[con_id={w1_id}] move container to workspace 2")
-            time.sleep(0.1)
+            fresh_compositor.wait_for_idle()
 
             # 6. Focus the parent column
             print(f"col_id: {col_id}")
@@ -69,6 +67,3 @@ def test_focused_inactive_null_crash(fresh_compositor: ScrollInstance) -> None:
             ret = fresh_compositor.proc.wait(timeout=5)
             print(f"Compositor exit code: {ret}")
             assert ret == 0, f"Compositor crashed or exited with error code {ret}"
-
-            print("Compositor Log:")
-            print(fresh_compositor.read_log())

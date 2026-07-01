@@ -2402,6 +2402,14 @@ local process_data = scroll.exec_process("kitty")
 	Removes a callback set earlier using *add_callback*. _id_ is the unique
 	identifier returned by *add_callback*.
 
+*animating()*
+	Returns _true_ if there is an active animation running.
+
+*pending_transactions()*
+	Returns _true_ if there are pending transactions that haven't been applied
+	yet.
+
+
 Examples:
 
 Calling this script from the configuration file, you will get focus on every
