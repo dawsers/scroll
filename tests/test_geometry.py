@@ -65,6 +65,13 @@ def test_static_geometry(scroll_compositor: ScrollInstance) -> None:
 
         target_node = find_node(tree, con_id)
         assert target_node is not None
+        assert "surface_content_rect" in target_node
+        view_geom = target_node["surface_content_rect"]
+        assert "x" in view_geom
+        assert "y" in view_geom
+        assert "width" in view_geom
+        assert "height" in view_geom
+
         rect = target_node["rect"]
         deco_rect = target_node.get("deco_rect", {"height": 0})
 
