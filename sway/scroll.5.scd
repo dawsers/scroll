@@ -2126,6 +2126,10 @@ local process_data = scroll.exec_process("kitty")
 	Returns the _pid_ number for the program running in _view_, or nil if any
 	error happens.
 
+*view_get_env(view, env_variable)*
+	Returns the value of _env_variable_ in the environment of the application
+	that owns the _view_, or nil if the variable doesn't exist.
+
 *view_get_parent_view(view)*
 	Returns the view whose pid is the parent of the application running in
 	_view_, or nil if it has no parent view.

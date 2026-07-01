@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <json.h>
@@ -508,6 +509,69 @@ static int scroll_view_get_pid(lua_State *L) {
 		return 1;
 	}
 	lua_pushinteger(L, view->pid);
+	return 1;
+}
+
+char *get_env_from_proc(int pid, const char *name) {
+	char path[64];
+	snprintf(path, sizeof(path), "/proc/%d/environ", pid);
+
+	int fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		return NULL;
+	}
+
+	size_t name_len = strlen(name);
+	const size_t chunk_size = 4096;
+	char *buf = malloc(sizeof(char) * chunk_size + 1);
+	if (!buf) {
+		close(fd);
+		return NULL;
+	}
+
+	char *entry_start = buf;
+	ssize_t n;
+
+	while ((n = read(fd, buf, chunk_size)) > 0) {
+		for (ssize_t i = 0; i < n; ++i) {
+			if (i == 0 || buf[i - 1] == '\0') {
+				entry_start = &buf[i];
+				if ((size_t)(n - i) >= name_len &&
+					strncmp(entry_start, name, name_len) == 0 &&
+					entry_start[name_len] == '=') {
+
+					char *value = strdup(entry_start + name_len + 1);
+					free(buf);
+					close(fd);
+					return value;
+				}
+			}
+		}
+	}
+	free(buf);
+	close(fd);
+	return NULL;
+}
+
+static int scroll_view_get_env(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc < 2) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const char *var = lua_tostring(L, 2);
+	struct sway_view *view = lua_to_view(L, 1);
+	if (!var || !view) {
+		lua_pushnil(L);
+		return 1;
+	}
+	char *env = get_env_from_proc(view->pid, var);
+	if (env == NULL) {
+		lua_pushnil(L);
+	} else {
+		lua_pushstring(L, env);
+		free(env);
+	}
 	return 1;
 }
 
@@ -1680,6 +1744,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "view_get_class", scroll_view_get_class },
 	{ "view_get_title", scroll_view_get_title },
 	{ "view_get_pid", scroll_view_get_pid },
+	{ "view_get_env", scroll_view_get_env },
 	{ "view_get_parent_view", scroll_view_get_parent_view },
 	{ "view_get_urgent", scroll_view_get_urgent },
 	{ "view_set_urgent", scroll_view_set_urgent },

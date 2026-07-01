@@ -138,6 +138,16 @@ function scroll.view_get_title(view) end
 function scroll.view_get_pid(view) end
 
 ---
+--- Returns the value of `env_variable` in the environment of the
+--- application that owns the view, or nil if the variable doesn't exist.
+---
+--- @param view integer
+--- @param env_variable string
+---
+--- @return string|nil
+function scroll.view_get_env(view, env_variable) end
+
+---
 --- Returns the view whose pid is the parent of the application running
 --- in view, or nil if it has no parent view.
 ---
