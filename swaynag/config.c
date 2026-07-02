@@ -116,7 +116,7 @@ int swaynag_parse_options(int argc, char **argv, struct swaynag *swaynag,
 			"--button-dismiss, but does not run the action in a terminal.\n"
 		"  -c, --config <path>             Path to config file.\n"
 		"  -d, --debug                     Enable debugging.\n"
-		"  -e, --edge top|bottom           Set the edge to use.\n"
+		"  -e, --edge top|bottom|center    Set the edge to use.\n"
 		"  -y, --layer overlay|top|bottom|background\n"
 	    "                                  Set the layer to use.\n"
 		"  -f, --font <font>               Set the font to use.\n"
