@@ -1364,7 +1364,7 @@ static void layer_popup_resize_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_surface_resize(scene_surface, total_scale, wscale, hscale, 0.0f, 0.0f);
 	double x, y;
 	if (popup->toplevel->layer_surface->current.desired_height == 0) {
-		x = popup->pending.x >= popup->toplevel->pending.x ? 0.0: popup->animation.wt - width;
+		x = popup->pending.x >= popup->toplevel->pending.x ? 0.0: popup->animation.w1 - width;
 	} else {
 		x = 0.5 * (popup->animation.w1 - width);
 	}
