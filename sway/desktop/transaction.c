@@ -2157,6 +2157,10 @@ static void layer_save_animation_variables(struct wlr_scene_tree *tree) {
 		surface->animation.h0 = surface->current.height;
 		surface->animation.w1 = surface->pending.width;
 		surface->animation.h1 = surface->pending.height;
+		surface->animation.xt = surface->pending.x;
+		surface->animation.yt = surface->pending.y;
+		surface->animation.wt = surface->pending.width;
+		surface->animation.ht = surface->pending.height;
 
 		for (int i = 0; i < surface->layer_popups->length; ++i) {
 			struct sway_layer_popup *popup = surface->layer_popups->items[i];
@@ -2166,6 +2170,10 @@ static void layer_save_animation_variables(struct wlr_scene_tree *tree) {
 			popup->animation.h0 = popup->current.height;
 			popup->animation.w1 = popup->pending.width;
 			popup->animation.h1 = popup->pending.height;
+			popup->animation.xt = popup->pending.x;
+			popup->animation.yt = popup->pending.y;
+			popup->animation.wt = popup->pending.width;
+			popup->animation.ht = popup->pending.height;
 		}
 	}
 }

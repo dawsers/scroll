@@ -279,20 +279,25 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 
 	if (layer_surface->initial_commit || committed || layer_surface->surface->mapped != surface->mapped) {
 		surface->mapped = layer_surface->surface->mapped;
-		arrange_layers(surface->output);
 		if (committed & WLR_LAYER_SURFACE_V1_STATE_DESIRED_SIZE) {
 			surface->pending.width = layer_surface->current.desired_width;
 			surface->pending.height = layer_surface->current.desired_height;
 			node_set_dirty(&surface->node);
 			animation_set_type(ANIMATION_LAYER_SHELL);
 		}
-		transaction_commit_dirty();
+		arrange_layers(surface->output);
+		if (committed) {
+			transaction_commit_dirty();
+		}
 	}
 }
 
 static void handle_map(struct wl_listener *listener, void *data) {
 	struct sway_layer_surface *surface = wl_container_of(listener,
 			surface, map);
+
+	surface->pending.width = 0.0;
+	surface->pending.height = 0.0;
 
 	struct wlr_layer_surface_v1 *layer_surface =
 				surface->scene->layer_surface;

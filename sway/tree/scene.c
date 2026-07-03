@@ -226,9 +226,10 @@ static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
 		data->height = surface->animation.ht;
 		return true;
 	} else {
-		data->x = data->y = 0.0;
-		data->width = layer_surface->current.desired_width;
-		data->height = layer_surface->current.desired_height;
+		data->x = surface->pending.x;
+		data->y = surface->pending.y;
+		data->width = surface->pending.width;
+		data->height = surface->pending.height;
 		return false;
 	}
 }
