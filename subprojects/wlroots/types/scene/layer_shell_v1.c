@@ -53,17 +53,16 @@ static void layer_surface_exclusive_zone(
 	}
 }
 
-void wlr_scene_layer_surface_v1_configure(
+void wlr_scene_layer_surface_v1_get_box(
 		struct wlr_scene_layer_surface_v1 *scene_layer_surface,
-		const struct wlr_box *full_area, struct wlr_box *usable_area) {
+		const struct wlr_box *full_area, struct wlr_box *usable_area,
+		double width, double height, struct wlr_box *box) {
 	struct wlr_layer_surface_v1 *layer_surface =
 		scene_layer_surface->layer_surface;
 	struct wlr_layer_surface_v1_state *state = &layer_surface->current;
 
-	struct wlr_scene_layer_surface_data data;
-	scene_cbs.layer_surface_data(layer_surface, &data);
-	const int width = round(data.width);
-	const int height = round(data.height);
+	const int iwidth = round(width);
+	const int iheight = round(height);
 
 	// If the exclusive zone is set to -1, the layer surface will use the
 	// full area of the output, otherwise it is constrained to the
@@ -75,50 +74,62 @@ void wlr_scene_layer_surface_v1_configure(
 		bounds = *usable_area;
 	}
 
-	struct wlr_box box = {
-		.width = state->desired_width,
-		.height = state->desired_height,
-	};
+	box->width = state->desired_width;
+	box->height = state->desired_height;
 
 	// Horizontal positioning
-	if (box.width == 0) {
-		box.x = bounds.x + state->margin.left;
-		box.width = bounds.width -
+	if (box->width == 0) {
+		box->x = bounds.x + state->margin.left;
+		box->width = bounds.width -
 			(state->margin.left + state->margin.right);
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT &&
 			state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT) {
-		box.x = bounds.x + bounds.width/2 - width/2;
+		box->x = bounds.x + bounds.width/2 - iwidth/2;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) {
-		box.x = bounds.x + state->margin.left;
+		box->x = bounds.x + state->margin.left;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT) {
-		box.x = bounds.x + bounds.width - width - state->margin.right;
+		box->x = bounds.x + bounds.width - iwidth - state->margin.right;
 	} else {
-		box.x = bounds.x + bounds.width/2 - width/2;
+		box->x = bounds.x + bounds.width/2 - iwidth/2;
 	}
 
 	// Vertical positioning
-	if (box.height == 0) {
-		box.y = bounds.y + state->margin.top;
-		box.height = bounds.height -
+	if (box->height == 0) {
+		box->y = bounds.y + state->margin.top;
+		box->height = bounds.height -
 			(state->margin.top + state->margin.bottom);
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP &&
 			state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM) {
-		box.y = bounds.y + bounds.height/2 - height/2;
+		box->y = bounds.y + bounds.height/2 - iheight/2;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) {
-		box.y = bounds.y + state->margin.top;
+		box->y = bounds.y + state->margin.top;
 	} else if (state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM) {
-		box.y = bounds.y + bounds.height - height - state->margin.bottom;
+		box->y = bounds.y + bounds.height - iheight - state->margin.bottom;
 	} else {
-		box.y = bounds.y + bounds.height/2 - height/2;
+		box->y = bounds.y + bounds.height/2 - iheight/2;
 	}
-
-	wlr_scene_node_set_position(&scene_layer_surface->tree->node, box.x, box.y);
-	wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
 
 	if (layer_surface->surface->mapped && state->exclusive_zone > 0) {
 		enum wlr_edges edge = wlr_layer_surface_v1_get_exclusive_edge(layer_surface);
 		layer_surface_exclusive_zone(state, edge, usable_area);
 	}
+}
+
+void wlr_scene_layer_surface_v1_configure(
+		struct wlr_scene_layer_surface_v1 *scene_layer_surface,
+		const struct wlr_box *full_area, struct wlr_box *usable_area) {
+	struct wlr_layer_surface_v1 *layer_surface =
+		scene_layer_surface->layer_surface;
+
+	struct wlr_scene_layer_surface_data data;
+	scene_cbs.layer_surface_data(layer_surface, &data);
+
+	struct wlr_box box = {0};
+	wlr_scene_layer_surface_v1_get_box(scene_layer_surface, full_area,
+		usable_area, data.width, data.height, &box);
+
+	wlr_scene_node_set_position(&scene_layer_surface->tree->node, box.x, box.y);
+	wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
 }
 
 struct wlr_scene_layer_surface_v1 *wlr_scene_layer_surface_v1_create(

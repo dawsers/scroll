@@ -924,4 +924,19 @@ struct wlr_scene_tree *wlr_scene_drag_icon_create(
 void wlr_scene_surface_resize(struct wlr_scene_surface *scene_surface,
 		double total_scale, double anim_wscale, double anim_hscale,
 		float radius_top, float radius_bottom);
+
+/**
+ * For a layer_surface_v1 of known width and heightm return its bounding box.
+ *
+ * full_area represents the entire area that may be used by the layer surface
+ * if its exclusive_zone is -1, and is usually the output dimensions.
+ * usable_area represents what remains of full_area that can be used if
+ * exclusive_zone is >= 0. usable_area is updated if the surface has a positive
+ * exclusive_zone, so that it can be used for the next layer surface.
+ */
+void wlr_scene_layer_surface_v1_get_box(
+		struct wlr_scene_layer_surface_v1 *scene_layer_surface,
+		const struct wlr_box *full_area, struct wlr_box *usable_area,
+		double width, double height, struct wlr_box *box);
+
 #endif

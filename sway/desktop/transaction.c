@@ -1376,7 +1376,8 @@ static void layer_popup_resize_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_node_set_position(&buffer->node, x, y);
 }
 
-static void animate_layer(struct wlr_scene_tree *tree, double t) {
+static void animate_layer(struct wlr_scene_tree *tree, double t,
+		const struct wlr_box *full_area, struct wlr_box *usable_area, bool exclusive) {
 	struct wlr_scene_node *node;
 	wl_list_for_each(node, &tree->children, link) {
 		struct sway_layer_surface *surface = scene_descriptor_try_get(node,
@@ -1389,6 +1390,11 @@ static void animate_layer(struct wlr_scene_tree *tree, double t) {
 		if (!surface->scene->layer_surface->initialized) {
 			continue;
 		}
+
+		if ((surface->scene->layer_surface->current.exclusive_zone > 0) != exclusive) {
+			continue;
+		}
+
 		if (surface->animation.w1 != 0.0 && surface->animation.h1 != 0.0) {
 			surface->animation.wt = fmax(1, linear_scale(surface->animation.w0, surface->animation.w1, t));
 			surface->animation.ht = fmax(1, linear_scale(surface->animation.h0, surface->animation.h1, t));
@@ -1399,6 +1405,11 @@ static void animate_layer(struct wlr_scene_tree *tree, double t) {
 			surface->animation.wt = surface->layer_surface->current.desired_width;
 			surface->animation.ht = surface->layer_surface->current.desired_height;
 		}
+		struct wlr_box box = {0};
+		wlr_scene_layer_surface_v1_get_box(surface->scene, full_area, usable_area,
+			surface->animation.wt, surface->animation.ht, &box);
+		wlr_scene_node_set_position(&surface->scene->tree->node, box.x, box.y);
+
 		for (int i = 0; i < surface->layer_popups->length; ++i) {
 			struct sway_layer_popup *popup = surface->layer_popups->items[i];
 			popup->animation.wt = fmax(1, linear_scale(popup->animation.w0, popup->animation.w1, t));
@@ -1414,12 +1425,21 @@ static void animate_layers(struct sway_output *output) {
 	double t, x, y;
 	animation_get_values(&t, &x, &y);
 
+	struct wlr_box usable_area = { 0 };
+	wlr_output_effective_resolution(output->wlr_output,
+			&usable_area.width, &usable_area.height);
+	const struct wlr_box full_area = usable_area;
+
 	animation_set_animation_enabled(false);
-	animate_layer(output->layers.shell_overlay, t);
-	animate_layer(output->layers.shell_top, t);
-	animate_layer(output->layers.shell_bottom, t);
-	animate_layer(output->layers.shell_background, t);
-	arrange_layers(output);
+	animate_layer(output->layers.shell_overlay, t, &full_area, &usable_area, true);
+	animate_layer(output->layers.shell_top, t, &full_area, &usable_area, true);
+	animate_layer(output->layers.shell_bottom, t, &full_area, &usable_area, true);
+	animate_layer(output->layers.shell_background, t, &full_area, &usable_area, true);
+
+	animate_layer(output->layers.shell_overlay, t, &full_area, &usable_area, false);
+	animate_layer(output->layers.shell_top, t, &full_area, &usable_area, false);
+	animate_layer(output->layers.shell_bottom, t, &full_area, &usable_area, false);
+	animate_layer(output->layers.shell_background, t, &full_area, &usable_area, false);
 }
 
 static void arrange_output(struct sway_output *output) {
