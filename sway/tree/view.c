@@ -1429,7 +1429,8 @@ void view_remove_saved_buffer(struct sway_view *view) {
 
 static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *data) {
-	struct wlr_scene_tree *tree = data;
+	struct sway_view *view = data;
+	struct wlr_scene_tree *tree = view->saved_surface_tree;
 
 	struct wlr_scene_buffer *sbuf = wlr_scene_buffer_create(tree, NULL);
 	if (!sbuf) {
@@ -1469,7 +1470,7 @@ void view_save_buffer(struct sway_view *view) {
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
 
 	wlr_scene_node_for_each_buffer(&view->content_tree->node,
-		view_save_buffer_iterator, view->saved_surface_tree);
+		view_save_buffer_iterator, view);
 
 	wlr_scene_node_set_enabled(&view->content_tree->node, false);
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, true);
@@ -1670,42 +1671,18 @@ static void clip_view(struct sway_view *view) {
 	}
 }
 
-struct resize_data {
-	double total_scale;
-	double anim_wscale, anim_hscale;
-	float radius_top, radius_bottom;
-};
-
-static void view_resize_iterator(struct wlr_scene_buffer *buffer,
+static void view_reconfigure_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *user_data) {
 	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
-	struct resize_data *data = user_data;
-	wlr_scene_surface_resize(scene_surface, data->total_scale,
-		data->anim_wscale, data->anim_hscale, data->radius_top, data->radius_bottom);
+	wlr_scene_surface_reconfigure(scene_surface);
 }
 
-void view_resize(struct sway_view *view) {
+void view_reconfigure(struct sway_view *view) {
 	if (!view) {
 		return;
 	}
-	struct resize_data data;
-	data.total_scale = view_get_total_scale(view);
-	if (data.total_scale < 0.0) {
-		data.total_scale = 1.0;
-	}
-	view_get_animation_scales(view, &data.anim_wscale, &data.anim_hscale);
-	data.radius_top = data.radius_bottom = 0.0;
-	if (view->container && !container_is_fullscreen_or_child(view->container) &&
-		view->container->pending.fullscreen_layout == FULLSCREEN_DISABLED &&
-		!view->using_csd) {
-		if (!view->container->decoration.full->title_bar) {
-			data.radius_top = view->container->decoration.full->border_radius;
-		}
-		data.radius_bottom = view->container->decoration.full->border_radius;
-	}
-
 	wlr_scene_node_for_each_buffer(&view->content_tree->node,
-		view_resize_iterator, &data);
+		view_reconfigure_iterator, NULL);
 
 	clip_view(view);
 }

@@ -412,6 +412,10 @@ static void surface_reconfigure(struct wlr_scene_surface *scene_surface) {
 	pixman_region32_fini(&opaque);
 }
 
+void wlr_scene_surface_reconfigure(struct wlr_scene_surface *scene_surface) {
+	surface_reconfigure(scene_surface);
+}
+
 static void handle_scene_surface_surface_commit(
 		struct wl_listener *listener, void *data) {
 	struct wlr_scene_surface *surface =

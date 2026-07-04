@@ -917,6 +917,11 @@ struct wlr_scene_tree *wlr_scene_drag_icon_create(
 	struct wlr_scene_tree *parent, struct wlr_drag_icon *drag_icon);
 
 /*
+ * Reconfigure a scene surface.
+ */
+void wlr_scene_surface_reconfigure(struct wlr_scene_surface *scene_surface);
+
+/*
  * Resize a scene surface using total_scale (workspace and content),
  * and animation scales wscale and hscale. If the surface is a view, and
  * has rounded borders, update the radii too.

@@ -946,7 +946,7 @@ static void animate_view(struct sway_container *con,
 		wlr_scene_node_reparent(&con->view->scene_tree->node, con->content_tree);
 		wlr_scene_node_set_position(&con->view->output_handler->node, 0, 0);
 		wlr_scene_buffer_set_dest_size(con->view->output_handler, width, height);
-		view_resize(con->view);
+		view_reconfigure(con->view);
 		return;
 	}
 	double border_top = container_titlebar_height() * scale;
@@ -1084,7 +1084,7 @@ static void animate_view(struct sway_container *con,
 		}
 	}
 #endif
-	view_resize(con->view);
+	view_reconfigure(con->view);
 }
 
 static void arrange_container(struct sway_container *con,
@@ -1194,7 +1194,7 @@ static void animate_fullscreen(struct wlr_scene_tree *tree,
 		wlr_scene_node_set_position(&fs->view->output_handler->node, fs->animation.xt, fs->animation.yt);
 	}
 	wlr_scene_buffer_set_dest_size(fs->view->output_handler, fs->animation.wt, fs->animation.ht);
-	view_resize(fs->view);
+	view_reconfigure(fs->view);
 }
 
 static void scaled_floating_position(struct sway_workspace *ws, double scale,

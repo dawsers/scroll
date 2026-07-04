@@ -397,7 +397,7 @@ bool view_is_content_scaled(struct sway_view *view);
 
 void xdg_toplevel_tag_manager_v1_handle_set_tag(struct wl_listener *listener, void *data);
 
-void view_resize(struct sway_view *view);
+void view_reconfigure(struct sway_view *view);
 
 void view_get_animation_scales(struct sway_view *view, double *wscale, double *hscale);
 
