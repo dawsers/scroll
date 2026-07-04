@@ -289,6 +289,7 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 		if (committed != (committed & WLR_LAYER_SURFACE_V1_STATE_KEYBOARD_INTERACTIVITY)) {
 			transaction_commit_dirty();
 		}
+		cursor_rebase_all();
 	}
 }
 
@@ -316,8 +317,6 @@ static void handle_map(struct wl_listener *listener, void *data) {
 		}
 		arrange_layers(surface->output);
 	}
-
-	cursor_rebase_all();
 }
 
 static void handle_unmap(struct wl_listener *listener, void *data) {
