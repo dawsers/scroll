@@ -3,6 +3,7 @@ wlr_files += files(
 	'array.c',
 	'box.c',
 	'env.c',
+	'fd.c',
 	'global.c',
 	'log.c',
 	'matrix.c',

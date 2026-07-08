@@ -16,6 +16,7 @@
 #include <wlr/xwayland.h>
 #include "config.h"
 #include "sockets.h"
+#include "util/fd.h"
 
 static void safe_close(int fd) {
 	if (fd >= 0) {

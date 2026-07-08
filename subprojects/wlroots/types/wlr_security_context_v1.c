@@ -7,6 +7,7 @@
 #include <wlr/types/wlr_security_context_v1.h>
 #include <wlr/util/log.h>
 #include "security-context-v1-protocol.h"
+#include "util/fd.h"
 
 #define SECURITY_CONTEXT_MANAGER_V1_VERSION 1
 
@@ -126,6 +127,11 @@ static int security_context_handle_listen_fd_event(int listen_fd, uint32_t mask,
 		int client_fd = accept(listen_fd, NULL, NULL);
 		if (client_fd < 0) {
 			wlr_log_errno(WLR_ERROR, "accept failed");
+			return 0;
+		}
+
+		if (!set_cloexec(client_fd, true)) {
+			close(client_fd);
 			return 0;
 		}
 

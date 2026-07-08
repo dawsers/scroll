@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <wlr/util/log.h>
 #include "sockets.h"
+#include "util/fd.h"
 
 static const char lock_fmt[] = "/tmp/.X%d-lock";
 static const char socket_dir[] = "/tmp/.X11-unix";
@@ -21,24 +22,6 @@ static const char socket_fmt[] = "/tmp/.X11-unix/X%d";
 #ifndef __linux__
 static const char socket_fmt2[] = "/tmp/.X11-unix/X%d_";
 #endif
-
-bool set_cloexec(int fd, bool cloexec) {
-	int flags = fcntl(fd, F_GETFD);
-	if (flags == -1) {
-		wlr_log_errno(WLR_ERROR, "fcntl failed");
-		return false;
-	}
-	if (cloexec) {
-		flags = flags | FD_CLOEXEC;
-	} else {
-		flags = flags & ~FD_CLOEXEC;
-	}
-	if (fcntl(fd, F_SETFD, flags) == -1) {
-		wlr_log_errno(WLR_ERROR, "fcntl failed");
-		return false;
-	}
-	return true;
-}
 
 static int open_socket(struct sockaddr_un *addr, size_t path_size) {
 	int fd, rc;
