@@ -1645,6 +1645,14 @@ static void arrange_root(struct sway_root *root) {
 		}
 	}
 
+	for (int i = 0; i < root->unmapped_views->length; ++i) {
+		struct sway_view *view = root->unmapped_views->items[i];
+		struct sway_container *container = view->container;
+		if (container) {
+			wlr_scene_node_set_enabled(&container->scene_tree->node, true);
+			output_configure_scene(NULL, &container->scene_tree->node, 1);
+		}
+	}
 	arrange_popups(root->layers.popup);
 }
 
@@ -1678,15 +1686,16 @@ static void animate_root(struct sway_root *root) {
 	double t, x, y;
 	animation_get_values(&t, &x, &y);
 	for (int i = 0; i < root->unmapped_views->length; ++i) {
-		animation_set_animation_enabled(true);
 		struct sway_view *view = root->unmapped_views->items[i];
 		struct sway_container *container = view->container;
-		container->alpha = 1.0 - t;
-		output_configure_scene(NULL, &container->scene_tree->node, 1);
-		container_update(container);
-		const float color[4] = { 0.0, 0.0, 0.0, container->alpha };
-		wlr_scene_decoration_set_dimming(container->decoration.full, true, color);
-		view_reconfigure(view);
+		if (container) {
+			animation_set_animation_enabled(true);
+			container->alpha = 1.0 - t;
+			container_update(container);
+			const float color[4] = { 0.0, 0.0, 0.0, container->alpha };
+			wlr_scene_decoration_set_dimming(container->decoration.full, true, color);
+			view_reconfigure(view);
+		}
 	}
 	arrange_popups(root->layers.popup);
 }
