@@ -56,7 +56,7 @@ static struct sway_transaction *transaction_create(void) {
 	return transaction;
 }
 
-static void transaction_destroy(struct sway_transaction *transaction) {
+void transaction_destroy(struct sway_transaction *transaction) {
 	// Free instructions
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
@@ -1675,6 +1675,19 @@ static void animate_root(struct sway_root *root) {
 			}
 		}
 	}
+	double t, x, y;
+	animation_get_values(&t, &x, &y);
+	for (int i = 0; i < root->unmapped_views->length; ++i) {
+		animation_set_animation_enabled(true);
+		struct sway_view *view = root->unmapped_views->items[i];
+		struct sway_container *container = view->container;
+		container->alpha = 1.0 - t;
+		output_configure_scene(NULL, &container->scene_tree->node, 1);
+		container_update(container);
+		const float color[4] = { 0.0, 0.0, 0.0, container->alpha };
+		wlr_scene_decoration_set_dimming(container->decoration.full, true, color);
+		view_reconfigure(view);
+	}
 	arrange_popups(root->layers.popup);
 }
 
@@ -1893,7 +1906,9 @@ static void transaction_progress(void) {
 	arrange_root(root);
 	animation_begin();
 	cursor_rebase_all();
-	transaction_destroy(server.queued_transaction);
+	if (!animation_animating()) {
+		transaction_destroy(server.queued_transaction);
+	}
 	server.queued_transaction = NULL;
 
 	if (!server.pending_transaction) {
@@ -2062,6 +2077,7 @@ static void transaction_commit_pending(void) {
 	struct sway_transaction *transaction = server.pending_transaction;
 	server.pending_transaction = NULL;
 	server.queued_transaction = transaction;
+	animation_set_transaction(transaction);
 	transaction_commit(transaction);
 	transaction_progress();
 }

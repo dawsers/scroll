@@ -118,6 +118,7 @@ struct sway_root {
 	bool jumping;
 
 	list_t *spaces;
+	list_t *unmapped_views;
 };
 
 struct sway_root *root_create(struct wl_display *display);

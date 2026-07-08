@@ -9,6 +9,7 @@
  */
 
 struct wlr_output;
+struct sway_transaction;
 
 enum sway_animation_style {
 	ANIM_STYLE_CLIP,
@@ -99,6 +100,9 @@ struct sway_animation_callbacks *animation_get_callbacks();
 
 // Get a pointer to the animation system configuration
 struct sway_animation_config *animation_get_config();
+
+// Set the transaction for the animation state
+void animation_set_transaction(struct sway_transaction *transaction);
 
 // Set the pending animation
 void animation_set_type(enum sway_animation_type anim);

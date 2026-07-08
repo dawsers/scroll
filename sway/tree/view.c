@@ -132,6 +132,10 @@ void view_destroy(struct sway_view *view) {
 				"(might have a pending transaction?)")) {
 		return;
 	}
+	int index = list_find(root->unmapped_views, view);
+	if (index >= 0) {
+		list_del(root->unmapped_views, index);
+	}
 	wl_list_remove(&view->events.unmap.listener_list);
 	list_free(view->executed_criteria);
 
@@ -1125,6 +1129,7 @@ void view_unmap(struct sway_view *view) {
 	struct sway_container *parent = view->container->pending.parent;
 	struct sway_workspace *ws = view->container->pending.workspace;
 	const bool fullscreen = view->container->fullscreen;
+	list_add(root->unmapped_views, view);
 	container_begin_destroy(view->container);
 	if (parent) {
 		container_reap_empty(parent);

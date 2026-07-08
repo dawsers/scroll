@@ -144,6 +144,13 @@ struct sway_animation_output {
 	enum sway_animation_enabled enabled;
 };
 
+struct sway_animation_state {
+	enum sway_animation_type type;
+	struct sway_animation_path *path;
+	struct sway_animation_callbacks callbacks;
+	struct sway_transaction *transaction;
+};
+
 struct sway_animation {
 	bool animating;
 	struct timespec start;
@@ -155,14 +162,8 @@ struct sway_animation {
 	// should only process this output instead of looping all outputs.
 	// NULL when called from a non-per-output path (e.g. disabled animations).
 	struct wlr_output *current_output;
-	struct {
-		struct sway_animation_path *path;
-		struct sway_animation_callbacks callbacks;
-	} current;
-	struct {
-		struct sway_animation_path *path;
-		struct sway_animation_callbacks callbacks;
-	} pending;
+	struct sway_animation_state current, pending;
+	list_t * transactions;  // struct sway_animation_state *
 
 	struct sway_animation_callbacks default_callbacks;
 
@@ -364,6 +365,11 @@ struct sway_animation_callbacks *animation_get_callbacks() {
 	return &animation->pending.callbacks;
 }
 
+// Set the transaction for the pending state
+void animation_set_transaction(struct sway_transaction *transaction) {
+	animation->pending.transaction = transaction;
+}
+
 #if 0
 const char *animation_get_type(struct sway_animation_path *path) {
 	if (path == animation->config.anim_disabled) {
@@ -396,6 +402,7 @@ const char *animation_get_type(struct sway_animation_path *path) {
 
 // Set the type of the pending animation
 void animation_set_type(enum sway_animation_type anim) {
+	animation->pending.type = anim;
 	switch (anim) {
 	case ANIMATION_DISABLED:
 		animation->pending.path = animation->config.anim_disabled;
@@ -598,8 +605,12 @@ static void stop_animation() {
 	if (animation->animating) {
 		animation->animating = false;
 		animation->id++;
-		if (animation->current.callbacks.callback_end) {
-			animation->current.callbacks.callback_end(animation->current.callbacks.callback_end_data);
+		struct sway_animation_state state = animation->current;
+		if (state.callbacks.callback_end) {
+			state.callbacks.callback_end(state.callbacks.callback_end_data);
+		}
+		if (state.transaction) {
+			transaction_destroy(state.transaction);
 		}
 	}
 	animation->current_output = NULL;
@@ -611,10 +622,11 @@ void animation_end() {
 
 void animation_begin() {
 	stop_animation();
-	animation->current.path = animation->pending.path;
-	animation->current.callbacks = animation->pending.callbacks;
+	animation->current = animation->pending;
+	animation->pending.type = ANIMATION_DEFAULT;
 	animation->pending.path = animation->config.anim_default;
 	animation->pending.callbacks = animation->default_callbacks;
+	animation->pending.transaction = NULL;
 	struct sway_animation_path *path = get_path();
 	if (path) {
 		animation_reset_path(path);

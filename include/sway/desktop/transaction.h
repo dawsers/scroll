@@ -21,6 +21,7 @@
  * create and commits a transaction from the dirty containers.
  */
 
+struct sway_transaction;
 struct sway_transaction_instruction;
 struct sway_view;
 
@@ -76,5 +77,10 @@ void arrange_popups(struct wlr_scene_tree *popups);
  * Sets the default animation callbacks
  */
 void config_default_animation_callbacks();
+
+/**
+ * Destroy transaction
+ */
+void transaction_destroy(struct sway_transaction *transaction);
 
 #endif
