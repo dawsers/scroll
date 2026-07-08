@@ -561,6 +561,7 @@ void view_request_activate(struct sway_view *view, struct sway_seat *seat) {
 void view_request_urgent(struct sway_view *view) {
 	if (config->focus_on_window_activation != FOWA_NONE) {
 		view_set_urgent(view, true);
+		transaction_commit_dirty();
 	}
 }
 

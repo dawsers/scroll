@@ -909,6 +909,7 @@ static void handle_set_hints(struct wl_listener *listener, void *data) {
 	}
 	if (view->allow_request_urgent) {
 		view_set_urgent(view, hints_urgency);
+		transaction_commit_dirty();
 	}
 }
 
