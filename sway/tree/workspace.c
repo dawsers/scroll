@@ -790,6 +790,7 @@ struct workspace_switch_container_data {
 };
 
 struct workspace_switch_data {
+	struct sway_output *output;
 	struct sway_workspace *from;
 	struct sway_workspace *to;
 	list_t *from_containers;
@@ -799,6 +800,7 @@ struct workspace_switch_data {
 
 static void workspace_switch_callback_end(void *callback_data) {
 	struct workspace_switch_data *data = callback_data;
+	data->output->workspace_switching = false;
 	root_filters_destroy(root, data->root_filters);
 
 	for (int i = 0; i < data->from_containers->length; ++i) {
@@ -823,6 +825,7 @@ static void workspace_switch_callback_end(void *callback_data) {
 	list_free_items_and_destroy(data->to_containers);
 	free(data);
 
+	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	transaction_commit_dirty();
 }
 
@@ -934,12 +937,14 @@ typedef void (*add_delta_to_container_func_t)(struct sway_container *con, double
 static void add_delta_to_current(struct sway_container *con, double delta) {
 	if (!container_is_sticky_or_child(con)) {
 		con->current.y += delta;
+		node_set_dirty(&con->node);
 	}
 }
 
 static void add_delta_to_pending(struct sway_container *con, double delta) {
 	if (!container_is_sticky_or_child(con)) {
 		con->pending.y += delta;
+		node_set_dirty(&con->node);
 	}
 }
 
@@ -958,7 +963,7 @@ static void select_visible_containers(list_t *containers,
 			struct workspace_switch_container_data *container_data =
 				malloc(sizeof(struct workspace_switch_container_data));
 			container_data->container = con;
-			container_data->y = con->current.y;
+			container_data->y = con->pending.y;
 			list_add(containers, container_data);
 			if (con->pending.children) {
 				select_visible_containers(containers, workspace,
@@ -1013,6 +1018,11 @@ static bool workspace_switch_down(struct sway_output *output,
 
 static void animate_workspace_switch(struct sway_output *output,
 		struct sway_workspace *from, struct sway_workspace *to) {
+	if (output->workspace_switching && !animation_animating()) {
+		sway_log(SWAY_ERROR, "Switching workspace twice in the same transaction");
+		return;
+	}
+	output->workspace_switching = true;
 	bool down = workspace_switch_down(output, from, to);
 
 	// Store the from workspace data here, because it may get deleted when
@@ -1023,6 +1033,7 @@ static void animate_workspace_switch(struct sway_output *output,
 	struct workspace_switch_data *data = malloc(sizeof(struct workspace_switch_data));
 	const double from_y = from->y;
 	const int from_height = from->height;
+	data->output = output;
 	data->from = from->node.destroying ? NULL: from;
 	data->to = to;
 	data->from_containers = create_list();
