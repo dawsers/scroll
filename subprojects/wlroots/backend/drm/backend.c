@@ -222,7 +222,8 @@ struct wlr_backend *wlr_drm_backend_create(struct wlr_session *session,
 		free(name);
 		return NULL;
 	}
-	wlr_log(WLR_INFO, "Initializing DRM backend for %s (%s)", name, version->name);
+	wlr_log(WLR_INFO, "Initializing %s DRM backend for %s (%s)",
+		parent ? "secondary" : "main", name, version->name);
 	drmFreeVersion(version);
 
 	struct wlr_drm_backend *drm = calloc(1, sizeof(*drm));
