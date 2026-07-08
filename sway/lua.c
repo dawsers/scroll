@@ -13,6 +13,7 @@
 #include "sway/desktop/animation.h"
 #include "sway/desktop/launcher.h"
 #include "sway/ipc-server.h"
+#include "sway/desktop/transaction.h"
 
 #if 0
 static void print_table(lua_State *L, int index);
@@ -322,6 +323,7 @@ static int scroll_command(lua_State *L) {
 	}
 	list_free_items_and_destroy(results);
 	free(cmd);
+	transaction_commit_dirty();
 
 	// Lua callback: "command_end" only applies to commands executed from Lua scripts
 	for (int i = 0; i < config->lua.cbs_command_end->length; ++i) {
