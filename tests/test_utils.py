@@ -415,10 +415,37 @@ def wait_for_client_map(compositor: ScrollInstance, title: str) -> int:
     tries: int = 0
     while tries < 50:
         view_id = compositor.execute_lua(f"""
-            local view = scroll.focused_view()
-            if view and scroll.view_get_title(view) == "{title}" then
-                return view
+            local function find_view(title)
+                -- Check scratchpad
+                for _, con in ipairs(scroll.scratchpad_get_containers()) do
+                    for _, view in ipairs(scroll.container_get_views(con)) do
+                        if scroll.view_get_title(view) == title then
+                            return view
+                        end
+                    end
+                end
+                -- Check all outputs and workspaces
+                for _, output in ipairs(scroll.root_get_outputs()) do
+                    for _, ws in ipairs(scroll.output_get_workspaces(output)) do
+                        for _, con in ipairs(scroll.workspace_get_tiling(ws)) do
+                            for _, view in ipairs(scroll.container_get_views(con)) do
+                                if scroll.view_get_title(view) == title then
+                                    return view
+                                end
+                            end
+                        end
+                        for _, con in ipairs(scroll.workspace_get_floating(ws)) do
+                            for _, view in ipairs(scroll.container_get_views(con)) do
+                                if scroll.view_get_title(view) == title then
+                                    return view
+                                end
+                            end
+                        end
+                    end
+                end
+                return nil
             end
+            return find_view("{title}")
         """)
         if view_id is not None:
             assert isinstance(view_id, int)
