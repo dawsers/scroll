@@ -19,6 +19,7 @@ struct client_state {
 	struct xdg_toplevel *xdg_toplevel;
 	struct wl_buffer *buffer;
 	int width, height;
+	int buffer_width, buffer_height;
 	void *shm_data;
 };
 
@@ -51,6 +52,14 @@ static void xdg_surface_configure(void *data, struct xdg_surface *xdg_surface, u
 	struct client_state *state = data;
 	xdg_surface_ack_configure(xdg_surface, serial);
 
+	if (state->buffer &&
+			(state->buffer_width != state->width || state->buffer_height != state->height)) {
+		wl_buffer_destroy(state->buffer);
+		state->buffer = NULL;
+		munmap(state->shm_data, state->buffer_width * 4 * state->buffer_height);
+		state->shm_data = NULL;
+	}
+
 	if (!state->buffer) {
 		int stride = state->width * 4;
 		int size = stride * state->height;
@@ -78,6 +87,8 @@ static void xdg_surface_configure(void *data, struct xdg_surface *xdg_surface, u
 		for (int i = 0; i < state->width * state->height; ++i) {
 			pixels[i] = 0xFF0000FF; // Blue
 		}
+		state->buffer_width = state->width;
+		state->buffer_height = state->height;
 	}
 
 	wl_surface_attach(state->surface, state->buffer, 0, 0);
@@ -86,7 +97,14 @@ static void xdg_surface_configure(void *data, struct xdg_surface *xdg_surface, u
 }
 static const struct xdg_surface_listener xdg_surface_listener = { xdg_surface_configure };
 
-static void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel, int32_t width, int32_t height, struct wl_array *states) {}
+static void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel, int32_t width,
+		int32_t height, struct wl_array *states) {
+	struct client_state *state = data;
+	if (width > 0 && height > 0) {
+		state->width = width;
+		state->height = height;
+	}
+}
 static void xdg_toplevel_close(void *data, struct xdg_toplevel *xdg_toplevel) {
 	exit(0);
 }
