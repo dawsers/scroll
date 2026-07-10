@@ -1,7 +1,4 @@
-import time
-from pathlib import Path
-from conftest import ScrollInstance
-from test_utils import run_compositor
+from test_utils import ScrollInstance, ScrollCompositorFactory
 
 
 def test_lua_tilde_expansion(scroll_compositor: ScrollInstance) -> None:
@@ -28,58 +25,58 @@ def test_lua_tilde_expansion(scroll_compositor: ScrollInstance) -> None:
 
 
 def test_lua_relative_path_config_load(
-    scroll_compositor: ScrollInstance, tmp_path: Path
+    scroll_compositor_factory: ScrollCompositorFactory,
 ) -> None:
-    binary_path = scroll_compositor.proc.args[0]
-    script_path = tmp_path / "test_relative.lua"
-    script_path.write_text('scroll.log("RELATIVE_LOAD_SUCCESS")')
+    with scroll_compositor_factory() as scroll_compositor:
+        home_dir = scroll_compositor.temp_dir
+        script_path = home_dir / "test_relative.lua"
+        script_path.write_text('scroll.log("RELATIVE_LOAD_SUCCESS")')
 
-    config = "workspace 1\nxwayland force\nlua test_relative.lua\n"
-    with run_compositor(binary_path, tmp_path, config) as inst:
-        time.sleep(1.0)
-    assert "RELATIVE_LOAD_SUCCESS" in inst.read_log()
+        config = "workspace 1\nxwayland force\nlua test_relative.lua\n"
+        with scroll_compositor.assert_logs_match("RELATIVE_LOAD_SUCCESS"):
+            scroll_compositor.reload_config(config)
 
 
 def test_lua_relative_path_subdir_config_load(
-    scroll_compositor: ScrollInstance, tmp_path: Path
+    scroll_compositor_factory: ScrollCompositorFactory,
 ) -> None:
-    binary_path = scroll_compositor.proc.args[0]
-    subdir = tmp_path / "scripts"
-    subdir.mkdir()
-    script_path = subdir / "test_relative2.lua"
-    script_path.write_text('scroll.log("RELATIVE_SUBDIR_LOAD_SUCCESS")')
+    with scroll_compositor_factory() as scroll_compositor:
+        home_dir = scroll_compositor.temp_dir
+        subdir = home_dir / "scripts"
+        subdir.mkdir(exist_ok=True)
+        script_path = subdir / "test_relative2.lua"
+        script_path.write_text('scroll.log("RELATIVE_SUBDIR_LOAD_SUCCESS")')
 
-    config = "workspace 1\nxwayland force\nlua scripts/test_relative2.lua\n"
-    with run_compositor(binary_path, tmp_path, config) as inst:
-        time.sleep(1.0)
-    assert "RELATIVE_SUBDIR_LOAD_SUCCESS" in inst.read_log()
+        config = "workspace 1\nxwayland force\nlua scripts/test_relative2.lua\n"
+        with scroll_compositor.assert_logs_match("RELATIVE_SUBDIR_LOAD_SUCCESS"):
+            scroll_compositor.reload_config(config)
 
 
 def test_lua_relative_glob_config_load(
-    scroll_compositor: ScrollInstance, tmp_path: Path
+    scroll_compositor_factory: ScrollCompositorFactory,
 ) -> None:
-    binary_path = scroll_compositor.proc.args[0]
-    subdir = tmp_path / "scripts"
-    subdir.mkdir()
-    script_path = subdir / "test_glob1.lua"
-    script_path.write_text('scroll.log("RELATIVE_GLOB_LOAD_SUCCESS")')
+    with scroll_compositor_factory() as scroll_compositor:
+        home_dir = scroll_compositor.temp_dir
+        subdir = home_dir / "scripts"
+        subdir.mkdir(exist_ok=True)
+        script_path = subdir / "test_glob1.lua"
+        script_path.write_text('scroll.log("RELATIVE_GLOB_LOAD_SUCCESS")')
 
-    config = "workspace 1\nxwayland force\nlua scripts/test_glob*.lua\n"
-    with run_compositor(binary_path, tmp_path, config) as inst:
-        time.sleep(1.0)
-    assert "RELATIVE_GLOB_LOAD_SUCCESS" in inst.read_log()
+        config = "workspace 1\nxwayland force\nlua scripts/test_glob*.lua\n"
+        with scroll_compositor.assert_logs_match("RELATIVE_GLOB_LOAD_SUCCESS"):
+            scroll_compositor.reload_config(config)
 
 
 def test_lua_relative_glob_multiple_config_load(
-    scroll_compositor: ScrollInstance, tmp_path: Path
+    scroll_compositor_factory: ScrollCompositorFactory,
 ) -> None:
-    binary_path = scroll_compositor.proc.args[0]
-    subdir = tmp_path / "scripts"
-    subdir.mkdir()
-    (subdir / "test_glob1.lua").write_text('scroll.log("G1")')
-    (subdir / "test_glob2.lua").write_text('scroll.log("G2")')
+    with scroll_compositor_factory() as scroll_compositor:
+        home_dir = scroll_compositor.temp_dir
+        subdir = home_dir / "scripts"
+        subdir.mkdir(exist_ok=True)
+        (subdir / "test_glob1.lua").write_text('scroll.log("G1")')
+        (subdir / "test_glob2.lua").write_text('scroll.log("G2")')
 
-    config = "workspace 1\nxwayland force\nlua scripts/test_glob*.lua\n"
-    with run_compositor(binary_path, tmp_path, config) as inst:
-        time.sleep(1.0)
-    assert "Path expanded to multiple files" in inst.read_log()
+        config = "workspace 1\nxwayland force\nlua scripts/test_glob*.lua\n"
+        with scroll_compositor.assert_logs_match("Path expanded to multiple files"):
+            scroll_compositor.reload_config(config)
