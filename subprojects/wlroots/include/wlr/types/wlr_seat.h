@@ -271,37 +271,35 @@ struct wlr_seat {
 	struct wlr_seat_touch_state touch_state;
 
 	struct {
-		struct wl_signal pointer_grab_begin;
-		struct wl_signal pointer_grab_end;
+		struct wl_signal pointer_grab_begin; // struct wlr_seat_pointer_grab
+		struct wl_signal pointer_grab_end; // struct wlr_seat_pointer_grab
 
-		struct wl_signal keyboard_grab_begin;
-		struct wl_signal keyboard_grab_end;
+		struct wl_signal keyboard_grab_begin; // struct wlr_seat_keyboard_grab
+		struct wl_signal keyboard_grab_end; // struct wlr_seat_keyboard_grab
 
-		struct wl_signal touch_grab_begin;
-		struct wl_signal touch_grab_end;
+		struct wl_signal touch_grab_begin; // struct wlr_seat_touch_grab
+		struct wl_signal touch_grab_end; // struct wlr_seat_touch_grab
 
-		// struct wlr_seat_pointer_request_set_cursor_event
-		struct wl_signal request_set_cursor;
+		struct wl_signal request_set_cursor; // struct wlr_seat_pointer_request_set_cursor_event
 
 		// Called when an application _wants_ to set the selection (user copies some data).
 		// Compositors should listen to this event and call wlr_seat_set_selection()
 		// if they want to accept the client's request.
 		struct wl_signal request_set_selection; // struct wlr_seat_request_set_selection_event
 		// Called after the data source is set for the selection.
-		struct wl_signal set_selection;
+		struct wl_signal set_selection; // struct wlr_seat
 
 		// Called when an application _wants_ to set the primary selection (user selects some data).
 		// Compositors should listen to this event and call wlr_seat_set_primary_selection()
 		// if they want to accept the client's request.
 		struct wl_signal request_set_primary_selection; // struct wlr_seat_request_set_primary_selection_event
 		// Called after the primary selection source object is set.
-		struct wl_signal set_primary_selection;
+		struct wl_signal set_primary_selection; // struct wlr_seat
 
-		// struct wlr_seat_request_start_drag_event
-		struct wl_signal request_start_drag;
+		struct wl_signal request_start_drag; // struct wlr_seat_request_start_drag_event
 		struct wl_signal start_drag; // struct wlr_drag
 
-		struct wl_signal destroy;
+		struct wl_signal destroy; // struct wlr_seat
 	} events;
 
 	void *data;
