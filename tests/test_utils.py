@@ -85,6 +85,7 @@ end
 f:close()
 """
 
+DEFAULT_CONFIG = "workspace 1\nxwayland force\nanimations enabled no\n"
 
 class ScrollInstance:
     proc: subprocess.Popen
@@ -203,7 +204,7 @@ class ScrollInstance:
         # 3. Reload config to reset defaults
         try:
             config_path = self.temp_dir / "config"
-            config_path.write_text("workspace 1\nxwayland force\n")
+            config_path.write_text(DEFAULT_CONFIG)
             self.cmd("reload")
             self.wait_for_idle()
         except Exception:
@@ -323,7 +324,7 @@ def run_compositor(
 
     config_path: Path = temp_dir / "config"
     if config_content is None:
-        config_content = "workspace 1\nxwayland force\n"
+        config_content = DEFAULT_CONFIG
     config_path.write_text(config_content)
 
     env = os.environ.copy()
