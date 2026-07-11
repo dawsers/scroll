@@ -455,8 +455,6 @@ void swaynag_setup(struct swaynag *swaynag) {
 				"WAYLAND_DISPLAY environment variable.");
 	}
 
-	swaynag->scale = 1;
-
 	struct wl_registry *registry = wl_display_get_registry(swaynag->display);
 	wl_registry_add_listener(registry, &registry_listener, swaynag);
 	if (wl_display_roundtrip(swaynag->display) < 0) {
@@ -477,6 +475,18 @@ void swaynag_setup(struct swaynag *swaynag) {
 		swaynag_destroy(swaynag);
 		exit(EXIT_FAILURE);
 	}
+
+	uint32_t scale = 1;
+	struct swaynag_output *swaynag_output;
+	wl_list_for_each(swaynag_output, &swaynag->outputs, link) {
+		if (swaynag->output && swaynag_output->wl_output == swaynag->output->wl_output) {
+			scale = swaynag_output->scale;
+			break;
+		} else if (swaynag_output->scale > scale) {
+			scale = swaynag_output->scale;
+		}
+	};
+	swaynag->scale = scale;
 
 	if (!swaynag->cursor_shape_manager) {
 		swaynag_setup_cursors(swaynag);
