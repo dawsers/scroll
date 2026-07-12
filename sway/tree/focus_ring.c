@@ -18,12 +18,20 @@ void focus_ring_destroy(struct sway_focus_ring *focus_ring) {
 	free(focus_ring);
 }
 
+static void focus_container(struct sway_seat *seat,
+		struct sway_container *container) {
+	if (container_is_scratchpad_hidden(container)) {
+		root_scratchpad_show(container);
+	}
+	seat_set_focus_container(seat, container);
+}
+
 void focus_ring_next(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat) {
 	int index = focus_ring->index + 1;
 	if (index < focus_ring->ring->length) {
 		struct sway_view *view = focus_ring->ring->items[index];
-		seat_set_focus_container(seat, view->container);
+		focus_container(seat, view->container);
 		++focus_ring->index;
 	}
 }
@@ -35,7 +43,7 @@ void focus_ring_prev(struct sway_focus_ring *focus_ring,
 		focus_ring->ring->length;
 	if (index >= focus_ring->ring->length - len) {
 		struct sway_view *view = focus_ring->ring->items[index];
-		seat_set_focus_container(seat, view->container);
+		focus_container(seat, view->container);
 		focus_ring->index--;
 	}
 }
@@ -46,14 +54,14 @@ void focus_ring_first(struct sway_focus_ring *focus_ring,
 		focus_ring->ring->length;
 	focus_ring->index = focus_ring->ring->length - len;
 	struct sway_view *view = focus_ring->ring->items[focus_ring->index];
-	seat_set_focus_container(seat, view->container);
+	focus_container(seat, view->container);
 }
 
 void focus_ring_last(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat) {
 	focus_ring->index = focus_ring->ring->length - 1;
 	struct sway_view *view = focus_ring->ring->items[focus_ring->index];
-	seat_set_focus_container(seat, view->container);
+	focus_container(seat, view->container);
 }
 
 void focus_ring_set(struct sway_focus_ring *focus_ring, struct sway_seat *seat,
