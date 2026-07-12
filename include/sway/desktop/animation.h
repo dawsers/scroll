@@ -30,6 +30,11 @@ enum sway_animation_type {
 	ANIMATION_LAYER_SHELL,
 };
 
+enum sway_animation_fade {
+	ANIMATION_FADE_IN,
+	ANIMATION_FADE_OUT,
+};
+
 /**
  * Configuration for animations
  */
@@ -47,6 +52,8 @@ struct sway_animation_config {
 	struct sway_animation_path *overview;
 	struct sway_animation_path *jump;
 	struct sway_animation_path *layer_shell;
+	struct sway_animation_path *fade_in;
+	struct sway_animation_path *fade_out;
 };
 
 // Animation callback
@@ -142,6 +149,7 @@ bool animation_animating_output(struct wlr_output *output);
 // Get the current parameters for the active animation
 void animation_get_values(double *t, double *x, double *y);
 
+void animation_get_fade(enum sway_animation_fade fade, double *t);
 
 // Create a 3D animation curve
 struct sway_animation_curve *create_animation_curve(uint32_t duration_ms,

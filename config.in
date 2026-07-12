@@ -119,6 +119,8 @@ animations {
     window_fullscreen yes 500 var simple [ 0.3 0.5 0.4 1 ]
     jump yes 500 var simple [ 0.215 0.61 0.355 1 ]
     layer_shell yes 300 var 3 [ 0 0 1 1 ]
+    fade_in yes 300 var simple [ 0.32 0 0.67 0 ]
+    fade_out yes 300 var simple [ 0.33 1 0.68 1 ]
     # You can also define curves for the following events
     # window_move_float
     # overview

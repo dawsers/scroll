@@ -1084,6 +1084,18 @@ static void animate_view(struct sway_container *con,
 		}
 	}
 #endif
+
+	if (con->animation.a0 != con->animation.a1) {
+		double t;
+		animation_get_fade(ANIMATION_FADE_IN, &t);
+		animation_set_animation_enabled(true);
+		con->animation.at = linear_scale(con->animation.a0, con->animation.a1, t);
+		const float old_alpha =con->pending.alpha;
+		con->pending.alpha = con->animation.at;
+		container_update(con);
+		con->pending.alpha = old_alpha;
+	}
+
 	view_reconfigure(con->view);
 }
 
@@ -1683,18 +1695,21 @@ static void animate_root(struct sway_root *root) {
 			}
 		}
 	}
-	double t, x, y;
-	animation_get_values(&t, &x, &y);
-	for (int i = 0; i < root->unmapped_views->length; ++i) {
-		struct sway_view *view = root->unmapped_views->items[i];
-		struct sway_container *container = view->container;
-		if (container) {
-			animation_set_animation_enabled(true);
-			container->alpha = 1.0 - t;
-			container_update(container);
-			const float color[4] = { 0.0, 0.0, 0.0, container->alpha };
-			wlr_scene_decoration_set_dimming(container->decoration.full, true, color);
-			view_reconfigure(view);
+	if (root->unmapped_views->length > 0) {
+		double t;
+		animation_get_fade(ANIMATION_FADE_OUT, &t);
+		for (int i = 0; i < root->unmapped_views->length; ++i) {
+			struct sway_view *view = root->unmapped_views->items[i];
+			struct sway_container *container = view->container;
+			if (container) {
+				animation_set_animation_enabled(true);
+				container->animation.at = linear_scale(container->animation.a0, container->animation.a1, t);
+				const float old_alpha =container->pending.alpha;
+				container->pending.alpha = container->animation.at;
+				container_update(container);
+				container->pending.alpha = old_alpha;
+				view_reconfigure(view);
+			}
 		}
 	}
 	arrange_popups(root->layers.popup);
@@ -2147,18 +2162,16 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 	return false;
 }
 
-static void children_save_animation_variables(list_t *children) {
-	if (!children) {
-		return;
-	}
-	for (int i = 0; i < children->length; ++i) {
-		struct sway_container *child = children->items[i];
+static void container_save_animation_variables(struct sway_container *child) {
+	if (child) {
 		child->animation.x0 = child->current.x;
 		child->animation.y0 = child->current.y;
 		child->animation.w0 = child->current.width;
 		child->animation.h0 = child->current.height;
 		child->animation.w1 = child->pending.width;
 		child->animation.h1 = child->pending.height;
+		child->animation.a0 = child->current.alpha;
+		child->animation.a1 = child->pending.alpha;
 #if WLR_HAS_XWAYLAND
 		if (child->view && child->view->type == SWAY_VIEW_XWAYLAND) {
 			child->old_content.x = child->current.content_x;
@@ -2167,6 +2180,16 @@ static void children_save_animation_variables(list_t *children) {
 			child->old_content.height = child->current.content_height;
 		}
 #endif
+	}
+}
+
+static void children_save_animation_variables(list_t *children) {
+	if (!children) {
+		return;
+	}
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *child = children->items[i];
+		container_save_animation_variables(child);
 		children_save_animation_variables(child->pending.children);
 	}
 }
@@ -2234,6 +2257,10 @@ static void save_animation_variables() {
 	struct sway_container *fs = root->fullscreen_global;
 
 	if (!fs) {
+		for (int j = 0; j < root->unmapped_views->length; ++j) {
+			struct sway_view *view = root->unmapped_views->items[j];
+			container_save_animation_variables(view->container);
+		}
 		for (int j = 0; j < root->outputs->length; j++) {
 			struct sway_output *output = root->outputs->items[j];
 			layers_save_animation_variables(output);

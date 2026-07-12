@@ -98,6 +98,8 @@ struct sway_container_state {
 	// These are in layout coordinates.
 	double content_x, content_y;
 	double content_width, content_height;
+
+	float alpha;
 };
 
 struct sway_container {
@@ -176,6 +178,7 @@ struct sway_container {
 		double x0, y0, w0, h0;
 		double xt, yt, wt, ht;
 		double w1, h1;
+		float a0, at, a1;
 	} animation;
 
 	bool selected;	// for selection/cut/move
@@ -189,8 +192,6 @@ struct sway_container {
 	// scratchpad windows.
 	// Unused for non-scratchpad windows.
 	struct wlr_box transform;
-
-	float alpha;
 
 	list_t *marks; // char *
 

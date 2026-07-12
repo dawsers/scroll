@@ -772,7 +772,7 @@ static int scroll_container_get_opacity(lua_State *L) {
 		lua_pushnil(L);
 		return 1;
 	}
-	lua_pushnumber(L, container->alpha);
+	lua_pushnumber(L, container->pending.alpha);
 	return 1;
 }
 

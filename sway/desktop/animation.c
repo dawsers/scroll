@@ -202,6 +202,8 @@ void animation_create() {
 	animation->config.overview = NULL;
 	animation->config.jump = NULL;
 	animation->config.layer_shell = NULL;
+	animation->config.fade_in = NULL;
+	animation->config.fade_out = NULL;
 
 	config_default_animation_callbacks();
 	animation->current.callbacks = animation->default_callbacks;
@@ -213,6 +215,12 @@ void animation_destroy() {
 	if (animation) {
 		if (animation->outputs) {
 			list_free_items_and_destroy(animation->outputs);
+		}
+		if (animation->config.fade_out) {
+			animation_path_destroy(animation->config.fade_out);
+		}
+		if (animation->config.fade_in) {
+			animation_path_destroy(animation->config.fade_in);
 		}
 		if (animation->config.layer_shell) {
 			animation_path_destroy(animation->config.layer_shell);
@@ -805,6 +813,50 @@ void animation_get_values(double *t, double *x, double *y) {
 	}
 	double u = animation->time;
 	animation_curve_get_values(curve, u, t, x, y);
+}
+
+static struct sway_animation_path *get_fade_path(enum sway_animation_fade fade) {
+	if (!animation->config.enabled || config->reloading) {
+		return NULL;
+	}
+	struct sway_animation_path *path;
+	switch (fade) {
+	case ANIMATION_FADE_IN:
+		path = animation->config.fade_in;
+		break;
+	case ANIMATION_FADE_OUT:
+		path = animation->config.fade_out;
+		break;
+	default:
+		path = NULL;
+	}
+	if (!path) {
+		path = animation->config.anim_default;
+	}
+	if (path->enabled) {
+		return path;
+	}
+	return NULL;
+}
+
+static struct sway_animation_curve *get_fade_curve(enum sway_animation_fade fade) {
+	struct sway_animation_path *path = get_fade_path(fade);
+	if (path) {
+		struct sway_animation_curve *curve = path->curves->items[path->idx];
+		return curve;
+	}
+	return NULL;
+}
+
+void animation_get_fade(enum sway_animation_fade fade, double *t) {
+	struct sway_animation_curve *curve = get_fade_curve(fade);
+	if (!curve) {
+		*t = 1.0;
+		return;
+	}
+	double u = animation->time;
+	double x, y;
+	animation_curve_get_values(curve, u, t, &x, &y);
 }
 
 static void create_bezier(struct bezier_curve *curve, uint32_t order, list_t *points,

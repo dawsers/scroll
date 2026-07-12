@@ -110,7 +110,7 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->pending.layout = L_NONE;
 	c->view = view;
-	c->alpha = 1.0f;
+	c->current.alpha = c->pending.alpha = 1.0f;
 	c->marks = create_list();
 	c->toggle_size.single = false;
 	c->toggle_size.state = TOGGLE_STATE_NONE;
@@ -251,7 +251,7 @@ static void scene_border_set_colors(struct wlr_scene_decoration *decoration,
 
 void container_update(struct sway_container *con) {
 	struct border_colors *colors = container_get_current_colors(con);
-	float alpha = con->alpha;
+	float alpha = con->pending.alpha;
 
 	const float transparent[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	float top[4], bottom[4], left[4], right[4], title_border[4];

@@ -996,6 +996,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	}
 
 	struct sway_container *container = view->container;
+	view->container->current.alpha = 0.0f;
 	layout_add_view(ws, target_sibling, container);
 	ipc_event_window(view->container, "new");
 
@@ -1131,6 +1132,7 @@ void view_unmap(struct sway_view *view) {
 	struct sway_workspace *ws = view->container->pending.workspace;
 	const bool fullscreen = view->container->fullscreen;
 	list_add(root->unmapped_views, view);
+	view->container->pending.alpha = 0.0f;
 	container_begin_destroy(view->container);
 	if (parent) {
 		container_reap_empty(parent);

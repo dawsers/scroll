@@ -8,6 +8,8 @@
 static const struct cmd_handler animations_config_handlers[] = {
 	{ "default", animations_cmd_default },
 	{ "enabled", animations_cmd_enabled },
+	{ "fade_in", animations_cmd_fade_in },
+	{ "fade_out", animations_cmd_fade_out },
 	{ "jump", animations_cmd_jump },
 	{ "layer_shell", animations_cmd_layer_shell },
 	{ "overview", animations_cmd_overview },
@@ -212,6 +214,24 @@ struct cmd_results *animations_cmd_layer_shell(int argc, char **argv) {
 	}
 	struct sway_animation_config *config = animation_get_config();
 	return parse_animation_curve(argc, argv, &config->layer_shell);
+}
+
+struct cmd_results *animations_cmd_fade_in(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "fade_in", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->fade_in);
+}
+
+struct cmd_results *animations_cmd_fade_out(int argc, char **argv) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, "fade_out", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	return parse_animation_curve(argc, argv, &config->fade_out);
 }
 
 struct cmd_results *cmd_animations(int argc, char **argv) {

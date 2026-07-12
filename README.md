@@ -558,6 +558,8 @@ animations {
     window_size yes 300 var 3 [ -0.35 0 0 0.5 ]
     workspace_switch yes 500 var simple [ 0.215 0.61 0.355 1 ]
     window_fullscreen yes 500 var simple [ 0.3 0.5 0.4 1 ]
+    fade_in yes 300 var simple [ 0.32 0 0.67 0 ]
+    fade_out yes 300 var simple [ 0.33 1 0.68 1 ]
     # You can also define curves for the following events
     # window_move_float
     # overview
@@ -1740,6 +1742,10 @@ screen.
 workspaces`).
 
 `layer_shell`: curve to animate layer shell surfaces and popups.
+
+`fade_in`: curve to animate the opacity of an opening window.
+
+`fade_out`: curve to animate the opacity of a closing window.
 
 Format of an animation curve:
 

@@ -123,6 +123,19 @@ The following commands may only be used in the configuration file.
 	Default is not defined, so it uses _default_ unless you set one up in your
 	config. It is the curve used to animate layer shell surfaces and popups.
 
+	*fade_in* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the curve used to animate the opacity of a new window while
+	the *window_open* animation is happening, and only if it is enabled.
+	_duration_ will be ignored and assumed the same as the *window_open*
+	animation's.
+
+	*fade_out* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the curve used to animate the opacity of a closing window.
+	_duration_ will be ignored and assumed the same as the *default*
+	animation's.
+
 	Format of an animation curve:
 
 	The first field is _enabled_. It can be _yes_ or _no_. It enables or

@@ -234,7 +234,7 @@ void output_configure_scene(struct sway_output *output,
 	struct sway_container *con =
 		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
 	if (con) {
-		opacity = con->alpha;
+		opacity = con->pending.alpha;
 	}
 
 	if (node->type == WLR_SCENE_NODE_BUFFER) {
