@@ -27,6 +27,7 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 
 	if (seat->cursor->pressed_button_count == 0) {
 		container_set_resizing(con, false);
+		container_floating_move_to(con, con->pending.x, con->pending.y, true);
 		arrange_container(con); // Send configure w/o resizing hint
 		animation_set_type(ANIMATION_WINDOW_SIZE);
 		transaction_commit_dirty();
