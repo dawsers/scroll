@@ -157,8 +157,8 @@ animations {
     bindsym $mod+Shift+x exec scrollnag -t warning -m 'You pressed the exit shortcut. Do you really want to exit scroll? This will end your Wayland session.' -B 'Yes, exit scroll' 'scrollmsg exit' -w 500 -e center -y overlay
 
     # Layout mode
-    bindsym $mod+bracketleft set_mode h
-    bindsym $mod+bracketright set_mode v
+    bindsym $mod+Shift+bracketleft set_mode h
+    bindsym $mod+Shift+bracketright set_mode v
 #
 # Moving around:
 #
@@ -412,6 +412,23 @@ mode "modifiers" {
     bindsym Escape mode "default"
 }
 bindsym $mod+backslash mode "modifiers"
+
+#
+# Focus Ring
+#
+
+# focus_ring_length 0
+
+mode "focus_ring" {
+    bindsym bracketleft focus_ring prev
+    bindsym bracketright focus_ring next
+    bindsym Return focus_ring set
+    bindsym Home focus_ring first
+    bindsym End focus_ring last
+
+    bindsym Escape mode "default"
+}
+bindsym $mod+bracketleft mode "focus_ring"
 
 #
 # Resizing containers:

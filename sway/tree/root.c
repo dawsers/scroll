@@ -16,6 +16,7 @@
 #include "sway/tree/workspace.h"
 #include "sway/tree/space.h"
 #include "sway/tree/node.h"
+#include "sway/tree/focus_ring.h"
 #include "list.h"
 #include "log.h"
 #include "util.h"
@@ -85,6 +86,7 @@ struct sway_root *root_create(struct wl_display *wl_display) {
 
 	root->spaces = create_list();
 	root->unmapped_views = create_list();
+	root->focus_ring = focus_ring_create();
 
 	root->filters_list = create_list();
 	root->filters = root_filters_create(root);
@@ -93,6 +95,7 @@ struct sway_root *root_create(struct wl_display *wl_display) {
 }
 
 void root_destroy(struct sway_root *root) {
+	focus_ring_destroy(root->focus_ring);
 	list_free(root->unmapped_views);
 	space_destroy_all();
 	list_free(root->spaces);

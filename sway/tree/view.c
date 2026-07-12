@@ -38,6 +38,7 @@
 #include "sway/config.h"
 #include "sway/xdg_decoration.h"
 #include "sway/desktop/animation.h"
+#include "sway/tree/focus_ring.h"
 
 static void handle_outputs_update(
 		struct wl_listener *listener, void *data) {
@@ -1127,6 +1128,7 @@ void view_unmap(struct sway_view *view) {
 	}
 
 	layout_trail_remove_view(view);
+	focus_ring_remove_view(root->focus_ring, view);
 
 	struct sway_container *parent = view->container->pending.parent;
 	struct sway_workspace *ws = view->container->pending.workspace;

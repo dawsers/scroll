@@ -69,6 +69,7 @@ sway_sources = files(
 	'commands/focus.c',
 	'commands/focus_follows_mouse.c',
 	'commands/focus_on_window_activation.c',
+	'commands/focus_ring.c',
 	'commands/focus_wrapping.c',
 	'commands/font.c',
 	'commands/for_window.c',
@@ -243,6 +244,7 @@ sway_sources = files(
 	'tree/space.c',
 	'tree/scene.c',
 	'tree/scene/debug.c',
+	'tree/focus_ring.c',
 
 	'protocol/xdg_output_v1.c',
 )

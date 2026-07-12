@@ -35,6 +35,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/desktop/transaction.h"
+#include "sway/tree/focus_ring.h"
 
 static void seat_device_destroy(struct sway_seat_device *seat_device) {
 	if (!seat_device) {
@@ -1333,6 +1334,9 @@ void seat_set_focus(struct sway_seat *seat, struct sway_node *node) {
 	}
 	if (server.session_lock.lock) {
 		seat_set_focus_surface(seat, server.session_lock.lock->focused, false);
+	}
+	if (node && node->type == N_CONTAINER && node->sway_container->view) {
+		focus_ring_add_view(root->focus_ring, node->sway_container->view);
 	}
 }
 

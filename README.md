@@ -37,6 +37,19 @@ supports some added features:
 
 * Several full screen modes: `workspace`, `global`, `application` and `layout`.
 
+* Trails and trailmarks: you can define sets of anonymous marks and jump to any
+  of them easily.
+
+* Spaces: a space is a configuration of existing windows. Saving a named "space",
+  you can later on recall that configuration on the same or any other workspace.
+
+* Alignment and fitting: align windows or resize them automatically to fit
+  certain criteria.
+
+* Focus ring: quick access to the last few focused windows.
+
+* Pinned windows.
+
 * Trackpad/Mouse scrolling: You can use the trackpad or mouse dragging to
   navigate/scroll the workspace windows.
 
@@ -1244,6 +1257,31 @@ elif [ $1 == "delete" ]; then
 fi
 ```
 
+### Focus Ring
+
+The focus ring is a list of the last few focused windows. It works similarly to
+`Alt-Tab` features on some desktop environments. You can define the length of
+this list using the option `focus_ring_length`. The default is `0`, which means
+every window will be in the ring.
+
+You can use `focus_ring prev|next|first|last` to navigate the ring focusing its
+windows.
+
+Use `focus_ring set` to make the currently focused window the last one in the
+ring.
+
+``` config
+mode "focus_ring" {
+    bindsym bracketleft focus_ring prev
+    bindsym bracketright focus_ring next
+    bindsym Return focus_ring set
+    bindsym Home focus_ring first
+    bindsym End focus_ring last
+
+    bindsym Escape mode "default"
+}
+bindsym $mod+bracketleft mode "focus_ring"
+```
 
 ### Pins
 
@@ -2111,7 +2149,7 @@ each one of them:
 ### Config-Only Commands
 
 `align_reset_auto`, `animations`, `cursor_shake_magnify`,
-`cursor_shake_magnify_sensitivity`, `cycle_size_wrap`,
+`cursor_shake_magnify_sensitivity`, `cycle_size_wrap`, `focus_ring_length`,
 `fullscreen_movefocus`, `gesture_scroll_enable`, `gesture_scroll_fingers`,
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_Default_mode`, `layout_default_height`,
@@ -2126,7 +2164,7 @@ each one of them:
 ### Runtime Only Commands
 
 `align`, `animations_enable`, `cycle_size`, `decoration`, `filter`, `fit_size`,
-`focus begin/end`, `fullscreen application|layout`, `jump`, `layout_transpose`,
+`focus begin/end`, `focus_ring`, `fullscreen application|layout`, `jump`, `layout_transpose`,
 `move beginning|end nomode`, `pin`, `resize` for floating windows,
 `scale_content`, `scale_workspace`, `scratchpad_minimize_view`,
 `scratchpad jump`, `selection`, `set_mode`, `set_size`, `space`,

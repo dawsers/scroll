@@ -208,6 +208,10 @@ The following commands may only be used in the configuration file.
 *default_orientation* <horizontal|vertical|auto>
 	Sets the default container layout for tiled containers.
 
+*focus_ring_length* <number>
+	Sets the length of the focus ring. The default value is _0_, which means
+	every window will be included. Values over _0_ set the length of the ring.
+
 *fullscreen_movefocus* <true|false> [follow|nofollow]
 	Default value is _true_ and _nofollow_.
 
@@ -527,6 +531,20 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 
 *focus* mode_toggle
 	Moves focus between the floating and tiled layers.
+
+*focus_ring* prev|next|first|last|set
+	Navigate the focus ring. The focus ring stores the last few focused windows.
+	See *focus_ring_length* for an option to control the size of the focus ring.
+
+	_prev_: focus the previous view in the focus ring.
+
+	_next_: focus the next view in the focus ring.
+
+	_first_: focus the first view in the focus ring.
+
+	_last_: focus the last view in the focus ring.
+
+	_set_: set the current view as the last one in the focus ring.
 
 *fullscreen* [enable|disable|toggle] [global|application|layout]
 	Makes the focused window fullscreen, non-fullscreen, or the opposite of what it

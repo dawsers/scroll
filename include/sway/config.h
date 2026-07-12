@@ -643,6 +643,7 @@ struct sway_config {
 	bool snap_respect_gaps_inner;
 	bool snap_respect_gaps_outer;
 	bool snap_border_overlap;
+	int focus_ring_length;
 	bool gesture_scroll_enable;
 	uint32_t gesture_scroll_fingers;
 	float gesture_scroll_sentitivity;

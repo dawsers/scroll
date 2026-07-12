@@ -119,6 +119,7 @@ struct sway_root {
 
 	list_t *spaces;
 	list_t *unmapped_views;
+	struct sway_focus_ring *focus_ring;
 };
 
 struct sway_root *root_create(struct wl_display *display);
