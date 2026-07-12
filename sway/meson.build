@@ -247,6 +247,10 @@ sway_sources = files(
 	'protocol/xdg_output_v1.c',
 )
 
+if get_option('b_sanitize') != 'none'
+  sway_sources += files('lsan_suppressions.c')
+endif
+
 sway_deps = [
 	cairo,
 	drm,
