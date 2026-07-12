@@ -56,6 +56,52 @@ struct cmd_results *cmd_cycle_size_wrap(int argc, char **argv) {
 }
 
 /**
+ * Implement `cycle_size <incr>` for a floating container.
+ */
+static struct cmd_results *cycle_size_floating(uint32_t axis, int inc) {
+	struct sway_container *current = config->handler_context.container;
+
+	if (container_is_scratchpad_hidden_or_child(current)) {
+		return cmd_results_new(CMD_FAILURE, "Cannot cycle_size a hidden scratchpad container");
+	}
+
+	int min_width, max_width, min_height, max_height;
+	floating_calculate_constraints(&min_width, &max_width,
+			&min_height, &max_height);
+
+	struct sway_workspace *workspace = config->handler_context.workspace;
+	struct sway_output *output = workspace->output;
+	bool horizontal = is_horizontal(axis);
+
+	if (horizontal) {
+		const double fraction = current->pending.width / workspace->width;
+		const double new_fraction = get_closest_fraction(fraction, layout_get_widths(output), inc);
+
+		const double width = fmax(min_width, fmin(new_fraction * workspace->width, max_width));
+		const double grow_width = width - current->pending.width;
+		current->pending.x -= 0.5 * grow_width;
+		current->pending.width = width;
+		current->pending.content_x -= 0.5 * grow_width;
+		current->pending.content_width += grow_width;
+	} else {
+		const double fraction = current->pending.height / workspace->height;
+		const double new_fraction = get_closest_fraction(fraction, layout_get_heights(output), inc);
+
+		const double height = fmax(min_height, fmin(new_fraction * workspace->height, max_height));
+		const double grow_height = height - current->pending.height;
+		current->pending.y -= 0.5 * grow_height;
+		current->pending.height = height;
+		current->pending.content_y -= 0.5 * grow_height;
+		current->pending.content_height += grow_height;
+	}
+
+	animation_set_type(ANIMATION_WINDOW_SIZE);
+	arrange_container(current);
+
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+/**
  * Implement `cycle_size <incr>` for a tiled container.
  */
 static struct cmd_results *cycle_size_tiled(uint32_t axis, int inc) {
@@ -125,9 +171,7 @@ struct cmd_results *cmd_cycle_size(int argc, char **argv) {
 	if (!current) {
 		return cmd_results_new(CMD_INVALID, "Cannot cycle_size nothing");
 	}
-	if (container_is_floating(current)) {
-		return cmd_results_new(CMD_INVALID, "Cannot cycle_size floating containers");
-	}
+	bool floating = container_is_floating(current);
 
 	struct cmd_results *error;
 	if ((error = checkarg(argc, "cycle_size", EXPECTED_AT_LEAST, 2))) {
@@ -145,9 +189,11 @@ struct cmd_results *cmd_cycle_size(int argc, char **argv) {
 
 	if (!fail) {
 		if (strcasecmp(argv[0], "h") == 0) {
-			return cycle_size_tiled(AXIS_HORIZONTAL, inc);
+			return floating ? cycle_size_floating(AXIS_HORIZONTAL, inc) :
+				cycle_size_tiled(AXIS_HORIZONTAL, inc);
 		} else if (strcasecmp(argv[0], "v") == 0) {
-			return cycle_size_tiled(AXIS_VERTICAL, inc);
+			return floating ? cycle_size_floating(AXIS_VERTICAL, inc) :
+				cycle_size_tiled(AXIS_VERTICAL, inc);
 		}
 	}
 

@@ -19,6 +19,45 @@ static bool is_horizontal(uint32_t axis) {
 }
 
 /**
+ * Implement `set_size <fraction>` for a floating container.
+ */
+static struct cmd_results *set_size_floating(uint32_t axis, double fraction) {
+	struct sway_container *current = config->handler_context.container;
+
+	if (container_is_scratchpad_hidden_or_child(current)) {
+		return cmd_results_new(CMD_FAILURE, "Cannot set_size a hidden scratchpad container");
+	}
+
+	int min_width, max_width, min_height, max_height;
+	floating_calculate_constraints(&min_width, &max_width,
+			&min_height, &max_height);
+
+	struct sway_workspace *workspace = config->handler_context.workspace;
+	bool horizontal = is_horizontal(axis);
+
+	if (horizontal) {
+		const double width = fmax(min_width, fmin(fraction * workspace->width, max_width));
+		const double grow_width = width - current->pending.width;
+		current->pending.x -= 0.5 * grow_width;
+		current->pending.width = width;
+		current->pending.content_x -= 0.5 * grow_width;
+		current->pending.content_width += grow_width;
+	} else {
+		const double height = fmax(min_height, fmin(fraction * workspace->height, max_height));
+		const double grow_height = height - current->pending.height;
+		current->pending.y -= 0.5 * grow_height;
+		current->pending.height = height;
+		current->pending.content_y -= 0.5 * grow_height;
+		current->pending.content_height += grow_height;
+	}
+
+	animation_set_type(ANIMATION_WINDOW_SIZE);
+	arrange_container(current);
+
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+/**
  * Implement `set_size <fraction>` for a tiled container.
  */
 static struct cmd_results *set_size_tiled(uint32_t axis, double fraction) {
@@ -78,9 +117,7 @@ struct cmd_results *cmd_set_size(int argc, char **argv) {
 	if (!current) {
 		return cmd_results_new(CMD_INVALID, "Cannot set_size nothing");
 	}
-	if (container_is_floating(current)) {
-		return cmd_results_new(CMD_INVALID, "Cannot set_size floating containers");
-	}
+	bool floating = container_is_floating(current);
 
 	struct cmd_results *error;
 	if ((error = checkarg(argc, "set_size", EXPECTED_AT_LEAST, 2))) {
@@ -89,9 +126,11 @@ struct cmd_results *cmd_set_size(int argc, char **argv) {
 	double fraction = strtod(argv[1], NULL);
 
 	if (strcasecmp(argv[0], "h") == 0) {
-		return set_size_tiled(AXIS_HORIZONTAL, fraction);
+		return floating ? set_size_floating(AXIS_HORIZONTAL, fraction) :
+			set_size_tiled(AXIS_HORIZONTAL, fraction);
 	} else if (strcasecmp(argv[0], "v") == 0) {
-		return set_size_tiled(AXIS_VERTICAL, fraction);
+		return floating ? set_size_floating(AXIS_VERTICAL, fraction) :
+			set_size_tiled(AXIS_VERTICAL, fraction);
 	}
 
 	const char usage[] = "Expected 'set_size <h|v> <fraction>'";
