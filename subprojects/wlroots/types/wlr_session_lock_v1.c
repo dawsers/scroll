@@ -378,6 +378,10 @@ static void lock_destroy(struct wlr_session_lock_v1 *lock) {
 }
 
 void wlr_session_lock_v1_destroy(struct wlr_session_lock_v1 *lock) {
+	if (lock == NULL) {
+		return;
+	}
+
 	ext_session_lock_v1_send_finished(lock->resource);
 	lock_destroy(lock);
 }
