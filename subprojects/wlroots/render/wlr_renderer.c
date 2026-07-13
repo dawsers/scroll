@@ -329,6 +329,10 @@ int wlr_render_timer_get_duration_ns(struct wlr_render_timer *timer) {
 }
 
 void wlr_render_timer_destroy(struct wlr_render_timer *timer) {
+	if (timer == NULL) {
+		return;
+	}
+
 	if (!timer->impl->destroy) {
 		return;
 	}
