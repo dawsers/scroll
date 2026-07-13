@@ -241,6 +241,10 @@ out_error_name:
 }
 
 void wlr_xcursor_theme_destroy(struct wlr_xcursor_theme *theme) {
+	if (theme == NULL) {
+		return;
+	}
+
 	for (unsigned int i = 0; i < theme->cursor_count; i++) {
 		xcursor_destroy(theme->cursors[i]);
 	}
