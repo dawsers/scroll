@@ -87,7 +87,7 @@ void focus_ring_remove_view(struct sway_focus_ring *focus_ring,
 	int idx = list_find(focus_ring->ring, view);
 	if (idx >= 0) {
 		list_del(focus_ring->ring, idx);
-		if (idx < focus_ring->index) {
+		if (idx <= focus_ring->index) {
 			focus_ring->index--;
 		}
 	}
