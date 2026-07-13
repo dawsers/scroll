@@ -306,6 +306,10 @@ void wlr_keyboard_group_remove_keyboard(struct wlr_keyboard_group *group,
 }
 
 void wlr_keyboard_group_destroy(struct wlr_keyboard_group *group) {
+	if (group == NULL) {
+		return;
+	}
+
 	struct keyboard_group_device *device, *tmp_device;
 	wl_list_for_each_safe(device, tmp_device, &group->devices, link) {
 		remove_keyboard_group_device(device);
