@@ -28,6 +28,13 @@ static void focus_container(struct sway_seat *seat,
 
 void focus_ring_next(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat) {
+	if (!focus_ring->ring->length) {
+		return;
+	}
+	if (focus_ring->ring->length == 1) {
+		struct sway_view *view = focus_ring->ring->items[focus_ring->index];
+		focus_container(seat, view->container);
+	}
 	int index = focus_ring->index + 1;
 	if (index < focus_ring->ring->length) {
 		struct sway_view *view = focus_ring->ring->items[index];
@@ -38,6 +45,13 @@ void focus_ring_next(struct sway_focus_ring *focus_ring,
 
 void focus_ring_prev(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat) {
+	if (!focus_ring->ring->length) {
+		return;
+	}
+	if (focus_ring->ring->length == 1) {
+		struct sway_view *view = focus_ring->ring->items[focus_ring->index];
+		focus_container(seat, view->container);
+	}
 	int index = focus_ring->index - 1;
 	int len = config->focus_ring_length > 0 ? config->focus_ring_length :
 		focus_ring->ring->length;
@@ -50,6 +64,9 @@ void focus_ring_prev(struct sway_focus_ring *focus_ring,
 
 void focus_ring_first(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat) {
+	if (!focus_ring->ring->length) {
+		return;
+	}
 	int len = config->focus_ring_length > 0 ? config->focus_ring_length :
 		focus_ring->ring->length;
 	focus_ring->index = focus_ring->ring->length - len;
@@ -59,6 +76,9 @@ void focus_ring_first(struct sway_focus_ring *focus_ring,
 
 void focus_ring_last(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat) {
+	if (!focus_ring->ring->length) {
+		return;
+	}
 	focus_ring->index = focus_ring->ring->length - 1;
 	struct sway_view *view = focus_ring->ring->items[focus_ring->index];
 	focus_container(seat, view->container);
@@ -66,6 +86,9 @@ void focus_ring_last(struct sway_focus_ring *focus_ring,
 
 void focus_ring_set(struct sway_focus_ring *focus_ring, struct sway_seat *seat,
 		struct sway_view *view) {
+	if (!view) {
+		return;
+	}
 	int idx = list_find(focus_ring->ring, view);
 	sway_assert(idx >= 0, "Error in focus_ring, focused view is not included");
 	list_del(focus_ring->ring, idx);
