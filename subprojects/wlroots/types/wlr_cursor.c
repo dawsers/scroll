@@ -246,6 +246,10 @@ static void cursor_reset_image(struct wlr_cursor *cur) {
 }
 
 void wlr_cursor_destroy(struct wlr_cursor *cur) {
+	if (cur == NULL) {
+		return;
+	}
+
 	// pointer signals
 	assert(wl_list_empty(&cur->events.motion.listener_list));
 	assert(wl_list_empty(&cur->events.motion_absolute.listener_list));
