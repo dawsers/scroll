@@ -1861,6 +1861,10 @@ void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply
 }
 
 void layout_container_jump_decoration_apply_scale(struct sway_container *con) {
+	if (!con->jump.text) {
+		// Container was created while in jump mode.
+		return;
+	}
 	struct sway_workspace *workspace = con->pending.workspace;
 	const double wscale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
 	const double width = con->pending.width;
