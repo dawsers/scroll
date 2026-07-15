@@ -2840,7 +2840,6 @@ static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *te
 
 static void jump_workspaces_handle_keyboard_key_end(void *data) {
 	struct jump_data *jump_data = data;
-	layout_overview_workspaces(jump_data->overview_workspaces);
 
 	uint32_t n = 0;
 	for (int i = 0; i < root->outputs->length; ++i) {
@@ -2861,6 +2860,7 @@ static void jump_workspaces_handle_keyboard_key_end(void *data) {
 			seat_set_focus_container(seat, old_focus);
 		}
 	}
+	layout_overview_workspaces(jump_data->overview_workspaces);
 
 	root->jumping = false;
 	free(jump_data);
