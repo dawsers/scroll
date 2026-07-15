@@ -55,7 +55,7 @@ void focus_ring_prev(struct sway_focus_ring *focus_ring,
 	int index = focus_ring->index - 1;
 	int len = config->focus_ring_length > 0 ? config->focus_ring_length :
 		focus_ring->ring->length;
-	if (index >= focus_ring->ring->length - len) {
+	if (index >= MAX(focus_ring->ring->length - len, 0)) {
 		struct sway_view *view = focus_ring->ring->items[index];
 		focus_container(seat, view->container);
 		focus_ring->index--;
