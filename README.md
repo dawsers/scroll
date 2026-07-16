@@ -1259,28 +1259,24 @@ fi
 
 ### Focus Ring
 
-The focus ring is a list of the last few focused windows. It works similarly to
-`Alt-Tab` features on some desktop environments. You can define the length of
-this list using the option `focus_ring_length`. The default is `0`, which means
-every window will be in the ring.
+The focus ring is a list of windows initially added in creation order. It works
+similarly to `Alt-Tab` features on some desktop environments. You can define
+the length of this list using the option `focus_ring_length`. The default is
+`0`, which means every window will be in the ring. You can manipulate the ring
+removing windows (`remove`) or setting the current one as the last one in the
+ring (`set`).
 
 You can use `focus_ring prev|next|first|last` to navigate the ring focusing its
 windows.
 
-Use `focus_ring set` to make the currently focused window the last one in the
-ring.
-
 ``` config
-mode "focus_ring" {
-    bindsym bracketleft focus_ring prev
-    bindsym bracketright focus_ring next
-    bindsym Return focus_ring set
-    bindsym Home focus_ring first
-    bindsym End focus_ring last
-
-    bindsym Escape mode "default"
-}
-bindsym $mod+bracketleft mode "focus_ring"
+# focus_ring_length 0
+bindsym $mod+Shift+bracketleft focus_ring prev
+bindsym $mod+Shift+bracketright focus_ring next
+bindsym $mod+Shift+Return focus_ring set
+bindsym $mod+Shift+Delete focus_ring remove
+bindsym $mod+Shift+Home focus_ring first
+bindsym $mod+Shift+End focus_ring last
 ```
 
 ### Pins

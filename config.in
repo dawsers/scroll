@@ -433,6 +433,7 @@ bindsym $mod+backslash mode "modifiers"
 bindsym $mod+Shift+bracketleft focus_ring prev
 bindsym $mod+Shift+bracketright focus_ring next
 bindsym $mod+Shift+Return focus_ring set
+bindsym $mod+Shift+Delete focus_ring remove
 bindsym $mod+Shift+Home focus_ring first
 bindsym $mod+Shift+End focus_ring last
 

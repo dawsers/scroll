@@ -69,7 +69,7 @@ void focus_ring_first(struct sway_focus_ring *focus_ring,
 	}
 	int len = config->focus_ring_length > 0 ? config->focus_ring_length :
 		focus_ring->ring->length;
-	focus_ring->index = focus_ring->ring->length - len;
+	focus_ring->index = MAX(focus_ring->ring->length - len, 0);
 	struct sway_view *view = focus_ring->ring->items[focus_ring->index];
 	focus_container(seat, view->container);
 }
@@ -84,14 +84,15 @@ void focus_ring_last(struct sway_focus_ring *focus_ring,
 	focus_container(seat, view->container);
 }
 
-void focus_ring_set(struct sway_focus_ring *focus_ring, struct sway_seat *seat,
+void focus_ring_set(struct sway_focus_ring *focus_ring,
 		struct sway_view *view) {
 	if (!view) {
 		return;
 	}
 	int idx = list_find(focus_ring->ring, view);
-	sway_assert(idx >= 0, "Error in focus_ring, focused view is not included");
-	list_del(focus_ring->ring, idx);
+	if (idx >= 0) {
+		list_del(focus_ring->ring, idx);
+	}
 	list_add(focus_ring->ring, view);
 	focus_ring->index = focus_ring->ring->length - 1;
 }

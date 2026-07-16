@@ -1097,6 +1097,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 		wlr_foreign_toplevel_handle_v1_set_app_id(view->foreign_toplevel, class);
 	}
 
+	focus_ring_add_view(root->focus_ring, view);
 	animation_set_type(ANIMATION_WINDOW_OPEN);
 }
 

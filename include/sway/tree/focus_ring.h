@@ -31,7 +31,7 @@ void focus_ring_last(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat);
 
 // Set the current view as the last of the focus ring
-void focus_ring_set(struct sway_focus_ring *focus_ring, struct sway_seat *seat,
+void focus_ring_set(struct sway_focus_ring *focus_ring,
 		struct sway_view *view);
 
 // Add a view to the focus ring if not present

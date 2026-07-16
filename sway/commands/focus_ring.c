@@ -26,10 +26,18 @@ static struct cmd_results *ring_last(struct sway_seat *seat) {
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
-static struct cmd_results *ring_set(struct sway_seat *seat) {
+static struct cmd_results *ring_set() {
 	struct sway_container *container = config->handler_context.container;
 	if (container && container->view) {
-		focus_ring_set(root->focus_ring, seat, container->view);
+		focus_ring_set(root->focus_ring, container->view);
+	}
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+static struct cmd_results *ring_remove() {
+	struct sway_container *container = config->handler_context.container;
+	if (container && container->view) {
+		focus_ring_remove_view(root->focus_ring, container->view);
 	}
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
@@ -70,8 +78,10 @@ struct cmd_results *cmd_focus_ring(int argc, char **argv) {
 	} else if (strcasecmp(argv[0], "last") == 0) {
 		return ring_last(seat);
 	} else if (strcasecmp(argv[0], "set") == 0) {
-		return ring_set(seat);
+		return ring_set();
+	} else if (strcasecmp(argv[0], "remove") == 0) {
+		return ring_remove();
 	} else {
-		return cmd_results_new(CMD_INVALID, "Expected 'focus_ring prev|next|first|last|set'");
+		return cmd_results_new(CMD_INVALID, "Expected 'focus_ring prev|next|first|last|set|remove'");
 	}
 }

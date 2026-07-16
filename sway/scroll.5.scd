@@ -532,9 +532,11 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 *focus* mode_toggle
 	Moves focus between the floating and tiled layers.
 
-*focus_ring* prev|next|first|last|set
-	Navigate the focus ring. The focus ring stores the last few focused windows.
-	See *focus_ring_length* for an option to control the size of the focus ring.
+*focus_ring* prev|next|first|last|set|remove
+	Navigate the focus ring. The focus ring stores windows in creation order.
+	You can manipulate the focus ring, changing the order or windows or removing
+	them from the list. See *focus_ring_length* for an option to control the
+	size of the focus ring.
 
 	_prev_: focus the previous view in the focus ring.
 
@@ -545,6 +547,8 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 	_last_: focus the last view in the focus ring.
 
 	_set_: set the current view as the last one in the focus ring.
+
+	_remove_: remove the current view from the focus ring.
 
 *fullscreen* [enable|disable|toggle] [global|application|layout]
 	Makes the focused window fullscreen, non-fullscreen, or the opposite of what it
