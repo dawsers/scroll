@@ -435,7 +435,7 @@ static void surface_apply_damage(struct wlr_surface *surface) {
 
 	if (buffer == NULL) {
 		wlr_log(WLR_ERROR, "Failed to upload buffer");
-		return;
+		// Reset surface's client buffer to NULL to indicate failed upload
 	}
 
 	if (surface->buffer != NULL) {
