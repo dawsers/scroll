@@ -743,14 +743,14 @@ EGLImageKHR wlr_egl_create_image_from_dmabuf(struct wlr_egl *egl,
 		struct wlr_dmabuf_attributes *attributes, bool *external_only) {
 	if (!egl->exts.KHR_image_base || !egl->exts.EXT_image_dma_buf_import) {
 		wlr_log(WLR_ERROR, "dmabuf import extension not present");
-		return NULL;
+		return EGL_NO_IMAGE_KHR;
 	}
 
 	if (attributes->modifier != DRM_FORMAT_MOD_INVALID &&
 			attributes->modifier != DRM_FORMAT_MOD_LINEAR &&
 			!egl->has_modifiers) {
 		wlr_log(WLR_ERROR, "EGL implementation doesn't support modifiers");
-		return NULL;
+		return EGL_NO_IMAGE_KHR;
 	}
 
 	unsigned int atti = 0;
