@@ -6,7 +6,7 @@ else
 endif
 
 dep_vulkan = dependency('vulkan',
-	version: '>=1.2.182',
+	version: '>=1.4',
 	required: 'vulkan' in renderers,
 	not_found_message: '\n'.join(msg).format('vulkan')
 )
