@@ -15,6 +15,7 @@
 #include "log.h"
 #include "stringop.h"
 #include "util.h"
+#include "sway/desktop/animation.h"
 
 int binding_order = 0;
 
@@ -375,6 +376,8 @@ static struct cmd_results *cmd_bindsym_or_bindcode(int argc, char **argv,
 			warn = false;
 		} else if (strcmp("--no-repeat", argv[0]) == 0) {
 			binding->flags |= BINDING_NOREPEAT;
+		} else if (strcmp("--no-animations", argv[0]) == 0) {
+			binding->flags |= BINDING_NOANIMATIONS;
 		} else {
 			break;
 		}
@@ -648,7 +651,12 @@ void seat_execute_command(struct sway_seat *seat, struct sway_binding *binding) 
 		ipc_event_binding(binding);
 	}
 
-	transaction_commit_dirty();
+	struct sway_animation_config *animation_config = animation_get_config();
+	if (binding->flags & BINDING_NOANIMATIONS && animation_config->enabled) {
+		transaction_commit_dirty_disable_animations();
+	} else {
+		transaction_commit_dirty();
+	}
 }
 
 /**

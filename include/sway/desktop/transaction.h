@@ -49,6 +49,12 @@ void transaction_commit_dirty_delayed(void);
 void transaction_commit_delayed(void);
 
 /**
+ * The same as transaction_commit_dirty(), but disabling all animations for
+ * the transaction
+ */
+void transaction_commit_dirty_disable_animations(void);
+
+/**
  * Notify the transaction system that a view is ready for the new layout.
  *
  * When all views in the transaction are ready, the layout will be applied.

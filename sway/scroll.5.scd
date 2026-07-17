@@ -1122,7 +1122,7 @@ runtime.
 
 *bindsym* [--whole-window] [--border] [--exclude-titlebar] [--release] [--locked] \
 [--to-code] [--input-device=<device>] [--no-warn] [--no-repeat] [--inhibited] \
-[Group<1-4>+]<key combo> <command>
+[--no-animations] [Group<1-4>+]<key combo> <command>
 	Binds _key combo_ to execute the scroll command _command_ when pressed. You
 	may use XKB key names here (*wev*(1) is a good tool for discovering these).
 	With the flag _--release_, the command is executed when the key combo is
@@ -1156,6 +1156,9 @@ runtime.
 	Unless the flag _--no-repeat_ is set, the command will be run
 	repeatedly when the key is held, according to the repeat
 	settings specified in the input configuration.
+
+	The _--no-animations__ option disables animations while the command is
+	running.
 
 	Bindings to keysyms are layout-dependent. This can be changed with the
 	_--to-code_ flag. In this case, the keysyms will be translated into the
@@ -1191,9 +1194,9 @@ runtime.
 		bindsym Mod1+Shift+f exec firefox
 ```
 
-	*bindcode* [--whole-window] [--border] [--exclude-titlebar] [--release] \
+*bindcode* [--whole-window] [--border] [--exclude-titlebar] [--release] \
 [--locked] [--input-device=<device>] [--no-warn] [--no-repeat] [--inhibited] \
-[Group<1-4>+]<code> <command>
+[--no-animations] [Group<1-4>+]<code> <command>
 	is also available for binding with key/button codes instead of key/button names.
 
 *bindswitch* [--locked] [--no-warn] [--reload] <switch>:<state> <command>

@@ -1650,6 +1650,9 @@ json_object *ipc_json_describe_binding_flags(uint32_t flags) {
 	if (flags & BINDING_NOREPEAT) {
 		json_object_array_add(json_flags, json_object_new_string("norepeat"));
 	}
+	if (flags & BINDING_NOANIMATIONS) {
+		json_object_array_add(json_flags, json_object_new_string("noanimations"));
+	}
 	if (flags & BINDING_EXACT) {
 		json_object_array_add(json_flags, json_object_new_string("exact"));
 	}

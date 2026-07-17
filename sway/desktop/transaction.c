@@ -30,6 +30,7 @@ struct sway_transaction {
 	size_t num_waiting;
 	size_t num_configures;
 	struct timespec commit_time;
+	bool disable_animations;
 };
 
 struct sway_transaction_instruction {
@@ -1928,12 +1929,18 @@ static void transaction_progress(void) {
 	transaction_apply(server.queued_transaction);
 	animation_end();
 	arrange_root(root);
+	struct sway_animation_config *animation_config = animation_get_config();
+	bool animation_enabled = animation_config->enabled;
+	if (server.queued_transaction->disable_animations) {
+		animation_config->enabled = false;
+	}
 	animation_begin();
 	cursor_rebase_all();
 	if (!animation_animating()) {
 		transaction_destroy(server.queued_transaction);
 	}
 	server.queued_transaction = NULL;
+	animation_config->enabled = animation_enabled;
 
 	if (!server.pending_transaction) {
 		struct sway_seat *seat = input_manager_get_default_seat();
@@ -2301,7 +2308,8 @@ static void overview_recompute_scales() {
 	}
 }
 
-static void _transaction_commit_dirty(bool server_request, bool delayed) {
+static void _transaction_commit_dirty(bool server_request, bool delayed,
+		bool disable_animations) {
 	if (!server.dirty_nodes->length) {
 		return;
 	}
@@ -2314,6 +2322,7 @@ static void _transaction_commit_dirty(bool server_request, bool delayed) {
 			return;
 		}
 	}
+	server.pending_transaction->disable_animations = disable_animations;
 
 	for (int i = 0; i < server.dirty_nodes->length; ++i) {
 		struct sway_node *node = server.dirty_nodes->items[i];
@@ -2332,15 +2341,15 @@ static void _transaction_commit_dirty(bool server_request, bool delayed) {
 }
 
 void transaction_commit_dirty(void) {
-	_transaction_commit_dirty(true, false);
+	_transaction_commit_dirty(true, false, false);
 }
 
 void transaction_commit_dirty_client(void) {
-	_transaction_commit_dirty(false, true);
+	_transaction_commit_dirty(false, true, false);
 }
 
 void transaction_commit_dirty_delayed(void) {
-	_transaction_commit_dirty(true, true);
+	_transaction_commit_dirty(true, true, false);
 }
 
 void transaction_commit_delayed(void) {
@@ -2350,4 +2359,8 @@ void transaction_commit_delayed(void) {
 	save_animation_variables();
 
 	transaction_commit_pending();
+}
+
+void transaction_commit_dirty_disable_animations() {
+	_transaction_commit_dirty(true, false, true);
 }
