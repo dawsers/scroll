@@ -22,6 +22,7 @@ enum ipc_command_type {
 	// sway-specific command types
 	IPC_GET_INPUTS = 100,
 	IPC_GET_SEATS = 101,
+	IPC_MINT_ACTIVATION_TOKEN = 102,
 
 	// scroll-specific command types
 	IPC_GET_SCROLLER = 120,
@@ -30,23 +31,23 @@ enum ipc_command_type {
 	IPC_GET_BINDINGS = 123,
 
 	// Events sent from sway to clients. Events have the highest bits set.
-	IPC_EVENT_WORKSPACE = ((1<<31) | 0),
-	IPC_EVENT_OUTPUT = ((1<<31) | 1),
-	IPC_EVENT_MODE = ((1<<31) | 2),
-	IPC_EVENT_WINDOW = ((1<<31) | 3),
-	IPC_EVENT_BARCONFIG_UPDATE = ((1<<31) | 4),
-	IPC_EVENT_BINDING = ((1<<31) | 5),
-	IPC_EVENT_SHUTDOWN = ((1<<31) | 6),
-	IPC_EVENT_TICK = ((1<<31) | 7),
+	IPC_EVENT_WORKSPACE = ((1 << 31) | 0),
+	IPC_EVENT_OUTPUT = ((1 << 31) | 1),
+	IPC_EVENT_MODE = ((1 << 31) | 2),
+	IPC_EVENT_WINDOW = ((1 << 31) | 3),
+	IPC_EVENT_BARCONFIG_UPDATE = ((1 << 31) | 4),
+	IPC_EVENT_BINDING = ((1 << 31) | 5),
+	IPC_EVENT_SHUTDOWN = ((1 << 31) | 6),
+	IPC_EVENT_TICK = ((1 << 31) | 7),
 
 	// sway-specific event types
-	IPC_EVENT_BAR_STATE_UPDATE = ((1<<31) | 20),
-	IPC_EVENT_INPUT = ((1<<31) | 21),
+	IPC_EVENT_BAR_STATE_UPDATE = ((1 << 31) | 20),
+	IPC_EVENT_INPUT = ((1 << 31) | 21),
 
 	// scroll-specific event types
-	IPC_EVENT_LUA = ((1<<31) | 29),
-	IPC_EVENT_SCROLLER = ((1<<31) | 30),
-	IPC_EVENT_TRAILS = ((1<<31) | 31),
+	IPC_EVENT_LUA = ((1 << 31) | 29),
+	IPC_EVENT_SCROLLER = ((1 << 31) | 30),
+	IPC_EVENT_TRAILS = ((1 << 31) | 31),
 };
 
 #endif

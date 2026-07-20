@@ -377,7 +377,7 @@ static int scroll_exec_process(lua_State *L) {
 		} else {
 			lua_pushnil(L);
 		}
-		lua_setfield(L, -2, "activation_token");
+		lua_setfield(L, -2, "initial_activation_token");
 	} else {
 		lua_pushnil(L);
 	}
