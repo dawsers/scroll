@@ -3,16 +3,7 @@
 #include <wordexp.h>
 #include "sway/commands.h"
 #include "log.h"
-
-static struct sway_lua_script *find_script(list_t *scripts, const char *name) {
-	for (int i = 0; i < scripts->length; ++i) {
-		struct sway_lua_script *script = scripts->items[i];
-		if (strcmp(script->name, name) == 0) {
-			return script;
-		}
-	}
-	return NULL;
-}
+#include "sway/lua.h"
 
 struct cmd_results *cmd_lua(int argc, char **argv) {
 	struct cmd_results *error = NULL;
@@ -84,21 +75,33 @@ cleanup:
 		return res;
 	}
 
+	int top = lua_gettop(config->lua.state);
+
+	struct sway_container *old_context_container = config->lua.context_container;
+	if (config->handler_context.node_overridden) {
+		config->lua.context_container = config->handler_context.container;
+	} else {
+		config->lua.context_container = NULL;
+	}
+
 	int err = luaL_loadfile(config->lua.state, expanded_path);
 	if (err != LUA_OK) {
-		struct cmd_results *res = cmd_results_new(CMD_FAILURE, "Error %d loading lua script %s", err, expanded_path);
-		free(expanded_path);
-		return res;
+		const char *str = luaL_checkstring(config->lua.state, -1);
+		if (str) {
+			res = cmd_results_new(
+					CMD_FAILURE, "Error %s loading lua script %s", str, expanded_path);
+		} else {
+			res = cmd_results_new(
+					CMD_FAILURE, "Error %d loading lua script %s", err, expanded_path);
+		}
+		goto restore_context;
 	}
 
 	// Search if there is already a state for this script
-	struct sway_lua_script *script = find_script(config->lua.scripts, expanded_path);
+	struct sway_lua_script *script = sway_lua_get_or_create_script(expanded_path);
 	if (!script) {
-		script = malloc(sizeof(struct sway_lua_script));
-		script->name = strdup(expanded_path);
-		lua_createtable(config->lua.state, 0, 0);
-		script->state = luaL_ref(config->lua.state, LUA_REGISTRYINDEX);
-		list_add(config->lua.scripts, script);
+		res = cmd_results_new(CMD_FAILURE, "Failed to allocate memory");
+		goto restore_context;
 	}
 
 	// Create args table before running the script
@@ -112,16 +115,81 @@ cleanup:
 	err = lua_pcall(config->lua.state, 2, LUA_MULTRET, 0);
 	if (err != LUA_OK) {
 		const char *str = luaL_checkstring(config->lua.state, -1);
-		struct cmd_results *res;
 		if (str) {
 			res = cmd_results_new(CMD_FAILURE, "Error %s executing lua script %s", str, expanded_path);
 		} else {
 			res = cmd_results_new(CMD_FAILURE, "Error %d executing lua script %s", err, expanded_path);
 		}
-		free(expanded_path);
-		return res;
+		goto restore_context;
 	}
 
+	res = cmd_results_new(CMD_SUCCESS, NULL);
+
+restore_context:
+	config->lua.context_container = old_context_container;
 	free(expanded_path);
-	return cmd_results_new(CMD_SUCCESS, NULL);
+	lua_settop(config->lua.state, top);
+	return res;
+}
+
+struct cmd_results *cmd_lua_eval(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "lua_eval", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+
+	int top = lua_gettop(config->lua.state);
+
+	struct sway_container *old_context_container = config->lua.context_container;
+	if (config->handler_context.node_overridden) {
+		config->lua.context_container = config->handler_context.container;
+	} else {
+		config->lua.context_container = NULL;
+	}
+
+	struct cmd_results *res = NULL;
+
+	int err = luaL_loadstring(config->lua.state, argv[0]);
+	if (err != LUA_OK) {
+		const char *str = luaL_checkstring(config->lua.state, -1);
+		if (str) {
+			res = cmd_results_new(CMD_FAILURE, "Error %s loading lua string", str);
+		} else {
+			res = cmd_results_new(CMD_FAILURE, "Error %d loading lua string", err);
+		}
+		goto restore_context;
+	}
+
+	// Search if there is already a state for this script
+	struct sway_lua_script *script = sway_lua_get_or_create_script("");
+	if (!script) {
+		res = cmd_results_new(CMD_FAILURE, "Failed to allocate memory");
+		goto restore_context;
+	}
+
+	// Create args table before running the script
+	lua_createtable(config->lua.state, argc - 1, 0);
+	for (int i = 1; i < argc; ++i) {
+		lua_pushstring(config->lua.state, argv[i]);
+		lua_rawseti(config->lua.state, -2, i);
+	}
+	lua_pushlightuserdata(config->lua.state, script);
+
+	err = lua_pcall(config->lua.state, 2, LUA_MULTRET, 0);
+	if (err != LUA_OK) {
+		const char *str = luaL_checkstring(config->lua.state, -1);
+		if (str) {
+			res = cmd_results_new(CMD_FAILURE, "Error %s executing lua string", str);
+		} else {
+			res = cmd_results_new(CMD_FAILURE, "Error %d executing lua string", err);
+		}
+		goto restore_context;
+	}
+
+	res = cmd_results_new(CMD_SUCCESS, NULL);
+
+restore_context:
+	config->lua.context_container = old_context_container;
+	lua_settop(config->lua.state, top);
+	return res;
 }

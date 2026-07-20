@@ -1878,6 +1878,10 @@ lua $lua_scripts/workspace_exec.lua 1 exec kitty
 	Otherwise, they are resolved against the initial working directory of the
 	compositor. See *LUA* for details about the API and some examples.
 
+*lua_eval* <code> [<args...>]
+	Executes the inline Lua _code_ string with optional _args_. See *LUA* for
+	details about the API and some examples.
+
 # CRITERIA
 
 A criteria is a string in the form of, for example:
@@ -2136,6 +2140,11 @@ local process_data = scroll.exec_process("kitty")
 
 *focused_container()*
 	Returns the focused container ID or nil if none
+
+*context_container()*
+	Returns the container ID of the execution context if the command/script
+	was run via criteria (e.g. `[class="XTerm"] lua script.lua`), or nil if
+	there is no context (run globally).
 
 *focused_workspace()*
 	Returns the focused workspace ID or nil if none

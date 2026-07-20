@@ -131,9 +131,10 @@ static int scroll_state_set_value(lua_State *L) {
 }
 
 static bool lua_is_array(lua_State *L, int index) {
+	int abs_idx = index < 0 ? (lua_gettop(L) + index + 1) : index;
 	lua_pushnil(L);
 	int n = 0;
-	while (lua_next(L, index) != 0) {
+	while (lua_next(L, abs_idx) != 0) {
 		int top = lua_gettop(L);
 		if (lua_type(L, top - 1) != LUA_TNUMBER || lua_tointeger(L, top - 1) != ++n) {
 			lua_pop(L, 2);
@@ -144,48 +145,51 @@ static bool lua_is_array(lua_State *L, int index) {
 	return true;
 }
 
-static json_object *lua_table_to_json(lua_State *L, int index);
+json_object *sway_lua_table_to_json(lua_State *L, int index);
 
-static json_object *lua_value_to_json(lua_State *L, int i) {
-	switch (lua_type(L, i)) {
+json_object *sway_lua_value_to_json(lua_State *L, int i) {
+	int abs_i = i < 0 ? (lua_gettop(L) + i + 1) : i;
+	switch (lua_type(L, abs_i)) {
 	case LUA_TNUMBER:
-		if (lua_isinteger(L, i)) {
-			return json_object_new_int(lua_tointeger(L, i));
+		if (lua_isinteger(L, abs_i)) {
+			return json_object_new_int(lua_tointeger(L, abs_i));
 		} else {
-			return json_object_new_double(lua_tonumber(L, i));
+			return json_object_new_double(lua_tonumber(L, abs_i));
 		}
 	case LUA_TSTRING:
-		return json_object_new_string(lua_tostring(L, i));
+		return json_object_new_string(lua_tostring(L, abs_i));
 	case LUA_TBOOLEAN:
-		return json_object_new_boolean(lua_toboolean(L, i));
+		return json_object_new_boolean(lua_toboolean(L, abs_i));
 	case LUA_TTABLE:
-		return lua_table_to_json(L, i);
+		return sway_lua_table_to_json(L, abs_i);
 	default:
 		return NULL;
 	}
 }
 
-static json_object *lua_table_to_json(lua_State *L, int index) {
+json_object *sway_lua_table_to_json(lua_State *L, int index) {
+	int abs_idx = index < 0 ? (lua_gettop(L) + index + 1) : index;
 	json_object *result;
-	bool is_array = lua_is_array(L, index);
+	bool is_array = lua_is_array(L, abs_idx);
 	if (is_array) {
 		result = json_object_new_array();
 	} else {
 		result = json_object_new_object();
 	}
 	lua_pushnil(L);
-	while (lua_next(L, index) != 0) {
+	while (lua_next(L, abs_idx) != 0) {
 		int top = lua_gettop(L);
 		// uses 'key' (at top - 1) and 'value' (at top)
 		if (is_array) {
-			json_object_array_add(result, lua_value_to_json(L, top));
+			json_object_array_add(result, sway_lua_value_to_json(L, top));
 		} else {
 			if (lua_type(L, top - 1) == LUA_TSTRING) {
-				json_object_object_add(result, lua_tostring(L, top - 1), lua_value_to_json(L, top));
+				json_object_object_add(
+						result, lua_tostring(L, top - 1), sway_lua_value_to_json(L, top));
 			} else if (lua_type(L, top - 1) == LUA_TNUMBER) {
 				char idx[32];
 				sprintf(idx, "%lld", lua_tointeger(L, top - 1));
-				json_object_object_add(result, idx, lua_value_to_json(L, top));
+				json_object_object_add(result, idx, sway_lua_value_to_json(L, top));
 			}
 		}
 		lua_pop(L, 1);
@@ -202,7 +206,7 @@ static int scroll_ipc_send(lua_State *L) {
 	if (!id || !lua_istable(L, 2)) {
 		return 0;
 	}
-	json_object *data = lua_table_to_json(L, 2);
+	json_object *data = sway_lua_table_to_json(L, 2);
 	ipc_event_lua(id, data);
 	return 0;
 }
@@ -402,6 +406,12 @@ static int scroll_focused_container(lua_State *L) {
 	struct sway_node *node = get_focused_node();
 	struct sway_container *container = (node && node->type == N_CONTAINER) ?
 		node->sway_container : NULL;
+	lua_push_node(L, container ? &container->node : NULL);
+	return 1;
+}
+
+static int scroll_context_container(lua_State *L) {
+	struct sway_container *container = config->lua.context_container;
 	lua_push_node(L, container ? &container->node : NULL);
 	return 1;
 }
@@ -1752,6 +1762,7 @@ static luaL_Reg const scroll_lib[] = {
 	{ "node_get_type", scroll_node_get_type },
 	{ "focused_view", scroll_focused_view },
 	{ "focused_container", scroll_focused_container },
+	{ "context_container", scroll_context_container },
 	{ "focused_workspace", scroll_focused_workspace },
 	{ "urgent_view", scroll_urgent_view },
 	{ "view_mapped", scroll_view_mapped },
@@ -1928,5 +1939,72 @@ void lua_execute_jump_end_cbs(struct sway_container *container) {
 		lua_push_node(config->lua.state, container ? &container->node : NULL);
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
 		safe_pcall(config->lua.state, 2);
+	}
+}
+
+struct sway_lua_script *sway_lua_get_or_create_script(const char *name) {
+	for (int i = 0; i < config->lua.scripts->length; ++i) {
+		struct sway_lua_script *script = config->lua.scripts->items[i];
+		if (strcmp(script->name, name) == 0) {
+			return script;
+		}
+	}
+	struct sway_lua_script *script = malloc(sizeof(struct sway_lua_script));
+	if (!script) {
+		return NULL;
+	}
+	script->name = strdup(name);
+	if (!script->name) {
+		free(script);
+		return NULL;
+	}
+
+	int top = lua_gettop(config->lua.state);
+	lua_createtable(config->lua.state, 0, 0);
+	script->state = luaL_ref(config->lua.state, LUA_REGISTRYINDEX);
+	lua_settop(config->lua.state, top);
+
+	list_add(config->lua.scripts, script);
+	return script;
+}
+
+void sway_lua_push_json_to_lua(lua_State *L, struct json_object *obj) {
+	if (!obj) {
+		lua_pushnil(L);
+		return;
+	}
+	switch (json_object_get_type(obj)) {
+	case json_type_null:
+		lua_pushnil(L);
+		break;
+	case json_type_boolean:
+		lua_pushboolean(L, json_object_get_boolean(obj));
+		break;
+	case json_type_double:
+		lua_pushnumber(L, json_object_get_double(obj));
+		break;
+	case json_type_int:
+		lua_pushinteger(L, json_object_get_int64(obj));
+		break;
+	case json_type_string:
+		lua_pushstring(L, json_object_get_string(obj));
+		break;
+	case json_type_array: {
+		size_t len = json_object_array_length(obj);
+		lua_createtable(L, (int)len, 0);
+		for (size_t i = 0; i < len; ++i) {
+			sway_lua_push_json_to_lua(L, json_object_array_get_idx(obj, i));
+			lua_rawseti(L, -2, (int)(i + 1));
+		}
+		break;
+	}
+	case json_type_object: {
+		lua_createtable(L, 0, 0);
+		json_object_object_foreach(obj, key, val) {
+			sway_lua_push_json_to_lua(L, val);
+			lua_setfield(L, -2, key);
+		}
+		break;
+	}
 	}
 }
