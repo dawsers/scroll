@@ -796,12 +796,35 @@ struct workspace_switch_data {
 	list_t *from_containers;
 	list_t *to_containers;
 	struct sway_root_filters *root_filters;
+	struct wl_listener from_destroy;
+	struct wl_listener to_destroy;
 };
+
+static void handle_from_workspace_destroy(struct wl_listener *listener, void *data) {
+	struct workspace_switch_data *wdata = wl_container_of(listener, wdata, from_destroy);
+	wdata->from = NULL;
+	wl_list_remove(&listener->link);
+	wl_list_init(&listener->link);
+}
+
+static void handle_to_workspace_destroy(struct wl_listener *listener, void *data) {
+	struct workspace_switch_data *wdata = wl_container_of(listener, wdata, to_destroy);
+	wdata->to = NULL;
+	wl_list_remove(&listener->link);
+	wl_list_init(&listener->link);
+}
 
 static void workspace_switch_callback_end(void *callback_data) {
 	struct workspace_switch_data *data = callback_data;
 	data->output->workspace_switching = false;
 	root_filters_destroy(root, data->root_filters);
+
+	if (data->from) {
+		wl_list_remove(&data->from_destroy.link);
+	}
+	if (data->to) {
+		wl_list_remove(&data->to_destroy.link);
+	}
 
 	for (int i = 0; i < data->from_containers->length; ++i) {
 		struct workspace_switch_container_data *cdata = data->from_containers->items[i];
@@ -817,7 +840,7 @@ static void workspace_switch_callback_end(void *callback_data) {
 	if (data->from && data->from->output) {
 		node_set_dirty(&data->from->node);
 	}
-	if (data->to->output) {
+	if (data->to && data->to->output) {
 		node_set_dirty(&data->to->node);
 	}
 
@@ -843,7 +866,7 @@ static bool switching_output(struct sway_workspace *workspace,
 	}
 	struct sway_output *output = workspace->output;
 	struct sway_output *from_output = data->from ? data->from->output : NULL;
-	struct sway_output *to_output = data->to->output;
+	struct sway_output *to_output = data->to ? data->to->output : NULL;
 	if (!output || !from_output || !to_output) {
 		return false;
 	}
@@ -1038,6 +1061,20 @@ static void animate_workspace_switch(struct sway_output *output,
 	data->to = to;
 	data->from_containers = create_list();
 	data->to_containers = create_list();
+
+	data->from_destroy.notify = handle_from_workspace_destroy;
+	if (data->from) {
+		wl_signal_add(&data->from->node.events.destroy, &data->from_destroy);
+	} else {
+		wl_list_init(&data->from_destroy.link);
+	}
+
+	data->to_destroy.notify = handle_to_workspace_destroy;
+	if (data->to) {
+		wl_signal_add(&data->to->node.events.destroy, &data->to_destroy);
+	} else {
+		wl_list_init(&data->to_destroy.link);
+	}
 
 	animation_end();
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
