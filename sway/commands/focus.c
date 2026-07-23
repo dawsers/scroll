@@ -538,7 +538,6 @@ struct cmd_results *cmd_focus(int argc, char **argv) {
 	if (next_focus) {
 		seat_set_focus(seat, next_focus);
 		seat_consider_warp_to_focus(seat);
-		transaction_commit_dirty();
 	}
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
