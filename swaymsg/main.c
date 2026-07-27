@@ -1006,6 +1006,8 @@ int main(int argc, char **argv) {
 		type = IPC_GET_SPACES;
 	} else if (strcasecmp(cmdtype, "get_bindings") == 0) {
 		type = IPC_GET_BINDINGS;
+	} else if (strcasecmp(cmdtype, "lua_eval") == 0) {
+		type = IPC_LUA_EVAL;
 	} else {
 		if (quiet) {
 			exit(EXIT_FAILURE);

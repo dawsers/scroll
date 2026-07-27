@@ -111,6 +111,13 @@ _scrollmsg_ [options...] [message]
 *get\_trails*
 	Gets the trails information.
 
+*lua\_eval*
+	Execute the LUA expression.
+
+	Example:
+
+	_scrollmsg -t lua_eval 'print("Hello)'_
+
 *send\_tick*
 	Sends a tick event to all subscribed clients.
 
