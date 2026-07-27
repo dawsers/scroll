@@ -660,25 +660,25 @@ static void display_matches (char **matches, int num_matches, int max_length) {
 }
 
 static char *keyword_completions (const char *text, int state) {
-    static const char **c, *keywords[] = {
+    static const char *keywords[] = {
         "and", "break", "do", "else", "elseif", "end", "false", "for",
         "function", "if", "in", "local", "nil", "not", "or",
         "repeat", "return", "then", "true", "until", "while", NULL
     };
-
+	static int idx = -1;
     int s, t;
 
     if (state == 0) {
 		rl_completion_append_character = ' ';
-        c = keywords - 1;
+		idx = -1;
     }
 
-    for (c += 1 ; *c ; c += 1) {
-        s = strlen (*c);
+    for (++idx; keywords[idx]; ++idx) {
+        s = strlen (keywords[idx]);
         t = strlen(text);
 
-        if (s >= t && !strncmp (*c, text, t)) {
-            return strdup (*c);
+        if (s >= t && !strncmp (keywords[idx], text, t)) {
+            return strdup (keywords[idx]);
         }
     }
 
@@ -761,7 +761,7 @@ static const char *scroll_lib[] = {
 };
 
 static char *scroll_completions(const char *text, int state) {
-    static const char **c;
+    static int idx = -1;
     int s, t;
 
     if (state == 0) {
@@ -769,16 +769,16 @@ static char *scroll_completions(const char *text, int state) {
 			return NULL;
 		}
 		rl_completion_append_character = '\0';
-        c = scroll_lib - 1;
+        idx = -1;
     }
 
-    for (c += 1 ; *c ; c += 1) {
-        s = strlen (*c);
+    for (++idx; scroll_lib[idx]; ++idx) {
+        s = strlen(scroll_lib[idx]);
         t = strlen(text) - 7;
 
-        if (s >= t && !strncmp(*c, text + 7, t)) {
-			char *str = malloc(sizeof(char) * (strlen(*c) + 8));
-			sprintf(str, "scroll.%s", *c);
+        if (s >= t && !strncmp(scroll_lib[idx], text + 7, t)) {
+			char *str = malloc(sizeof(char) * (strlen(scroll_lib[idx]) + 8));
+			sprintf(str, "scroll.%s", scroll_lib[idx]);
             return str;
         }
     }
