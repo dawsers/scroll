@@ -685,80 +685,7 @@ static char *keyword_completions (const char *text, int state) {
     return NULL;
 }
 
-static const char *scroll_lib[] = {
-	"log",
-	"state_set_value",
-	"state_get_value",
-	"ipc_send",
-	"exec_process",
-	"command",
-	"node_get_type",
-	"focused_view",
-	"focused_container",
-	"focused_workspace",
-	"urgent_view",
-	"view_mapped",
-	"view_get_container",
-	"view_get_app_id",
-	"view_get_class",
-	"view_get_title",
-	"view_get_pid",
-	"view_get_env",
-	"view_get_parent_view",
-	"view_get_urgent",
-	"view_set_urgent",
-	"view_get_shell",
-	"view_get_tag",
-	"view_close",
-	"container_set_focus",
-	"container_get_workspace",
-	"container_get_marks",
-	"container_get_floating",
-	"container_get_opacity",
-	"container_get_sticky",
-	"container_get_scratchpad",
-	"container_get_width_fraction",
-	"container_get_height_fraction",
-	"container_get_width",
-	"container_get_height",
-	"container_get_geometry",
-	"container_get_animated_geometry",
-	"container_get_fullscreen_mode",
-	"container_get_fullscreen_app_mode",
-	"container_get_fullscreen_view_mode",
-	"container_get_fullscreen_layout_mode",
-	"container_get_pin_mode",
-	"container_get_parent",
-	"container_get_children",
-	"container_get_views",
-	"container_get_id",
-	"workspace_set_focus",
-	"workspace_get_name",
-	"workspace_get_tiling",
-	"workspace_get_floating",
-	"workspace_get_mode",
-	"workspace_set_mode",
-	"workspace_get_layout_type",
-	"workspace_set_layout_type",
-	"workspace_get_width",
-	"workspace_get_height",
-	"workspace_get_output",
-	"workspace_get_pin",
-	"workspace_get_split",
-	"output_get_enabled",
-	"output_get_name",
-	"output_get_active_workspace",
-	"output_get_workspaces",
-	"root_get_outputs",
-	"scratchpad_get_containers",
-	"scratchpad_show",
-	"scratchpad_hide",
-	"add_callback",
-	"remove_callback",
-	"animating",
-	"pending_transactions",
-	NULL
-};
+static list_t *scroll_lib = NULL;
 
 static char *scroll_completions(const char *text, int state) {
     static int idx = -1;
@@ -772,13 +699,14 @@ static char *scroll_completions(const char *text, int state) {
         idx = -1;
     }
 
-    for (++idx; scroll_lib[idx]; ++idx) {
-        s = strlen(scroll_lib[idx]);
+	for (++idx; idx < scroll_lib->length; ++idx) {
+		const char *func = scroll_lib->items[idx];
+        s = strlen(func);
         t = strlen(text) - 7;
 
-        if (s >= t && !strncmp(scroll_lib[idx], text + 7, t)) {
-			char *str = malloc(sizeof(char) * (strlen(scroll_lib[idx]) + 8));
-			sprintf(str, "scroll.%s", scroll_lib[idx]);
+        if (s >= t && !strncmp(func, text + 7, t)) {
+			char *str = malloc(sizeof(char) * (strlen(func) + 8));
+			sprintf(str, "scroll.%s", func);
             return str;
         }
     }
@@ -813,11 +741,59 @@ static char *generator (const char *text, int state) {
     return match;
 }
 
+static void setup_scroll_completion_table(int socketfd) {
+	const char *buffer = "scroll";
+	uint32_t len = strlen(buffer);
+	char *resp = ipc_single_command(socketfd, IPC_LUA_EVAL, buffer, &len);
+
+	json_tokener *tok = json_tokener_new_ex(JSON_MAX_DEPTH);
+	if (tok == NULL) {
+		sway_abort("failed allocating json_tokener");
+	}
+	json_object *obj = json_tokener_parse_ex(tok, resp, -1);
+	enum json_tokener_error err = json_tokener_get_error(tok);
+	json_tokener_free(tok);
+	free(resp);
+
+	if (obj == NULL || err != json_tokener_success) {
+		fprintf(stderr, "failed to parse lua response: %s\n",
+			json_tokener_error_desc(err));
+		return;
+	}
+	if (!success(obj, true)) {
+		json_object *error = NULL;
+		json_object_object_get_ex(obj, "error", &error);
+		if (error && !json_object_is_type(error, json_type_null)) {
+			fprintf(stderr, "%s\n", json_object_get_string(error));
+		}
+		return;
+	}
+
+	json_object *results = NULL;
+	json_object_object_get_ex(obj, "results", &results);
+	if (results && json_object_is_type(results, json_type_array)) {
+		size_t len = json_object_array_length(results);
+		for (size_t i = 0; i < len; ++i) {
+			json_object *val = json_object_array_get_idx(results, i);
+			json_object_iter iter;
+			json_object_object_foreachC(val, iter) {
+				list_add(scroll_lib, strdup(iter.key));
+			}
+		}
+	}
+
+	json_object_put(obj);
+}
+
 static void repl_loop(int socketfd) {
 	static bool initialized = false;
 	char *lua_buf = NULL;
 	size_t lua_len = 0;
 	size_t t = 0;
+
+	// Get completions for scroll module functions
+	scroll_lib = create_list();
+	setup_scroll_completion_table(socketfd);
 
 	if (!initialized) {
         rl_readline_name = "scrollmsg";
@@ -876,6 +852,8 @@ static void repl_loop(int socketfd) {
 		}
 		free(line);
 	}
+	list_free_items_and_destroy(scroll_lib);
+	scroll_lib = NULL;
 }
 
 int main(int argc, char **argv) {
