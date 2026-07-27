@@ -4,6 +4,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#include <json.h>
 
 #include "list.h"
 
@@ -35,6 +36,15 @@ struct sway_lua {
 };
 
 int luaopen_scroll(lua_State *L);
+
+// Evaluate a Lua string, returning a JSON object with the format:
+// {
+//   success: true/false,
+//   error: "Error message if success is false",
+//   results: [ Array of results if success is true ]
+//   stdout: "String with the contents of stdout while the evaluation happens"
+// }
+json_object *lua_eval(const char *buf);
 
 // Takes whatever Lua object is top of the stack and assigns it to command_data
 void lua_command_data_create();

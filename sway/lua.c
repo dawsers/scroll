@@ -15,6 +15,7 @@
 #include "sway/ipc-server.h"
 #include "sway/desktop/transaction.h"
 #include "sway/server.h"
+#include "stringop.h"
 
 #if 0
 static void print_table(lua_State *L, int index);
@@ -148,18 +149,44 @@ static json_object *lua_table_to_json(lua_State *L, int index);
 
 static json_object *lua_value_to_json(lua_State *L, int i) {
 	switch (lua_type(L, i)) {
+	case LUA_TNIL:
+		return json_object_new_null();
 	case LUA_TNUMBER:
 		if (lua_isinteger(L, i)) {
 			return json_object_new_int(lua_tointeger(L, i));
 		} else {
 			return json_object_new_double(lua_tonumber(L, i));
 		}
-	case LUA_TSTRING:
-		return json_object_new_string(lua_tostring(L, i));
 	case LUA_TBOOLEAN:
 		return json_object_new_boolean(lua_toboolean(L, i));
+	case LUA_TSTRING:
+		return json_object_new_string(lua_tostring(L, i));
 	case LUA_TTABLE:
 		return lua_table_to_json(L, i);
+	case LUA_TFUNCTION: {
+		char *buffer = format_str("function: %p", lua_topointer(L, i));
+		json_object *obj = json_object_new_string(buffer);
+		free(buffer);
+		return obj;
+	}
+	case LUA_TUSERDATA: {
+		char *buffer = format_str("userdata: %p", lua_topointer(L, i));
+		json_object *obj = json_object_new_string(buffer);
+		free(buffer);
+		return obj;
+	}
+	case LUA_TTHREAD: {
+		char *buffer = format_str("thread: %p", lua_topointer(L, i));
+		json_object *obj = json_object_new_string(buffer);
+		free(buffer);
+		return obj;
+	}
+	case LUA_TLIGHTUSERDATA: {
+		char *buffer = format_str("lightuserdata: %p", lua_topointer(L, i));
+		json_object *obj = json_object_new_string(buffer);
+		free(buffer);
+		return obj;
+	}
 	default:
 		return NULL;
 	}
@@ -515,7 +542,7 @@ static int scroll_view_get_pid(lua_State *L) {
 	return 1;
 }
 
-char *get_env_from_proc(int pid, const char *name) {
+static char *get_env_from_proc(int pid, const char *name) {
 	char path[64];
 	snprintf(path, sizeof(path), "/proc/%d/environ", pid);
 
@@ -1929,4 +1956,98 @@ void lua_execute_jump_end_cbs(struct sway_container *container) {
 		lua_rawgeti(config->lua.state, LUA_REGISTRYINDEX, closure->cb_data);
 		safe_pcall(config->lua.state, 2);
 	}
+}
+
+static bool start_capture(int pipefd[2], int *saved_stdout) {
+	if (pipe(pipefd) == -1) {
+		return false;
+	}
+	*saved_stdout = dup(STDOUT_FILENO);
+	if (*saved_stdout == -1) {
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return false;
+	}
+	if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+		close(*saved_stdout);
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return false;
+	}
+	close(pipefd[1]);
+	return true;
+}
+
+static char *end_capture(int pipefd[2], int saved_stdout) {
+	fflush(stdout);
+	char *out = NULL;
+	if (dup2(saved_stdout, STDOUT_FILENO) != -1) {
+		close(saved_stdout);
+		ssize_t out_size = 0;
+		while(true) {
+			char buf[1024];
+			ssize_t n = read(pipefd[0], buf, sizeof(buf));
+			if (n <= 0) {
+				break;
+			}
+			out = realloc(out, out_size + n + 1);
+			memcpy(out + out_size, buf, n);
+			out_size += n;
+			out[out_size] = '\0';
+		}
+	}
+	close(pipefd[0]);
+	return out;
+}
+static void execute_buffer(json_object *obj, const char *buf) {
+	int top = lua_gettop(config->lua.state);
+	// Capture stdout
+	int pipe_out_fd[2];
+	int saved_stdout;
+	bool capturing = start_capture(pipe_out_fd, &saved_stdout);
+	int err = lua_pcall(config->lua.state, 0, LUA_MULTRET, 0);
+	if (capturing) {
+		char *out = end_capture(pipe_out_fd, saved_stdout);
+		if (out) {
+			json_object_object_add(obj, "stdout", json_object_new_string(out));
+			free(out);
+		}
+	}
+	if (err != LUA_OK) {
+		json_object_object_add(obj, "success", json_object_new_boolean(false));
+		json_object_object_add(obj, "error",
+			json_object_new_string(lua_tostring(config->lua.state, -1)));
+		lua_pop(config->lua.state, 1);
+	} else {
+		json_object_object_add(obj, "success", json_object_new_boolean(true));
+		int nresults = lua_gettop(config->lua.state) - top + 1;
+		json_object *results = json_object_new_array();
+		for (int i = 1; i <= nresults; ++i) {
+			json_object_array_add(results, lua_value_to_json(config->lua.state, i));
+		}
+		lua_settop(config->lua.state, top - 1);
+		json_object_object_add(obj, "results", results);
+	}
+}
+
+json_object *lua_eval(const char *buf) {
+	json_object *obj = json_object_new_object();
+	char *buffer = format_str("return %s", buf);
+	int err = luaL_loadbuffer(config->lua.state, buffer, strlen(buffer), NULL);
+	if (err == LUA_OK) {
+		execute_buffer(obj, buffer);
+	} else {
+		lua_pop(config->lua.state, 1);
+		err = luaL_loadbuffer(config->lua.state, buf, strlen(buf), NULL);
+		if (err != LUA_OK) {
+			json_object_object_add(obj, "success", json_object_new_boolean(false));
+			json_object_object_add(obj, "error",
+				json_object_new_string(lua_tostring(config->lua.state, -1)));
+			lua_pop(config->lua.state, 1);
+		} else {
+			execute_buffer(obj, buf);
+		}
+	}
+	free(buffer);
+	return obj;
 }

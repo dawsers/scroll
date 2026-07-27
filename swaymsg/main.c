@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <json.h>
 #include "stringop.h"
+#include <readline/readline.h>
+#include <readline/history.h>
 #include "ipc-client.h"
 #include "log.h"
 
@@ -594,10 +596,293 @@ static void pretty_print(int type, json_object *resp) {
 	}
 }
 
+static void print_lua_response(const char *payload) {
+	json_tokener *tok = json_tokener_new_ex(JSON_MAX_DEPTH);
+	if (tok == NULL) {
+		sway_abort("failed allocating json_tokener");
+	}
+	json_object *obj = json_tokener_parse_ex(tok, payload, -1);
+	enum json_tokener_error err = json_tokener_get_error(tok);
+	json_tokener_free(tok);
+
+	if (obj == NULL || err != json_tokener_success) {
+		fprintf(stderr, "failed to parse lua response: %s\n",
+			json_tokener_error_desc(err));
+		return;
+	}
+	if (!success(obj, true)) {
+		json_object *error = NULL;
+		json_object_object_get_ex(obj, "error", &error);
+		if (error && !json_object_is_type(error, json_type_null)) {
+			fprintf(stderr, "%s\n", json_object_get_string(error));
+		}
+		return;
+	}
+
+	json_object *out = NULL;
+	json_object_object_get_ex(obj, "stdout", &out);
+	if (out && json_object_is_type(out, json_type_string)) {
+		//printf("%s\n", json_object_to_json_string_ext(out,
+		//	JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED));
+		printf("%s\n", json_object_get_string(out));
+	}
+
+	json_object *results = NULL;
+	json_object_object_get_ex(obj, "results", &results);
+	if (results && !json_object_is_type(results, json_type_null)) {
+		if (json_object_is_type(results, json_type_array)) {
+			size_t len = json_object_array_length(results);
+			for (size_t i = 0; i < len; i++) {
+				json_object *val = json_object_array_get_idx(results, i);
+				if (json_object_is_type(val, json_type_null)) {
+					printf("nil\n");
+				} else {
+					printf("%s\n", json_object_to_json_string_ext(val,
+						JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED));
+				}
+			}
+		} else {
+			if (json_object_is_type(results, json_type_null)) {
+				printf("nil\n");
+			} else {
+				printf("%s\n", json_object_to_json_string_ext(results,
+					JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED));
+			}
+		}
+	}
+
+	json_object_put(obj);
+}
+
+static void display_matches (char **matches, int num_matches, int max_length) {
+    rl_display_match_list (matches, num_matches, max_length);
+    rl_on_new_line ();
+}
+
+static char *keyword_completions (const char *text, int state) {
+    static const char **c, *keywords[] = {
+        "and", "break", "do", "else", "elseif", "end", "false", "for",
+        "function", "if", "in", "local", "nil", "not", "or",
+        "repeat", "return", "then", "true", "until", "while", NULL
+    };
+
+    int s, t;
+
+    if (state == 0) {
+		rl_completion_append_character = ' ';
+        c = keywords - 1;
+    }
+
+    for (c += 1 ; *c ; c += 1) {
+        s = strlen (*c);
+        t = strlen(text);
+
+        if (s >= t && !strncmp (*c, text, t)) {
+            return strdup (*c);
+        }
+    }
+
+    return NULL;
+}
+
+static const char *scroll_lib[] = {
+	"log",
+	"state_set_value",
+	"state_get_value",
+	"ipc_send",
+	"exec_process",
+	"command",
+	"node_get_type",
+	"focused_view",
+	"focused_container",
+	"focused_workspace",
+	"urgent_view",
+	"view_mapped",
+	"view_get_container",
+	"view_get_app_id",
+	"view_get_class",
+	"view_get_title",
+	"view_get_pid",
+	"view_get_env",
+	"view_get_parent_view",
+	"view_get_urgent",
+	"view_set_urgent",
+	"view_get_shell",
+	"view_get_tag",
+	"view_close",
+	"container_set_focus",
+	"container_get_workspace",
+	"container_get_marks",
+	"container_get_floating",
+	"container_get_opacity",
+	"container_get_sticky",
+	"container_get_scratchpad",
+	"container_get_width_fraction",
+	"container_get_height_fraction",
+	"container_get_width",
+	"container_get_height",
+	"container_get_geometry",
+	"container_get_animated_geometry",
+	"container_get_fullscreen_mode",
+	"container_get_fullscreen_app_mode",
+	"container_get_fullscreen_view_mode",
+	"container_get_fullscreen_layout_mode",
+	"container_get_pin_mode",
+	"container_get_parent",
+	"container_get_children",
+	"container_get_views",
+	"container_get_id",
+	"workspace_set_focus",
+	"workspace_get_name",
+	"workspace_get_tiling",
+	"workspace_get_floating",
+	"workspace_get_mode",
+	"workspace_set_mode",
+	"workspace_get_layout_type",
+	"workspace_set_layout_type",
+	"workspace_get_width",
+	"workspace_get_height",
+	"workspace_get_output",
+	"workspace_get_pin",
+	"workspace_get_split",
+	"output_get_enabled",
+	"output_get_name",
+	"output_get_active_workspace",
+	"output_get_workspaces",
+	"root_get_outputs",
+	"scratchpad_get_containers",
+	"scratchpad_show",
+	"scratchpad_hide",
+	"add_callback",
+	"remove_callback",
+	"animating",
+	"pending_transactions",
+	NULL
+};
+
+static char *scroll_completions(const char *text, int state) {
+    static const char **c;
+    int s, t;
+
+    if (state == 0) {
+		if (strncmp("scroll.", text, 7) != 0) {
+			return NULL;
+		}
+		rl_completion_append_character = '\0';
+        c = scroll_lib - 1;
+    }
+
+    for (c += 1 ; *c ; c += 1) {
+        s = strlen (*c);
+        t = strlen(text) - 7;
+
+        if (s >= t && !strncmp(*c, text + 7, t)) {
+			char *str = malloc(sizeof(char) * (strlen(*c) + 8));
+			sprintf(str, "scroll.%s", *c);
+            return str;
+        }
+    }
+
+    return NULL;
+}
+
+static char *generator (const char *text, int state) {
+    static int which;
+    char *match = NULL;
+
+    if (state == 0) {
+        which = 0;
+    }
+
+    if (which == 0) {
+        if ((match = keyword_completions (text, state))) {
+            return match;
+        }
+        which += 1;
+        state = 0;
+    }
+
+    if (which == 1) {
+        if ((match = scroll_completions (text, state))) {
+            return match;
+        }
+        which += 1;
+        state = 0;
+    }
+
+    return match;
+}
+
+static void repl_loop(int socketfd) {
+	static bool initialized = false;
+	char *lua_buf = NULL;
+	size_t lua_len = 0;
+	size_t t = 0;
+
+	if (!initialized) {
+        rl_readline_name = "scrollmsg";
+        rl_basic_word_break_characters = " \t\n`@$><=;|&{(";
+        rl_completion_entry_function = generator;
+        rl_completion_display_matches_hook = display_matches;
+
+		initialized = true;
+	}
+
+	bool incomplete = false;
+
+	while (true) {
+		const char *prompt = incomplete ? ">> " : "> ";
+		char *line = readline(prompt);
+		if (!line) {
+			free(lua_buf);
+			break;
+		}
+		size_t len = strlen(line);
+		if (len == 0) {
+			incomplete = false;
+		} else {
+			add_history(line);
+			if (line[len - 1] == '\\') {
+				incomplete = true;
+				line[len - 1] = '\0';
+			} else {
+				incomplete = false;
+			}
+
+			lua_len += len;
+			if (lua_len > t) {
+				lua_buf = (char *)realloc(lua_buf, lua_len + 1);
+				lua_buf[t] = '\0';
+				t = lua_len;
+			}
+			strcat(lua_buf, line);
+			if (incomplete) {
+				strcat(lua_buf, "\n");
+			}
+
+			if (!incomplete) {
+				lua_buf[lua_len] = '\0';
+				uint32_t eval_len = lua_len;
+				char *resp = ipc_single_command(socketfd, IPC_LUA_EVAL, lua_buf, &eval_len);
+				print_lua_response(resp);
+				free(resp);
+
+				// Clear buffer
+				free(lua_buf);
+				lua_buf = NULL;
+				lua_len = 0;
+				t = 0;
+			}
+		}
+		free(line);
+	}
+}
+
 int main(int argc, char **argv) {
 	static bool quiet = false;
 	static bool raw = false;
 	static bool monitor = false;
+	static bool lua_repl = false;
 	char *socket_path = NULL;
 	char *cmdtype = NULL;
 
@@ -605,6 +890,7 @@ int main(int argc, char **argv) {
 
 	static const struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
+		{"lua_repl", no_argument, NULL, 'i'},
 		{"monitor", no_argument, NULL, 'm'},
 		{"pretty", no_argument, NULL, 'p'},
 		{"quiet", no_argument, NULL, 'q'},
@@ -619,6 +905,7 @@ int main(int argc, char **argv) {
 		"Usage: scrollmsg [options] [message]\n"
 		"\n"
 		"  -h, --help             Show help message and quit.\n"
+		"  -l, --lua_repl         Enter LUA REPL mode.\n"
 		"  -m, --monitor          Monitor until killed (-t SUBSCRIBE only)\n"
 		"  -p, --pretty           Use pretty output even when not using a tty\n"
 		"  -q, --quiet            Be quiet.\n"
@@ -632,11 +919,14 @@ int main(int argc, char **argv) {
 	int c;
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "hmpqrs:t:v", long_options, &option_index);
+		c = getopt_long(argc, argv, "hlmpqrs:t:v", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
 		switch (c) {
+		case 'l': // LUA REPL
+			lua_repl = true;
+			break;
 		case 'm': // Monitor
 			monitor = true;
 			break;
@@ -742,6 +1032,15 @@ int main(int argc, char **argv) {
 
 	int ret = 0;
 	int socketfd = ipc_open_socket(socket_path);
+
+	if (lua_repl) {
+		repl_loop(socketfd);
+		close(socketfd);
+		free(socket_path);
+		free(command);
+		return 0;
+	}
+
 	struct timeval timeout = {.tv_sec = 3, .tv_usec = 0};
 	ipc_set_recv_timeout(socketfd, timeout);
 	uint32_t len = strlen(command);

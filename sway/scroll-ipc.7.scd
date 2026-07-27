@@ -96,6 +96,9 @@ supported. *For all replies, any properties not listed are subject to removal.*
 |- 123
 :  GET_BINDINGS
 :  Get a list with the bindings for the current binding mode
+|- 124
+:  LUA_EVAL
+:  Evaluate a buffer containing LUA code
 
 ## 0. RUN_COMMAND
 
@@ -1686,7 +1689,7 @@ A space view object has the following properties:
 ]
 ```
 
-## 122. GET_BINDINGS (WITH A PAYLOAD)
+## 123. GET_BINDINGS (WITH A PAYLOAD)
 
 *MESSAGE*++
 When sent with a binding mode name as the payload, it retrieves the list
@@ -1695,7 +1698,7 @@ of bindings associated with the mode in the payload.
 The format and response is the same as GET_BINDINGS without a payload.
 
 
-## 122. GET_BINDINGS (WITHOUT A PAYLOAD)
+## 123. GET_BINDINGS (WITHOUT A PAYLOAD)
 
 *MESSAGE*++
 Retrieve the list of bindings for the current binding mode
@@ -1822,6 +1825,36 @@ The array contains objects with the following properties:
       "flags": []
     }
   ]
+}
+```
+
+## 124. LUA_EVAL
+
+*MESSAGE*++
+The payload contains the LUA code to evaluate.
+
+*REPLY*++
+A single object contains several properties:
+
+_success_, is a boolean value indicating whether the evaluation was successful.
+
+_error_, if _success_ is _false_, this string contains the error.
+
+_results_, an array containing the results of the evaluation if _success_ is
+_true_.
+
+_stdout_, a string with all the output while the LUA code was evaluated.
+
+
+*Example Reply:*
+
+LUA code: print("Hello!")
+
+```
+{
+	"success": true,
+	"results": [],
+	"stdout": "Hello!"
 }
 ```
 

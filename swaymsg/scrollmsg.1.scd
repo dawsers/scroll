@@ -13,6 +13,11 @@ _scrollmsg_ [options...] [message]
 *-h, --help*
 	Show help message and quit.
 
+*-l, --lua_repl*
+	Start an interactive LUA REPL. The REPL supports readline features, history,
+	multi-line input (end a line with '\' to continue in the next), and TAB
+	auto-completion for keywords and scroll API library functions.
+
 *-m, --monitor*
 	Monitor for responses until killed instead of exiting after the first
 	response. This can only be used with the IPC message type _subscribe_. If

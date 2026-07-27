@@ -14,6 +14,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
+#include "sway/lua.h"
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
@@ -977,6 +978,15 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 		const char *json_string = json_object_to_json_string(json_mode);
 		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
 		json_object_put(json_mode);
+		goto exit_cleanup;
+	}
+
+	case IPC_LUA_EVAL:
+	{
+		json_object *resp = lua_eval(buf);
+		const char *json_string = json_object_to_json_string(resp);
+		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
+		json_object_put(resp);
 		goto exit_cleanup;
 	}
 
