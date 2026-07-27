@@ -24,7 +24,11 @@ types=(
 'get_version'
 'get_binding_modes'
 'get_binding_state'
+'get_scroller'
+'get_trails'
+'get_spaces'
 'get_bindings'
+'lua_eval'
 'get_config'
 'send_tick'
 'subscribe'
@@ -32,6 +36,7 @@ types=(
 
 _arguments -s \
 	'(-h --help)'{-h,--help}'[Show help message and quit]' \
+	'(-l --lua_repl)'{-l,--lua_repl}'[Start the interactive LUA REPL]' \
 	'(-m --monitor)'{-m,--monitor}'[Monitor until killed (-t SUBSCRIBE only)]' \
 	'(-p --pretty)'{-p,--pretty}'[Use pretty output even when not using a tty]' \
 	'(-q --quiet)'{-q,--quiet}'[Be quiet]' \

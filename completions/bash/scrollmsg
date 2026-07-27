@@ -18,12 +18,18 @@ _scrollmsg()
     'get_binding_state'
     'get_bindings'
     'get_config'
+    'get_scroller'
+    'get_trails'
+    'get_spaces'
+    'get_bindings'
+    'lua_eval'
     'send_tick'
     'subscribe'
   )
 
   short=(
     -h
+    -l
     -m
     -p
     -q
@@ -35,6 +41,7 @@ _scrollmsg()
 
   long=(
     --help
+    --lua_repl
     --monitor
     --pretty
     --quiet

@@ -2,6 +2,7 @@
 
 complete -f -c scrollmsg
 complete -c scrollmsg -s h -l help --description "Show help message and quit."
+complete -c scrollmsg -s l -l lua_repl --description "Enter the interactive LUA REPL."
 complete -c scrollmsg -s m -l monitor --description "Monitor subscribed events until killed."
 complete -c scrollmsg -s p -l pretty --description "Use pretty output even when not using a tty."
 complete -c scrollmsg -s q -l quiet --description "Sends the IPC message but does not print the response from scroll."
@@ -20,6 +21,10 @@ complete -c scrollmsg -s t -l type -fra 'get_version' --description "Get JSON-en
 complete -c scrollmsg -s t -l type -fra 'get_binding_modes' --description "Gets a JSON-encoded list of currently configured binding modes."
 complete -c scrollmsg -s t -l type -fra 'get_binding_state' --description "Get JSON-encoded info about the current binding state."
 complete -c scrollmsg -s t -l type -fra 'get_bindings' --description "Get a JSON-encoded list of bindings for the current mode (or the one specified)."
+complete -c scrollmsg -s t -l type -fra 'get_scroller' --description "Get a JSON-encoded object with the scroll modifiers for the current workspace."
+complete -c scrollmsg -s t -l type -fra 'get_trails' --description "Get a JSON-encoded list with trails data."
+complete -c scrollmsg -s t -l type -fra 'get_spaces' --description "Get a JSON-encoded list with spaces data."
+complete -c scrollmsg -s t -l type -fra 'lua_eval' --description "Evaluate a Lua string and return the results in JSON-encoded object."
 complete -c scrollmsg -s t -l type -fra 'get_config' --description "Gets a JSON-encoded copy of the current configuration."
 complete -c scrollmsg -s t -l type -fra 'get_seats' --description "Gets a JSON-encoded list of all seats, its properties and all assigned devices."
 complete -c scrollmsg -s t -l type -fra 'send_tick' --description "Sends a tick event to all subscribed clients."

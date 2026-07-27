@@ -111,6 +111,12 @@ _scrollmsg_ [options...] [message]
 *get\_trails*
 	Gets the trails information.
 
+*get\_spaces*
+	Gets spaces information.
+
+*get\_bindings*
+	Returns the current set of key bindings.
+
 *lua\_eval*
 	Execute the LUA expression.
 

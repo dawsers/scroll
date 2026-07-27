@@ -33,7 +33,8 @@ supports some added features:
 * Workspace scaling: Apart from overview, you can scale the workspace to any
   scale, and continue working.
 
-* Lua scripting: scroll provides a lua API to script the window manager.
+* Lua scripting: scroll provides a lua API to script the window manager, and
+  a Lua REPL to use the API in real-time (`scrollmsg --lua_repl`).
 
 * Several full screen modes: `workspace`, `global`, `application` and `layout`.
 
