@@ -1958,59 +1958,80 @@ void lua_execute_jump_end_cbs(struct sway_container *container) {
 	}
 }
 
-static bool start_capture(int pipefd[2], int *saved_stdout) {
-	if (pipe(pipefd) == -1) {
+struct reader_data_struct {
+	int pipefd[2];
+	int saved_stdout;
+	char *buffer;
+	size_t buffer_size;
+	pthread_t reader;
+	pthread_mutex_t lock;
+};
+
+static void *reader_thread(void *arg) {
+	struct reader_data_struct *reader = arg;
+	while(true) {
+		char buf[1024];
+		ssize_t n = read(reader->pipefd[0], buf, sizeof(buf));
+		if (n <= 0) {
+			break;
+		}
+		pthread_mutex_lock(&reader->lock);
+		reader->buffer = realloc(reader->buffer, reader->buffer_size + n + 1);
+		memcpy(reader->buffer + reader->buffer_size, buf, n);
+		reader->buffer_size += n;
+		reader->buffer[reader->buffer_size] = '\0';
+		pthread_mutex_unlock(&reader->lock);
+	}
+	return NULL;
+}
+
+static bool start_capture(struct reader_data_struct *reader_data) {
+	if (pipe(reader_data->pipefd) == -1) {
 		return false;
 	}
-	*saved_stdout = dup(STDOUT_FILENO);
-	if (*saved_stdout == -1) {
-		close(pipefd[0]);
-		close(pipefd[1]);
+	reader_data->saved_stdout = dup(STDOUT_FILENO);
+	if (reader_data->saved_stdout == -1) {
+		close(reader_data->pipefd[0]);
+		close(reader_data->pipefd[1]);
 		return false;
 	}
-	if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
-		close(*saved_stdout);
-		close(pipefd[0]);
-		close(pipefd[1]);
+	if (dup2(reader_data->pipefd[1], STDOUT_FILENO) == -1) {
+		close(reader_data->saved_stdout);
+		close(reader_data->pipefd[0]);
+		close(reader_data->pipefd[1]);
 		return false;
 	}
-	close(pipefd[1]);
+	close(reader_data->pipefd[1]);
+	// Start reader thread to avoid possible deadlock if data overflows the pipe buffer
+	pthread_mutex_init(&reader_data->lock, NULL);
+	pthread_create(&reader_data->reader, NULL, reader_thread, reader_data);
 	return true;
 }
 
-static char *end_capture(int pipefd[2], int saved_stdout) {
+static void end_capture(struct reader_data_struct *reader_data) {
 	fflush(stdout);
-	char *out = NULL;
-	if (dup2(saved_stdout, STDOUT_FILENO) != -1) {
-		close(saved_stdout);
-		ssize_t out_size = 0;
-		while(true) {
-			char buf[1024];
-			ssize_t n = read(pipefd[0], buf, sizeof(buf));
-			if (n <= 0) {
-				break;
-			}
-			out = realloc(out, out_size + n + 1);
-			memcpy(out + out_size, buf, n);
-			out_size += n;
-			out[out_size] = '\0';
-		}
+	if (dup2(reader_data->saved_stdout, STDOUT_FILENO) != -1) {
+		close(reader_data->saved_stdout);
 	}
-	close(pipefd[0]);
-	return out;
+	pthread_join(reader_data->reader, NULL);
+	pthread_mutex_destroy(&reader_data->lock);
+	close(reader_data->pipefd[0]);
 }
+
 static void execute_buffer(json_object *obj, const char *buf) {
 	int top = lua_gettop(config->lua.state);
 	// Capture stdout
-	int pipe_out_fd[2];
-	int saved_stdout;
-	bool capturing = start_capture(pipe_out_fd, &saved_stdout);
+	struct reader_data_struct reader_data = {
+		.buffer = NULL,
+		.buffer_size = 0,
+	};
+	bool capturing = start_capture(&reader_data);
 	int err = lua_pcall(config->lua.state, 0, LUA_MULTRET, 0);
 	if (capturing) {
-		char *out = end_capture(pipe_out_fd, saved_stdout);
-		if (out) {
-			json_object_object_add(obj, "stdout", json_object_new_string(out));
-			free(out);
+		end_capture(&reader_data);
+		if (reader_data.buffer) {
+			json_object_object_add(obj, "stdout", json_object_new_string(reader_data.buffer));
+			free(reader_data.buffer);
 		}
 	}
 	if (err != LUA_OK) {
