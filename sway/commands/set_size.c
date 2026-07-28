@@ -11,17 +11,11 @@
 #include "sway/tree/layout.h"
 #include "sway/desktop/animation.h"
 
-#define AXIS_HORIZONTAL (WLR_EDGE_LEFT | WLR_EDGE_RIGHT)
-#define AXIS_VERTICAL   (WLR_EDGE_TOP | WLR_EDGE_BOTTOM)
-
-static bool is_horizontal(uint32_t axis) {
-	return axis & (WLR_EDGE_LEFT | WLR_EDGE_RIGHT);
-}
 
 /**
  * Implement `set_size <fraction>` for a floating container.
  */
-static struct cmd_results *set_size_floating(uint32_t axis, double fraction) {
+static struct cmd_results *set_size_floating(enum sway_layout_axis axis, double fraction) {
 	struct sway_container *current = config->handler_context.container;
 
 	if (container_is_scratchpad_hidden_or_child(current)) {
@@ -33,7 +27,7 @@ static struct cmd_results *set_size_floating(uint32_t axis, double fraction) {
 			&min_height, &max_height);
 
 	struct sway_workspace *workspace = config->handler_context.workspace;
-	bool horizontal = is_horizontal(axis);
+	bool horizontal = axis & AXIS_HORIZONTAL;
 
 	if (horizontal) {
 		const double width = fmax(min_width, fmin(fraction * workspace->width, max_width));
@@ -60,7 +54,7 @@ static struct cmd_results *set_size_floating(uint32_t axis, double fraction) {
 /**
  * Implement `set_size <fraction>` for a tiled container.
  */
-static struct cmd_results *set_size_tiled(uint32_t axis, double fraction) {
+static struct cmd_results *set_size_tiled(enum sway_layout_axis axis, double fraction) {
 	struct sway_container *current = config->handler_context.container;
 
 	if (container_is_scratchpad_hidden_or_child(current)) {
@@ -68,7 +62,7 @@ static struct cmd_results *set_size_tiled(uint32_t axis, double fraction) {
 	}
 
 	enum sway_container_layout layout = layout_get_type(config->handler_context.workspace);
-	bool horizontal = is_horizontal(axis);
+	bool horizontal = axis & AXIS_HORIZONTAL;
 	if ((layout == L_HORIZ && horizontal) || (layout == L_VERT && !horizontal)) {
 		if (current->pending.parent) {
 			// Choose parent if not at workspace level yet

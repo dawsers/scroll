@@ -10,12 +10,10 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/layout.h"
 #include "log.h"
 #include "util.h"
 #include "sway/desktop/animation.h"
-
-#define AXIS_HORIZONTAL (WLR_EDGE_LEFT | WLR_EDGE_RIGHT)
-#define AXIS_VERTICAL   (WLR_EDGE_TOP | WLR_EDGE_BOTTOM)
 
 static uint32_t parse_resize_axis(const char *axis) {
 	if (strcasecmp(axis, "width") == 0 || strcasecmp(axis, "horizontal") == 0) {
@@ -39,10 +37,6 @@ static uint32_t parse_resize_axis(const char *axis) {
 	return WLR_EDGE_NONE;
 }
 
-static bool is_horizontal(uint32_t axis) {
-	return axis & (WLR_EDGE_LEFT | WLR_EDGE_RIGHT);
-}
-
 /**
  * Implement `resize <grow|shrink>` for a floating container.
  */
@@ -51,7 +45,7 @@ static struct cmd_results *resize_adjust_floating(uint32_t axis,
 	struct sway_container *con = config->handler_context.container;
 	int grow_width = 0, grow_height = 0;
 
-	if (is_horizontal(axis)) {
+	if (axis & AXIS_HORIZONTAL) {
 		grow_width = amount->amount;
 	} else {
 		grow_height = amount->amount;
@@ -128,7 +122,7 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 	min_height += 2.0 * current->pending.border_thickness;
 	max_height += 2.0 * current->pending.border_thickness;
 	enum sway_container_layout layout = layout_get_type(config->handler_context.workspace);
-	bool horizontal = is_horizontal(axis);
+	bool horizontal = axis & AXIS_HORIZONTAL;
 	if ((layout == L_HORIZ && horizontal) || (layout == L_VERT && !horizontal)) {
 		if (current->pending.parent) {
 			// Choose parent if not at workspace level yet

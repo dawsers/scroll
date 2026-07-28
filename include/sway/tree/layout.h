@@ -21,6 +21,11 @@ enum sway_layout_direction {
 	DIR_MIDDLE,
 };
 
+enum sway_layout_axis {
+	AXIS_HORIZONTAL = (WLR_EDGE_LEFT | WLR_EDGE_RIGHT),
+	AXIS_VERTICAL = (WLR_EDGE_TOP | WLR_EDGE_BOTTOM),
+};
+
 enum sway_layout_fit_group {
 	FIT_ACTIVE,
 	FIT_VISIBLE,
@@ -300,5 +305,9 @@ void layout_toggle_size_container(struct sway_container *container,
 // Call after any resize. This function calls any needed functions for
 // internal management of options etc.
 void layout_tiling_resize_callback(struct sway_container *container);
+
+// Fit container/workspace size
+void layout_fit_size(struct sway_workspace *workspace, struct sway_container *container,
+		enum sway_layout_axis axis, enum sway_layout_fit_group fit, bool equal);
 
 #endif // _SWAY_LAYOUT_H

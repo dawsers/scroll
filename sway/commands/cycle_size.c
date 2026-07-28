@@ -6,16 +6,10 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/layout.h"
 #include "sway/output.h"
 #include "sway/desktop/animation.h"
 #include "util.h"
-
-#define AXIS_HORIZONTAL (WLR_EDGE_LEFT | WLR_EDGE_RIGHT)
-#define AXIS_VERTICAL   (WLR_EDGE_TOP | WLR_EDGE_BOTTOM)
-
-static bool is_horizontal(uint32_t axis) {
-	return axis & (WLR_EDGE_LEFT | WLR_EDGE_RIGHT);
-}
 
 static const double EPSILON = 0.001;
 
@@ -58,7 +52,7 @@ struct cmd_results *cmd_cycle_size_wrap(int argc, char **argv) {
 /**
  * Implement `cycle_size <incr>` for a floating container.
  */
-static struct cmd_results *cycle_size_floating(uint32_t axis, int inc) {
+static struct cmd_results *cycle_size_floating(enum sway_layout_axis axis, int inc) {
 	struct sway_container *current = config->handler_context.container;
 
 	if (container_is_scratchpad_hidden_or_child(current)) {
@@ -71,7 +65,7 @@ static struct cmd_results *cycle_size_floating(uint32_t axis, int inc) {
 
 	struct sway_workspace *workspace = config->handler_context.workspace;
 	struct sway_output *output = workspace->output;
-	bool horizontal = is_horizontal(axis);
+	bool horizontal = axis & AXIS_HORIZONTAL;
 
 	if (horizontal) {
 		const double fraction = current->pending.width / workspace->width;
@@ -104,12 +98,12 @@ static struct cmd_results *cycle_size_floating(uint32_t axis, int inc) {
 /**
  * Implement `cycle_size <incr>` for a tiled container.
  */
-static struct cmd_results *cycle_size_tiled(uint32_t axis, int inc) {
+static struct cmd_results *cycle_size_tiled(enum sway_layout_axis axis, int inc) {
 	struct sway_container *current = config->handler_context.container;
 	struct sway_workspace *workspace = config->handler_context.workspace;
 	// Only allow layout->type axis resizing of a parent container, not individual windows
 	enum sway_container_layout layout = layout_get_type(workspace);
-	bool horizontal = is_horizontal(axis);
+	bool horizontal = axis & AXIS_HORIZONTAL;
 	if ((layout == L_HORIZ && horizontal) || (layout == L_VERT && !horizontal)) {
 		if (current->pending.parent) {
 			// Choose parent if not at workspace level yet
