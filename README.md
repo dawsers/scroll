@@ -660,6 +660,9 @@ mode "modifiers" {
     bindsym Shift+v set_mode nocenter_vert; mode default
     bindsym r set_mode reorder_auto; mode default
     bindsym Shift+r set_mode noreorder_auto; mode default
+    bindsym w set_mode fitfraction; mode default
+    bindsym Shift+w set_mode fitsplit; mode default
+    bindsym Ctrl+w set_mode nofit; mode default
 
     # Return to default mode
     bindsym Escape mode "default"
@@ -795,7 +798,7 @@ At window creation time, *scroll* can apply several modifiers to the
 current working mode (*h/v*). `set_mode` supports extra arguments:
 
 ``` config
-set_mode [<h|v|t> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]
+set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]
 ```
 
 1. `<h|v|t>`: set horizontal, vertical, or toggle the current mode.
@@ -805,16 +808,24 @@ This parameter decides the position of new windows: *after* the current one
 at the *beginning* of the row/column. The currently focused window will have
 the corresponding border painted with the `indicator` color to show where the
 new window would open.
-3. `focus`: One of `focus` (default) or `nofocus`. When creating a new window,
+3. `fit`: One of `nofit` (default), `fitsplit`, or `fitfraction`. This parameter
+enables auto fitting of the windows to the viewport, similar to `fit_size`.
+`nofit` (default) will make *scroll* behave normally, allowing windows to be
+outside of the output. Enabling any of the two other modes will auto-fit
+all windows to fill the	output. Windows will automatically resize
+proportionally. `fitsplit` will split the active window in two when creating
+a new one. `fitfraction` will assign new windows a size fraction equal to
+1.0 divided by the total number of columns (or rows when in a column).
+4. `focus`: One of `focus` (default) or `nofocus`. When creating a new window,
 this parameter decides whether it will get focus or not.
-4. Reorder automatic mode: `reorder_auto` (default) or `noreorder_auto`. By
+5. Reorder automatic mode: `reorder_auto` (default) or `noreorder_auto`. By
 default, *scroll* will reorder windows every time you change focus, move or
 create new windows. But sometimes you want to keep the current window in a
 certain position. Use `noreorder_auto`, and the window will keep its position
 regardless of what you do, until you set `reorder_auto` again.
-5. `center_horiz/nocenter_horiz`: It will keep the active column centered
+6. `center_horiz/nocenter_horiz`: It will keep the active column centered
 (or not) on the screen. The default value is the one in your configuration.
-4. `center_vert/nocenter_vert`: It will keep the active window centered
+7. `center_vert/nocenter_vert`: It will keep the active window centered
 (or not) in its column. The default value is the one in your configuration.
 
 You can skip any number of parameters when calling the command, and their

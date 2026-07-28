@@ -574,6 +574,18 @@ static const char *get_scroll_reorder_symbol(struct swaybar *bar) {
 	}
 }
 
+static const char *get_scroll_fit_symbol(struct swaybar *bar) {
+	if (bar->scroll_fit == NULL) {
+		return " ";
+	} else if (!strcmp(bar->scroll_fit, "fitsplit")) {
+		return "⎅";
+	} else if (!strcmp(bar->scroll_fit, "fitfraction")) {
+		return "▥";
+	} else {
+		return " ";
+	}
+}
+
 static uint32_t predict_scroller_indicator_length(cairo_t *cairo,
 		struct swaybar_output *output) {
 	uint32_t width = 0;
@@ -585,6 +597,7 @@ static uint32_t predict_scroller_indicator_length(cairo_t *cairo,
 			output->bar->scroll_center_horizontal ? "" : " ",
 			output->bar->scroll_center_vertical ? "󰉠" : " ",
 			get_scroll_reorder_symbol(output->bar),
+			get_scroll_fit_symbol(output->bar),
 			output->bar->scroll_overview ? "🐦" : " ",
 			output->bar->scroll_scaled ? "S" : " "
 		};
@@ -842,6 +855,7 @@ static uint32_t render_scroller_indicator(struct render_context *ctx,
 		output->bar->scroll_center_horizontal ? "" : " ",
 		output->bar->scroll_center_vertical ? "󰉠" : " ",
 		get_scroll_reorder_symbol(output->bar),
+		get_scroll_fit_symbol(output->bar),
 		output->bar->scroll_overview ? "🐦" : " ",
 		output->bar->scroll_scaled ? "S" : " "
 	};

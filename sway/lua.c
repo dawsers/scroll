@@ -1266,6 +1266,20 @@ static int scroll_workspace_get_mode(lua_State *L) {
 	}
 	lua_setfield(L, -2, "insert");
 
+	enum sway_layout_fit fit = layout_modifiers_get_fit(workspace);
+	switch (fit) {
+	case FIT_NONE:
+		lua_pushstring(L, "nofit");
+		break;
+	case FIT_SPLIT:
+		lua_pushstring(L, "fitsplit");
+		break;
+	case FIT_FRACTION:
+		lua_pushstring(L, "fitfraction");
+		break;
+	}
+	lua_setfield(L, -2, "fit");
+
 	enum sway_layout_reorder reorder = layout_modifiers_get_reorder(workspace);
 	switch (reorder) {
 	case REORDER_AUTO:
@@ -1318,6 +1332,18 @@ static int scroll_workspace_set_mode(lua_State *L) {
 			layout_modifiers_set_insert(workspace, INSERT_BEGINNING);
 		} else if (strcmp(mode, "end") == 0) {
 			layout_modifiers_set_insert(workspace, INSERT_END);
+		}
+	}
+	lua_pop(L, 1);
+
+	if (lua_getfield(L, 2, "fit") == LUA_TSTRING) {
+		const char *mode = lua_tostring(L, 3);
+		if (strcmp(mode, "nofit") == 0) {
+			layout_modifiers_set_fit(workspace, FIT_NONE);
+		} else if (strcmp(mode, "fitsplit") == 0) {
+			layout_modifiers_set_fit(workspace, FIT_SPLIT);
+		} else if (strcmp(mode, "fitfraction") == 0) {
+			layout_modifiers_set_fit(workspace, FIT_FRACTION);
 		}
 	}
 	lua_pop(L, 1);

@@ -1521,6 +1521,9 @@ An object called "scroller", containing the following properties:
 |- insert
 :  string
 :  Current insert mode: after/before/beginning/end
+|- fit
+:  string
+:  Current fit mode: nofit/fitsplit/fitfraction
 |- focus
 :  boolean
 :  Focus new windows?
@@ -1545,6 +1548,7 @@ An object called "scroller", containing the following properties:
 		"scale": -1.00,
 		"mode": "horizontal",
 		"insert": "after",
+		"fit": "nofit",
 		"focus": true,
 		"center_horizontal": false,
 		"center_vertical": false,
@@ -2354,6 +2358,8 @@ The following change types are currently available:
 :  The layout mode changed
 |- insert
 :  The layout insertion mode changed
+|- fit
+:  Fit mode changed
 |- focus
 :  Focus mode for the workspace changed
 |- center_horizontal

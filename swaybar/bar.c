@@ -563,4 +563,5 @@ void bar_teardown(struct swaybar *bar) {
 	free(bar->scroll_mode);
 	free(bar->scroll_insert);
 	free(bar->scroll_reorder);
+	free(bar->scroll_fit);
 }

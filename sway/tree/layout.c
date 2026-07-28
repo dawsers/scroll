@@ -603,6 +603,8 @@ void layout_default_modifiers_set_default(struct sway_scroller_modifiers *modifi
 		modifiers->mode = L_NONE;
 		modifiers->insert_set = true;
 		modifiers->insert = INSERT_AFTER;
+		modifiers->fit_set = true;
+		modifiers->fit = FIT_NONE;
 		modifiers->focus_set = true;
 		modifiers->focus = true;
 		modifiers->center_horizontal_set = true;
@@ -629,6 +631,11 @@ static void modifiers_merge(struct sway_scroller_modifiers *dst, struct sway_scr
 	if (src->insert_set) {
 		dst->insert = src->insert;
 		dst->insert_set = true;
+		dst->set = true;
+	}
+	if (src->fit_set) {
+		dst->fit = src->fit;
+		dst->fit_set = true;
 		dst->set = true;
 	}
 	if (src->focus_set) {
@@ -668,6 +675,7 @@ void layout_modifiers_init(struct sway_workspace *workspace) {
 	layout->modifiers.reorder = modifiers.reorder;
 	layout->modifiers.mode = modifiers.mode_set ? modifiers.mode : layout->type;
 	layout->modifiers.insert = modifiers.insert;
+	layout->modifiers.fit = modifiers.fit;
 	layout->modifiers.focus = modifiers.focus;
 	layout->modifiers.center_horizontal = modifiers.center_horizontal;
 	layout->modifiers.center_vertical = modifiers.center_vertical;
@@ -701,6 +709,20 @@ void layout_modifiers_set_insert(struct sway_workspace *workspace, enum sway_lay
 
 enum sway_layout_insert layout_modifiers_get_insert(struct sway_workspace *workspace) {
 	return workspace->layout.modifiers.insert;
+}
+
+void layout_modifiers_set_fit(struct sway_workspace *workspace, enum sway_layout_fit fit) {
+	if (workspace->layout.modifiers.fit != fit) {
+		workspace->layout.modifiers.fit = fit;
+		if (fit != FIT_NONE) {
+			arrange_workspace(workspace);
+		}
+		ipc_event_scroller("fit", workspace);
+	}
+}
+
+enum sway_layout_fit layout_modifiers_get_fit(struct sway_workspace *workspace) {
+	return workspace->layout.modifiers.fit;
 }
 
 void layout_modifiers_set_focus(struct sway_workspace *workspace, bool focus) {
@@ -803,6 +825,67 @@ static void position_new_container(struct sway_workspace *workspace,
 	}
 }
 
+static void set_initial_width_fraction(struct sway_workspace *workspace,
+		struct sway_container *view, struct sway_container *ref,
+		list_t *containers,	double default_width) {
+	enum sway_layout_fit fit = layout_modifiers_get_fit(workspace);
+	if (fit != FIT_NONE) {
+		if (fit == FIT_SPLIT) {
+			if (ref) {
+				ref->width_fraction *= 0.5;
+				view->width_fraction = ref->width_fraction;
+			} else {
+				view->width_fraction = 1.0;
+			}
+		} else {
+			if (containers->length == 0) {
+				view->width_fraction = 1.0;
+			} else {
+				// x / (total + x) = 1.0 / ncons ->
+				// x * ncons = total + x -> x * (ncons - 1) = total ->
+				// x = total / (ncons - 1)
+				double total = 0.0;
+				for (int i = 0; i < containers->length; ++i) {
+					struct sway_container *con = containers->items[i];
+					total += con->width_fraction;
+				}
+				view->width_fraction = total / containers->length;
+			}
+		}
+	} else {
+		view->width_fraction = default_width;
+	}
+}
+
+static void set_initial_height_fraction(struct sway_workspace *workspace,
+		struct sway_container *view, struct sway_container *ref,
+		list_t *containers,	double default_height) {
+	enum sway_layout_fit fit = layout_modifiers_get_fit(workspace);
+	if (fit != FIT_NONE) {
+		if (fit == FIT_SPLIT) {
+			if (ref) {
+				ref->height_fraction *= 0.5;
+				view->height_fraction = ref->height_fraction;
+			} else {
+				view->height_fraction = 1.0;
+			}
+		} else {
+			if (containers->length == 0) {
+				view->height_fraction = 1.0;
+			} else {
+				double total = 0.0;
+				for (int i = 0; i < containers->length; ++i) {
+					struct sway_container *con = containers->items[i];
+					total += con->height_fraction;
+				}
+				view->height_fraction = total / containers->length;
+			}
+		}
+	} else {
+		view->height_fraction = default_height;
+	}
+}
+
 static void layout_container_add_view(struct sway_container *active, struct sway_container *view,
 			enum sway_container_layout layout, enum sway_layout_insert pos) {
 	struct sway_container *parent = active->pending.parent ? active->pending.parent : active;
@@ -810,9 +893,17 @@ static void layout_container_add_view(struct sway_container *active, struct sway
 		parent == active ? container_get_focused_inactive_child(parent) : active;
 	container_insert_update_parent_fullscreen_layout(parent, view);
 	int index = layout_insert_compute_index(parent->pending.children, ref, pos);
+	struct sway_workspace *workspace = parent->pending.workspace;
+	if (layout == L_HORIZ) {
+		set_initial_width_fraction(workspace, view, ref, parent->pending.children,
+			parent->width_fraction);
+		view->height_fraction = parent->height_fraction;
+	} else {
+		set_initial_height_fraction(workspace, view, ref, parent->pending.children,
+			parent->height_fraction);
+		view->width_fraction = parent->width_fraction;
+	}
 	container_insert_child(parent, view, index);
-	view->width_fraction = parent->width_fraction;
-	view->height_fraction = parent->height_fraction;
 	view->toggle_size = parent->toggle_size;
 	if (ref) {
 		position_new_container(parent->pending.workspace, parent->pending.children,
@@ -855,19 +946,26 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	int idx;
 	if (!active) {
 		idx = 0;
-	} else if (active->pending.parent) {
-		// active is in a container, need to insert at the level of its parent
-		idx = layout_insert_compute_index(active->pending.workspace->tiling, active->pending.parent, pos);
 	} else {
+		if (active->pending.parent) {
+			// active is in a container, need to insert at the level of its parent
+			active = active->pending.parent;
+		}
 		idx = layout_insert_compute_index(active->pending.workspace->tiling, active, pos);
 	}
 	// Create a container and add view
-	enum sway_container_layout mode = layout_get_type(workspace) == L_HORIZ ? L_VERT : L_HORIZ;
+	enum sway_container_layout layout = layout_get_type(workspace);
+	enum sway_container_layout mode = layout == L_HORIZ ? L_VERT : L_HORIZ;
 	struct sway_container *parent = layout_wrap_into_container(view, mode);
 	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
 	// Set the container and view width/height
 	if (view->width_fraction <= 0.0) {
-		view->width_fraction = layout_get_default_width(workspace);
+		const double default_width = layout_get_default_width(workspace);
+		if (layout == L_HORIZ) {
+			set_initial_width_fraction(workspace, view, active, workspace->tiling, default_width);
+		} else {
+			view->width_fraction = default_width;
+		}
 		// Start the animation from the center of the workspace
 		view->current.x = workspace->x + 0.5 * workspace->width;
 		view->pending.x = workspace->x + scale * workspace->gaps_inner;
@@ -876,7 +974,12 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	}
 	parent->width_fraction = view->width_fraction;
 	if (view->height_fraction <= 0.0) {
-		view->height_fraction = layout_get_default_height(workspace);
+		const double default_height = layout_get_default_height(workspace);
+		if (layout == L_VERT) {
+			set_initial_height_fraction(workspace, view, active, workspace->tiling, default_height);
+		} else {
+			view->height_fraction = default_height;
+		}
 		view->current.y = workspace->y + 0.5 * workspace->height;
 		view->pending.y = workspace->y + scale * workspace->gaps_inner;
 		parent->current.y = view->current.y;
@@ -887,8 +990,7 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	workspace_insert_tiling_direct(workspace, parent, idx);
 
 	if (active) {
-		position_new_container(workspace, workspace->tiling,
-			active->pending.parent ? active->pending.parent : active, parent, idx);
+		position_new_container(workspace, workspace->tiling, active, parent, idx);
 		view->pending.x = parent->pending.x;
 		view->pending.y = parent->pending.y;
 	}
@@ -4750,29 +4852,29 @@ static void fit_size_container(struct sway_container *container, enum sway_layou
 	layout_tiling_resize_callback(container);
 }
 
-void layout_fit_size(struct sway_workspace *workspace, struct sway_container *container,
-		enum sway_layout_axis axis, enum sway_layout_fit_group fit, bool equal) {
-
-	if (container->pending.fullscreen_mode != FULLSCREEN_NONE || layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+void layout_fit_size_workspace(struct sway_workspace *workspace,
+		enum sway_layout_fit_group fit, bool equal) {
+	if (workspace_is_fullscreen(workspace) || layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
 		// Silently return if full screen or overview mode
 		return;
 	}
+	fit_size_workspace(workspace, fit, equal);
+	animation_set_type(ANIMATION_WINDOW_SIZE);
 
-	enum sway_container_layout layout = layout_get_type(workspace);
+	return;
+}
 
-	if (axis & AXIS_HORIZONTAL) {
-		if (layout == L_HORIZ) {
-			fit_size_workspace(workspace, fit, equal);
-		} else {
-			fit_size_container(container->pending.parent ? container->pending.parent : container, fit, equal);
-		}
-	} else {
-		if (layout == L_VERT) {
-			fit_size_workspace(workspace, fit, equal);
-		} else {
-			fit_size_container(container->pending.parent ? container->pending.parent : container, fit, equal);
-		}
+void layout_fit_size_container(struct sway_container *container,
+		enum sway_layout_fit_group fit, bool equal) {
+	if (container->pending.fullscreen_mode != FULLSCREEN_NONE ||
+		container->pending.fullscreen_layout != FULLSCREEN_DISABLED) {
+		return;
 	}
+	struct sway_workspace *workspace = container->pending.workspace;
+	if (!workspace || layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		return;
+	}
+	fit_size_container(container->pending.parent ? container->pending.parent : container, fit, equal);
 	animation_set_type(ANIMATION_WINDOW_SIZE);
 
 	return;

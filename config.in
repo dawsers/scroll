@@ -407,6 +407,9 @@ mode "modifiers" {
     bindsym Shift+v set_mode nocenter_vert; mode default 
     bindsym r set_mode reorder_auto; mode default 
     bindsym Shift+r set_mode noreorder_auto; mode default 
+    bindsym w set_mode fitfraction; mode default
+    bindsym Shift+w set_mode fitsplit; mode default
+    bindsym Ctrl+w set_mode nofit; mode default
 
     # Return to default mode
     bindsym Escape mode "default"

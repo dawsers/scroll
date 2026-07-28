@@ -45,6 +45,9 @@ static void arrange_resized_container(struct sway_container *con) {
 		}
 		con->width_fraction = (con->pending.width + 2.0 * workspace->gaps_inner) / workspace->width;
 	}
+	if (layout_modifiers_get_fit(workspace) != FIT_NONE) {
+		arrange_workspace(workspace);
+	}
 	arrange_container(parent);
 }
 

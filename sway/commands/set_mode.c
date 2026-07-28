@@ -63,6 +63,20 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 			update_container = true;
 		}
 
+		if (strcasecmp(argv[i], "nofit") == 0) {
+			layout_modifiers_set_fit(current, FIT_NONE);
+			success = true;
+			update_container = true;
+		} else if (strcasecmp(argv[i], "fitsplit") == 0) {
+			layout_modifiers_set_fit(current, FIT_SPLIT);
+			success = true;
+			update_container = true;
+		} else if (strcasecmp(argv[i], "fitfraction") == 0) {
+			layout_modifiers_set_fit(current, FIT_FRACTION);
+			success = true;
+			update_container = true;
+		}
+
         if (strcasecmp(argv[i], "focus") == 0) {
 			layout_modifiers_set_focus(current, true);
 			success = true;
@@ -102,7 +116,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
-	const char usage[] = "Expected 'set_mode [<h|v|t> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]'";
+	const char usage[] = "Expected 'set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]'";
 
 	return cmd_results_new(CMD_INVALID, "%s", usage);
 }

@@ -1679,3 +1679,19 @@ void workspace_move_to_output(struct sway_workspace *workspace,
 	workspace_output_raise_priority(workspace, old_output, output);
 	ipc_event_workspace(NULL, workspace, "move");
 }
+
+bool workspace_is_fullscreen(struct sway_workspace *workspace) {
+	if (root->fullscreen_global) {
+		return true;
+	}
+	if (workspace->fullscreen) {
+		return true;
+	}
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *con = workspace->tiling->items[i];
+		if (con->pending.fullscreen_layout != FULLSCREEN_DISABLED) {
+			return true;
+		}
+	}
+	return false;
+}

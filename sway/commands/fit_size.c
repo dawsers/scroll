@@ -3,6 +3,25 @@
 #include "sway/commands.h"
 #include "sway/tree/layout.h"
 
+static void fit_size(struct sway_workspace *workspace, struct sway_container *container,
+		enum sway_layout_axis axis, enum sway_layout_fit_group fit, bool equal) {
+	enum sway_container_layout layout = layout_get_type(workspace);
+
+	if (axis & AXIS_HORIZONTAL) {
+		if (layout == L_HORIZ) {
+			layout_fit_size_workspace(workspace, fit, equal);
+		} else {
+			layout_fit_size_container(container, fit, equal);
+		}
+	} else {
+		if (layout == L_VERT) {
+			layout_fit_size_workspace(workspace, fit, equal);
+		} else {
+			layout_fit_size_container(container, fit, equal);
+		}
+	}
+}
+
 struct cmd_results *cmd_fit_size(int argc, char **argv) {
 	if (!root->outputs->length) {
 		return cmd_results_new(CMD_INVALID,
@@ -53,9 +72,9 @@ struct cmd_results *cmd_fit_size(int argc, char **argv) {
 	struct sway_workspace *workspace = config->handler_context.workspace;
 
 	if (strcasecmp(argv[0], "h") == 0) {
-		layout_fit_size(workspace, current, AXIS_HORIZONTAL, fit, equal);
+		fit_size(workspace, current, AXIS_HORIZONTAL, fit, equal);
 	} else if (strcasecmp(argv[0], "v") == 0) {
-		layout_fit_size(workspace, current, AXIS_VERTICAL, fit, equal);
+		fit_size(workspace, current, AXIS_VERTICAL, fit, equal);
 	} else {
 		const char usage[] = "Expected 'fit_size <h|v> <active|visible|all|toend|tobeg> <proportional|equal>'";
 

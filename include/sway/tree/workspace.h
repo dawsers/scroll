@@ -132,6 +132,8 @@ bool workspace_is_visible(struct sway_workspace *ws);
 
 bool workspace_is_empty(struct sway_workspace *ws);
 
+bool workspace_is_fullscreen(struct sway_workspace *ws);
+
 void workspace_output_raise_priority(struct sway_workspace *workspace,
 		struct sway_output *old_output, struct sway_output *new_output);
 

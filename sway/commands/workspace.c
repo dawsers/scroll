@@ -74,6 +74,20 @@ int parse_into_modifiers(int argc, char **argv,
 			++success;
 		}
 
+		if (strcasecmp(argv[i], "nofit") == 0) {
+			modifiers->fit = FIT_NONE;
+			modifiers->fit_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "fitsplit") == 0) {
+			modifiers->fit = FIT_SPLIT;
+			modifiers->fit_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "fitfraction") == 0) {
+			modifiers->fit = FIT_FRACTION;
+			modifiers->fit_set = true;
+			++success;
+		}
+
         if (strcasecmp(argv[i], "focus") == 0) {
 			modifiers->focus = true;
 			modifiers->focus_set = true;

@@ -911,7 +911,8 @@ set|plus|minus|toggle <amount>
 	quickly, or as storage for the selection (_trail to_selection_ can recover
 	the selection from a stored trail).
 
-*set_mode* [<h|v|t> <after|before|end|beg> <focus|nofocus>
+*set_mode* [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction>
+<focus|nofocus>
 <center_horiz|nocenter_horiz> <center_vert|nocenter_vert>
 <reorder_auto|noreorder_auto>]
 	Modes and mode modifiers are per workspace.
@@ -924,6 +925,15 @@ set|plus|minus|toggle <amount>
 	This parameter decides the position of new windows: after the current one
 	(default value), before the current one, at the end of the row/column, or
 	at the beginning of the row/column.
+
+	_fit_: One of nofit (default), fitsplit, or fitfraction. This parameter
+	enables auto fitting of the windows to the viewport, similar to *fit_size*.
+	nofit (default) will make *scroll* behave normally, allowing windows to be
+	outside of the output. Enabling any of the two other modes will auto-fit
+	all windows to fill the	output. Windows will automatically resize
+	proportionally. fitsplit will split the active window in two when creating
+	a new one. fitfraction will assign new windows a size fraction equal to
+	1.0 divided by the total number of columns (or rows when in a column).
 
 	_focus_: One of focus (default) or nofocus. When creating a new window,
 	this parameter controls whether it will get focus or not.

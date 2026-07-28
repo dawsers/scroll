@@ -87,6 +87,12 @@ enum sway_layout_filter {
 	LAYOUT_FILTER_SCRATCHPAD,
 };
 
+enum sway_layout_fit {
+	FIT_NONE,
+	FIT_SPLIT,
+	FIT_FRACTION
+};
+
 struct sway_scroller {
 	enum sway_container_layout type;
 
@@ -94,6 +100,7 @@ struct sway_scroller {
 		enum sway_layout_reorder reorder;
 		enum sway_container_layout mode;
 		enum sway_layout_insert insert;
+		enum sway_layout_fit fit;
 		bool focus;
 		bool center_horizontal;
 		bool center_vertical;
@@ -125,6 +132,8 @@ struct sway_scroller_modifiers {
 	enum sway_container_layout mode;
 	bool insert_set;
 	enum sway_layout_insert insert;
+	bool fit_set;
+	enum sway_layout_fit fit;
 	bool focus_set;
 	bool focus;
 	bool center_horizontal_set;
@@ -182,6 +191,7 @@ bool layout_scale_enabled(struct sway_workspace *workspace);
 void layout_modifiers_init(struct sway_workspace *workspace);
 void layout_modifiers_set_mode(struct sway_workspace *workspace, enum sway_container_layout mode);
 void layout_modifiers_set_insert(struct sway_workspace *workspace, enum sway_layout_insert ins);
+void layout_modifiers_set_fit(struct sway_workspace *workspace, enum sway_layout_fit fit);
 void layout_modifiers_set_focus(struct sway_workspace *workspace, bool focus);
 void layout_modifiers_set_center_horizontal(struct sway_workspace *workspace, bool center);
 void layout_modifiers_set_center_vertical(struct sway_workspace *workspace, bool center);
@@ -189,6 +199,7 @@ void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_la
 
 enum sway_container_layout layout_modifiers_get_mode(struct sway_workspace *workspace);
 enum sway_layout_insert layout_modifiers_get_insert(struct sway_workspace *workspace);
+enum sway_layout_fit layout_modifiers_get_fit(struct sway_workspace *workspace);
 bool layout_modifiers_get_focus(struct sway_workspace *workspace);
 bool layout_modifiers_get_center_horizontal(struct sway_workspace *workspace);
 bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace);
@@ -307,7 +318,9 @@ void layout_toggle_size_container(struct sway_container *container,
 void layout_tiling_resize_callback(struct sway_container *container);
 
 // Fit container/workspace size
-void layout_fit_size(struct sway_workspace *workspace, struct sway_container *container,
-		enum sway_layout_axis axis, enum sway_layout_fit_group fit, bool equal);
+void layout_fit_size_workspace(struct sway_workspace *workspace,
+	enum sway_layout_fit_group fit, bool equal);
+void layout_fit_size_container(struct sway_container *container,
+	enum sway_layout_fit_group fit, bool equal);
 
 #endif // _SWAY_LAYOUT_H

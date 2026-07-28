@@ -14,6 +14,66 @@
 #include "log.h"
 #include "util.h"
 
+void fit_children(list_t *children, enum sway_container_layout layout) {
+	const int ncons = children->length;
+	if (layout == L_HORIZ) {
+		double total = 0.0;
+		for (int i = 0; i < ncons; ++i) {
+			struct sway_container *con = children->items[i];
+			total += con->width_fraction;
+		}
+		for (int i = 0; i < ncons; ++i) {
+			struct sway_container *con = children->items[i];
+			con->width_fraction /= total;
+		}
+	} else {
+		double total = 0.0;
+		for (int i = 0; i < ncons; ++i) {
+			struct sway_container *con = children->items[i];
+			total += con->height_fraction;
+		}
+		for (int i = 0; i < ncons; ++i) {
+			struct sway_container *con = children->items[i];
+			con->height_fraction /= total;
+		}
+	}
+}
+
+void fit_workspace(struct sway_workspace *workspace) {
+	const int ncons = workspace->tiling->length;
+	if (ncons == 0) {
+		return;
+	}
+	if (workspace_is_fullscreen(workspace) || layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		// Silently return if full screen or overview mode
+		return;
+	}
+	enum sway_container_layout layout = layout_get_type(workspace);
+	fit_children(workspace->tiling, layout);
+
+	return;
+}
+
+void fit_container(struct sway_container *container) {
+	if (container->pending.fullscreen_mode != FULLSCREEN_NONE ||
+		container->pending.fullscreen_layout != FULLSCREEN_DISABLED) {
+		return;
+	}
+	struct sway_workspace *workspace = container->pending.workspace;
+	if (!workspace || layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		return;
+	}
+	list_t *children = container->pending.children;
+	const int ncons = children->length;
+	if (ncons == 0) {
+		return;
+	}
+	enum sway_container_layout layout = container->pending.layout;
+	fit_children(children, layout);
+
+	return;
+}
+
 // For us, gaps_inner is applied to each container on both sides, regardless
 // of its position. So an edge container will have the same content size
 // than an inner container. Otherwise, moving containers may produce a content
@@ -146,6 +206,12 @@ void arrange_container(struct sway_container *container) {
 	// but we need the correct coordinates of the parent
 	box.x = container->pending.x;
 	box.y = container->pending.y;
+
+	enum sway_layout_fit fit = layout_modifiers_get_fit(container->pending.workspace);
+	if (fit != FIT_NONE) {
+		fit_container(container);
+	}
+
 	arrange_children(container->pending.children, container->pending.layout, &box);
 	node_set_dirty(&container->node);
 }
@@ -280,6 +346,12 @@ void arrange_workspace(struct sway_workspace *workspace) {
 	} else {
 		struct wlr_box box;
 		workspace_get_box(workspace, &box);
+
+		enum sway_layout_fit fit = layout_modifiers_get_fit(workspace);
+		if (fit != FIT_NONE) {
+			fit_workspace(workspace);
+		}
+
 		arrange_children(workspace->tiling, layout_get_type(workspace), &box);
 		arrange_floating(workspace->floating);
 	}

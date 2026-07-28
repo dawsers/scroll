@@ -1553,6 +1553,18 @@ json_object *ipc_json_describe_scroller(struct sway_workspace *workspace) {
 		json_object_object_add(object, "insert", json_object_new_string("end"));
 		break;
 	}
+	enum sway_layout_fit fit = layout_modifiers_get_fit(workspace);
+	switch (fit) {
+	case FIT_NONE:
+		json_object_object_add(object, "fit", json_object_new_string("nofit"));
+		break;
+	case FIT_SPLIT:
+		json_object_object_add(object, "fit", json_object_new_string("fitsplit"));
+		break;
+	case FIT_FRACTION:
+		json_object_object_add(object, "fit", json_object_new_string("fitfraction"));
+		break;
+	}
 	bool focus = layout_modifiers_get_focus(workspace);
 	json_object_object_add(object, "focus", json_object_new_boolean(focus));
 	bool center_horizontal = layout_modifiers_get_center_horizontal(workspace);

@@ -37,6 +37,7 @@ struct swaybar {
 	bool scroll_center_horizontal;
 	bool scroll_center_vertical;
 	char *scroll_reorder;
+	char *scroll_fit;
 
 	int trails_length;
 	int trails_active;

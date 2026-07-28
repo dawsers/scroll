@@ -434,12 +434,13 @@ bool ipc_get_scroller(struct swaybar *bar) {
 	free(bar->scroll_mode);
 	free(bar->scroll_insert);
 	free(bar->scroll_reorder);
+	free(bar->scroll_fit);
 
 	json_object *s;
 	json_object_object_get_ex(results, "scroller", &s);
 
 	json_object *overview, *scaled, *scale, *mode, *insert, *focus,
-		*center_horiz, *center_vert, *reorder;
+		*center_horiz, *center_vert, *reorder, *fit;
 
 	json_object_object_get_ex(s, "overview", &overview);
 	json_object_object_get_ex(s, "scaled", &scaled);
@@ -450,6 +451,7 @@ bool ipc_get_scroller(struct swaybar *bar) {
 	json_object_object_get_ex(s, "center_horizontal", &center_horiz);
 	json_object_object_get_ex(s, "center_vertical", &center_vert);
 	json_object_object_get_ex(s, "reorder", &reorder);
+	json_object_object_get_ex(s, "fit", &fit);
 
 	bar->scroll_overview = json_object_get_boolean(overview);
 	bar->scroll_scaled = json_object_get_boolean(scaled);
@@ -460,6 +462,7 @@ bool ipc_get_scroller(struct swaybar *bar) {
 	bar->scroll_center_horizontal = json_object_get_boolean(center_horiz);
 	bar->scroll_center_vertical = json_object_get_boolean(center_vert);
 	bar->scroll_reorder = strdup(json_object_get_string(reorder));
+	bar->scroll_fit = strdup(json_object_get_string(fit));
 
 	json_object_put(results);
 	free(res);
