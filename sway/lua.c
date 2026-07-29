@@ -1990,7 +1990,6 @@ struct reader_data_struct {
 	char *buffer;
 	size_t buffer_size;
 	pthread_t reader;
-	pthread_mutex_t lock;
 };
 
 static void *reader_thread(void *arg) {
@@ -2001,12 +2000,10 @@ static void *reader_thread(void *arg) {
 		if (n <= 0) {
 			break;
 		}
-		pthread_mutex_lock(&reader->lock);
 		reader->buffer = realloc(reader->buffer, reader->buffer_size + n + 1);
 		memcpy(reader->buffer + reader->buffer_size, buf, n);
 		reader->buffer_size += n;
 		reader->buffer[reader->buffer_size] = '\0';
-		pthread_mutex_unlock(&reader->lock);
 	}
 	return NULL;
 }
@@ -2029,7 +2026,6 @@ static bool start_capture(struct reader_data_struct *reader_data) {
 	}
 	close(reader_data->pipefd[1]);
 	// Start reader thread to avoid possible deadlock if data overflows the pipe buffer
-	pthread_mutex_init(&reader_data->lock, NULL);
 	pthread_create(&reader_data->reader, NULL, reader_thread, reader_data);
 	return true;
 }
@@ -2040,7 +2036,6 @@ static void end_capture(struct reader_data_struct *reader_data) {
 		close(reader_data->saved_stdout);
 	}
 	pthread_join(reader_data->reader, NULL);
-	pthread_mutex_destroy(&reader_data->lock);
 	close(reader_data->pipefd[0]);
 }
 
