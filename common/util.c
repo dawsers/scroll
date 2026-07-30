@@ -296,7 +296,7 @@ list_t *parse_string_array(char *str) {
 	if (str[0] != '[' || str[len - 1] != ']') {
 		return NULL;
 	}
-	char *strcp = malloc(len - 1);
+	char *strcp = malloc(len);
 	strcpy(strcp, &str[1]);
 	strcp[len - 2] = 0;
 	list_t *list = create_list();
