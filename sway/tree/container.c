@@ -22,9 +22,9 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/xdg_decoration.h"
+#include "sway/log.h"
 #include "list.h"
 #include "pango.h"
-#include "log.h"
 #include "stringop.h"
 #include "util.h"
 

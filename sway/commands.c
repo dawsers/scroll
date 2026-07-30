@@ -11,8 +11,8 @@
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 #include "sway/tree/view.h"
+#include "sway/log.h"
 #include "stringop.h"
-#include "log.h"
 #include "sway/server.h"
 
 // Returns error object, or NULL if check succeeds.

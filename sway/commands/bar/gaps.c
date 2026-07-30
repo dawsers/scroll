@@ -3,7 +3,7 @@
 #include <strings.h>
 #include "sway/commands.h"
 #include "sway/ipc-server.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct cmd_results *bar_cmd_gaps(int argc, char **argv) {
 	struct cmd_results *error = NULL;

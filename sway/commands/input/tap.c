@@ -3,7 +3,7 @@
 #include "sway/config.h"
 #include "sway/commands.h"
 #include "sway/input/input-manager.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 struct cmd_results *input_cmd_tap(int argc, char **argv) {

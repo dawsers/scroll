@@ -1,6 +1,6 @@
 #include "sway/commands.h"
 #include "sway/config.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 struct cmd_results *cmd_force_focus_wrapping(int argc, char **argv) {

@@ -6,7 +6,7 @@
 #include "sway/config.h"
 #include "sway/input/cursor.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 static struct cmd_results *binding_add(struct bar_binding *binding,

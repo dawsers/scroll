@@ -1,6 +1,4 @@
-#include <string.h>
 #include "sway/commands.h"
-#include "log.h"
 #include "util.h"
 
 // Must be in alphabetical order for bsearch

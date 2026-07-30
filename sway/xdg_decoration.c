@@ -4,7 +4,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/view.h"
 #include "sway/xdg_decoration.h"
-#include "log.h"
+#include "sway/log.h"
 
 static void xdg_decoration_handle_destroy(struct wl_listener *listener,
 		void *data) {

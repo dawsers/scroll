@@ -3,7 +3,7 @@
 #include "sway/commands.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/keyboard.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 // must be in order for the bsearch

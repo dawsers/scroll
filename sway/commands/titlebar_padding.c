@@ -3,7 +3,7 @@
 #include "sway/config.h"
 #include "sway/output.h"
 #include "sway/tree/arrange.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct cmd_results *cmd_titlebar_padding(int argc, char **argv) {
 	struct cmd_results *error = NULL;

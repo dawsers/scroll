@@ -1,7 +1,7 @@
 #include <string.h>
 #include "sway/commands.h"
 #include "sway/config.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 #include <pango/pangocairo.h>
 

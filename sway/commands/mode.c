@@ -4,7 +4,7 @@
 #include "sway/config.h"
 #include "sway/ipc-server.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 // Must be in order for the bsearch

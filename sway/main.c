@@ -27,7 +27,7 @@
 #include "sway/tree/node.h"
 #include "sway/ipc-server.h"
 #include "ipc-client.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 #include "stringop.h"
 

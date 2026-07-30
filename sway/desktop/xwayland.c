@@ -8,7 +8,7 @@
 #include <wlr/types/wlr_xdg_activation_v1.h>
 #include <wlr/xwayland.h>
 #include <xcb/xcb_icccm.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/cursor.h"
 #include "sway/input/input-manager.h"

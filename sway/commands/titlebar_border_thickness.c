@@ -1,6 +1,6 @@
 #include "sway/commands.h"
 #include "sway/config.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct cmd_results *cmd_titlebar_border_thickness(int argc, char **argv) {
 	sway_log(SWAY_INFO, "Warning: titlebar_border_thickness is deprecated.");

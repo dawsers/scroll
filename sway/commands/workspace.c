@@ -9,7 +9,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/output.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 static struct workspace_config *workspace_config_find_or_create(char *ws_name) {

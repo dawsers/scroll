@@ -6,7 +6,7 @@
 #include "sway/commands.h"
 #include "sway/input/input-manager.h"
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 
 #if WLR_HAS_LIBINPUT_BACKEND
 #include <wlr/backend/libinput.h>

@@ -1,6 +1,6 @@
 #include "sway/desktop/animation.h"
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 #include <wayland-server-core.h>
 #include "sway/output.h"
 #include "sway/desktop/transaction.h"

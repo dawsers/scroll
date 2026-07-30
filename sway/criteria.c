@@ -14,7 +14,7 @@
 #include "sway/tree/node.h"
 #include "stringop.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "config.h"
 
 bool criteria_is_empty(struct criteria *criteria) {

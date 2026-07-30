@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_idle_notify_v1.h>
 #include <wlr/types/wlr_session_lock_v1.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/desktop/idle_inhibit_v1.h"
 #include "sway/input/seat.h"
 #include "sway/tree/container.h"

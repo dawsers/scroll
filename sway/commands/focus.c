@@ -1,7 +1,7 @@
 #include <float.h>
 #include <strings.h>
 #include <wlr/types/wlr_output_layout.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/commands.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/cursor.h"

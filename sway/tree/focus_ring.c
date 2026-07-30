@@ -1,6 +1,6 @@
 #include "sway/tree/focus_ring.h"
 #include "sway/input/seat.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct sway_focus_ring *focus_ring_create() {
 	struct sway_focus_ring *focus_ring = calloc(1, sizeof(struct sway_focus_ring));

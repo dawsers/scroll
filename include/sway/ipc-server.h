@@ -6,6 +6,7 @@
 #include "sway/input/input-manager.h"
 #include "sway/tree/container.h"
 #include "ipc.h"
+#include "sway/log.h"
 
 struct sway_server;
 
@@ -26,5 +27,7 @@ void ipc_event_output(void);
 void ipc_event_scroller(const char *change, struct sway_workspace *workspace);
 void ipc_event_trails();
 void ipc_event_lua(const char *id, json_object *data);
+void ipc_event_log(sway_log_importance_t verbosity, const char *time,
+		const char *message);
 
 #endif

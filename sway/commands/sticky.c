@@ -9,7 +9,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 struct cmd_results *cmd_sticky(int argc, char **argv) {

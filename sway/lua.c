@@ -2,7 +2,7 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <json.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/lua.h"
 #include "sway/commands.h"
 #include "sway/tree/view.h"
@@ -75,6 +75,48 @@ static int scroll_log(lua_State *L) {
 	const char *str = luaL_checkstring(L, -1);
 	if (str) {
 		sway_log(SWAY_DEBUG, "%s", str);
+	}
+	return 0;
+}
+
+static int scroll_log_get_verbosity(lua_State *L) {
+	sway_log_importance_t verbosity = sway_log_get_verbosity();
+	switch (verbosity) {
+		case SWAY_SILENT:
+			lua_pushstring(L, "silent");
+			break;
+		case SWAY_ERROR:
+			lua_pushstring(L, "error");
+			break;
+		case SWAY_INFO:
+			lua_pushstring(L, "info");
+			break;
+		case SWAY_DEBUG:
+			lua_pushstring(L, "debug");
+			break;
+		default:
+			lua_pushstring(L, "invalid");
+			break;
+	}
+	return 1;
+}
+
+static int scroll_log_set_verbosity(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc < 1) {
+		return 0;
+	}
+	const char *str = luaL_checkstring(L, -1);
+	if (str) {
+		if (strcmp(str, "silent") == 0) {
+			sway_log_set_verbosity(SWAY_SILENT);
+		} else if (strcmp(str, "error") == 0) {
+			sway_log_set_verbosity(SWAY_ERROR);
+		} else if (strcmp(str, "info") == 0) {
+			sway_log_set_verbosity(SWAY_INFO);
+		} else if (strcmp(str, "debug") == 0) {
+			sway_log_set_verbosity(SWAY_DEBUG);
+		}
 	}
 	return 0;
 }
@@ -1797,6 +1839,8 @@ static int scroll_pending_transactions(lua_State *L) {
 /* clang-format off */
 static luaL_Reg const scroll_lib[] = {
 	{ "log", scroll_log },
+	{ "log_get_verbosity", scroll_log_get_verbosity },
+	{ "log_set_verbosity", scroll_log_set_verbosity },
 	{ "state_set_value", scroll_state_set_value },
 	{ "state_get_value", scroll_state_get_value },
 	{ "ipc_send", scroll_ipc_send },
@@ -1984,76 +2028,25 @@ void lua_execute_jump_end_cbs(struct sway_container *container) {
 	}
 }
 
-struct reader_data_struct {
-	int pipefd[2];
-	int saved_stdout;
-	char *buffer;
-	size_t buffer_size;
-	pthread_t reader;
-};
-
-static void *reader_thread(void *arg) {
-	struct reader_data_struct *reader = arg;
-	while(true) {
-		char buf[1024];
-		ssize_t n = read(reader->pipefd[0], buf, sizeof(buf));
-		if (n <= 0) {
-			break;
-		}
-		reader->buffer = realloc(reader->buffer, reader->buffer_size + n + 1);
-		memcpy(reader->buffer + reader->buffer_size, buf, n);
-		reader->buffer_size += n;
-		reader->buffer[reader->buffer_size] = '\0';
-	}
-	return NULL;
-}
-
-static bool start_capture(struct reader_data_struct *reader_data) {
-	if (pipe(reader_data->pipefd) == -1) {
-		return false;
-	}
-	reader_data->saved_stdout = dup(STDOUT_FILENO);
-	if (reader_data->saved_stdout == -1) {
-		close(reader_data->pipefd[0]);
-		close(reader_data->pipefd[1]);
-		return false;
-	}
-	if (dup2(reader_data->pipefd[1], STDOUT_FILENO) == -1) {
-		close(reader_data->saved_stdout);
-		close(reader_data->pipefd[0]);
-		close(reader_data->pipefd[1]);
-		return false;
-	}
-	close(reader_data->pipefd[1]);
-	// Start reader thread to avoid possible deadlock if data overflows the pipe buffer
-	pthread_create(&reader_data->reader, NULL, reader_thread, reader_data);
-	return true;
-}
-
-static void end_capture(struct reader_data_struct *reader_data) {
-	fflush(stdout);
-	if (dup2(reader_data->saved_stdout, STDOUT_FILENO) != -1) {
-		close(reader_data->saved_stdout);
-	}
-	pthread_join(reader_data->reader, NULL);
-	close(reader_data->pipefd[0]);
-}
-
 static void execute_buffer(json_object *obj, const char *buf) {
-	int top = lua_gettop(config->lua.state);
-	// Capture stdout
-	struct reader_data_struct reader_data = {
-		.buffer = NULL,
-		.buffer_size = 0,
-	};
-	bool capturing = start_capture(&reader_data);
-	int err = lua_pcall(config->lua.state, 0, LUA_MULTRET, 0);
+	char *buffer = NULL;
+	size_t len = 0;
+	FILE *old_stdout, *stream = open_memstream(&buffer, &len);
+	bool capturing = stream != NULL;
 	if (capturing) {
-		end_capture(&reader_data);
-		if (reader_data.buffer) {
-			json_object_object_add(obj, "stdout", json_object_new_string(reader_data.buffer));
-			free(reader_data.buffer);
-		}
+		old_stdout = stdout;
+		stdout = stream;
+	}
+
+	int top = lua_gettop(config->lua.state);
+	int err = lua_pcall(config->lua.state, 0, LUA_MULTRET, 0);
+
+	if (capturing) {
+		stdout = old_stdout;
+		fflush(stream);
+		fclose(stream);
+		json_object_object_add(obj, "stdout", json_object_new_string(buffer));
+		free(buffer);
 	}
 	if (err != LUA_OK) {
 		json_object_object_add(obj, "success", json_object_new_boolean(false));

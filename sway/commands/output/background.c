@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include "sway/commands.h"
 #include "sway/config.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 static const char *bg_options[] = {

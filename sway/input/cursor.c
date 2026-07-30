@@ -17,7 +17,7 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/util/region.h>
 #include "config.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 #include "sway/commands.h"
 #include "sway/input/cursor.h"

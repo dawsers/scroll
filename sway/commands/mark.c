@@ -3,7 +3,7 @@
 #include "sway/config.h"
 #include "sway/tree/view.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 // mark foo                      Same as mark --replace foo

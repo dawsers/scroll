@@ -4,7 +4,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/view.h"
-#include "log.h"
+#include "sway/log.h"
 
 static void server_decoration_handle_destroy(struct wl_listener *listener,
 		void *data) {

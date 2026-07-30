@@ -7,7 +7,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/layout.h"
 #include "sway/desktop/transaction.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct seatop_touch_point_event {
 	double ref_lx, ref_ly;         // touch's x/y at start of op

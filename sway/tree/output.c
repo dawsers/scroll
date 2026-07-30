@@ -10,7 +10,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/workspace.h"
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 enum wlr_direction opposite_direction(enum wlr_direction d) {

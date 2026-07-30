@@ -2,7 +2,7 @@
 #include <wlr/util/transform.h>
 #include "sway/commands.h"
 #include "sway/config.h"
-#include "log.h"
+#include "sway/log.h"
 #include "sway/output.h"
 
 static enum wl_output_transform invert_rotation_direction(

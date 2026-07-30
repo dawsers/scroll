@@ -1904,6 +1904,9 @@ available:
 |- 0x80000015
 :  input
 :  Sent when something related to input devices changes
+|- 0x8000001c
+:  log
+:  Sent by the logging system
 |- 0x8000001d
 :  lua
 :  Sent by lua scripts
@@ -2309,6 +2312,24 @@ The following change types are currently available:
 	}
 }
 ```
+
+## 0x8000001c. LOG
+
+Sent by the logging system. The event
+consists of a single object with the following properties:
+
+[- *PROPERTY*
+:- *DATA TYPE*
+:- *DESCRIPTION*
+|- verbosity
+:  string
+:[ Verbosity of the entry: silent, error, info or debug
+|- time
+:  string
+:  Time at which the message was logged
+|- message
+:  string
+:  Message logged
 
 ## 0x8000001d. LUA
 

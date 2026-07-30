@@ -9,7 +9,7 @@
 #include "sway/tree/container.h"
 #include "sway/tree/workspace.h"
 #include "sway/tree/root.h"
-#include "log.h"
+#include "sway/log.h"
 
 /**
  * Get the pid of a parent process given the pid of a child process.

@@ -24,10 +24,10 @@
 #include "sway/server.h"
 #include "sway/swaynag.h"
 #include "sway/tree/arrange.h"
+#include "sway/log.h"
 #include "pango.h"
 #include "stringop.h"
 #include "list.h"
-#include "log.h"
 #include "util.h"
 
 struct sway_config *config = NULL;

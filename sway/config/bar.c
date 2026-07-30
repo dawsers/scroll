@@ -15,7 +15,7 @@
 #include "sway/server.h"
 #include "config.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 #include "util.h"
 

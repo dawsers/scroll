@@ -1,6 +1,6 @@
 #include <strings.h>
 #include "config.h"
-#include "log.h"
+#include "sway/log.h"
 #include "sway/commands.h"
 #include "sway/output.h"
 #include "sway/tree/arrange.h"

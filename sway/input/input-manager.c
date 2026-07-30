@@ -19,7 +19,7 @@
 #include "sway/tree/view.h"
 #include "stringop.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 
 #if WLR_HAS_LIBINPUT_BACKEND
 #include <wlr/backend/libinput.h>

@@ -3,7 +3,7 @@
 #include <wlr/types/wlr_tablet_v2.h>
 #include <wlr/types/wlr_tablet_tool.h>
 #include <wlr/types/wlr_tablet_pad.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/input/cursor.h"
 #include "sway/input/seat.h"
 #include "sway/input/tablet.h"

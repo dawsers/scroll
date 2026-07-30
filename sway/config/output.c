@@ -21,7 +21,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/root.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 #if WLR_HAS_DRM_BACKEND

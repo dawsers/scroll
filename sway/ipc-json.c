@@ -9,7 +9,7 @@
 #include <wlr/types/wlr_ext_foreign_toplevel_list_v1.h>
 #include <xkbcommon/xkbcommon.h>
 #include "config.h"
-#include "log.h"
+#include "sway/log.h"
 #include "sway/config.h"
 #include "sway/ipc-json.h"
 #include "sway/server.h"

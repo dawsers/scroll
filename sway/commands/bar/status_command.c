@@ -1,6 +1,6 @@
 #include <string.h>
 #include "sway/commands.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 struct cmd_results *bar_cmd_status_command(int argc, char **argv) {

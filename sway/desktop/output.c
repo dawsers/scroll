@@ -18,7 +18,7 @@
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/config.h"
 #include "sway/desktop/animation.h"
 #include "sway/desktop/transaction.h"

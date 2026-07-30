@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <wlr/util/addon.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/scene_descriptor.h"
 
 struct scene_descriptor {

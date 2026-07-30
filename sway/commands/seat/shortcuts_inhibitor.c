@@ -1,4 +1,4 @@
-#include "log.h"
+#include "sway/log.h"
 #include "sway/commands.h"
 #include "sway/input/seat.h"
 #include "sway/input/input-manager.h"

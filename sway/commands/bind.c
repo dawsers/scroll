@@ -12,7 +12,7 @@
 #include "sway/input/keyboard.h"
 #include "sway/ipc-server.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 #include "util.h"
 #include "sway/desktop/animation.h"

@@ -3,7 +3,7 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/input/cursor.h"
-#include "log.h"
+#include "sway/log.h"
 
 static struct cmd_results *tray_bind(int argc, char **argv, bool code) {
 #if HAVE_TRAY

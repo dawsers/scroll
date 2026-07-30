@@ -15,7 +15,7 @@
 #include <wlr/types/wlr_touch.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "sway/config.h"
 #include "sway/scene_descriptor.h"
 #include "sway/input/cursor.h"

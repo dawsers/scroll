@@ -18,7 +18,7 @@
 #include <wlr/xwayland.h>
 #endif
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "sway/criteria.h"
 #include "sway/commands.h"
 #include "sway/desktop/transaction.h"

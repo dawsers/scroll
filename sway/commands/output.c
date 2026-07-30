@@ -3,7 +3,7 @@
 #include "sway/config.h"
 #include "sway/output.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 
 // must be in order for the bsearch
 static const struct cmd_handler output_handlers[] = {

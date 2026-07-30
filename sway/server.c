@@ -54,7 +54,7 @@
 #include <wlr/types/wlr_xdg_toplevel_tag_v1.h>
 #include <xf86drm.h>
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "sway/config.h"
 #include "sway/desktop/idle_inhibit_v1.h"
 #include "sway/input/input-manager.h"

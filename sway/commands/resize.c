@@ -11,7 +11,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/tree/layout.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 #include "sway/desktop/animation.h"
 

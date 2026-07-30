@@ -4,7 +4,7 @@
 #include "sway/commands.h"
 #include "sway/input/input-manager.h"
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct xkb_switch_layout_action {
 	struct wlr_keyboard *keyboard;

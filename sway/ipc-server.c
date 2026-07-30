@@ -30,7 +30,7 @@
 #include "sway/tree/workspace.h"
 #include "sway/tree/space.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 static int ipc_socket = -1;
@@ -268,6 +268,9 @@ int ipc_client_handle_readable(int client_fd, uint32_t mask, void *data) {
 }
 
 static bool ipc_has_event_listeners(enum ipc_command_type event) {
+	if (!ipc_client_list) {
+		return false;
+	}
 	for (int i = 0; i < ipc_client_list->length; i++) {
 		struct ipc_client *client = ipc_client_list->items[i];
 		if ((client->subscribed_events & event_mask(event)) != 0) {
@@ -505,6 +508,41 @@ void ipc_event_lua(const char *id, json_object *data) {
 
 	const char *json_string = json_object_to_json_string(json);
 	ipc_send_event(json_string, IPC_EVENT_LUA);
+	json_object_put(json);
+}
+
+void ipc_event_log(sway_log_importance_t verbosity, const char *time,
+		const char *message) {
+	if (!ipc_has_event_listeners(IPC_EVENT_LOG)) {
+		return;
+	}
+	if (verbosity >= SWAY_LOG_IMPORTANCE_LAST) {
+		return;
+	}
+	json_object *json = json_object_new_object();
+	switch (verbosity) {
+		case SWAY_SILENT:
+			json_object_object_add(json, "verbosity", json_object_new_string("silent"));
+			break;
+		case SWAY_ERROR:
+			json_object_object_add(json, "verbosity", json_object_new_string("error"));
+			break;
+		case SWAY_INFO:
+			json_object_object_add(json, "verbosity", json_object_new_string("info"));
+			break;
+		case SWAY_DEBUG:
+			json_object_object_add(json, "verbosity", json_object_new_string("debug"));
+			break;
+		default:
+			// Shouldn't be here anyway
+			json_object_object_add(json, "verbosity", json_object_new_string("invalid"));
+			break;
+	}
+	json_object_object_add(json, "time", json_object_new_string(time));
+	json_object_object_add(json, "message", json_object_new_string(message));
+
+	const char *json_string = json_object_to_json_string(json);
+	ipc_send_event(json_string, IPC_EVENT_LOG);
 	json_object_put(json);
 }
 
@@ -754,6 +792,8 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 				client->subscribed_events |= event_mask(IPC_EVENT_SCROLLER);
 			} else if (strcmp(event_type, "trails") == 0) {
 				client->subscribed_events |= event_mask(IPC_EVENT_TRAILS);
+			} else if (strcmp(event_type, "log") == 0) {
+				client->subscribed_events |= event_mask(IPC_EVENT_LOG);
 			} else if (strcmp(event_type, "lua") == 0) {
 				client->subscribed_events |= event_mask(IPC_EVENT_LUA);
 			} else {

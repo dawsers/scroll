@@ -11,7 +11,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/layout.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 void fit_children(list_t *children, enum sway_container_layout layout) {

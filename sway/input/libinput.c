@@ -3,7 +3,7 @@
 #include <libudev.h>
 #include <limits.h>
 #include <wlr/backend/libinput.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/config.h"
 #include "sway/output.h"
 #include "sway/input/input-manager.h"

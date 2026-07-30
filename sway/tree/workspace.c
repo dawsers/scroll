@@ -21,7 +21,7 @@
 #include "sway/desktop/transaction.h"
 #include "sway/desktop/animation.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 static const uint32_t WORKSPACE_CAPABILITIES =

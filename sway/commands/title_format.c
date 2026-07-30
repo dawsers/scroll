@@ -3,7 +3,7 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/tree/view.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 struct cmd_results *cmd_title_format(int argc, char **argv) {

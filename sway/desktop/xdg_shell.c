@@ -5,7 +5,7 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_xdg_toplevel_tag_v1.h>
 #include <wlr/util/edges.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/decoration.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/transaction.h"

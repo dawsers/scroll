@@ -21,7 +21,7 @@
 #include "sway/tree/workspace.h"
 #include "sway/tree/layout.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 struct sway_transaction {

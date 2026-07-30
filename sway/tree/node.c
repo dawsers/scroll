@@ -6,7 +6,7 @@
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
 #include "sway/layers.h"
-#include "log.h"
+#include "sway/log.h"
 
 #include "khashl.h"
 

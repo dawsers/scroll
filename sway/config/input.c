@@ -4,7 +4,7 @@
 #include "sway/config.h"
 #include "sway/input/keyboard.h"
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct input_config *new_input_config(const char* identifier) {
 	struct input_config *input = calloc(1, sizeof(struct input_config));

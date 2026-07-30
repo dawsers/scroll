@@ -18,7 +18,7 @@
 #include "sway/tree/node.h"
 #include "sway/tree/focus_ring.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 extern const struct wlr_scene_callbacks scroll_scene_cbs;

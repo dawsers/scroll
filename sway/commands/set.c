@@ -4,7 +4,7 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 // sort in order of longest->shortest

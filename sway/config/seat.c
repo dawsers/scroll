@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sway/config.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct seat_config *new_seat_config(const char* name) {
 	struct seat_config *seat = calloc(1, sizeof(struct seat_config));

@@ -4,7 +4,7 @@
 #include "sway/config.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/workspace.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 #include <math.h>
 

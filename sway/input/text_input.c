@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/input/seat.h"
 #include "sway/scene_descriptor.h"
 #include "sway/tree/root.h"

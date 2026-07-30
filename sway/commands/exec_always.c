@@ -11,7 +11,7 @@
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 struct cmd_results *cmd_exec_validate(int argc, char **argv) {

@@ -1,7 +1,7 @@
 #include <string.h>
 #include <strings.h>
 #include "sway/commands.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 
 struct cmd_results *bar_cmd_strip_workspace_numbers(int argc, char **argv) {

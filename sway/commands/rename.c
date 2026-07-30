@@ -2,7 +2,7 @@
 #include <string.h>
 #include <strings.h>
 #include <wlr/types/wlr_ext_workspace_v1.h>
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 #include "sway/commands.h"
 #include "sway/config.h"

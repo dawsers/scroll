@@ -4,7 +4,7 @@
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 static void remove_mark(struct sway_container *con) {

@@ -15,7 +15,7 @@
 #include "sway/scene_descriptor.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
-#include "log.h"
+#include "sway/log.h"
 #include "util.h"
 #if WLR_HAS_XWAYLAND
 #include "sway/xwayland.h"

@@ -2,7 +2,7 @@
 #include <errno.h>
 #include "sway/config.h"
 #include "sway/commands.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 struct cmd_results *input_cmd_xkb_file(int argc, char **argv) {

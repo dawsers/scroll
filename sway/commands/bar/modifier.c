@@ -1,7 +1,7 @@
 #include <string.h>
 #include "sway/commands.h"
 #include "sway/input/keyboard.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 
 struct cmd_results *bar_cmd_modifier(int argc, char **argv) {

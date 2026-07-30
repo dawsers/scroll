@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <strings.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/input/input-manager.h"

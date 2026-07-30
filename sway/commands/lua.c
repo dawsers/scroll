@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <wordexp.h>
 #include "sway/commands.h"
-#include "log.h"
+#include "sway/log.h"
 
 static struct sway_lua_script *find_script(list_t *scripts, const char *name) {
 	for (int i = 0; i < scripts->length; ++i) {

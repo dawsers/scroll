@@ -3,7 +3,7 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/ipc-server.h"
-#include "log.h"
+#include "sway/log.h"
 
 static struct cmd_results *bar_set_hidden_state(struct bar_config *bar,
 		const char *hidden_state) {

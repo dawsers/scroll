@@ -4,8 +4,8 @@
 #include <string.h>
 #include <wlr/types/wlr_buffer.h>
 #include <wlr/interfaces/wlr_buffer.h>
+#include "sway/log.h"
 #include "cairo_util.h"
-#include "log.h"
 #include "pango.h"
 #include "sway/config.h"
 #include "sway/sway_text_node.h"

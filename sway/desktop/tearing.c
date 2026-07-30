@@ -3,7 +3,7 @@
 #include "sway/server.h"
 #include "sway/tree/view.h"
 #include "sway/output.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct sway_tearing_controller {
 	struct wlr_tearing_control_v1 *tearing_control;

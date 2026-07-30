@@ -1,4 +1,4 @@
-#include "log.h"
+#include "sway/log.h"
 #include "sway/commands.h"
 
 struct cmd_results *output_cmd_dpms(int argc, char **argv) {

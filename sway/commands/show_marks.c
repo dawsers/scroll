@@ -4,9 +4,6 @@
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/output.h"
-#include "list.h"
-#include "log.h"
-#include "stringop.h"
 #include "util.h"
 
 static void title_bar_update_iterator(struct sway_container *con, void *data) {

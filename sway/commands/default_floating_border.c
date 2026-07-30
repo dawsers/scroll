@@ -1,4 +1,3 @@
-#include "log.h"
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/tree/container.h"

@@ -7,7 +7,7 @@
 #endif
 #include "sway/commands.h"
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 
 static void create_output(struct wlr_backend *backend, void *data) {
 	bool *done = data;

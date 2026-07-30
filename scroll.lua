@@ -12,6 +12,22 @@ local scroll = {}
 function scroll.log(message) end
 
 ---
+--- Get the maximum verbosity of the logging system
+--- Possible values are "silent", "error", "info", or "debug".
+---
+--- @return string
+function scroll.log_get_verbosity() end
+
+---
+--- Set the maximum verbosity of the logging system
+--- Possible values are "silent", "error", "info", or "debug".
+---
+--- @param verbosity string
+---
+--- @return integer
+function scroll.log_set_verbosity(verbosity) end
+
+---
 --- Sets key = value in the script's state.
 --- This value will be preserved between script runs
 ---

@@ -6,6 +6,7 @@ sway_sources = files(
 	'ipc-json.c',
 	'ipc-server.c',
 	'lock.c',
+	'log.c',
 	'lua.c',
 	'main.c',
 	'realtime.c',
@@ -287,6 +288,6 @@ executable(
 	sway_sources + wl_protos_src,
 	include_directories: [sway_inc],
 	dependencies: sway_deps,
-	link_with: [lib_sway_common],
+	link_with: [lib_sway_common_nolog],
 	install: true
 )

@@ -1,5 +1,5 @@
 #include "debug.h"
-#include "log.h"
+#include "sway/log.h"
 #include <wlr/types/wlr_scene.h>
 #include "sway/tree/view.h"
 #include "sway/scene_descriptor.h"

@@ -1,8 +1,8 @@
 #include <strings.h>
 #include "sway/desktop/animation.h"
 #include "sway/commands.h"
+#include "sway/log.h"
 #include "util.h"
-#include "log.h"
 
 // must be in order for the bsearch
 static const struct cmd_handler animations_config_handlers[] = {

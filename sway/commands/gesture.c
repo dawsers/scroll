@@ -1,7 +1,7 @@
 #include "sway/config.h"
 
 #include "gesture.h"
-#include "log.h"
+#include "sway/log.h"
 #include "stringop.h"
 #include "sway/commands.h"
 #include "util.h"

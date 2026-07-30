@@ -4,7 +4,7 @@
 #include "sway/commands.h"
 #include "sway/tree/container.h"
 #include "sway/output.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct cmd_results *cmd_opacity(int argc, char **argv) {
 	struct cmd_results *error = NULL;

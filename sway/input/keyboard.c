@@ -15,7 +15,7 @@
 #include "sway/input/cursor.h"
 #include "sway/ipc-server.h"
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 
 #if WLR_HAS_SESSION
 #include <wlr/backend/session.h>

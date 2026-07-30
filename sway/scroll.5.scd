@@ -2107,6 +2107,14 @@ This is the current supported API:
 *log(message)*
 	Add _message_ to the DEBUG log of scroll.
 
+*log_get_verbosity()*
+	Gets the current maximum verbosity of the logging system. The result is a
+	string, and can be one of: "silent", "error", "info", "debug" or "invalid".
+
+*log_set_verbosity(verbosity)*
+	Sets the current maximum verbosity of the logging system. _verbosity_ is a
+	string, and can be one of: "silent", "error", "info", or "debug".
+
 *state_set_value(state, key, value)*
 	Sets _key_ = _value_ in the script's _state_. This value will be preserved
 	between script runs.

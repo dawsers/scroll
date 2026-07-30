@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <wlr/types/wlr_session_lock_v1.h>
 #include <wlr/types/wlr_scene.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/input/cursor.h"
 #include "sway/input/keyboard.h"
 #include "sway/input/seat.h"

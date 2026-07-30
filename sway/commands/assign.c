@@ -2,8 +2,8 @@
 #include <string.h>
 #include "sway/commands.h"
 #include "sway/criteria.h"
+#include "sway/log.h"
 #include "list.h"
-#include "log.h"
 #include "stringop.h"
 
 struct cmd_results *cmd_assign(int argc, char **argv) {

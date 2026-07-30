@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "sway/server.h"
-#include "log.h"
+#include "sway/log.h"
 
 static void child_fork_callback(void) {
 	struct sched_param param;

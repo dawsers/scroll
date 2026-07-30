@@ -8,7 +8,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xdg_shell.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/cursor.h"

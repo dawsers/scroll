@@ -3,7 +3,7 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "list.h"
-#include "log.h"
+#include "sway/log.h"
 
 struct cmd_results *bar_cmd_tray_output(int argc, char **argv) {
 #if HAVE_TRAY

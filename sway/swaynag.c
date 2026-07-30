@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include "log.h"
+#include "sway/log.h"
 #include "sway/server.h"
 #include "sway/swaynag.h"
 #include "util.h"
