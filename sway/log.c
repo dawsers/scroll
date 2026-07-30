@@ -82,10 +82,10 @@ static void sway_log_stderr(sway_log_importance_t verbosity, const char *fmt,
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	timespec_sub(&ts, &ts, &start_time);
 
-	char *time = format_str("%02d:%02d:%02d.%03ld ", (int)(ts.tv_sec / 60 / 60),
+	char *time = format_str("%02d:%02d:%02d.%03ld", (int)(ts.tv_sec / 60 / 60),
 		(int)(ts.tv_sec / 60 % 60), (int)(ts.tv_sec % 60),
 		ts.tv_nsec / 1000000);
-	fprintf(stderr, "%s", time);
+	fprintf(stderr, "%s ", time);
 
 	unsigned c = (verbosity < SWAY_LOG_IMPORTANCE_LAST) ? verbosity :
 		SWAY_LOG_IMPORTANCE_LAST - 1;
