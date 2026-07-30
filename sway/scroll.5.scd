@@ -2123,8 +2123,15 @@ This is the current supported API:
 	Returns the value stored at _key_ in the script's _state_.
 
 *ipc_send(id, data)*
-	Encodes and sends _data_ (a Lua table as complex as needed) as a json object
+	Encodes and sends _data_ (a Lua table as complex as needed) as a JSON object
 	through the IPC interface, generating a new LUA event with the string _id_.
+
+*json_to_lua(json)*
+	Returns a table with the elements of _json_, which is a string containing
+	a JSON object.
+
+*lua_to_json(table)*
+	Returns a string containing the JSON representation of the Lua _table_.
 
 *command(container|workspace|nil, command)*
 	Execute a scroll _command_ with _container_ or _workspace_ as its context.
@@ -2136,7 +2143,7 @@ scroll.command(nil, "set_size v 0.33333333; move left nomode")
 ```
 
 *exec_process(command)*
-	Execute a _command_ in the shell. If successful, tt will return a table
+	Execute a _command_ in the shell. If successful, it will return a table
 	with members _pid_ (the	PID of the running _command_), and _activation_token_
 	(the activation token generated when running the command).
 

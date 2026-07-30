@@ -8,7 +8,6 @@ local scroll = {}
 ---
 --- @param message string
 ---
---- @return integer
 function scroll.log(message) end
 
 ---
@@ -24,7 +23,6 @@ function scroll.log_get_verbosity() end
 ---
 --- @param verbosity string
 ---
---- @return integer
 function scroll.log_set_verbosity(verbosity) end
 
 ---
@@ -35,7 +33,6 @@ function scroll.log_set_verbosity(verbosity) end
 --- @param key string
 --- @param value any
 ---
---- @return integer
 function scroll.state_set_value(state, key, value) end
 
 ---
@@ -55,8 +52,24 @@ function scroll.state_get_value(state, key) end
 --- @param id string
 --- @param data table
 ---
---- @return integer
 function scroll.ipc_send(id, data) end
+
+---
+--- Returns a table with the elements of `json` which is a string containing
+--- a JSON object.
+---
+--- @param json string
+---
+--- @return table|nil
+function scroll.json_to_lua(json) end
+
+---
+--- Returns a string containing the JSON representation of table.
+---
+--- @param table table
+---
+--- @return string|nil
+function scroll.lua_to_json(table) end
 
 ---
 --- Execute a scroll command with container or workspace as its context.
@@ -70,6 +83,18 @@ function scroll.ipc_send(id, data) end
 ---
 --- @return string[]
 function scroll.command(context, command) end
+
+---
+--- Execute a command in the shell.
+---
+--- If successful, it will teturn a table with members:
+---   `pid`: the PID of the running command
+---   `activation_token`: the activation token generated when running the command.
+---
+--- @param command string
+---
+--- @return table
+function scroll.exec_process(command) end
 
 ---
 --- Returns the type of the given node as a string.
@@ -186,7 +211,6 @@ function scroll.view_get_urgent(view) end
 --- @param view integer
 --- @param urgent boolean
 ---
---- @return integer
 function scroll.view_set_urgent(view, urgent) end
 
 ---
@@ -211,7 +235,6 @@ function scroll.view_get_tag(view) end
 ---
 --- @param view integer
 ---
---- @return number
 function scroll.view_close(view) end
 
 ---
@@ -219,7 +242,6 @@ function scroll.view_close(view) end
 ---
 --- @param container integer
 ---
---- @return integer
 function scroll.container_set_focus(container) end
 
 ---
@@ -429,7 +451,6 @@ function scroll.container_get_id(container) end
 ---
 --- @param workspace integer
 ---
---- @return integer
 function scroll.workspace_set_focus(workspace) end
 
 ---
@@ -487,7 +508,6 @@ function scroll.workspace_get_mode(workspace) end
 --- @param workspace integer
 --- @param modifiers table
 ---
---- @return integer
 function scroll.workspace_set_mode(workspace, modifiers) end
 
 ---
@@ -505,7 +525,6 @@ function scroll.workspace_get_layout_type(workspace) end
 --- @param workspace integer
 --- @param layout_type string
 ---
---- @return integer
 function scroll.workspace_set_layout_type(workspace, layout_type) end
 
 ---
@@ -603,7 +622,6 @@ function scroll.scratchpad_get_containers() end
 ---
 --- @param container integer
 ---
---- @return integer
 function scroll.scratchpad_show(container) end
 
 ---
@@ -611,7 +629,6 @@ function scroll.scratchpad_show(container) end
 ---
 --- @param container integer
 ---
---- @return integer
 function scroll.scratchpad_hide(container) end
 
 ---
@@ -666,7 +683,6 @@ function scroll.add_callback(event, cb_func, cb_data) end
 ---
 --- @param id lightuserdata
 ---
---- @return integer
 function scroll.remove_callback(id) end
 
 ---

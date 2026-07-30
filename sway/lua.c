@@ -276,6 +276,75 @@ static int scroll_ipc_send(lua_State *L) {
 	return 0;
 }
 
+static void json_to_lua(lua_State *L, struct json_object *obj) {
+	if (!obj) {
+		lua_pushnil(L);
+		return;
+	}
+	switch (json_object_get_type(obj)) {
+	case json_type_null:
+		lua_pushnil(L);
+		break;
+	case json_type_boolean:
+		lua_pushboolean(L, json_object_get_boolean(obj));
+		break;
+	case json_type_double:
+		lua_pushnumber(L, json_object_get_double(obj));
+		break;
+	case json_type_int:
+		lua_pushinteger(L, json_object_get_int64(obj));
+		break;
+	case json_type_string:
+		lua_pushstring(L, json_object_get_string(obj));
+		break;
+	case json_type_array: {
+		size_t len = json_object_array_length(obj);
+		lua_createtable(L, (int)len, 0);
+		for (size_t i = 0; i < len; ++i) {
+			json_to_lua(L, json_object_array_get_idx(obj, i));
+			lua_rawseti(L, -2, (int)(i + 1));
+		}
+		break;
+	}
+	case json_type_object: {
+		lua_createtable(L, 0, 0);
+		json_object_object_foreach(obj, key, val) {
+			json_to_lua(L, val);
+			lua_setfield(L, -2, key);
+		}
+		break;
+	}
+	}
+}
+
+static int scroll_json_to_lua(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc < 1) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const char *str = luaL_checkstring(L, -1);
+	if (str) {
+		struct json_object *obj = json_tokener_parse(str);
+		json_to_lua(L, obj);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+static int scroll_lua_to_json(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc < 1 || !lua_istable(L, 1)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	json_object *obj = lua_table_to_json(L, 1);
+	const char *json_string = json_object_to_json_string(obj);
+	lua_pushstring(L, json_string);
+	json_object_put(obj);
+	return 1;
+}
 
 static int scroll_command_error(lua_State *L, const char *error) {
 	lua_createtable(L, 1, 0);
@@ -322,8 +391,6 @@ static void lua_push_node(lua_State *L, struct sway_node *node) {
 		lua_pushnil(L);
 	}
 }
-
-
 
 static int scroll_node_get_type(lua_State *L) {
 	int argc = lua_gettop(L);
@@ -1844,6 +1911,8 @@ static luaL_Reg const scroll_lib[] = {
 	{ "state_set_value", scroll_state_set_value },
 	{ "state_get_value", scroll_state_get_value },
 	{ "ipc_send", scroll_ipc_send },
+	{ "json_to_lua", scroll_json_to_lua },
+	{ "lua_to_json", scroll_lua_to_json },
 	{ "exec_process", scroll_exec_process },
 	{ "command", scroll_command },
 	{ "node_get_type", scroll_node_get_type },
