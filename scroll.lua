@@ -72,6 +72,19 @@ function scroll.json_to_lua(json) end
 function scroll.lua_to_json(table) end
 
 ---
+--- Returns true/false if animations are enabled/disabled.
+---
+--- @return boolean
+function scroll.animations_get_enabled() end
+
+---
+--- Enable/Disable animations if enable is true/false.
+---
+--- @param enable boolean
+---
+function scroll.animations_set_enabled(enable) end
+
+---
 --- Execute a scroll command with container or workspace as its context.
 --- If the first paramenter is nil, use the default context, usually the
 --- focused container or workspace.

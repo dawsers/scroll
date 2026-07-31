@@ -346,6 +346,23 @@ static int scroll_lua_to_json(lua_State *L) {
 	return 1;
 }
 
+static int scroll_animations_get_enabled(lua_State *L) {
+	struct sway_animation_config *config = animation_get_config();
+	lua_pushboolean(L, config->enabled);
+	return 1;
+}
+
+static int scroll_animations_set_enabled(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc < 1) {
+		return 0;
+	}
+	bool enabled = lua_toboolean(L, 1);
+	struct sway_animation_config *config = animation_get_config();
+	config->enabled = enabled;
+	return 0;
+}
+
 static int scroll_command_error(lua_State *L, const char *error) {
 	lua_createtable(L, 1, 0);
 	lua_pushstring(L, error);
@@ -1913,6 +1930,8 @@ static luaL_Reg const scroll_lib[] = {
 	{ "ipc_send", scroll_ipc_send },
 	{ "json_to_lua", scroll_json_to_lua },
 	{ "lua_to_json", scroll_lua_to_json },
+	{ "animations_get_enabled", scroll_animations_get_enabled },
+	{ "animations_set_enabled", scroll_animations_set_enabled },
 	{ "exec_process", scroll_exec_process },
 	{ "command", scroll_command },
 	{ "node_get_type", scroll_node_get_type },

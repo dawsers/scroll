@@ -2133,6 +2133,12 @@ This is the current supported API:
 *lua_to_json(table)*
 	Returns a string containing the JSON representation of the Lua _table_.
 
+*animations_get_enabled()*
+	Returns _true_/_false_ if animations are enabled/disabled.
+
+*animations_set_enabled(enable)*
+	Enable/Disable animations if _enable_ is _true_/_false_.
+
 *command(container|workspace|nil, command)*
 	Execute a scroll _command_ with _container_ or _workspace_ as its context.
 	If the first parameter is _nil_, use the default context, usually the
