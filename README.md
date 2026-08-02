@@ -2190,7 +2190,7 @@ insertion location.
 `kill focused|unfocused|all`, `send_shortcut`, `workspace swap`,
 `workspace split`, `xdg_activation_force`
 
-`lua` and API
+`lua`, `lua_eval` and API
 
 ### scroll-bar
 
@@ -2200,9 +2200,9 @@ Colors: `scroller`
 
 ### IPC Protocol
 
-commands: `GET_SCROLLER`, `GET_TRAILS`, `GET_SPACES`, `GET_BINDINGS`
+commands: `GET_SCROLLER`, `GET_TRAILS`, `GET_SPACES`, `GET_BINDINGS`, `LUA_EVAL`
 
-events: `scroller`, `trails`, `lua`
+events: `log`, `scroller`, `trails`, `lua`
 
 `fully_visible` attribute for windows
 
@@ -2214,6 +2214,11 @@ events: `scroller`, `trails`, `lua`
 ### scrollnag
 
 `--edge center`, `--width`
+
+### scrollmsg
+
+`--lua_repl`, `get_scroller`, `get_trails`, `get_spaces`, `get_bindings`,
+`lua_eval`
 
 ## Testing
 

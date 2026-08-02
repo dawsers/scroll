@@ -1888,6 +1888,34 @@ lua $lua_scripts/workspace_exec.lua 1 exec kitty
 	Otherwise, they are resolved against the initial working directory of the
 	compositor. See *LUA* for details about the API and some examples.
 
+*lua_eval* <name> <lua_code> [<args...>]
+	Executes _lua_code_ with optional _args_. _name_ is a unique name assigned
+	to the code so its local state is unique to it. See *LUA* for details about
+	the API and some examples.
+
+	Example (in your config):
+
+```
+set $lua_floating_script '\
+    local args, state = ...\
+    local shadow = args[2]\
+    local border = args[1]\
+    \
+    local function on_float(cbview, _)\
+      local container = scroll.view_get_container(cbview)\
+      if scroll.container_get_floating(container) then\
+        scroll.command(container, "decoration shadow " .. shadow .. "; border " .. border)\
+      else\
+        scroll.command(container, "decoration shadow false; border pixel")\
+      end\
+    end\
+    \
+    scroll.add_callback("view_float", on_float, nil)\
+'
+
+lua_eval floating $lua_floating_script normal true
+```
+
 # CRITERIA
 
 A criteria is a string in the form of, for example:
