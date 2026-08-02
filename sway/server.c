@@ -336,6 +336,8 @@ bool server_init(struct sway_server *server) {
 		sway_log(SWAY_ERROR, "Failed to create gamma control manager");
 		return false;
 	}
+
+	server->gamma_control_manager_v1->fallback_gamma_size = 512;
 	wlr_scene_set_gamma_control_manager_v1(root->root_scene,
 		server->gamma_control_manager_v1);
 
