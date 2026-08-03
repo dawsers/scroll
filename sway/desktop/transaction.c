@@ -1927,7 +1927,6 @@ static void transaction_progress(void) {
 	}
 	set_animation_data(server.queued_transaction);
 	transaction_apply(server.queued_transaction);
-	animation_end();
 	arrange_root(root);
 	struct sway_animation_config *animation_config = animation_get_config();
 	bool animation_enabled = animation_config->enabled;
@@ -2108,6 +2107,7 @@ static void transaction_commit_pending(void) {
 	struct sway_transaction *transaction = server.pending_transaction;
 	server.pending_transaction = NULL;
 	server.queued_transaction = transaction;
+	animation_end();
 	animation_set_transaction(transaction);
 	transaction_commit(transaction);
 	transaction_progress();

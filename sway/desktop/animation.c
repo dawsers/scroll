@@ -505,8 +505,8 @@ static void schedule_frames() {
 		struct sway_output *output = root->outputs->items[i];
 		int idx = get_animating_index(output->wlr_output);
 		if (idx >= 0) {
-			wlr_output_schedule_frame(output->wlr_output);
 			output->animation_id = animation->id;
+			wlr_output_schedule_frame(output->wlr_output);
 		}
 	}
 }
