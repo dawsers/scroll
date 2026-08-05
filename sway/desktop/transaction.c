@@ -2100,6 +2100,8 @@ static void transaction_commit(struct sway_transaction *transaction) {
 	}
 }
 
+static void save_animation_variables();
+
 static void transaction_commit_pending(void) {
 	if (server.queued_transaction) {
 		return;
@@ -2108,6 +2110,7 @@ static void transaction_commit_pending(void) {
 	server.pending_transaction = NULL;
 	server.queued_transaction = transaction;
 	animation_end();
+	save_animation_variables();
 	animation_set_transaction(transaction);
 	transaction_commit(transaction);
 	transaction_progress();
@@ -2335,8 +2338,6 @@ static void _transaction_commit_dirty(bool server_request, bool delayed,
 		return;
 	}
 
-	save_animation_variables();
-
 	transaction_commit_pending();
 }
 
@@ -2356,8 +2357,6 @@ void transaction_commit_delayed(void) {
 	if (!server.pending_transaction) {
 		return;
 	}
-	save_animation_variables();
-
 	transaction_commit_pending();
 }
 

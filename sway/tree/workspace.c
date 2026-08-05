@@ -847,9 +847,6 @@ static void workspace_switch_callback_end(void *callback_data) {
 	list_free_items_and_destroy(data->from_containers);
 	list_free_items_and_destroy(data->to_containers);
 	free(data);
-
-	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
-	transaction_commit_dirty();
 }
 
 static bool workspace_switch_output_fullscreen_filter(struct sway_output *output,

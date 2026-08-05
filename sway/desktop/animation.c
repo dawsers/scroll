@@ -625,6 +625,10 @@ static void stop_animation() {
 }
 
 void animation_end() {
+	if (animation->animating) {
+		animation->time = 1.0;
+		animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
+	}
 	stop_animation();
 }
 
