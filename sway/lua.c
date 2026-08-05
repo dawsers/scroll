@@ -327,6 +327,7 @@ static int scroll_json_to_lua(lua_State *L) {
 	if (str) {
 		struct json_object *obj = json_tokener_parse(str);
 		json_to_lua(L, obj);
+		json_object_put(obj);
 	} else {
 		lua_pushnil(L);
 	}
