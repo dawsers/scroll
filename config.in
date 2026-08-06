@@ -281,6 +281,20 @@ bindsym $mod+Shift+backslash mode "wssplit"
     # workspace_labels_background #00000000
     # workspace_labels_height 30
     bindsym --no-repeat $mod+tab scale_workspace overview
+    # You could, instead, use the --release flag to activate a temporary overview
+    # mode while pressing $mod:
+    # mode "overview" {
+    #     bindsym --release $mod scale_workspace overview; mode "default"
+    #
+    #     bindsym --no-repeat $mod+$left focus left
+    #     bindsym --no-repeat $mod+$down focus down
+    #     bindsym --no-repeat $mod+$up focus up
+    #     bindsym --no-repeat $mod+$right focus right
+    #     bindsym --no-repeat $mod+home focus beginning
+    #     bindsym --no-repeat $mod+end focus end
+    # }
+    # bindsym --no-repeat $mod+tab scale_workspace overview; mode "overview"
+
     bindsym --whole-window button8 scale_workspace overview
     bindsym --no-repeat $mod+Shift+tab scale_workspaces toggle
 

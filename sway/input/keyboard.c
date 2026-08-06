@@ -430,6 +430,79 @@ static struct wlr_input_method_keyboard_grab_v2 *keyboard_get_im_grab(
 	return input_method->keyboard_grab;
 }
 
+static void key_history_add_pressed_key(struct sway_keyboard *keyboard, uint32_t keycode) {
+	if (keyboard->wlr->group) {
+		return;
+	}
+	for (int i = 0; i < keyboard->key_history->length; ++i) {
+		struct sway_key_press_history *key = keyboard->key_history->items[i];
+		if (key->code == keycode) {
+			if (!key->pressed) {
+				key->pressed = true;
+			}
+			return;
+		}
+	}
+	struct sway_key_press_history *key = calloc(1, sizeof(struct sway_key_press_history));
+	key->code = keycode;
+	key->pressed = true;
+	list_add(keyboard->key_history, key);
+}
+
+static void key_history_release_key(struct sway_keyboard *keyboard, uint32_t keycode) {
+	if (keyboard->wlr->group) {
+		return;
+	}
+	for (int i = 0; i < keyboard->key_history->length; ++i) {
+		struct sway_key_press_history *key = keyboard->key_history->items[i];
+		if (key->code == keycode) {
+			if (key->pressed) {
+				key->pressed = false;
+			}
+			return;
+		}
+	}
+}
+
+static void key_history_compact(struct sway_keyboard *keyboard) {
+	if (keyboard->wlr->group) {
+		return;
+	}
+	int i = 0;
+	while (i < keyboard->key_history->length) {
+		struct sway_key_press_history *key = keyboard->key_history->items[i];
+		if (!key->pressed) {
+			list_del(keyboard->key_history, i);
+			free(key);
+		} else {
+			++i;
+		}
+	}
+}
+
+static void key_history_reset(struct sway_keyboard *keyboard) {
+	if (keyboard->wlr->group) {
+		return;
+	}
+	for (int i = 0; i < keyboard->key_history->length; ++i) {
+		free(keyboard->key_history->items[i]);
+	}
+	list_reset(keyboard->key_history);
+}
+
+static bool key_history_is_released(struct sway_keyboard *keyboard) {
+	if (keyboard->wlr->group) {
+		return false;
+	}
+	for (int i = 0; i < keyboard->key_history->length; ++i) {
+		struct sway_key_press_history *key = keyboard->key_history->items[i];
+		if (key->pressed) {
+			return false;
+		}
+	}
+	return true;
+}
+
 static void handle_key_event(struct sway_keyboard *keyboard,
 		struct wlr_keyboard_key_event *event) {
 	struct sway_seat *seat = keyboard->seat_device->sway_seat;
@@ -465,6 +538,12 @@ static void handle_key_event(struct sway_keyboard *keyboard,
 		return;
 	}
 
+	if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+		key_history_add_pressed_key(keyboard, keyinfo.keycode);
+	} else if (event->state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+		key_history_release_key(keyboard, keyinfo.keycode);
+	}
+
 	bool handled = false;
 	// Identify active release binding
 	struct sway_binding *binding_released = NULL;
@@ -484,17 +563,22 @@ static void handle_key_event(struct sway_keyboard *keyboard,
 			shortcuts_inhibited, device_identifier,
 			exact_identifier, keyboard->effective_layout);
 
-	// Execute stored release binding once no longer active
-	if (keyboard->held_binding && binding_released != keyboard->held_binding &&
-			event->state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-		seat_execute_command(seat, keyboard->held_binding);
-		handled = true;
-	}
-	if (binding_released != keyboard->held_binding) {
-		keyboard->held_binding = NULL;
-	}
 	if (binding_released && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+		// We triggered a new key binding, update key history
+		key_history_compact(keyboard);
 		keyboard->held_binding = binding_released;
+	}
+	if (event->state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+		// If all keys in history have been released, execute command
+		if (keyboard->held_binding && key_history_is_released(keyboard)) {
+			key_history_reset(keyboard);
+			seat_execute_command(seat, keyboard->held_binding);
+			keyboard->held_binding = NULL;
+			handled = true;
+		} else if (binding_released) {
+			key_history_compact(keyboard);
+			keyboard->held_binding = binding_released;
+		}
 	}
 
 	// Identify and execute active pressed binding
@@ -531,6 +615,8 @@ static void handle_key_event(struct sway_keyboard *keyboard,
 	}
 
 	if (binding) {
+		key_history_reset(keyboard);
+		keyboard->held_binding = NULL;
 		seat_execute_command(seat, binding);
 		handled = true;
 	}
@@ -762,6 +848,8 @@ struct sway_keyboard *sway_keyboard_create(struct sway_seat *seat,
 
 	keyboard->key_repeat_source = wl_event_loop_add_timer(server.wl_event_loop,
 			handle_keyboard_repeat, keyboard);
+
+	keyboard->key_history = create_list();
 
 	return keyboard;
 }
@@ -1157,6 +1245,7 @@ void sway_keyboard_destroy(struct sway_keyboard *keyboard) {
 	wl_list_remove(&keyboard->keyboard_modifiers.link);
 	sway_keyboard_disarm_key_repeat(keyboard);
 	wl_event_source_remove(keyboard->key_repeat_source);
+	list_free_items_and_destroy(keyboard->key_history);
 	free(keyboard);
 }
 

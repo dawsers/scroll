@@ -1203,6 +1203,29 @@ runtime.
 		# Execute firefox when alt, shift, and f are pressed together
 		bindsym Mod1+Shift+f exec firefox
 ```
+	Note:
+
+	scroll treats the _--release_ flag differently than sway. In sway, releasing
+	the main key triggers the binding, while in scroll you need to release the
+	main key and modifiers, in any order, for the binding to activate. This
+	lets you do things like in the following example. You press $mod+tab to
+	enter overview mode. Then you can release tab and use the arrow keys to
+	navigate windows, and as soon as you release the $mod key, you exit
+	overview mode.
+
+```
+	mode "overview" {
+		bindsym --release $mod scale_workspace overview; mode "default"
+
+		bindsym --no-repeat $mod+left focus left
+		bindsym --no-repeat $mod+down focus down
+		bindsym --no-repeat $mod+up focus up
+		bindsym --no-repeat $mod+right focus right
+		bindsym --no-repeat $mod+home focus beginning
+		bindsym --no-repeat $mod+end focus end
+	}
+	bindsym --no-repeat $mod+tab scale_workspace overview; mode "overview"
+```
 
 *bindcode* [--whole-window] [--border] [--exclude-titlebar] [--release] \
 [--locked] [--input-device=<device>] [--no-warn] [--no-repeat] [--inhibited] \

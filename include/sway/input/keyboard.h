@@ -51,6 +51,11 @@ struct sway_shortcut_state {
 typedef void (*sway_keyboard_cb_fn)(struct sway_keyboard *keyboard,
 		struct wlr_keyboard_key_event *event, void *data);
 
+struct sway_key_press_history {
+	uint32_t code;
+	bool pressed;
+};
+
 struct sway_keyboard {
 	struct sway_seat_device *seat_device;
 	struct wlr_keyboard *wlr;
@@ -69,6 +74,7 @@ struct sway_keyboard {
 	struct sway_shortcut_state state_keycodes;
 	struct sway_shortcut_state state_pressed_sent;
 	struct sway_binding *held_binding;
+	list_t *key_history; // struct sway_key_press_history
 
 	struct wl_event_source *key_repeat_source;
 	struct sway_binding *repeat_binding;
