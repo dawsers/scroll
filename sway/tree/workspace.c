@@ -1038,6 +1038,11 @@ static bool workspace_switch_down(struct sway_output *output,
 
 static void animate_workspace_switch(struct sway_output *output,
 		struct sway_workspace *from, struct sway_workspace *to) {
+	// Ensure pending re-arrangements that happenened in the background and
+	// haven't been committed to the scene graph, happen when activating the
+	// workspace.
+	transaction_commit_dirty();
+
 	if (output->workspace_switching && !animation_animating()) {
 		sway_log(SWAY_ERROR, "Switching workspace twice in the same transaction");
 		return;
