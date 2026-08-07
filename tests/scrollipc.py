@@ -11,6 +11,7 @@ IPC_COMMAND: int = 0
 IPC_GET_WORKSPACES: int = 1
 IPC_SUBSCRIBE: int = 2
 IPC_GET_VERSION: int = 7
+IPC_MINT_ACTIVATION_TOKEN: int = 102
 
 
 class ScrollIPC:
@@ -68,3 +69,12 @@ class ScrollIPC:
         if reply_type != 4:
             raise ValueError(f"Unexpected reply type: {reply_type}")
         return json.loads(reply_payload)
+
+    def mint_activation_token(self) -> dict:
+        self._send(IPC_MINT_ACTIVATION_TOKEN, "")
+        reply_type, reply_payload = self._recv()
+        if reply_type != IPC_MINT_ACTIVATION_TOKEN:
+            raise ValueError(f"Unexpected reply type: {reply_type}")
+        result = json.loads(reply_payload)
+        assert isinstance(result, dict)
+        return result
