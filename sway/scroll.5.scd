@@ -2190,10 +2190,16 @@ This is the current supported API:
 *animations_set_enabled(enable)*
 	Enable/Disable animations if _enable_ is _true_/_false_.
 
-*command(container|workspace|nil, command)*
+*command(container|workspace|nil, command, [opts])*
 	Execute a scroll _command_ with _container_ or _workspace_ as its context.
-	If the first parameter is _nil_, use the default context, usually the
+	If the first argument is _nil_, use the default context, usually the
 	focused container or workspace. Returns all the results/errors in an array.
+
+	_opts_: optional table argument with extra options for the command:
+
+	_opts.commit_: boolean, default _true_. Decides whether to commit the
+		command transaction immediately. It is safer, but it will first end
+		the previous, ongoing animation.
 
 ```
 scroll.command(nil, "set_size v 0.33333333; move left nomode")

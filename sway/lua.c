@@ -364,11 +364,8 @@ static int scroll_animations_set_enabled(lua_State *L) {
 	return 0;
 }
 
-static int scroll_command_error(lua_State *L, const char *error) {
-	lua_createtable(L, 1, 0);
-	lua_pushstring(L, error);
-	lua_rawseti(L, -2, 1);
-	return 1;
+static void command_error(lua_State *L, const char *error) {
+	luaL_error(L, "%s", error);
 }
 
 static struct sway_node *lua_to_node(lua_State *L, int index) {
@@ -430,11 +427,32 @@ void lua_command_data_create() {
 	config->lua.command_data = luaL_ref(config->lua.state, LUA_REGISTRYINDEX);
 }
 
-// scroll.command(container|workspace|nil, command)
+// scroll.command(container|workspace|nil, command, [opts])
 static int scroll_command(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc < 2) {
-		return scroll_command_error(L, "Error: scroll_command() received a wrong number of parameters");
+		command_error(L, "Error: scroll.command() received a wrong number of arguments");
+		return 0;
+	}
+	bool commit;
+	if (argc >= 3) {
+		if (!lua_istable(L, 3)) {
+			command_error(L, "Error: scroll.command() 'opts' argument should be a table");
+			return 0;
+		}
+		int ctype = lua_getfield(L, 3, "commit");
+		if (ctype == LUA_TBOOLEAN) {
+			commit = lua_toboolean(L, 4);
+		} else if (ctype == LUA_TNIL){
+			commit = true;
+		} else {
+			lua_pop(L, 1);
+			command_error(L, "Error: scroll.command() 'opts.commit' argument should be boolean");
+			return 0;
+		}
+		lua_pop(L, 1);
+	} else {
+		commit = true;
 	}
 	struct sway_container *container = NULL;
 	struct sway_workspace *workspace = NULL;
@@ -443,19 +461,22 @@ static int scroll_command(lua_State *L) {
 	if (!lua_isnil(L, 1)) {
 		struct sway_node *node = lua_to_node(L, 1);
 		if (!node) {
-			return scroll_command_error(L, "Error: scroll_command() received a parameter that does not exist or is invalid");
+			command_error(L, "Error: scroll.command() received an argument that does not exist or is invalid");
+			return 0;
 		}
 		if (node->type == N_CONTAINER) {
 			container = node->sway_container;
 			if (!container->view) {
-				return scroll_command_error(L, "Error: scroll_command() received a container parameter that does not have a view");
+				command_error(L, "Error: scroll.command() received a container argument that does not have a view");
+				return 0;
 			}
 			seat = NULL;
 		} else if (node->type == N_WORKSPACE) {
 			workspace = node->sway_workspace;
 			seat_set_raw_focus(seat, &workspace->node);
 		} else {
-			return scroll_command_error(L, "Error: scroll_command() received a parameter that is neither a container nor a workspace");
+			command_error(L, "Error: scroll.command() received an argument that is neither a container nor a workspace");
+			return 0;
 		}
 	} else {
 		seat = NULL;
@@ -478,7 +499,9 @@ static int scroll_command(lua_State *L) {
 	}
 	list_free_items_and_destroy(results);
 	free(cmd);
-	transaction_commit_dirty();
+	if (commit) {
+		transaction_commit_dirty();
+	}
 
 	// Lua callback: "command_end" only applies to commands executed from Lua scripts
 	for (int i = 0; i < config->lua.cbs_command_end->length; ++i) {

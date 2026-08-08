@@ -86,16 +86,20 @@ function scroll.animations_set_enabled(enable) end
 
 ---
 --- Execute a scroll command with container or workspace as its context.
---- If the first paramenter is nil, use the default context, usually the
+--- If the first argument is nil, use the default context, usually the
 --- focused container or workspace.
+--- opts is a table with optional parameters:
+---   commit: true(default)|false Commit the transaction, possibly ending
+---           ongoing animations
 ---
 --- Returns all the results/errors in an array.
 ---
 --- @param context integer|nil
 --- @param command string
+--- @param opts table
 ---
 --- @return string[]
-function scroll.command(context, command) end
+function scroll.command(context, command, opts) end
 
 ---
 --- Execute a command in the shell.
