@@ -342,6 +342,7 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 			new_geo->x != view->geometry.x ||
 			new_geo->y != view->geometry.y;
 
+	bool commit_client_transaction = false;
 	if (new_size) {
 		// The client changed its surface size in this commit. For floating
 		// containers, we resize the container to match. For tiling containers,
@@ -354,7 +355,7 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 				wlr_xdg_toplevel_set_size(view->wlr_xdg_toplevel, view->geometry.width,
 					view->geometry.height);
 			}
-			transaction_commit_dirty_client();
+			commit_client_transaction = true;
 		}
 
 		view_center_and_clip_surface(view);
@@ -371,6 +372,11 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 		if (view->saved_surface_tree && !successful) {
 			view_send_frame_done(view);
 		}
+	}
+
+	// Commit here, so the floating window move animation isn't interrupted.
+	if (commit_client_transaction) {
+		transaction_commit_dirty_client();
 	}
 }
 

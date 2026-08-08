@@ -535,6 +535,7 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 	bool new_size = new_geo.width != view->geometry.width ||
 			new_geo.height != view->geometry.height;
 
+	bool commit_client_transaction = false;
 	if (new_size) {
 		// The client changed its surface size in this commit. For floating
 		// containers, we resize the container to match. For tiling containers,
@@ -542,7 +543,7 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 		memcpy(&view->geometry, &new_geo, sizeof(struct wlr_box));
 		if (container_is_floating(view->container)) {
 			view_update_size(view);
-			transaction_commit_dirty_client();
+			commit_client_transaction = true;
 		}
 
 		view_center_and_clip_surface(view);
@@ -559,6 +560,11 @@ static void handle_commit(struct wl_listener *listener, void *data) {
 		if (view->saved_surface_tree && !successful) {
 			view_send_frame_done(view);
 		}
+	}
+
+	// Commit here, so the floating window move animation isn't interrupted.
+	if (commit_client_transaction) {
+		transaction_commit_dirty_client();
 	}
 }
 
