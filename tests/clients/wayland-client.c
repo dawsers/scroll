@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <wayland-client.h>
 #include "xdg-shell-client-protocol.h"
+#include "xdg-activation-v1-client-protocol.h"
 
 struct client_state {
 	struct wl_display *display;
@@ -14,6 +15,7 @@ struct client_state {
 	struct wl_compositor *compositor;
 	struct wl_shm *shm;
 	struct xdg_wm_base *xdg_wm_base;
+	struct xdg_activation_v1 *xdg_activation;
 	struct wl_surface *surface;
 	struct xdg_surface *xdg_surface;
 	struct xdg_toplevel *xdg_toplevel;
@@ -42,6 +44,8 @@ static void registry_global(void *data, struct wl_registry *registry, uint32_t n
 	} else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
 		state->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
 		xdg_wm_base_add_listener(state->xdg_wm_base, &xdg_wm_base_listener, state);
+	} else if (strcmp(interface, xdg_activation_v1_interface.name) == 0) {
+		state->xdg_activation = wl_registry_bind(registry, name, &xdg_activation_v1_interface, 1);
 	}
 }
 static void registry_global_remove(void *data, struct wl_registry *registry, uint32_t name) {}
@@ -129,6 +133,11 @@ int main(int argc, char **argv) {
 
 	wl_surface_commit(state.surface);
 
+	char *token = getenv("XDG_ACTIVATION_TOKEN");
+	if (token && state.xdg_activation) {
+		xdg_activation_v1_activate(state.xdg_activation, token, state.surface);
+	}
+
 	while (wl_display_dispatch(state.display) != -1) {
 		// Loop
 	}
@@ -141,6 +150,8 @@ int main(int argc, char **argv) {
 	if (state.compositor) wl_compositor_destroy(state.compositor);
 	if (state.shm) wl_shm_destroy(state.shm);
 	if (state.xdg_wm_base) xdg_wm_base_destroy(state.xdg_wm_base);
+	if (state.xdg_activation)
+		xdg_activation_v1_destroy(state.xdg_activation);
 	if (state.registry) wl_registry_destroy(state.registry);
 	if (state.display) wl_display_disconnect(state.display);
 

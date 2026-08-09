@@ -48,6 +48,19 @@ int main(int argc, char **argv) {
 						class_len, class_str);
 	free(class_str);
 
+	char *startup_id = getenv("DESKTOP_STARTUP_ID");
+	if (startup_id) {
+		xcb_intern_atom_cookie_t cookie =
+				xcb_intern_atom(conn, 0, strlen("_NET_STARTUP_ID"), "_NET_STARTUP_ID");
+		xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookie, NULL);
+		if (reply) {
+			xcb_atom_t startup_id_atom = reply->atom;
+			free(reply);
+			xcb_change_property(conn, XCB_PROP_MODE_REPLACE, win, startup_id_atom, XCB_ATOM_STRING,
+					8, strlen(startup_id), startup_id);
+		}
+	}
+
 	xcb_map_window(conn, win);
 	xcb_flush(conn);
 
