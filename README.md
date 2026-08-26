@@ -265,11 +265,11 @@ org.freedesktop.impl.portal.Inhibit=none
 
 Users are required to use their own authorization protocol - `lxqt-policykit-agent` or `polkit-gnome` can provide this fallback.
 
-Prefearebly, by enabling it in `~/.config/scroll/config`, with the following:
+Preferably, by enabling it in `~/.config/scroll/config`, example:
 
 ```
 exec_always /usr/bin/lxqt-policykit-agent
-````
+```
 
 or
 
