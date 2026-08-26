@@ -261,6 +261,21 @@ org.freedesktop.impl.portal.ScreenCast=wlr
 org.freedesktop.impl.portal.Screenshot=wlr
 org.freedesktop.impl.portal.Inhibit=none
 ```
+### Authorization protocol
+
+Users are required to use their own authorization protocol - `lxqt-policykit-agent` or `polkit-gnome` can provide this fallback.
+
+Prefearebly, by enabling it in `~/.config/scroll/config`, with the following:
+
+```
+exec_always /usr/bin/lxqt-policykit-agent
+````
+
+or
+
+```
+exec_always /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+```
 
 ### Environment Variables
 
@@ -275,7 +290,7 @@ also work with *scroll*.
 
 *scroll* doesn't let you define environment variables in its configuration
 file, so you will need to set them before launching *scroll*, for example in
-your `~/.bash_profile` or the one your shell uses.
+your `~/.bash_profile`, `~/.profile` or the one your shell uses.
 
 ``` sh
 # Sway/Scroll needs its environment variables here
