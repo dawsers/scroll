@@ -853,6 +853,9 @@ static void workspace_switch_callback_end(void *callback_data) {
 static bool workspace_switch_output_fullscreen_filter(struct sway_output *output,
 		void *filter_data) {
 	struct workspace_switch_data *data = filter_data;
+	if (output != data->output) {
+		return false;
+	}
 	return (data->from && data->from->current.fullscreen) ||
 		(data->to && data->to->current.fullscreen);
 }
