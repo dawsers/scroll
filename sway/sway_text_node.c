@@ -66,6 +66,12 @@ static int get_text_width(struct sway_text_node *props) {
 	return max(width, 0);
 }
 
+static void text_node_set_dest_size(struct text_buffer *buffer) {
+	wlr_scene_buffer_set_dest_size(buffer->buffer_node,
+		get_text_width(&buffer->props) * buffer->content_scale,
+		buffer->props.height * buffer->content_scale);
+}
+
 static void render_backing_buffer(struct text_buffer *buffer) {
 	if (!buffer->visible) {
 		return;
@@ -214,8 +220,7 @@ static void text_calc_size(struct text_buffer *buffer) {
 	get_text_size(c, config->font_description, &props->width, NULL,
 		&props->baseline, 1, props->pango_markup, "%s", buffer->text);
 
-	wlr_scene_buffer_set_dest_size(buffer->buffer_node,
-		get_text_width(props), props->height);
+	text_node_set_dest_size(buffer);
 out:
 	cairo_destroy(c);
 }
@@ -294,8 +299,7 @@ void sway_text_node_set_max_width(struct sway_text_node *node, int max_width) {
 		return;
 	}
 	buffer->props.max_width = max_width;
-	wlr_scene_buffer_set_dest_size(buffer->buffer_node,
-		get_text_width(&buffer->props), buffer->props.height);
+	text_node_set_dest_size(buffer);
 	render_backing_buffer(buffer);
 }
 
@@ -310,9 +314,10 @@ void sway_text_node_set_background(struct sway_text_node *node, float background
 
 void sway_text_node_scale(struct sway_text_node *node, double scale) {
 	struct text_buffer *buffer = wl_container_of(node, buffer, props);
+	if (buffer->content_scale == scale) {
+		return;
+	}
 	buffer->content_scale = scale;
-	wlr_scene_buffer_set_dest_size(buffer->buffer_node,
-		get_text_width(&buffer->props) * scale, buffer->props.height * scale);
+	text_node_set_dest_size(buffer);
 	render_backing_buffer(buffer);
 }
-
