@@ -19,6 +19,11 @@ struct movement_amount {
 	enum movement_unit unit;
 };
 
+// Nanoseconds timer
+struct sway_timer {
+	struct timespec begin;
+};
+
 /*
  * Parse units such as "px" or "ppt"
  */
@@ -124,6 +129,26 @@ void timespec_from_nsec(struct timespec *r, int64_t nsec);
  */
 void timespec_sub(struct timespec *r, const struct timespec *a,
 		const struct timespec *b);
+
+/*
+ * Starts/resets timer
+ */
+void timer_start(struct sway_timer *timer);
+
+/*
+ * Returns the nanoseconds elapsed since the timer was started
+ */
+int64_t timer_diff(struct sway_timer *timer);
+
+/*
+ * Starts/resets CPU cycle counter
+ */
+void cpu_counter_start(uint64_t *counter);
+
+/*
+ * Returns the number of CPU cycles since the timer was started
+ */
+uint64_t cpu_counter_diff(uint64_t *counter);
 
 /**
  * Parse an array and return a list

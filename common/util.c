@@ -10,6 +10,17 @@
 #include "log.h"
 #include "list.h"
 #include "util.h"
+#if defined(__x86_64__) || defined(__i386__)
+#include <x86intrin.h>
+#define CPU_TIMESTAMP() __rdtsc()
+#else
+static uint64_t cpu_timestamp_fallback(void) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (uint64_t)ts.tv_sec * 1000000000ull + ts.tv_nsec;
+}
+#define CPU_TIMSTAMP() cpu_timestamp_fallback()
+#endif
 
 int wrap(int i, int max) {
 	return ((i % max) + max) % max;
@@ -258,6 +269,25 @@ void timespec_sub(struct timespec *r, const struct timespec *a,
 		r->tv_sec--;
 		r->tv_nsec += NSEC_PER_SEC;
 	}
+}
+
+void timer_start(struct sway_timer *timer) {
+	clock_gettime(CLOCK_MONOTONIC, &timer->begin);
+}
+
+int64_t timer_diff(struct sway_timer *timer) {
+	struct timespec diff, now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	timespec_sub(&diff, &now, &timer->begin);
+	return timespec_to_nsec(&diff);
+}
+
+void cpu_counter_start(uint64_t *counter) {
+	*counter = CPU_TIMESTAMP();
+}
+
+uint64_t cpu_counter_diff(uint64_t *counter) {
+	return CPU_TIMESTAMP() - *counter;
 }
 
 static void skip_spaces(char **head) {
