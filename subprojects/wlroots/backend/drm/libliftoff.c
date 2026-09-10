@@ -158,12 +158,11 @@ static bool set_plane_props(struct wlr_drm_plane *plane,
 		return false;
 	}
 
-	// The src_* properties are in 16.16 fixed point
 	return liftoff_layer_set_property(layer, "zpos", zpos) == 0 &&
-		liftoff_layer_set_property(layer, "SRC_X", src_box->x * (1 << 16)) == 0 &&
-		liftoff_layer_set_property(layer, "SRC_Y", src_box->y * (1 << 16)) == 0 &&
-		liftoff_layer_set_property(layer, "SRC_W", src_box->width * (1 << 16)) == 0 &&
-		liftoff_layer_set_property(layer, "SRC_H", src_box->height * (1 << 16)) == 0 &&
+		liftoff_layer_set_property(layer, "SRC_X", to_fp16(src_box->x)) == 0 &&
+		liftoff_layer_set_property(layer, "SRC_Y", to_fp16(src_box->y)) == 0 &&
+		liftoff_layer_set_property(layer, "SRC_W", to_fp16(src_box->width)) == 0 &&
+		liftoff_layer_set_property(layer, "SRC_H", to_fp16(src_box->height)) == 0 &&
 		liftoff_layer_set_property(layer, "CRTC_X", dst_box->x) == 0 &&
 		liftoff_layer_set_property(layer, "CRTC_Y", dst_box->y) == 0 &&
 		liftoff_layer_set_property(layer, "CRTC_W", dst_box->width) == 0 &&
@@ -173,10 +172,6 @@ static bool set_plane_props(struct wlr_drm_plane *plane,
 
 static bool disable_plane(struct wlr_drm_plane *plane) {
 	return liftoff_layer_set_property(plane->liftoff_layer, "FB_ID", 0) == 0;
-}
-
-static uint64_t to_fp16(double v) {
-	return (uint64_t)round(v * (1 << 16));
 }
 
 static bool set_layer_props(struct wlr_drm_backend *drm,

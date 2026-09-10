@@ -450,10 +450,14 @@ static void plane_disable(struct atomic *atom, struct wlr_drm_plane *plane) {
 	atomic_add(atom, id, props->crtc_id, 0);
 }
 
+/** Convert to 16.16 fixed point for SRC_* plane properties */
+uint64_t to_fp16(double v) {
+	return (uint64_t)round(v * (1 << 16));
+}
+
 static void set_plane_props(struct atomic *atom, struct wlr_drm_backend *drm,
 		struct wlr_drm_plane *plane, struct wlr_drm_fb *fb, uint32_t crtc_id,
-		const struct wlr_box *dst_box,
-		const struct wlr_fbox *src_box) {
+		const struct wlr_box *dst_box, const struct wlr_fbox *src_box) {
 	uint32_t id = plane->id;
 	const struct wlr_drm_plane_props *props = &plane->props;
 
@@ -464,10 +468,10 @@ static void set_plane_props(struct atomic *atom, struct wlr_drm_backend *drm,
 	}
 
 	// The src_* properties are in 16.16 fixed point
-	atomic_add(atom, id, props->src_x, src_box->x * (1 << 16));
-	atomic_add(atom, id, props->src_y, src_box->y * (1 << 16));
-	atomic_add(atom, id, props->src_w, src_box->width * (1 << 16));
-	atomic_add(atom, id, props->src_h, src_box->height * (1 << 16));
+	atomic_add(atom, id, props->src_x, to_fp16(src_box->x));
+	atomic_add(atom, id, props->src_y, to_fp16(src_box->y));
+	atomic_add(atom, id, props->src_w, to_fp16(src_box->width));
+	atomic_add(atom, id, props->src_h, to_fp16(src_box->height));
 	atomic_add(atom, id, props->fb_id, fb->id);
 	atomic_add(atom, id, props->crtc_id, crtc_id);
 	atomic_add(atom, id, props->crtc_x, dst_box->x);
