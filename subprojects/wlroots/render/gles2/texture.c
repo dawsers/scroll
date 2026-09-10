@@ -67,6 +67,12 @@ static bool gles2_texture_update_from_buffer(struct wlr_texture *wlr_texture,
 		wlr_buffer_end_data_ptr_access(buffer);
 		return false;
 	}
+	if (stride % drm_fmt->bytes_per_block != 0) {
+		wlr_buffer_end_data_ptr_access(buffer);
+		wlr_log(WLR_DEBUG, "Cannot update texture: stride %zu must be "
+			"divisible by %d bytes-per-block", stride, drm_fmt->bytes_per_block);
+		return false;
+	}
 
 	struct wlr_egl_context prev_ctx;
 	wlr_egl_make_current(texture->renderer->egl, &prev_ctx);
@@ -338,6 +344,11 @@ static struct wlr_texture *gles2_texture_from_pixels(
 	}
 
 	if (!pixel_format_info_check_stride(drm_fmt, stride, width)) {
+		return NULL;
+	}
+	if (stride % drm_fmt->bytes_per_block != 0) {
+		wlr_log(WLR_DEBUG, "Cannot upload texture: stride %"PRIu32" must be "
+			"divisible by %d bytes-per-block", stride, drm_fmt->bytes_per_block);
 		return NULL;
 	}
 

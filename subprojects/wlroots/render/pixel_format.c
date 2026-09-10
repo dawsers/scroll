@@ -60,12 +60,6 @@ int32_t pixel_format_info_min_stride(const struct wlr_pixel_format_info *fmt, in
 bool pixel_format_info_check_stride(const struct wlr_pixel_format_info *fmt,
 		int32_t stride, int32_t width) {
 	int32_t bytes_per_block = (int32_t)fmt->bytes_per_block;
-	if (stride % bytes_per_block != 0) {
-		wlr_log(WLR_DEBUG, "Invalid stride %d (incompatible with %d "
-			"bytes-per-block)", stride, bytes_per_block);
-		return false;
-	}
-
 	int32_t min_stride = pixel_format_info_min_stride(fmt, width);
 	if (min_stride <= 0) {
 		return false;
