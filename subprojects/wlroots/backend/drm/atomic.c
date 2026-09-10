@@ -517,15 +517,19 @@ bool drm_atomic_connector_set_props(drmModeAtomicReq *req,
 
 	ok = ok && atomic_add(req, conn->id, conn->props.crtc_id,
 		state->active ? conn->crtc->id : 0);
-	if (modeset && state->active && conn->props.link_status != 0) {
+	if (!state->active) {
+		return ok;
+	}
+
+	if (modeset && conn->props.link_status != 0) {
 		ok = ok && atomic_add(req, conn->id, conn->props.link_status,
 			DRM_MODE_LINK_STATUS_GOOD);
 	}
-	if (state->active && conn->props.content_type != 0) {
+	if (conn->props.content_type != 0) {
 		ok = ok && atomic_add(req, conn->id, conn->props.content_type,
 			DRM_MODE_CONTENT_TYPE_GRAPHICS);
 	}
-	if (modeset && state->active && conn->props.max_bpc != 0 && conn->max_bpc_bounds[1] != 0) {
+	if (modeset && conn->props.max_bpc != 0 && conn->max_bpc_bounds[1] != 0) {
 		ok = ok && atomic_add(req, conn->id, conn->props.max_bpc, pick_max_bpc(conn, state->primary_fb));
 	}
 	if (conn->props.colorspace != 0) {
