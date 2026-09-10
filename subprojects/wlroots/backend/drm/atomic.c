@@ -510,6 +510,34 @@ static bool set_color_encoding_and_range(drmModeAtomicReq *req,
 	return atomic_add(req, id, props->color_range, color_range);
 }
 
+bool drm_atomic_connector_set_props(drmModeAtomicReq *req,
+		const struct wlr_drm_connector_state *state, bool modeset) {
+	struct wlr_drm_connector *conn = state->connector;
+	bool ok = true;
+
+	ok = ok && atomic_add(req, conn->id, conn->props.crtc_id,
+		state->active ? conn->crtc->id : 0);
+	if (modeset && state->active && conn->props.link_status != 0) {
+		ok = ok && atomic_add(req, conn->id, conn->props.link_status,
+			DRM_MODE_LINK_STATUS_GOOD);
+	}
+	if (state->active && conn->props.content_type != 0) {
+		ok = ok && atomic_add(req, conn->id, conn->props.content_type,
+			DRM_MODE_CONTENT_TYPE_GRAPHICS);
+	}
+	if (modeset && state->active && conn->props.max_bpc != 0 && conn->max_bpc_bounds[1] != 0) {
+		ok = ok && atomic_add(req, conn->id, conn->props.max_bpc, pick_max_bpc(conn, state->primary_fb));
+	}
+	if (conn->props.colorspace != 0) {
+		ok = ok && atomic_add(req, conn->id, conn->props.colorspace, state->colorspace);
+	}
+	if (conn->props.hdr_output_metadata != 0) {
+		ok = ok && atomic_add(req, conn->id, conn->props.hdr_output_metadata, state->hdr_output_metadata);
+	}
+
+	return ok;
+}
+
 static bool supports_cursor_hotspots(const struct wlr_drm_plane *plane) {
 	return plane->props.hotspot_x && plane->props.hotspot_y;
 }
@@ -533,24 +561,7 @@ static bool atomic_connector_add(drmModeAtomicReq *req,
 	bool active = state->active;
 	bool ok = true;
 
-	ok = ok && atomic_add(req, conn->id, conn->props.crtc_id, active ? crtc->id : 0);
-	if (modeset && active && conn->props.link_status != 0) {
-		ok = ok && atomic_add(req, conn->id, conn->props.link_status,
-			DRM_MODE_LINK_STATUS_GOOD);
-	}
-	if (active && conn->props.content_type != 0) {
-		ok = ok && atomic_add(req, conn->id, conn->props.content_type,
-			DRM_MODE_CONTENT_TYPE_GRAPHICS);
-	}
-	if (modeset && active && conn->props.max_bpc != 0 && conn->max_bpc_bounds[1] != 0) {
-		ok = ok && atomic_add(req, conn->id, conn->props.max_bpc, pick_max_bpc(conn, state->primary_fb));
-	}
-	if (conn->props.colorspace != 0) {
-		ok = ok && atomic_add(req, conn->id, conn->props.colorspace, state->colorspace);
-	}
-	if (conn->props.hdr_output_metadata != 0) {
-		ok = ok && atomic_add(req, conn->id, conn->props.hdr_output_metadata, state->hdr_output_metadata);
-	}
+	ok = ok && drm_atomic_connector_set_props(req, state, modeset);
 	ok = ok && atomic_add(req, crtc->id, crtc->props.mode_id, state->mode_id);
 	ok = ok && atomic_add(req, crtc->id, crtc->props.active, active);
 	if (active) {

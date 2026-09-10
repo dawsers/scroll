@@ -305,17 +305,7 @@ static bool add_connector(drmModeAtomicReq *req,
 	bool active = state->active;
 	bool ok = true;
 
-	ok = ok && add_prop(req, conn->id, conn->props.crtc_id,
-		active ? crtc->id : 0);
-	if (modeset && active && conn->props.link_status != 0) {
-		ok = ok && add_prop(req, conn->id, conn->props.link_status,
-			DRM_MODE_LINK_STATUS_GOOD);
-	}
-	if (active && conn->props.content_type != 0) {
-		ok = ok && add_prop(req, conn->id, conn->props.content_type,
-			DRM_MODE_CONTENT_TYPE_GRAPHICS);
-	}
-	// TODO: set "max bpc"
+	ok = ok && drm_atomic_connector_set_props(req, state, modeset);
 	ok = ok &&
 		add_prop(req, crtc->id, crtc->props.mode_id, state->mode_id) &&
 		add_prop(req, crtc->id, crtc->props.active, active);
