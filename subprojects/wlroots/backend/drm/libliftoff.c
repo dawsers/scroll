@@ -141,15 +141,6 @@ static void finish(struct wlr_drm_backend *drm) {
 	liftoff_device_destroy(drm->liftoff);
 }
 
-static bool add_prop(drmModeAtomicReq *req, uint32_t obj,
-		uint32_t prop, uint64_t val) {
-	if (drmModeAtomicAddProperty(req, obj, prop, val) < 0) {
-		wlr_log_errno(WLR_ERROR, "drmModeAtomicAddProperty failed");
-		return false;
-	}
-	return true;
-}
-
 static bool set_plane_props(struct wlr_drm_plane *plane,
 		struct liftoff_layer *layer, struct wlr_drm_fb *fb, uint64_t zpos,
 		const struct wlr_box *dst_box, const struct wlr_fbox *src_box) {
@@ -306,17 +297,8 @@ static bool add_connector(drmModeAtomicReq *req,
 	bool ok = true;
 
 	ok = ok && drm_atomic_connector_set_props(req, state, modeset);
-	ok = ok &&
-		add_prop(req, crtc->id, crtc->props.mode_id, state->mode_id) &&
-		add_prop(req, crtc->id, crtc->props.active, active);
+	ok = ok && drm_atomic_crtc_set_props(req, state);
 	if (active) {
-		if (crtc->props.gamma_lut != 0) {
-			ok = ok && add_prop(req, crtc->id, crtc->props.gamma_lut, state->gamma_lut);
-		}
-		if (crtc->props.vrr_enabled != 0) {
-			ok = ok && add_prop(req, crtc->id, crtc->props.vrr_enabled, state->vrr_enabled);
-		}
-
 		ok = ok && set_plane_props(crtc->primary,
 			crtc->primary->liftoff_layer, state->primary_fb, 0,
 			&state->primary_viewport.dst_box,

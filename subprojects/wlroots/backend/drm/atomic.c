@@ -538,6 +538,27 @@ bool drm_atomic_connector_set_props(drmModeAtomicReq *req,
 	return ok;
 }
 
+bool drm_atomic_crtc_set_props(drmModeAtomicReq *req,
+		const struct wlr_drm_connector_state *state) {
+	struct wlr_drm_crtc *crtc = state->connector->crtc;
+	bool ok = true;
+
+	ok = ok && atomic_add(req, crtc->id, crtc->props.mode_id, state->mode_id);
+	ok = ok && atomic_add(req, crtc->id, crtc->props.active, state->active);
+	if (!state->active) {
+		return ok;
+	}
+
+	if (crtc->props.gamma_lut != 0) {
+		ok = ok && atomic_add(req, crtc->id, crtc->props.gamma_lut, state->gamma_lut);
+	}
+	if (crtc->props.vrr_enabled != 0) {
+		ok = ok && atomic_add(req, crtc->id, crtc->props.vrr_enabled, state->vrr_enabled);
+	}
+
+	return ok;
+}
+
 static bool supports_cursor_hotspots(const struct wlr_drm_plane *plane) {
 	return plane->props.hotspot_x && plane->props.hotspot_y;
 }
@@ -562,16 +583,8 @@ static bool atomic_connector_add(drmModeAtomicReq *req,
 	bool ok = true;
 
 	ok = ok && drm_atomic_connector_set_props(req, state, modeset);
-	ok = ok && atomic_add(req, crtc->id, crtc->props.mode_id, state->mode_id);
-	ok = ok && atomic_add(req, crtc->id, crtc->props.active, active);
+	ok = ok && drm_atomic_crtc_set_props(req, state);
 	if (active) {
-		if (crtc->props.gamma_lut != 0) {
-			ok = ok && atomic_add(req, crtc->id, crtc->props.gamma_lut, state->gamma_lut);
-		}
-		if (crtc->props.vrr_enabled != 0) {
-			ok = ok && atomic_add(req, crtc->id, crtc->props.vrr_enabled, state->vrr_enabled);
-		}
-
 		ok = ok && set_plane_props(req, drm, crtc->primary, state->primary_fb, crtc->id,
 			&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
 		if (state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION) {
