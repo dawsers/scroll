@@ -477,8 +477,8 @@ static void set_plane_props(struct atomic *atom, struct wlr_drm_backend *drm,
 }
 
 static void set_color_encoding_and_range(struct atomic *atom,
-		struct wlr_drm_backend *drm, struct wlr_drm_plane *plane,
-		enum wlr_color_encoding encoding, enum wlr_color_range range) {
+		struct wlr_drm_plane *plane, enum wlr_color_encoding encoding,
+		enum wlr_color_range range) {
 	uint32_t id = plane->id;
 	const struct wlr_drm_plane_props *props = &plane->props;
 
@@ -586,7 +586,7 @@ static void atomic_connector_add(struct atomic *atom,
 		set_plane_props(atom, drm, crtc->primary, state->primary_fb, crtc->id,
 			&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
 		if (state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION) {
-			set_color_encoding_and_range(atom, drm, crtc->primary,
+			set_color_encoding_and_range(atom, crtc->primary,
 				state->base->color_encoding, state->base->color_range);
 		}
 		if (crtc->primary->props.fb_damage_clips != 0) {
