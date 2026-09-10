@@ -262,15 +262,19 @@ static struct wlr_render_pass *gles2_begin_buffer_pass(struct wlr_renderer *wlr_
 
 	struct wlr_gles2_buffer *buffer = gles2_buffer_get_or_create(renderer, wlr_buffer);
 	if (!buffer) {
-		return NULL;
+		goto error;
 	}
 
 	struct wlr_gles2_render_pass *pass = begin_gles2_buffer_pass(buffer,
 		&prev_ctx, timer, options->signal_timeline, options->signal_point);
 	if (!pass) {
-		return NULL;
+		goto error;
 	}
 	return &pass->base;
+
+error:
+	wlr_egl_restore_context(&prev_ctx);
+	return NULL;
 }
 
 GLuint wlr_gles2_renderer_get_buffer_fbo(struct wlr_renderer *wlr_renderer,
