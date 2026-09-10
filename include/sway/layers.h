@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
+#include "sway/desktop/animation.h"
 #include "sway/tree/view.h"
 
 struct sway_layer_surface_state {
@@ -34,11 +35,8 @@ struct sway_layer_surface {
 	struct sway_layer_surface_state current;
 	struct sway_layer_surface_state pending;
 
-	// Animation variables
 	struct {
-		double x0, y0, w0, h0;
-		double xt, yt, wt, ht;
-		double w1, h1;
+		struct sway_animated_variable x, y, w, h;
 	} animation;
 };
 
@@ -56,11 +54,8 @@ struct sway_layer_popup {
 	struct sway_layer_surface_state current;
 	struct sway_layer_surface_state pending;
 
-	// Animation variables
 	struct {
-		double x0, y0, w0, h0;
-		double xt, yt, wt, ht;
-		double w1, h1;
+		struct sway_animated_variable x, y, w, h;
 	} animation;
 };
 

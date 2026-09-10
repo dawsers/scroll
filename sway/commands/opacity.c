@@ -25,9 +25,9 @@ struct cmd_results *cmd_opacity(int argc, char **argv) {
 	}
 
 	if (!strcasecmp(argv[0], "plus")) {
-		val = con->pending.alpha + val;
+		val = fminf(con->pending.alpha + val, 1.0f);
 	} else if (!strcasecmp(argv[0], "minus")) {
-		val = con->pending.alpha - val;
+		val = fmaxf(con->pending.alpha - val, 0.0f);
 	} else if (argc > 1 && strcasecmp(argv[0], "set")) {
 		return cmd_results_new(CMD_INVALID,
 				"Expected: set|plus|minus <0..1>: %s", argv[0]);
@@ -37,9 +37,8 @@ struct cmd_results *cmd_opacity(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "opacity value out of bounds");
 	}
 
-	con->pending.alpha = con->current.alpha = val;
-	output_configure_scene(NULL, &con->scene_tree->node, 1);
-	container_update(con);
+	con->pending.alpha = val;
+	node_set_dirty(&con->node);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

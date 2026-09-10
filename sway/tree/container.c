@@ -27,7 +27,6 @@
 #include "list.h"
 #include "pango.h"
 #include "stringop.h"
-#include "util.h"
 
 static struct wlr_scene_decoration *alloc_decoration_node(struct wlr_scene_tree *parent,
 		struct sway_view *view, bool *failed) {
@@ -47,6 +46,27 @@ static struct wlr_scene_decoration *alloc_decoration_node(struct wlr_scene_tree 
 		*failed = true;
 	}
 	return decoration;
+}
+
+static void container_init_animation_variables(struct sway_container *con) {
+	animated_variable_init(&con->animation.x, con->current.x,
+		ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&con->animation.y, con->current.y,
+		ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&con->animation.w, con->current.width,
+		ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&con->animation.h, con->current.height,
+		ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&con->animation.a, con->current.alpha,
+		ANIMATED_VARIABLE_FADE);
+}
+
+static void container_release_animation_variables(struct sway_container *con) {
+	animated_variable_release(&con->animation.x);
+	animated_variable_release(&con->animation.y);
+	animated_variable_release(&con->animation.w);
+	animated_variable_release(&con->animation.h);
+	animated_variable_release(&con->animation.a);
 }
 
 struct sway_container *container_create(struct sway_view *view) {
@@ -112,6 +132,7 @@ struct sway_container *container_create(struct sway_view *view) {
 	c->pending.layout = L_NONE;
 	c->view = view;
 	c->current.alpha = c->pending.alpha = 1.0f;
+	container_init_animation_variables(c);
 	c->marks = create_list();
 	c->toggle_size.single = false;
 	c->toggle_size.state = TOGGLE_STATE_NONE;
@@ -488,6 +509,7 @@ void container_destroy(struct sway_container *con) {
 				"which is still referenced by transactions")) {
 		return;
 	}
+	container_release_animation_variables(con);
 	node_map_remove(&con->node);
 	free(con->title);
 	free(con->formatted_title);

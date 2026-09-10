@@ -295,9 +295,6 @@ list_t *execute_command(char *_exec, struct sway_seat *seat,
 
 	config->handler_context.seat = seat;
 
-	// Make all transactions belonging to this command be delayed
-	bool old_delay = server.delay_transaction;
-	server.delay_transaction = true;
 	do {
 		for (; isspace(*head); ++head) {}
 		// Extract criteria (valid for this command list only).
@@ -399,7 +396,6 @@ list_t *execute_command(char *_exec, struct sway_seat *seat,
 		free_argv(argc, argv);
 	} while(head);
 cleanup:
-	server.delay_transaction = old_delay;
 	free(exec);
 	list_free(containers);
 	return res_list;

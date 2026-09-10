@@ -5,6 +5,7 @@
 #include <wlr/types/wlr_compositor.h>
 #include "list.h"
 #include <wlr/types/wlr_scene.h>
+#include "sway/desktop/animation.h"
 #include "sway/tree/node.h"
 
 struct sway_view;
@@ -173,12 +174,8 @@ struct sway_container {
 		double x, y, width, height;	// for floating containers
 	} toggle_size;
 
-	// Animation variables
 	struct {
-		double x0, y0, w0, h0;
-		double xt, yt, wt, ht;
-		double w1, h1;
-		float a0, at, a1;
+		struct sway_animated_variable x, y, w, h, a;
 	} animation;
 
 	bool selected;	// for selection/cut/move

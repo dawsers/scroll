@@ -955,7 +955,11 @@ static int scroll_container_get_opacity(lua_State *L) {
 		lua_pushnil(L);
 		return 1;
 	}
-	lua_pushnumber(L, container->pending.alpha);
+	double alpha = container->pending.alpha;
+	if (container->animation.a.animating) {
+		alpha = container->animation.a.xt;
+	}
+	lua_pushnumber(L, alpha);
 	return 1;
 }
 
@@ -1098,9 +1102,9 @@ static int scroll_container_get_animated_geometry(lua_State *L) {
 	}
 
 	if (animation_animating()) {
-		lua_pushnumber(L, container->animation.wt);
+		lua_pushnumber(L, container->animation.w.xt);
 		lua_setfield(L, -2, "width");
-		lua_pushnumber(L, container->animation.ht);
+		lua_pushnumber(L, container->animation.h.xt);
 		lua_setfield(L, -2, "height");
 	} else {
 		lua_pushnumber(L, container->current.width);

@@ -301,6 +301,7 @@ void output_disable(struct sway_output *output) {
 
 	destroy_layers(output);
 	output_evacuate(output);
+	animation_output_gone(output->wlr_output);
 	sway_ext_workspace_output_disable(output);
 }
 

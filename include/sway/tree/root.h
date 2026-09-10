@@ -24,9 +24,6 @@ typedef bool (*sway_root_container_filter_func_t)(
 // Filters used during arrange_root()
 struct sway_root_filters {
 	bool reset;	// the filter can be reset
-	// Function to trigger free animation instead of the default
-	sway_root_workspace_filter_func_t free_animation_activation_filter;
-	void *free_animation_activation_filter_data;
 	// Decide whether to add this output to the scene graph (SG)
 	sway_root_output_filter_func_t output_filter;
 	void *output_filter_data;

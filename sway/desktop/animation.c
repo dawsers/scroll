@@ -1,10 +1,12 @@
 #include <math.h>
+#include <string.h>
 #include "sway/desktop/animation.h"
 #include "sway/server.h"
 #include "sway/log.h"
 #include <wayland-server-core.h>
 #include "sway/output.h"
 #include "sway/desktop/transaction.h"
+#include "util.h"
 
 #define NDIM 2
 
@@ -19,10 +21,21 @@ struct bezier_curve {
 	bool simple;
 };
 
-struct curve_cache {
+// Curves of an animation are queried once per animated variable and frame, and
+// variables usually share curves and are evaluated for the same input values,
+// so we cache some values.
+#define ANIMATION_CURVE_CACHE_SIZE 4
+
+struct curve_cache_entry {
 	bool valid;
+	uint64_t used;
 	double u;
-	double t, x, y, scale;
+	double t, x, y;
+};
+
+struct curve_cache {
+	struct curve_cache_entry entry[ANIMATION_CURVE_CACHE_SIZE];
+	uint64_t clock;
 };
 
 struct sway_animation_curve {
@@ -135,19 +148,7 @@ static void create_lookup_length(struct bezier_curve *curve) {
 
 struct sway_animation_path {
 	bool enabled;
-	int idx;
 	list_t *curves;	// struct sway_animation_curve
-};
-
-enum sway_animation_enabled {
-	ANIMATION_ENABLED_UNKNOWN,
-	ANIMATION_ENABLED_YES,
-	ANIMATION_ENABLED_NO,
-};
-
-struct sway_animation_output {
-	struct wlr_output *output;
-	enum sway_animation_enabled enabled;
 };
 
 struct sway_animation_state {
@@ -159,17 +160,26 @@ struct sway_animation_state {
 
 struct sway_animation {
 	bool animating;
-	struct timespec start;
-	double time;
+	bool finishing;  // running the last step of an animation
+	bool stepping;  // we are within an animation step (frame)
+	// Outputs taking part in the animation have this animation_id. Resetting
+	// outputs simply changes this id, so the output's values become invalid.
+	// It is never 0; 0 is also an animation_id of outputs that are not animating.
 	uint32_t id;
+	// Time of the current step, common to all animated variables
+	struct timespec frame_time;
 
-	list_t *outputs;
 	// The output currently being rendered. When set, animation callbacks
 	// should only process this output instead of looping all outputs.
 	// NULL when called from a non-per-output path (e.g. disabled animations).
 	struct wlr_output *current_output;
 	struct sway_animation_state current, pending;
-	list_t * transactions;  // struct sway_animation_state *
+	// List of transactions that cannot be destroyed yet because they hold some
+	// animating node.
+	list_t * transactions;  // struct sway_transaction
+
+	// List of active animated variables
+	struct wl_list variables;  // sway_animated_variable.link
 
 	struct sway_animation_callbacks default_callbacks;
 
@@ -178,11 +188,16 @@ struct sway_animation {
 
 static struct sway_animation *animation = NULL;
 
+static void animated_variables_clear(void);
+static void animated_variable_restart(struct sway_animated_variable *av,
+		struct timespec *now);
+
 void animation_create() {
 	if (animation) {
 		animation_destroy();
 	}
 	animation = calloc(1, sizeof(struct sway_animation));
+	wl_list_init(&animation->variables);
 
 	animation->config.enabled = true;
 	animation->config.style = ANIM_STYLE_SCALE;
@@ -212,15 +227,21 @@ void animation_create() {
 	animation->config.fade_out = NULL;
 
 	config_default_animation_callbacks();
+	animation->id = 1;
+	animation->current.type = ANIMATION_DEFAULT;
 	animation->current.callbacks = animation->default_callbacks;
 	animation->pending.callbacks = animation->default_callbacks;
-	animation->outputs = create_list();
+	animation->transactions = create_list();
 }
 
 void animation_destroy() {
 	if (animation) {
-		if (animation->outputs) {
-			list_free_items_and_destroy(animation->outputs);
+		animated_variables_clear();
+		if (animation->transactions) {
+			for (int i = 0; i < animation->transactions->length; ++i) {
+				transaction_destroy(animation->transactions->items[i]);
+			}
+			list_free(animation->transactions);
 		}
 		if (animation->config.fade_out) {
 			animation_path_destroy(animation->config.fade_out);
@@ -270,23 +291,29 @@ struct sway_animation_config *animation_get_config() {
 	return &animation->config;
 }
 
-static int get_animating_index(struct wlr_output *output) {
-	for (int i = 0; i < animation->outputs->length; ++i) {
-		struct sway_animation_output *o = animation->outputs->items[i];
-		if (o->output == output) {
-			return i;
-		}
+// Does this output take part in the animation?
+static bool is_animating_output(struct wlr_output *output) {
+	struct sway_output *sway_output = output ? output->data : NULL;
+	return sway_output && sway_output->animation_id == animation->id;
+}
+
+static int animating_output_count(void) {
+	int count = 0;
+	for (int i = 0; i < root->outputs->length; ++i) {
+		struct sway_output *output = root->outputs->items[i];
+		count += is_animating_output(output->wlr_output);
 	}
-	return -1;
+	return count;
 }
 
 struct sway_animation_path *animation_path_create(bool enabled) {
 	struct sway_animation_path *path = malloc(sizeof(struct sway_animation_path));
 	path->enabled = enabled;
-	path->idx = 0;
 	path->curves = create_list();
 	return path;
 }
+
+static void destroy_animation_curve(struct sway_animation_curve *curve);
 
 void animation_path_destroy(struct sway_animation_path *path) {
 	if (path) {
@@ -304,12 +331,7 @@ void animation_path_add_curve(struct sway_animation_path *path,
 	list_add(path->curves, curve);
 }
 
-static struct sway_animation_path *get_path();
-
-bool animation_path_enabled(enum sway_animation_type anim) {
-	if (!animation->config.enabled || config->reloading) {
-		return false;
-	}
+static struct sway_animation_path *path_for_type(enum sway_animation_type anim) {
 	struct sway_animation_path *path;
 	switch (anim) {
 	case ANIMATION_DISABLED:
@@ -346,14 +368,30 @@ bool animation_path_enabled(enum sway_animation_type anim) {
 	case ANIMATION_LAYER_SHELL:
 		path = animation->config.layer_shell;
 		break;
+	case ANIMATION_FADE_IN:
+		path = animation->config.fade_in;
+		break;
+	case ANIMATION_FADE_OUT:
+		path = animation->config.fade_out;
+		break;
 	}
 	if (!path) {
 		path = animation->config.anim_default;
 	}
-	if (path->enabled) {
-		return true;
+	return path;
+}
+
+// The enabled path of an animation type, or NULL if it is not animated.
+static struct sway_animation_path *enabled_path_for_type(enum sway_animation_type anim) {
+	if (!animation->config.enabled || config->reloading) {
+		return NULL;
 	}
-	return false;
+	struct sway_animation_path *path = path_for_type(anim);
+	return path->enabled ? path : NULL;
+}
+
+bool animation_path_enabled(enum sway_animation_type anim) {
+	return enabled_path_for_type(anim) != NULL;
 }
 
 // Set the callbacks for the pending animation
@@ -384,104 +422,21 @@ void animation_set_transaction(struct sway_transaction *transaction) {
 	animation->pending.transaction = transaction;
 }
 
-#if 0
-const char *animation_get_type(struct sway_animation_path *path) {
-	if (path == animation->config.anim_disabled) {
-		return "disabled";
-	} else if (path == animation->config.anim_default) {
-		return "default";
-	} else if (path == animation->config.window_open) {
-		return "window_open";
-	} else if (path == animation->config.window_size) {
-		return "window_size";
-	} else if (path == animation->config.window_move) {
-		return "window_move";
-	} else if (path == animation->config.window_move_float) {
-		return "window_move_float";
-	} else if (path == animation->config.window_fullscreen) {
-		return "window_fullscreen";
-	} else if (path == animation->config.workspace_switch) {
-		return "workspace_switch";
-	} else if (path == animation->config.overview) {
-		return "overview";
-	} else if (path == animation->config.jump) {
-		return "jump";
-	} else if (path == animation->config.layer_shell) {
-		return "layer_shell";
-	} else {
-		return "invalid";
-	}
-}
-#endif
-
 // Set the type of the pending animation
 void animation_set_type(enum sway_animation_type anim) {
 	animation->pending.type = anim;
-	switch (anim) {
-	case ANIMATION_DISABLED:
-		animation->pending.path = animation->config.anim_disabled;
-		break;
-	case ANIMATION_DEFAULT:
-	default:
-		animation->pending.path = animation->config.anim_default;
-		break;
-	case ANIMATION_WINDOW_OPEN:
-		animation->pending.path = animation->config.window_open;
-		break;
-	case ANIMATION_WINDOW_SIZE:
-		animation->pending.path = animation->config.window_size;
-		break;
-	case ANIMATION_WINDOW_MOVE:
-		animation->pending.path = animation->config.window_move;
-		break;
-	case ANIMATION_WINDOW_MOVE_FLOAT:
-		animation->pending.path = animation->config.window_move_float;
-		break;
-	case ANIMATION_WINDOW_FULLSCREEN:
-		animation->pending.path = animation->config.window_fullscreen;
-		break;
-	case ANIMATION_WORKSPACE_SWITCH:
-		animation->pending.path = animation->config.workspace_switch;
-		break;
-	case ANIMATION_OVERVIEW:
-		animation->pending.path = animation->config.overview;
-		break;
-	case ANIMATION_JUMP:
-		animation->pending.path = animation->config.jump;
-		break;
-	case ANIMATION_LAYER_SHELL:
-		animation->pending.path = animation->config.layer_shell;
-		break;
-	}
+}
+
+enum sway_animation_type animation_get_pending_type(void) {
+	return animation->pending.type;
 }
 
 static struct sway_animation_path *get_path() {
-	if (!animation->config.enabled || config->reloading) {
-		return NULL;
-	}
-	struct sway_animation_path *path;
-	if (!animation->current.path) {
-		path = animation->config.anim_default;
-	} else {
-		path = animation->current.path;
-	}
-	if (path->enabled) {
-		return path;
-	}
-	return NULL;
+	return enabled_path_for_type(animation->current.type);
 }
 
-static struct sway_animation_curve *get_curve() {
-	struct sway_animation_path *path = get_path();
-	if (path) {
-		struct sway_animation_curve *curve = path->curves->items[path->idx];
-		return curve;
-	}
-	return NULL;
-}
-
-static void animation_reset_path(struct sway_animation_path *path) {
-	path->idx = 0;
+static struct sway_animation_path *animated_variable_path(struct sway_animated_variable *av) {
+	return enabled_path_for_type(av->animation);
 }
 
 static uint32_t difftime_ms(struct timespec *t0, struct timespec *t1) {
@@ -506,30 +461,17 @@ static void addtime_ms(struct timespec *time, uint32_t ms) {
 	*time = added;
 }
 
-static void schedule_frames() {
+static bool schedule_frames(void) {
+	bool scheduled = false;
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
-		int idx = get_animating_index(output->wlr_output);
-		if (idx >= 0) {
-			output->animation_id = animation->id;
+		if (is_animating_output(output->wlr_output)) {
 			wlr_output_schedule_frame(output->wlr_output);
+			scheduled = true;
 		}
 	}
+	return scheduled;
 }
-
-static bool is_animating() {
-	if (animation->outputs->length == 0) {
-		return false;
-	}
-	for (int i = 0; i < animation->outputs->length; ++i) {
-		struct sway_animation_output *o = animation->outputs->items[i];
-		if (o->enabled != ANIMATION_ENABLED_NO){
-			return true;
-		}
-	}
-	return false;
-}
-
 
 // Is an animation enabled?
 bool animation_enabled() {
@@ -550,67 +492,64 @@ bool animation_animating() {
 }
 
 bool animation_animating_output(struct wlr_output *output) {
-	if (output->data && animation->id != ((struct sway_output *)output->data)->animation_id) {
-		return false;
-	}
-	for (int i = 0; i < animation->outputs->length; ++i) {
-		struct sway_animation_output *o = animation->outputs->items[i];
-		if (o->output == output) {
-			return o->enabled != ANIMATION_ENABLED_NO;
-		}
-	}
-	return false;
-}
-
-void animation_add_output(struct wlr_output *output) {
-	int idx = get_animating_index(output);
-	if (idx < 0) {
-		struct sway_animation_output *o = calloc(1, sizeof(struct sway_animation_output));
-		o->output = output;
-		o->enabled = ANIMATION_ENABLED_UNKNOWN;
-		list_add(animation->outputs, o);
-	}
+	return animation && animation->animating && is_animating_output(output);
 }
 
 void animation_add_all_outputs() {
 	animation_reset_outputs();
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
-		if (output->enabled && output->wlr_output->enabled) {
-			struct sway_animation_output *o = calloc(1, sizeof(struct sway_animation_output));
-			o->output = output->wlr_output;
-			o->enabled = ANIMATION_ENABLED_UNKNOWN;
-			list_add(animation->outputs, o);
-		}
+		output->animation_id =
+			(output->enabled && output->wlr_output->enabled) ? animation->id : 0;
 	}
 }
 
 void animation_reset_outputs() {
-	if (animation->outputs) {
-		for (int i = 0; i < animation->outputs->length; ++i) {
-			struct sway_animation_output *o = animation->outputs->items[i];
-			free(o);
-		}
-		list_reset(animation->outputs);
+	if (++animation->id == 0) {
+		animation->id = 1;
 	}
 }
 
-void animation_set_animation_enabled(bool enable) {
-	for (int i = 0; i < animation->outputs->length; ++i) {
-		struct sway_animation_output *o = animation->outputs->items[i];
-		if (animation->current_output == NULL || o->output == animation->current_output) {
-			switch (o->enabled) {
-			case ANIMATION_ENABLED_UNKNOWN:
-				o->enabled = enable ? ANIMATION_ENABLED_YES : ANIMATION_ENABLED_NO;
-				break;
-			case ANIMATION_ENABLED_YES:
-				break;
-			case ANIMATION_ENABLED_NO:
-				if (enable) {
-					o->enabled = ANIMATION_ENABLED_YES;
-				}
-				break;
-			}
+void animation_output_gone(struct wlr_output *output) {
+	if (!output) {
+		return;
+	}
+	if (is_animating_output(output)) {
+		((struct sway_output *)output->data)->animation_id = 0;
+	}
+	if (animating_output_count()) {
+		return;
+	}
+	animation_add_all_outputs();
+	if (schedule_frames()) {
+		return;
+	}
+	if (animation->animating) {
+		// No outputs left, end the animation or its variables would stay
+		// active forever, and commit a possible delayed transaction that could
+		// be waiting for this animation to end.
+		animation_end();
+		transaction_commit_delayed();
+	}
+}
+
+// Delay the destruction of transactions that still have nodes in the middle of
+// an animation, keeping them on a list.
+static void animation_keep_or_destroy_transaction(struct sway_transaction *transaction) {
+	if (transaction_delays_destruction(transaction)) {
+		list_add(animation->transactions, transaction);
+	} else {
+		transaction_destroy(transaction);
+	}
+}
+
+// Free the transactions that were kept for unfinished animations.
+static void animation_sweep_transactions(void) {
+	for (int i = animation->transactions->length - 1; i >= 0; --i) {
+		struct sway_transaction *transaction = animation->transactions->items[i];
+		if (!transaction_delays_destruction(transaction)) {
+			list_del(animation->transactions, i);
+			transaction_destroy(transaction);
 		}
 	}
 }
@@ -618,23 +557,36 @@ void animation_set_animation_enabled(bool enable) {
 static void stop_animation() {
 	if (animation->animating) {
 		animation->animating = false;
-		animation->id++;
 		struct sway_animation_state state = animation->current;
 		if (state.callbacks.callback_end) {
 			state.callbacks.callback_end(state.callbacks.callback_end_data);
 		}
 		if (state.transaction) {
-			transaction_destroy(state.transaction);
+			animation_keep_or_destroy_transaction(state.transaction);
 		}
+		animation->current.transaction = NULL;
 	}
 	animation->current_output = NULL;
 }
 
 void animation_end() {
 	if (animation->animating) {
-		animation->time = 1.0;
+		// Apply the final values of the animation to the scene graph.
+		animation->finishing = true;
+		animation->stepping = true;
 		animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
+		animation->stepping = false;
+		animation->finishing = false;
 	}
+	animated_variables_finish();
+	stop_animation();
+	animation_sweep_transactions();
+}
+
+// End the animation, but leaving animated variables at their current state,
+// so those not affected by the new transaction can continue their animations
+// from where they were.
+void animation_interrupt(void) {
 	stop_animation();
 }
 
@@ -642,69 +594,52 @@ void animation_begin() {
 	stop_animation();
 	animation->current = animation->pending;
 	animation->pending.type = ANIMATION_DEFAULT;
-	animation->pending.path = animation->config.anim_default;
 	animation->pending.callbacks = animation->default_callbacks;
 	animation->pending.transaction = NULL;
-	struct sway_animation_path *path = get_path();
-	if (path) {
-		animation_reset_path(path);
-		animation->animating = true;
-		clock_gettime(CLOCK_MONOTONIC, &animation->start);
-		if (animation->current.callbacks.callback_begin) {
-			animation->current.callbacks.callback_begin(animation->current.callbacks.callback_begin_data);
+
+	clock_gettime(CLOCK_MONOTONIC, &animation->frame_time);
+	// Variables affected by this transaction start their new animations now.
+	// The others keep the clock they had, so they run for their remaining
+	// duration.
+	struct sway_animated_variable *av;
+	wl_list_for_each(av, &animation->variables, link) {
+		if (av->pending_start) {
+			animated_variable_restart(av, &animation->frame_time);
 		}
-		schedule_frames();
-		return;
 	}
+
+	// A transaction whose type has an animation path is animated even when it
+	// animates nothing itself, until a frame finds out there is nothing to do.
+	animation->animating = animated_variables_count() > 0 || get_path() != NULL;
+	if (animating_output_count() == 0 && animated_variables_count() > 0) {
+		// There are animations running in other outputs.
+		animation_add_all_outputs();
+	}
+	if (animation->animating) {
+		if (schedule_frames()) {
+			if (get_path() && animation->current.callbacks.callback_begin) {
+				animation->current.callbacks.callback_begin(
+					animation->current.callbacks.callback_begin_data);
+			}
+			return;
+		}
+		// There were no outputs with scheduled frames for this transaction,
+		// so apply their final values directly.
+		animation->animating = false;
+		animated_variables_finish();
+	}
+	animation->stepping = true;
 	animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
+	animation->stepping = false;
+	animation_sweep_transactions();
 }
 
 static bool animation_output_filter(struct sway_output *output, void *data) {
-	for (int i = 0; i < animation->outputs->length; ++i) {
-		struct sway_animation_output *o = animation->outputs->items[i];
-		if (o->output == output->wlr_output) {
-			return true;
-		}
-	}
-	return false;
-}
-
-// Returns true if the animation path ended
-static bool animation_set_time(struct timespec *time) {
-	struct sway_animation_path *path = get_path();
-	if (!path) {
-		goto last;
-	}
-	while (true) {
-		struct sway_animation_curve *curve = path->curves->items[path->idx];
-		if (!curve) {
-			goto last;
-		}
-		uint32_t diff = difftime_ms(&animation->start, time);
-		uint32_t duration = curve->duration_ms;
-		animation->time = (double) diff / duration;
-		if (animation->time <= 1.0) {
-			break;
-		}
-		++path->idx;
-		if (path->idx >= path->curves->length) {
-			path->idx = path->curves->length - 1;
-			goto last;
-		} else {
-			addtime_ms(&animation->start, duration);
-		}
-	}
-	return false;
-
-last:
-	animation->time = 1.0;
-	return true;
+	return is_animating_output(output->wlr_output);
 }
 
 void animation_animate(struct wlr_output *output) {
-	struct timespec now;
-	clock_gettime(CLOCK_MONOTONIC, &now);
-	bool ended = animation_set_time(&now);
+	animated_variables_update();
 
 	// Save old filters and push new
 	sway_root_output_filter_func_t old_filter = root->filters->output_filter;
@@ -715,25 +650,30 @@ void animation_animate(struct wlr_output *output) {
 	// Set current output so callback_step only processes this output
 	// instead of looping all animating outputs (avoids N² work)
 	animation->current_output = output;
+	animation->stepping = true;
 	animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
+	animation->stepping = false;
 	animation->current_output = NULL;
 
 	// Restore old filters
 	root->filters->output_filter = old_filter;
 	root->filters->output_filter_data = old_filter_data;
 
-	if (ended) {
-		int idx = get_animating_index(output);
-		if (idx >= 0) {
-			free(animation->outputs->items[idx]);
-			list_del(animation->outputs, idx);
-		}
+	if (animated_variables_count() == 0) {
+		// All the animated variables reached their destinations, so there is
+		// nothing left to animate in any output. callback_step only applies
+		// to the animating output, but variables may belong to any output, so
+		// we need to step every output one last time to make sure the owner
+		// of the variable gets its final value.
+		animation->stepping = true;
+		animation->current.callbacks.callback_step(
+			animation->current.callbacks.callback_step_data);
+		animation->stepping = false;
+		stop_animation();
+		animation_reset_outputs();
 		transaction_commit_delayed();
 	}
-
-	if (!is_animating()) {
-		stop_animation();
-	}
+	animation_sweep_transactions();
 }
 
 static void lookup_xy(struct bezier_curve *curve, double t, double *x, double *y) {
@@ -759,36 +699,55 @@ static void lookup_xy(struct bezier_curve *curve, double t, double *x, double *y
 	*x = B[0]; *y = B[1];
 }
 
-static bool animation_curve_query_cache(struct sway_animation_curve *curve, double u,
+static void animation_curve_cache_init(struct sway_animation_curve *curve) {
+	memset(&curve->cache, 0, sizeof(struct curve_cache));
+}
+
+static bool animation_curve_cache_query(struct sway_animation_curve *curve, double u,
 		double *t, double *x, double *y) {
-	if (curve->cache.valid && curve->cache.u == u) {
-		*t = curve->cache.t;
-		*x = curve->cache.x;
-		*y = curve->cache.y;
-		return true;
+	for (int i = 0; i < ANIMATION_CURVE_CACHE_SIZE; ++i) {
+		struct curve_cache_entry *entry = &curve->cache.entry[i];
+		if (entry->valid && entry->u == u) {
+			entry->used = ++curve->cache.clock;
+			*t = entry->t;
+			*x = entry->x;
+			*y = entry->y;
+			return true;
+		}
 	}
 	return false;
 }
-static void animation_curve_update_cache(struct sway_animation_curve *curve, double u,
+
+static void animation_curve_cache_update(struct sway_animation_curve *curve, double u,
 		double t, double x, double y) {
-	curve->cache = (struct curve_cache) {
-		.valid = true,
-		.u = u,
-		.t = t,
-		.x = x,
-		.y = y,
-	};
+	struct curve_cache_entry *lru = &curve->cache.entry[0];
+	for (int i = 0; i < ANIMATION_CURVE_CACHE_SIZE; ++i) {
+		struct curve_cache_entry *entry = &curve->cache.entry[i];
+		if (!entry->valid) {
+			lru = entry;
+			break;
+		}
+		if (entry->used < lru->used) {
+			lru = entry;
+		}
+	}
+	lru->valid = true;
+	lru->used = ++curve->cache.clock;
+	lru->u = u;
+	lru->t = t;
+	lru->x = x;
+	lru->y = y;
 }
 
 static void animation_curve_get_values(struct sway_animation_curve *curve, double u,
 		double *t, double *x, double *y) {
-	if (animation_curve_query_cache(curve, u, t, x, y)) {
+	if (animation_curve_cache_query(curve, u, t, x, y)) {
 		return;
 	}
 	if (u >= 1.0) {
 		*t = 1.0;
 		*x = 1.0; *y = 0.0;
-		animation_curve_update_cache(curve, u, *t, *x, *y);
+		animation_curve_cache_update(curve, u, *t, *x, *y);
 		return;
 	}
 	double t_off;
@@ -801,7 +760,7 @@ static void animation_curve_get_values(struct sway_animation_curve *curve, doubl
 	// Now use t_off to get offset
 	if (t_off >= 1.0) {
 		*x = 1.0; *y = 0.0;
-		animation_curve_update_cache(curve, u, *t, *x, *y);
+		animation_curve_cache_update(curve, u, *t, *x, *y);
 		return;
 	} else if (t_off < 0.0) {
 		t_off = 0.0;
@@ -811,67 +770,225 @@ static void animation_curve_get_values(struct sway_animation_curve *curve, doubl
 	} else {
 		*x = *t; *y = 0.0;
 	}
-	animation_curve_update_cache(curve, u, *t, *x, *y);
+	animation_curve_cache_update(curve, u, *t, *x, *y);
 }
 
-// Get the current parameters for the active animation
-void animation_get_values(double *t, double *x, double *y) {
-	struct sway_animation_curve *curve = get_curve();
-	if (!curve) {
-		*t = 1.0; *x = 1.0, *y = 0.0;
+// Animated variables
+// Positions are animated only when the change is big enough to be seen: the
+// layout computes positions with fractions and rounding, so containers may end
+// up in a position that differs from the previous one in a fraction of a pixel.
+#define ANIMATED_VARIABLE_EPSILON 0.000001
+#define ANIMATED_VARIABLE_POSITION_EPSILON 1.0
+
+// Compute the current value of the variable from its origin and destination
+static void animated_variable_apply(struct sway_animated_variable *av) {
+	double progress = av->ct;
+	if (av->type == ANIMATED_VARIABLE_POSITION) {
+		av->xt = av->x0 + (av->x1 - av->x0) * av->cx + av->cy * av->span;
 		return;
 	}
-	double u = animation->time;
-	animation_curve_get_values(curve, u, t, x, y);
+	if (av->type == ANIMATED_VARIABLE_FADE) {
+		progress = fmin(fmax(progress, 0.0), 1.0);
+	}
+	av->xt = linear_scale(av->x0, av->x1, progress);
+	if (av->type == ANIMATED_VARIABLE_SIZE) {
+		av->xt = fmax(1.0, av->xt);
+	}
 }
 
-static struct sway_animation_path *get_fade_path(enum sway_animation_fade fade) {
-	if (!animation->config.enabled || config->reloading) {
-		return NULL;
+void animated_variable_init(struct sway_animated_variable *av, double value,
+		enum sway_animated_variable_type type) {
+	memset(av, 0, sizeof(struct sway_animated_variable));
+	av->type = type;
+	av->animation = ANIMATION_DEFAULT;
+	av->ct = av->cx = 1.0;
+	av->x0 = av->x1 = value;
+	animated_variable_apply(av);
+	wl_list_init(&av->link);
+}
+
+void animated_variable_finish(struct sway_animated_variable *av) {
+	av->ct = av->cx = 1.0;
+	av->cy = 0.0;
+	av->pending_start = false;
+	animated_variable_apply(av);
+	if (av->animating) {
+		av->animating = false;
+		wl_list_remove(&av->link);
+		wl_list_init(&av->link);
 	}
-	struct sway_animation_path *path;
-	switch (fade) {
-	case ANIMATION_FADE_IN:
-		path = animation->config.fade_in;
-		break;
-	case ANIMATION_FADE_OUT:
-		path = animation->config.fade_out;
-		break;
-	default:
-		path = NULL;
+}
+
+void animated_variable_release(struct sway_animated_variable *av) {
+	if (av->animating) {
+		av->animating = false;
+		wl_list_remove(&av->link);
 	}
+	wl_list_init(&av->link);
+}
+
+void animated_variable_reset(struct sway_animated_variable *av, double value) {
+	if (av->animating) {
+		return;
+	}
+	av->x0 = av->x1 = value;
+	animated_variable_finish(av);
+}
+
+void animated_variable_cancel(struct sway_animated_variable *av) {
+	if (!av->animating || !av->pending_start) {
+		// The variable is not animating, or the animation has already begun
+		return;
+	}
+	av->x1 = av->x0;
+	animated_variable_finish(av);
+}
+
+// Start a new animation for the variable, from its current value to `value`.
+static void animated_variable_start(struct sway_animated_variable *av,
+		double value) {
+	av->x0 = av->xt;
+	av->x1 = value;
+	av->ct = av->cx = 0.0;
+	av->cy = 0.0;
+	av->curve = 0;
+	// Only modify the clock if the animation starts
+	av->pending_start = !animation->stepping;
+	if (!av->pending_start) {
+		av->start = animation->frame_time;
+	}
+	animated_variable_apply(av);
+	if (!av->animating) {
+		av->animating = true;
+		wl_list_insert(&animation->variables, &av->link);
+	}
+}
+
+// Start the clock of a variable with a new animation from the current transaction
+static void animated_variable_restart(struct sway_animated_variable *av,
+		struct timespec *now) {
+	av->pending_start = false;
+	av->curve = 0;
+	av->ct = av->cx = 0.0;
+	av->cy = 0.0;
+	av->start = *now;
+	av->x0 = av->xt;
+	animated_variable_apply(av);
+}
+
+// Advance the clock of the variable and update its value. Returns false when
+// the variable has reached its destination.
+static bool animated_variable_advance(struct sway_animated_variable *av,
+		struct timespec *now) {
+	struct sway_animation_path *path = animated_variable_path(av);
 	if (!path) {
-		path = animation->config.anim_default;
+		return false;
 	}
-	if (path->enabled) {
-		return path;
+	if (av->pending_start) {
+		// Stay at the origin until the animation begins
+		av->ct = av->cx = 0.0;
+		av->cy = 0.0;
+		animated_variable_apply(av);
+		return true;
 	}
-	return NULL;
+	while (av->curve < path->curves->length) {
+		struct sway_animation_curve *curve = path->curves->items[av->curve];
+		if (!curve) {
+			return false;
+		}
+		uint32_t diff = difftime_ms(&av->start, now);
+		if (diff <= curve->duration_ms) {
+			double u = curve->duration_ms ?
+				(double) diff / curve->duration_ms : 1.0;
+			animation_curve_get_values(curve, u, &av->ct, &av->cx, &av->cy);
+			animated_variable_apply(av);
+			return true;
+		}
+		// Move to the next curve of the path
+		addtime_ms(&av->start, curve->duration_ms);
+		++av->curve;
+	}
+	return false;
 }
 
-static struct sway_animation_curve *get_fade_curve(enum sway_animation_fade fade) {
-	struct sway_animation_path *path = get_fade_path(fade);
-	if (path) {
-		struct sway_animation_curve *curve = path->curves->items[path->idx];
-		return curve;
+bool animated_variable_set(struct sway_animated_variable *av, double value,
+		enum sway_animation_type type) {
+	double epsilon = (av->type == ANIMATED_VARIABLE_POSITION) ?
+		ANIMATED_VARIABLE_POSITION_EPSILON : ANIMATED_VARIABLE_EPSILON;
+	if (animation->finishing) {
+		// The animation is ending: the variable moves to its final value.
+		av->x0 = av->x1 = value;
+		animated_variable_finish(av);
+		return false;
 	}
-	return NULL;
+	if (av->animating && fabs(value - av->x1) <= epsilon) {
+		// This variable is not affected by the new transaction: keep its
+		// animation and its animation type, so it runs for its remaining
+		// duration.
+		return true;
+	}
+	av->animation = type;
+	if (!animated_variable_path(av) || fabs(value - av->xt) <= epsilon) {
+		// Not animated, or nowhere to go; move to the final value now.
+		av->x0 = av->x1 = value;
+		animated_variable_finish(av);
+		return false;
+	}
+	// New or interrupted animation: continue from the value we have right now.
+	animated_variable_start(av, value);
+	return true;
 }
 
-void animation_get_fade(enum sway_animation_fade fade, double *t) {
-	struct sway_animation_curve *curve = get_fade_curve(fade);
-	if (!curve) {
-		*t = 1.0;
+void animated_variable_set_span(struct sway_animated_variable *av, double span) {
+	if (av->span == span) {
 		return;
 	}
-	double u = animation->time;
-	double x, y;
-	animation_curve_get_values(curve, u, t, &x, &y);
-	if (*t < 0.0) {
-		*t = 0.0;
-	} else if (*t > 1.0) {
-		*t = 1.0;
+	av->span = span;
+	animated_variable_apply(av);
+}
+
+double animated_variable_get_offset(struct sway_animated_variable *av) {
+	return av->cy * fabs(av->x1 - av->x0);
+}
+
+size_t animated_variables_count(void) {
+	return animation ? wl_list_length(&animation->variables) : 0;
+}
+
+size_t animated_variables_update(void) {
+	if (!animation) {
+		return 0;
 	}
+	clock_gettime(CLOCK_MONOTONIC, &animation->frame_time);
+	struct sway_animated_variable *av, *tmp;
+	wl_list_for_each_safe(av, tmp, &animation->variables, link) {
+		if (!animated_variable_advance(av, &animation->frame_time)) {
+			animated_variable_finish(av);
+		}
+	}
+	return wl_list_length(&animation->variables);
+}
+
+void animated_variables_finish(void) {
+	if (!animation) {
+		return;
+	}
+	struct sway_animated_variable *av, *tmp;
+	wl_list_for_each_safe(av, tmp, &animation->variables, link) {
+		animated_variable_finish(av);
+	}
+}
+
+static void animated_variables_clear(void) {
+	if (!animation) {
+		return;
+	}
+	struct sway_animated_variable *av, *tmp;
+	wl_list_for_each_safe(av, tmp, &animation->variables, link) {
+		av->animating = false;
+		wl_list_init(&av->link);
+	}
+	wl_list_init(&animation->variables);
 }
 
 static void create_bezier(struct bezier_curve *curve, uint32_t order, list_t *points,
@@ -928,7 +1045,7 @@ struct sway_animation_curve *create_animation_curve(uint32_t duration_ms,
 	}
 	struct sway_animation_curve *curve = (struct sway_animation_curve *) malloc(sizeof(struct sway_animation_curve));
 	curve->duration_ms = duration_ms;
-	curve->cache.valid = false;
+	animation_curve_cache_init(curve);
 
 	double end_var[2] = { 1.0, 1.0 };
 	create_bezier(&curve->var, var_order, var_points, end_var, var_simple);
@@ -948,7 +1065,7 @@ struct sway_animation_curve *create_animation_curve(uint32_t duration_ms,
 	return curve;
 }
 
-void destroy_animation_curve(struct sway_animation_curve *curve) {
+static void destroy_animation_curve(struct sway_animation_curve *curve) {
 	if (!curve) {
 		return;
 	}

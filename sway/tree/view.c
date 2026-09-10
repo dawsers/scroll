@@ -1613,12 +1613,12 @@ static void view_get_animation_sizes(struct sway_view *view, double *wt, double 
 	struct sway_container *con = view->container;
 	int border_horiz, border_vert;
 	container_get_borders(con, &border_horiz, &border_vert);
-	if (animation_enabled()) {
-		*wt = fmax(con->animation.wt - border_horiz, 0.0);
-		*ht = fmax(con->animation.ht - border_vert, 0.0);
+	if (con->animation.w.animating || con->animation.h.animating) {
+		*wt = fmax(con->animation.w.xt - border_horiz, 0.0);
+		*ht = fmax(con->animation.h.xt - border_vert, 0.0);
 	} else {
-		*wt = fmax(con->animation.w1 - border_horiz, 0.0);
-		*ht = fmax(con->animation.h1 - border_vert, 0.0);
+		*wt = fmax(con->animation.w.x1 - border_horiz, 0.0);
+		*ht = fmax(con->animation.h.x1 - border_vert, 0.0);
 	}
 }
 
@@ -1629,10 +1629,10 @@ void view_get_animation_scales(struct sway_view *view,
 		struct sway_container *con = view->container;
 		int border_horiz, border_vert;
 		container_get_borders(con, &border_horiz, &border_vert);
-		double w1 = con->animation.w1 - border_horiz;
-		double h1 = con->animation.h1 - border_vert;
-		double wt = con->animation.wt - border_horiz;
-		double ht = con->animation.ht - border_vert;
+		double w1 = con->animation.w.x1 - border_horiz;
+		double h1 = con->animation.h.x1 - border_vert;
+		double wt = con->animation.w.xt - border_horiz;
+		double ht = con->animation.h.xt - border_vert;
 		if (w1 > 0.0 && h1 > 0.0) {
 			*wscale = wt > 0.0 ? wt / w1 : 0.0;
 			*hscale = ht > 0.0 ? ht / h1 : 0.0;
@@ -1714,7 +1714,7 @@ double view_get_total_scale(struct sway_view *view) {
 		struct sway_workspace *ws = container->pending.workspace;
 		if (ws && ws->output) {
 			if (animation_animating_output(ws->output->wlr_output)) {
-				scale = ws->animation.st;
+				scale = ws->animation.s.xt;
 			} else {
 				scale = layout_scale_get(ws);
 			}

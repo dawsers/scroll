@@ -50,6 +50,13 @@ void transaction_commit_dirty_delayed(void);
 void transaction_commit_delayed(void);
 
 /**
+ * Returns true if this transaction has a node with an animated variable that
+ * is still animating. The transaction won't be destroyed until it doesn't have
+ * any of such nodes.
+ */
+bool transaction_delays_destruction(struct sway_transaction *transaction);
+
+/**
  * The same as transaction_commit_dirty(), but disabling all animations for
  * the transaction
  */

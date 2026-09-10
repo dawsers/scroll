@@ -157,6 +157,34 @@ static struct wlr_scene_tree *sway_layer_get_scene(struct sway_output *output,
 	return NULL;
 }
 
+static void layer_surface_init_animation_variables(struct sway_layer_surface *surface) {
+	animated_variable_init(&surface->animation.x, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&surface->animation.y, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&surface->animation.w, 0.0, ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&surface->animation.h, 0.0, ANIMATED_VARIABLE_SIZE);
+}
+
+static void layer_surface_release_animation_variables(struct sway_layer_surface *surface) {
+	animated_variable_release(&surface->animation.x);
+	animated_variable_release(&surface->animation.y);
+	animated_variable_release(&surface->animation.w);
+	animated_variable_release(&surface->animation.h);
+}
+
+static void layer_popup_init_animation_variables(struct sway_layer_popup *popup) {
+	animated_variable_init(&popup->animation.x, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&popup->animation.y, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&popup->animation.w, 0.0, ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&popup->animation.h, 0.0, ANIMATED_VARIABLE_SIZE);
+}
+
+static void layer_popup_release_animation_variables(struct sway_layer_popup *popup) {
+	animated_variable_release(&popup->animation.x);
+	animated_variable_release(&popup->animation.y);
+	animated_variable_release(&popup->animation.w);
+	animated_variable_release(&popup->animation.h);
+}
+
 static struct sway_layer_surface *sway_layer_surface_create(
 		struct wlr_scene_layer_surface_v1 *scene) {
 	struct sway_layer_surface *surface = calloc(1, sizeof(*surface));
@@ -165,6 +193,7 @@ static struct sway_layer_surface *sway_layer_surface_create(
 		return NULL;
 	}
 	node_init(&surface->node, N_LAYER_SURFACE, surface);
+	layer_surface_init_animation_variables(surface);
 
 	struct wlr_scene_tree *popups = wlr_scene_tree_create(root->layers.popup);
 	if (!popups) {
@@ -260,6 +289,7 @@ static void handle_node_destroy(struct wl_listener *listener, void *data) {
 	layer->layer_surface->data = NULL;
 
 	wl_list_remove(&layer->link);
+	layer_surface_release_animation_variables(layer);
 	node_map_remove(&layer->node);
 	free(layer);
 }
@@ -346,6 +376,7 @@ static void popup_handle_destroy(struct wl_listener *listener, void *data) {
 	wl_list_remove(&popup->new_popup.link);
 	wl_list_remove(&popup->commit.link);
 	wl_list_remove(&popup->reposition.link);
+	layer_popup_release_animation_variables(popup);
 	node_map_remove(&popup->node);
 	free(popup);
 }
@@ -410,6 +441,7 @@ static struct sway_layer_popup *create_popup(struct wlr_xdg_popup *wlr_popup,
 		return NULL;
 	}
 	node_init(&popup->node, N_LAYER_POPUP, popup);
+	layer_popup_init_animation_variables(popup);
 
 	popup->toplevel = toplevel;
 	popup->wlr_popup = wlr_popup;

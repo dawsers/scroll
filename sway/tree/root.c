@@ -377,23 +377,24 @@ void root_get_box(struct sway_root *root, struct wlr_box *box) {
 	box->height = root->height;
 }
 
-static bool default_free_animation_activation_filter(struct sway_workspace *workspace,
-		void *data) {
-	return false;
-}
-
 static bool default_output_filter(struct sway_output *output, void *data) {
 	return true;
 }
 
 static bool default_output_fullscreen_filter(struct sway_output *output, void *data) {
+	for (int i = 0; i < output->workspaces->length; ++i) {
+		struct sway_workspace *workspace = output->workspaces->items[i];
+		if (workspace_is_panning(workspace) && workspace->current.fullscreen) {
+			return true;
+		}
+	}
 	return false;
 }
 
 static bool default_workspace_filter(struct sway_workspace *workspace, void *data) {
 	struct sway_output *output = workspace->output;
 	bool activated = output->wlr_output->enabled;
-	if (!layout_overview_workspaces_enabled()) {
+	if (!layout_overview_workspaces_enabled() && !workspace_is_panning(workspace)) {
 		activated = activated &&
 			(output->current.active_workspace == workspace ||
 			 (workspace->split.split != WORKSPACE_SPLIT_NONE && output->current.active_workspace == workspace->split.sibling));
@@ -419,12 +420,13 @@ static bool default_workspace_floating_filter(struct sway_workspace *workspace, 
 
 static bool default_container_filter(struct sway_workspace *workspace,
 		struct sway_container *container, void *data) {
+	if (workspace_is_panning(workspace)) {
+		return workspace_container_visible(workspace, container);
+	}
 	return true;
 }
 
 static void filters_set_default(struct sway_root_filters *filters) {
-	filters->free_animation_activation_filter = default_free_animation_activation_filter;
-	filters->free_animation_activation_filter_data = NULL;
 	filters->output_filter = default_output_filter;
 	filters->output_filter_data = NULL;
 	filters->output_fullscreen_filter = default_output_fullscreen_filter;

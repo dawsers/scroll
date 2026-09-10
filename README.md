@@ -1789,9 +1789,11 @@ workspaces`).
 
 `layer_shell`: curve to animate layer shell surfaces and popups.
 
-`fade_in`: curve to animate the opacity of an opening window.
+`fade_in`: curve to animate an increase in opacity, for example, when opening
+a window.
 
-`fade_out`: curve to animate the opacity of a closing window.
+`fade_out`: curve to animate a decrease in opacity, for example, when closing
+a window.
 
 Format of an animation curve:
 

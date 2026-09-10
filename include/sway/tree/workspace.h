@@ -89,7 +89,8 @@ struct sway_workspace {
 	} split;
 
 	struct {
-		double s0, st, s1;
+		struct sway_animated_variable s; // scale for overview/zoom
+		struct sway_animated_variable off; // offset during a workspace switch
 	} animation;
 
 	struct sway_workspace_state current;
@@ -129,6 +130,33 @@ struct sway_workspace *workspace_output_prev(struct sway_workspace *current);
 struct sway_workspace *workspace_prev(struct sway_workspace *current);
 
 bool workspace_is_visible(struct sway_workspace *ws);
+
+/**
+ * Is this workspace taking part in a switch animation right now?
+ */
+bool workspace_is_panning(struct sway_workspace *ws);
+
+/**
+ * When a command performs several workspace switches in the same transaction,
+ * we call this function to compress those animations into one.
+ */
+void workspace_switch_validate(void);
+
+/**
+ * Returns the animated offset for the workspace during a workspace switch
+ */
+double workspace_switch_offset(struct sway_workspace *ws);
+
+/**
+ * Take a workspace out of the scene graph.
+ */
+void workspace_hide(struct sway_workspace *ws);
+
+/**
+ * True if the container is inside the viewport of its workspace.
+ */
+bool workspace_container_visible(struct sway_workspace *workspace,
+		struct sway_container *container);
 
 bool workspace_is_empty(struct sway_workspace *ws);
 

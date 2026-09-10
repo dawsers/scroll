@@ -220,10 +220,10 @@ static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
 		struct wlr_scene_layer_surface_data *data) {
 	struct sway_layer_surface *surface = layer_surface->data;
 	if (surface && animation_animating()) {
-		data->x = surface->animation.xt;
-		data->y = surface->animation.yt;
-		data->width = surface->animation.wt;
-		data->height = surface->animation.ht;
+		data->x = surface->animation.x.xt;
+		data->y = surface->animation.y.xt;
+		data->width = surface->animation.w.xt;
+		data->height = surface->animation.h.xt;
 		return true;
 	} else {
 		data->x = surface->pending.x;
@@ -240,6 +240,10 @@ static void animate(struct wlr_output *output) {
 	}
 }
 
+static bool output_needs_frame(struct wlr_output *output) {
+	return animation_animating_output(output);
+}
+
 const struct wlr_scene_callbacks scroll_scene_cbs = {
 	.fullscreen_global_enabled = scene_fullscreen_global_enabled,
 	.overview_workspaces_enabled = scene_overview_workspaces_enabled,
@@ -250,4 +254,5 @@ const struct wlr_scene_callbacks scroll_scene_cbs = {
 	.view_content_scale = scene_view_content_scale,
 	.layer_surface_data = scene_layer_surface_data,
 	.animate = animate,
+	.output_needs_frame = output_needs_frame,
 };

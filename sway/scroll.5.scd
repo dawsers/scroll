@@ -125,16 +125,13 @@ The following commands may only be used in the configuration file.
 
 	*fade_in* enabled [duration] [var animation curve] [off animation curve]
 	Default is not defined, so it uses _default_ unless you set one up in your
-	config. It is the curve used to animate the opacity of a new window while
-	the *window_open* animation is happening, and only if it is enabled.
-	_duration_ will be ignored and assumed the same as the *window_open*
-	animation's.
+	config. It is the curve used to animate an increase in opacity, also including
+	that of a new window while the *window_open* animation is happening.
 
 	*fade_out* enabled [duration] [var animation curve] [off animation curve]
 	Default is not defined, so it uses _default_ unless you set one up in your
-	config. It is the curve used to animate the opacity of a closing window.
-	_duration_ will be ignored and assumed the same as the *default*
-	animation's.
+	config. It is the curve used to animate a decrease in opacity, also used
+	when a window is closing.
 
 	Format of an animation curve:
 

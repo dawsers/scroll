@@ -83,8 +83,7 @@ struct sway_output {
 	struct wl_event_source *repaint_timer;
 
 	struct sway_scroller_output_options scroller_options;
-	uint32_t animation_id;  // id for the animation owning the scheduled frame
-	bool workspace_switching;
+	uint32_t animation_id;  // id of animation for this output, 0 if none
 
 	bool allow_tearing;
 	bool hdr;

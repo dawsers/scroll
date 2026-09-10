@@ -125,6 +125,10 @@ static void default_animate(struct wlr_output *output) {
 	return;
 }
 
+static bool default_output_needs_frame(struct wlr_output *output) {
+	return false;
+}
+
 struct wlr_scene_callbacks scene_cbs = {
 	.fullscreen_global_enabled = default_fullscreen_global_enabled,
 	.overview_workspaces_enabled = default_overview_workspaces_enabled,
@@ -135,6 +139,7 @@ struct wlr_scene_callbacks scene_cbs = {
 	.view_content_scale = default_view_content_scale,
 	.layer_surface_data = default_layer_surface_data,
 	.animate = default_animate,
+	.output_needs_frame = default_output_needs_frame,
 };
 
 struct wlr_scene *scene_node_get_root(struct wlr_scene_node *node) {
@@ -2803,7 +2808,8 @@ static enum scene_direct_scanout_result scene_entry_try_direct_scanout(
 bool wlr_scene_output_needs_frame(struct wlr_scene_output *scene_output) {
 	return scene_output->output->needs_frame ||
 		!pixman_region32_empty(&scene_output->pending_commit_damage) ||
-		scene_output->gamma_lut_changed;
+		scene_output->gamma_lut_changed ||
+		scene_cbs.output_needs_frame(scene_output->output);
 }
 
 bool wlr_scene_output_commit(struct wlr_scene_output *scene_output,
