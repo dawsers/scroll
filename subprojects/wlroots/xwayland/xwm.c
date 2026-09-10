@@ -1317,7 +1317,7 @@ static void xwm_handle_configure_notify(struct wlr_xwm *xwm,
 
 	bool geometry_changed =
 		(xsurface->x != ev->x || xsurface->y != ev->y ||
-		 xsurface->width != ev->width || xsurface->height != ev->height);
+		xsurface->width != ev->width || xsurface->height != ev->height);
 
 	if (geometry_changed) {
 		xsurface->x = ev->x;
