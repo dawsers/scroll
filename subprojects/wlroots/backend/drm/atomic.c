@@ -48,30 +48,10 @@ static char *atomic_commit_flags_str(uint32_t flags) {
 	return buf;
 }
 
-struct atomic {
-	drmModeAtomicReq *req;
-	bool failed;
-};
-
-static void atomic_begin(struct atomic *atom) {
-	*atom = (struct atomic){0};
-
-	atom->req = drmModeAtomicAlloc();
-	if (!atom->req) {
-		wlr_log_errno(WLR_ERROR, "Allocation failed");
-		atom->failed = true;
-		return;
-	}
-}
-
-static bool atomic_commit(struct atomic *atom, struct wlr_drm_backend *drm,
+static bool atomic_commit(drmModeAtomicReq *req, struct wlr_drm_backend *drm,
 		const struct wlr_drm_device_state *state,
 		struct wlr_drm_page_flip *page_flip, uint32_t flags) {
-	if (atom->failed) {
-		return false;
-	}
-
-	int ret = drmModeAtomicCommit(drm->fd, atom->req, flags, page_flip);
+	int ret = drmModeAtomicCommit(drm->fd, req, flags, page_flip);
 	if (ret != 0) {
 		enum wlr_log_importance log_level = WLR_ERROR;
 		if (flags & DRM_MODE_ATOMIC_TEST_ONLY) {
@@ -94,15 +74,12 @@ static bool atomic_commit(struct atomic *atom, struct wlr_drm_backend *drm,
 	return true;
 }
 
-static void atomic_finish(struct atomic *atom) {
-	drmModeAtomicFree(atom->req);
-}
-
-static void atomic_add(struct atomic *atom, uint32_t id, uint32_t prop, uint64_t val) {
-	if (!atom->failed && drmModeAtomicAddProperty(atom->req, id, prop, val) < 0) {
+static bool atomic_add(drmModeAtomicReq *req, uint32_t id, uint32_t prop, uint64_t val) {
+	if (drmModeAtomicAddProperty(req, id, prop, val) < 0) {
 		wlr_log_errno(WLR_ERROR, "Failed to add atomic DRM property");
-		atom->failed = true;
+		return false;
 	}
+	return true;
 }
 
 static bool create_mode_blob(struct wlr_drm_connector *conn,
@@ -443,11 +420,11 @@ void drm_atomic_connector_rollback_commit(struct wlr_drm_connector_state *state)
 	}
 }
 
-static void plane_disable(struct atomic *atom, struct wlr_drm_plane *plane) {
+static bool plane_disable(drmModeAtomicReq *req, struct wlr_drm_plane *plane) {
 	uint32_t id = plane->id;
 	const struct wlr_drm_plane_props *props = &plane->props;
-	atomic_add(atom, id, props->fb_id, 0);
-	atomic_add(atom, id, props->crtc_id, 0);
+	return atomic_add(req, id, props->fb_id, 0) &&
+		atomic_add(req, id, props->crtc_id, 0);
 }
 
 /** Convert to 16.16 fixed point for SRC_* plane properties */
@@ -455,7 +432,7 @@ uint64_t to_fp16(double v) {
 	return (uint64_t)round(v * (1 << 16));
 }
 
-static void set_plane_props(struct atomic *atom, struct wlr_drm_backend *drm,
+static bool set_plane_props(drmModeAtomicReq *req, struct wlr_drm_backend *drm,
 		struct wlr_drm_plane *plane, struct wlr_drm_fb *fb, uint32_t crtc_id,
 		const struct wlr_box *dst_box, const struct wlr_fbox *src_box) {
 	uint32_t id = plane->id;
@@ -463,24 +440,22 @@ static void set_plane_props(struct atomic *atom, struct wlr_drm_backend *drm,
 
 	if (fb == NULL) {
 		wlr_log(WLR_ERROR, "Failed to acquire FB for plane %"PRIu32, plane->id);
-		atom->failed = true;
-		return;
+		return false;
 	}
 
-	// The src_* properties are in 16.16 fixed point
-	atomic_add(atom, id, props->src_x, to_fp16(src_box->x));
-	atomic_add(atom, id, props->src_y, to_fp16(src_box->y));
-	atomic_add(atom, id, props->src_w, to_fp16(src_box->width));
-	atomic_add(atom, id, props->src_h, to_fp16(src_box->height));
-	atomic_add(atom, id, props->fb_id, fb->id);
-	atomic_add(atom, id, props->crtc_id, crtc_id);
-	atomic_add(atom, id, props->crtc_x, dst_box->x);
-	atomic_add(atom, id, props->crtc_y, dst_box->y);
-	atomic_add(atom, id, props->crtc_w, dst_box->width);
-	atomic_add(atom, id, props->crtc_h, dst_box->height);
+	return atomic_add(req, id, props->src_x, to_fp16(src_box->x)) &&
+		atomic_add(req, id, props->src_y, to_fp16(src_box->y)) &&
+		atomic_add(req, id, props->src_w, to_fp16(src_box->width)) &&
+		atomic_add(req, id, props->src_h, to_fp16(src_box->height)) &&
+		atomic_add(req, id, props->fb_id, fb->id) &&
+		atomic_add(req, id, props->crtc_id, crtc_id) &&
+		atomic_add(req, id, props->crtc_x, dst_box->x) &&
+		atomic_add(req, id, props->crtc_y, dst_box->y) &&
+		atomic_add(req, id, props->crtc_w, dst_box->width) &&
+		atomic_add(req, id, props->crtc_h, dst_box->height);
 }
 
-static void set_color_encoding_and_range(struct atomic *atom,
+static bool set_color_encoding_and_range(drmModeAtomicReq *req,
 		struct wlr_drm_plane *plane, enum wlr_color_encoding encoding,
 		enum wlr_color_range range) {
 	uint32_t id = plane->id;
@@ -500,17 +475,17 @@ static void set_color_encoding_and_range(struct atomic *atom,
 		break;
 	default:
 		wlr_log(WLR_DEBUG, "Unsupported color encoding %d", encoding);
-		atom->failed = true;
-		return;
+		return false;
 	}
 
-	if (props->color_encoding) {
-		atomic_add(atom, id, props->color_encoding, color_encoding);
-	} else {
+	if (!props->color_encoding) {
 		wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_ENCODING property",
 			id);
-		atom->failed = true;
-		return;
+		return false;
+	}
+
+	if (!atomic_add(req, id, props->color_encoding, color_encoding)) {
+		return false;
 	}
 
 	uint32_t color_range;
@@ -526,79 +501,78 @@ static void set_color_encoding_and_range(struct atomic *atom,
 		assert(0); // Unreachable
 	}
 
-	if (props->color_range) {
-		atomic_add(atom, id, props->color_range, color_range);
-	} else {
+	if (!props->color_range) {
 		wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_RANGE property",
 			id);
-		atom->failed = true;
-		return;
+		return false;
 	}
+
+	return atomic_add(req, id, props->color_range, color_range);
 }
 
 static bool supports_cursor_hotspots(const struct wlr_drm_plane *plane) {
 	return plane->props.hotspot_x && plane->props.hotspot_y;
 }
 
-static void set_plane_in_fence_fd(struct atomic *atom,
+static bool set_plane_in_fence_fd(drmModeAtomicReq *req,
 		struct wlr_drm_plane *plane, int sync_file_fd) {
 	if (!plane->props.in_fence_fd) {
 		wlr_log(WLR_ERROR, "Plane %"PRIu32 " is missing the IN_FENCE_FD property",
 			plane->id);
-		atom->failed = true;
-		return;
+		return false;
 	}
 
-	atomic_add(atom, plane->id, plane->props.in_fence_fd, sync_file_fd);
+	return atomic_add(req, plane->id, plane->props.in_fence_fd, sync_file_fd);
 }
 
-static void atomic_connector_add(struct atomic *atom,
+static bool atomic_connector_add(drmModeAtomicReq *req,
 		struct wlr_drm_connector_state *state, bool modeset) {
 	struct wlr_drm_connector *conn = state->connector;
 	struct wlr_drm_backend *drm = conn->backend;
 	struct wlr_drm_crtc *crtc = conn->crtc;
 	bool active = state->active;
+	bool ok = true;
 
-	atomic_add(atom, conn->id, conn->props.crtc_id, active ? crtc->id : 0);
+	ok = ok && atomic_add(req, conn->id, conn->props.crtc_id, active ? crtc->id : 0);
 	if (modeset && active && conn->props.link_status != 0) {
-		atomic_add(atom, conn->id, conn->props.link_status,
+		ok = ok && atomic_add(req, conn->id, conn->props.link_status,
 			DRM_MODE_LINK_STATUS_GOOD);
 	}
 	if (active && conn->props.content_type != 0) {
-		atomic_add(atom, conn->id, conn->props.content_type,
+		ok = ok && atomic_add(req, conn->id, conn->props.content_type,
 			DRM_MODE_CONTENT_TYPE_GRAPHICS);
 	}
 	if (modeset && active && conn->props.max_bpc != 0 && conn->max_bpc_bounds[1] != 0) {
-		atomic_add(atom, conn->id, conn->props.max_bpc, pick_max_bpc(conn, state->primary_fb));
+		ok = ok && atomic_add(req, conn->id, conn->props.max_bpc, pick_max_bpc(conn, state->primary_fb));
 	}
 	if (conn->props.colorspace != 0) {
-		atomic_add(atom, conn->id, conn->props.colorspace, state->colorspace);
+		ok = ok && atomic_add(req, conn->id, conn->props.colorspace, state->colorspace);
 	}
 	if (conn->props.hdr_output_metadata != 0) {
-		atomic_add(atom, conn->id, conn->props.hdr_output_metadata, state->hdr_output_metadata);
+		ok = ok && atomic_add(req, conn->id, conn->props.hdr_output_metadata, state->hdr_output_metadata);
 	}
-	atomic_add(atom, crtc->id, crtc->props.mode_id, state->mode_id);
-	atomic_add(atom, crtc->id, crtc->props.active, active);
+	ok = ok && atomic_add(req, crtc->id, crtc->props.mode_id, state->mode_id);
+	ok = ok && atomic_add(req, crtc->id, crtc->props.active, active);
 	if (active) {
 		if (crtc->props.gamma_lut != 0) {
-			atomic_add(atom, crtc->id, crtc->props.gamma_lut, state->gamma_lut);
+			ok = ok && atomic_add(req, crtc->id, crtc->props.gamma_lut, state->gamma_lut);
 		}
 		if (crtc->props.vrr_enabled != 0) {
-			atomic_add(atom, crtc->id, crtc->props.vrr_enabled, state->vrr_enabled);
+			ok = ok && atomic_add(req, crtc->id, crtc->props.vrr_enabled, state->vrr_enabled);
 		}
 
-		set_plane_props(atom, drm, crtc->primary, state->primary_fb, crtc->id,
+		ok = ok && set_plane_props(req, drm, crtc->primary, state->primary_fb, crtc->id,
 			&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
 		if (state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION) {
-			set_color_encoding_and_range(atom, crtc->primary,
+			ok = ok && set_color_encoding_and_range(req, crtc->primary,
 				state->base->color_encoding, state->base->color_range);
 		}
 		if (crtc->primary->props.fb_damage_clips != 0) {
-			atomic_add(atom, crtc->primary->id,
+			ok = ok && atomic_add(req, crtc->primary->id,
 				crtc->primary->props.fb_damage_clips, state->fb_damage_clips);
 		}
 		if (state->primary_in_fence_fd >= 0) {
-			set_plane_in_fence_fd(atom, crtc->primary, state->primary_in_fence_fd);
+			ok = ok && set_plane_in_fence_fd(req, crtc->primary, state->primary_in_fence_fd);
 		}
 		if (crtc->cursor) {
 			if (drm_connector_is_cursor_visible(conn)) {
@@ -612,30 +586,33 @@ static void atomic_connector_add(struct atomic *atom,
 					.width = state->cursor_fb->wlr_buf->width,
 					.height = state->cursor_fb->wlr_buf->height,
 				};
-				set_plane_props(atom, drm, crtc->cursor, state->cursor_fb,
+				ok = ok && set_plane_props(req, drm, crtc->cursor, state->cursor_fb,
 					crtc->id, &cursor_dst, &cursor_src);
 				if (supports_cursor_hotspots(crtc->cursor)) {
-					atomic_add(atom, crtc->cursor->id,
+					ok = ok && atomic_add(req, crtc->cursor->id,
 						crtc->cursor->props.hotspot_x, conn->cursor_hotspot_x);
-					atomic_add(atom, crtc->cursor->id,
+					ok = ok && atomic_add(req, crtc->cursor->id,
 						crtc->cursor->props.hotspot_y, conn->cursor_hotspot_y);
 				}
 			} else {
-				plane_disable(atom, crtc->cursor);
+				ok = ok && plane_disable(req, crtc->cursor);
 			}
 		}
 	} else {
-		plane_disable(atom, crtc->primary);
+		ok = ok && plane_disable(req, crtc->primary);
 		if (crtc->cursor) {
-			plane_disable(atom, crtc->cursor);
+			ok = ok && plane_disable(req, crtc->cursor);
 		}
 	}
+
+	return ok;
 }
 
 static bool atomic_device_commit(struct wlr_drm_backend *drm,
 		const struct wlr_drm_device_state *state,
 		struct wlr_drm_page_flip *page_flip, uint32_t flags, bool test_only) {
 	bool ok = false;
+	drmModeAtomicReq *req = NULL;
 
 	for (size_t i = 0; i < state->connectors_len; i++) {
 		if (!drm_atomic_connector_prepare(&state->connectors[i], state->modeset)) {
@@ -643,11 +620,16 @@ static bool atomic_device_commit(struct wlr_drm_backend *drm,
 		}
 	}
 
-	struct atomic atom;
-	atomic_begin(&atom);
+	req = drmModeAtomicAlloc();
+	if (!req) {
+		wlr_log_errno(WLR_ERROR, "Allocation failed");
+		goto out;
+	}
 
 	for (size_t i = 0; i < state->connectors_len; i++) {
-		atomic_connector_add(&atom, &state->connectors[i], state->modeset);
+		if (!atomic_connector_add(req, &state->connectors[i], state->modeset)) {
+			goto out;
+		}
 	}
 
 	if (test_only) {
@@ -660,10 +642,11 @@ static bool atomic_device_commit(struct wlr_drm_backend *drm,
 		flags |= DRM_MODE_ATOMIC_NONBLOCK;
 	}
 
-	ok = atomic_commit(&atom, drm, state, page_flip, flags);
-	atomic_finish(&atom);
+	ok = atomic_commit(req, drm, state, page_flip, flags);
 
 out:
+	drmModeAtomicFree(req);
+
 	for (size_t i = 0; i < state->connectors_len; i++) {
 		struct wlr_drm_connector_state *conn_state = &state->connectors[i];
 		if (ok && !test_only) {
@@ -672,6 +655,7 @@ out:
 			drm_atomic_connector_rollback_commit(conn_state);
 		}
 	}
+
 	return ok;
 }
 
