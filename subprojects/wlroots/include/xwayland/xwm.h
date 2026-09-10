@@ -142,6 +142,8 @@ struct wlr_xwm {
 
 	const xcb_query_extension_reply_t *xfixes;
 	const xcb_query_extension_reply_t *xres;
+	const xcb_query_extension_reply_t *shape;
+	bool shape_input_supported;
 	uint32_t xfixes_major_version;
 #if HAVE_XCB_ERRORS
 	xcb_errors_context_t *errors_context;

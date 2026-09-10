@@ -9,6 +9,7 @@
 #ifndef WLR_XWAYLAND_XWAYLAND_H
 #define WLR_XWAYLAND_XWAYLAND_H
 
+#include <pixman.h>
 #include <stdbool.h>
 #include <wayland-server-core.h>
 #include <xcb/xcb.h>
@@ -192,6 +193,8 @@ struct wlr_xwayland_surface {
 	bool demands_attention;
 
 	bool has_alpha;
+	bool has_input_shape;
+	pixman_region32_t input_shape;
 
 	struct {
 		struct wl_signal destroy;
@@ -228,6 +231,7 @@ struct wlr_xwayland_surface {
 		struct wl_signal set_geometry;
 		struct wl_signal set_opacity;
 		struct wl_signal set_icon;
+		struct wl_signal set_input_shape;
 		struct wl_signal focus_in;
 		struct wl_signal grab_focus;
 		/* can be used to set initial maximized/fullscreen geometry */
@@ -347,6 +351,19 @@ void wlr_xwayland_set_seat(struct wlr_xwayland *xwayland,
  */
 struct wlr_xwayland_surface *wlr_xwayland_surface_try_from_wlr_surface(
 	struct wlr_surface *surface);
+
+/**
+ * Get the effective input region for an Xwayland surface for input handling.
+ */
+void wlr_xwayland_surface_get_input_region(
+	const struct wlr_xwayland_surface *xsurface, pixman_region32_t *region);
+
+/**
+ * Check whether a surface-local point is inside the effective input region of
+ * an Xwayland surface.
+ */
+bool wlr_xwayland_surface_point_accepts_input(
+	const struct wlr_xwayland_surface *xsurface, double sx, double sy);
 
 /**
  * Offer focus by sending WM_TAKE_FOCUS to a client window supporting it.

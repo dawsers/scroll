@@ -7,6 +7,7 @@ xwayland_required = {
 	'xcb-render': [],
 	'xcb-res': [],
 	'xcb-xfixes': '>=1.15',
+	'xcb-shape': [],
 }
 xwayland_optional = {
 	'xcb-errors': 'Required for printing X11 errors.',
