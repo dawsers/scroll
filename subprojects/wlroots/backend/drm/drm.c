@@ -888,8 +888,8 @@ static bool drm_connector_prepare(struct wlr_drm_connector_state *conn_state, bo
 	}
 
 	if ((state->committed & WLR_OUTPUT_STATE_IMAGE_DESCRIPTION) &&
-			conn->backend->iface != &atomic_iface) {
-		wlr_log(WLR_DEBUG, "Image descriptions are only supported by the atomic interface");
+			conn->backend->iface == &legacy_iface) {
+		wlr_log(WLR_DEBUG, "Image descriptions are not supported by the legacy interface");
 		return false;
 	}
 

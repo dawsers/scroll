@@ -52,7 +52,7 @@ enum wlr_output_mode_aspect_ratio get_picture_aspect_ratio(const drmModeModeInfo
 
 void parse_edid(struct wlr_drm_connector *conn, size_t len, const uint8_t *data) {
 	struct wlr_output *output = &conn->output;
-	bool is_atomic = conn->backend->iface == &atomic_iface;
+	bool is_legacy = conn->backend->iface == &legacy_iface;
 
 	free(output->make);
 	free(output->model);
@@ -97,12 +97,12 @@ void parse_edid(struct wlr_drm_connector *conn, size_t len, const uint8_t *data)
 
 	const struct di_supported_signal_colorimetry *colorimetry = di_info_get_supported_signal_colorimetry(info);
 	bool has_bt2020 = colorimetry->bt2020_cycc || colorimetry->bt2020_ycc || colorimetry->bt2020_rgb;
-	if (conn->props.colorspace != 0 && has_bt2020 && is_atomic) {
+	if (conn->props.colorspace != 0 && has_bt2020 && !is_legacy) {
 		output->supported_primaries |= WLR_COLOR_NAMED_PRIMARIES_BT2020;
 	}
 
 	const struct di_hdr_static_metadata *hdr_static_metadata = di_info_get_hdr_static_metadata(info);
-	if (conn->props.hdr_output_metadata != 0 && hdr_static_metadata->type1 && hdr_static_metadata->pq && is_atomic) {
+	if (conn->props.hdr_output_metadata != 0 && hdr_static_metadata->type1 && hdr_static_metadata->pq && !is_legacy) {
 		output->supported_transfer_functions |= WLR_COLOR_TRANSFER_FUNCTION_ST2084_PQ;
 	}
 
