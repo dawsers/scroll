@@ -4405,6 +4405,9 @@ static void apply_container_sizes(struct sway_container *container,
 
 static void apply_container_and_parent_sizes(struct sway_container *container,
 		double width_fraction, double height_fraction, enum sway_operation op) {
+	if (container == NULL) {
+		return;
+	}
 	if (container->pending.parent) {
 		apply_container_sizes(container->pending.parent, width_fraction, height_fraction, op);
 	}
