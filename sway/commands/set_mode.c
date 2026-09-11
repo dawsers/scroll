@@ -6,6 +6,7 @@
 #include <wlr/util/edges.h>
 #include "sway/commands.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/arrange.h"
 
 struct cmd_results *cmd_set_mode(int argc, char **argv) {
 	if (!root->outputs->length) {
@@ -24,6 +25,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 
 	bool success = false;
 	bool update_container = false;
+	bool arrange = false;
 	struct sway_container *container =  config->handler_context.container;
 	for (int i = 0; i < argc; ++i) {
 		if (strcasecmp(argv[i], "h") == 0) {
@@ -66,15 +68,15 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 		if (strcasecmp(argv[i], "nofit") == 0) {
 			layout_modifiers_set_fit(current, FIT_NONE);
 			success = true;
-			update_container = true;
+			arrange = true;
 		} else if (strcasecmp(argv[i], "fitsplit") == 0) {
 			layout_modifiers_set_fit(current, FIT_SPLIT);
 			success = true;
-			update_container = true;
+			arrange = true;
 		} else if (strcasecmp(argv[i], "fitfraction") == 0) {
 			layout_modifiers_set_fit(current, FIT_FRACTION);
 			success = true;
-			update_container = true;
+			arrange = true;
 		}
 
         if (strcasecmp(argv[i], "focus") == 0) {
@@ -88,16 +90,20 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
         if (strcasecmp(argv[i], "center_horiz") == 0) {
 			layout_modifiers_set_center_horizontal(current, true);
 			success = true;
+			arrange = true;
 		} else if (strcasecmp(argv[i], "nocenter_horiz") == 0) {
 			layout_modifiers_set_center_horizontal(current, false);
 			success = true;
+			arrange = true;
 		}
         if (strcasecmp(argv[i], "center_vert") == 0) {
 			layout_modifiers_set_center_vertical(current, true);
 			success = true;
+			arrange = true;
 		} else if (strcasecmp(argv[i], "nocenter_vert") == 0) {
 			layout_modifiers_set_center_vertical(current, false);
 			success = true;
+			arrange = true;
 		}
 
         if (strcasecmp(argv[i], "reorder_auto") == 0) {
@@ -112,6 +118,9 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 	if (success) {
 		if (update_container && container) {
 			container_update(container);
+		}
+		if (arrange && container) {
+			arrange_container(container);
 		}
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
