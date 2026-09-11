@@ -129,6 +129,7 @@ struct wlr_drm_backend {
 	struct wlr_drm_format_set mgpu_formats;
 
 	bool supports_tearing_page_flips;
+	bool has_cursor_plane_hotspot;
 };
 
 struct wlr_drm_mode {

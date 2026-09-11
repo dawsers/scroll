@@ -116,6 +116,7 @@ bool check_drm_features(struct wlr_drm_backend *drm) {
 #ifdef DRM_CLIENT_CAP_CURSOR_PLANE_HOTSPOT
 	if (drm->iface == &atomic_iface && drmSetClientCap(drm->fd, DRM_CLIENT_CAP_CURSOR_PLANE_HOTSPOT, 1) == 0) {
 		wlr_log(WLR_INFO, "DRM_CLIENT_CAP_CURSOR_PLANE_HOTSPOT supported");
+		drm->has_cursor_plane_hotspot = true;
 	}
 #endif
 

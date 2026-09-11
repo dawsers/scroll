@@ -559,10 +559,6 @@ bool drm_atomic_crtc_set_props(drmModeAtomicReq *req,
 	return ok;
 }
 
-static bool supports_cursor_hotspots(const struct wlr_drm_plane *plane) {
-	return plane->props.hotspot_x && plane->props.hotspot_y;
-}
-
 static bool set_plane_in_fence_fd(drmModeAtomicReq *req,
 		struct wlr_drm_plane *plane, int sync_file_fd) {
 	if (!plane->props.in_fence_fd) {
@@ -626,7 +622,7 @@ static bool set_cursor_plane_props(drmModeAtomicReq *req,
 	};
 	ok = ok && set_plane_props(req, conn->backend, plane, state->cursor_fb,
 		crtc->id, &cursor_dst, &cursor_src);
-	if (supports_cursor_hotspots(plane)) {
+	if (conn->backend->has_cursor_plane_hotspot) {
 		ok = ok && atomic_add(req, plane->id,
 			plane->props.hotspot_x, conn->cursor_hotspot_x);
 		ok = ok && atomic_add(req, plane->id,

@@ -272,9 +272,18 @@ static bool set_cursor_plane_props(const struct wlr_drm_connector_state *state) 
 		.width = state->cursor_fb->wlr_buf->width,
 		.height = state->cursor_fb->wlr_buf->height,
 	};
-	return set_plane_props(plane, plane->liftoff_layer,
-		state->cursor_fb, wl_list_length(&conn->crtc->layers) + 1,
-		&cursor_dst, &cursor_src);
+	if (!set_plane_props(plane, plane->liftoff_layer,
+			state->cursor_fb, wl_list_length(&conn->crtc->layers) + 1,
+			&cursor_dst, &cursor_src)) {
+		return false;
+	}
+
+	if (conn->backend->has_cursor_plane_hotspot) {
+		liftoff_layer_set_property(plane->liftoff_layer, "HOTSPOT_X", conn->cursor_hotspot_x);
+		liftoff_layer_set_property(plane->liftoff_layer, "HOTSPOT_Y", conn->cursor_hotspot_y);
+	}
+
+	return true;
 }
 
 static bool devid_from_fd(int fd, dev_t *devid) {
