@@ -2862,7 +2862,9 @@ static void scene_output_state_attempt_gamma(struct wlr_scene_output *scene_outp
 		return;
 	}
 
-	wlr_output_state_copy(state, &gamma_pending);
+	if (!wlr_output_state_copy(state, &gamma_pending)) {
+		scene_output->gamma_lut_changed = true;
+	}
 	wlr_output_state_finish(&gamma_pending);
 }
 
