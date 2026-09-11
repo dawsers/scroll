@@ -254,6 +254,29 @@ static bool set_layer_props(struct wlr_drm_backend *drm,
 		liftoff_layer_set_property(layer->liftoff, "FB_DAMAGE_CLIPS", fb_damage_clips) == 0;
 }
 
+static bool set_cursor_plane_props(const struct wlr_drm_connector_state *state) {
+	struct wlr_drm_connector *conn = state->connector;
+	struct wlr_drm_plane *plane = conn->crtc->cursor;
+
+	if (!drm_connector_is_cursor_visible(conn)) {
+		return disable_plane(plane);
+	}
+
+	struct wlr_fbox cursor_src = {
+		.width = state->cursor_fb->wlr_buf->width,
+		.height = state->cursor_fb->wlr_buf->height,
+	};
+	struct wlr_box cursor_dst = {
+		.x = conn->cursor_x,
+		.y = conn->cursor_y,
+		.width = state->cursor_fb->wlr_buf->width,
+		.height = state->cursor_fb->wlr_buf->height,
+	};
+	return set_plane_props(plane, plane->liftoff_layer,
+		state->cursor_fb, wl_list_length(&conn->crtc->layers) + 1,
+		&cursor_dst, &cursor_src);
+}
+
 static bool devid_from_fd(int fd, dev_t *devid) {
 	struct stat stat;
 	if (fstat(fd, &stat) != 0) {
@@ -334,23 +357,7 @@ static bool add_connector(drmModeAtomicReq *req,
 		}
 
 		if (crtc->cursor) {
-			if (drm_connector_is_cursor_visible(conn)) {
-				struct wlr_fbox cursor_src = {
-					.width = state->cursor_fb->wlr_buf->width,
-					.height = state->cursor_fb->wlr_buf->height,
-				};
-				struct wlr_box cursor_dst = {
-					.x = conn->cursor_x,
-					.y = conn->cursor_y,
-					.width = state->cursor_fb->wlr_buf->width,
-					.height = state->cursor_fb->wlr_buf->height,
-				};
-				ok = ok && set_plane_props(crtc->cursor, crtc->cursor->liftoff_layer,
-					state->cursor_fb, wl_list_length(&crtc->layers) + 1,
-					&cursor_dst, &cursor_src);
-			} else {
-				ok = ok && disable_plane(crtc->cursor);
-			}
+			ok = ok && set_cursor_plane_props(state);
 		}
 	} else {
 		ok = ok && disable_plane(crtc->primary);
