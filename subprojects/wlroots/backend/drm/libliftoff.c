@@ -161,6 +161,24 @@ static bool set_plane_props(struct wlr_drm_plane *plane,
 		liftoff_layer_set_property(layer, "FB_ID", fb->id) == 0;
 }
 
+static bool set_primary_plane_props(const struct wlr_drm_connector_state *state,
+		struct liftoff_layer *layer) {
+	if (!set_plane_props(state->connector->crtc->primary, layer,
+			state->primary_fb, 0,
+			&state->primary_viewport.dst_box,
+			&state->primary_viewport.src_box)) {
+		return false;
+	}
+
+	liftoff_layer_set_property(layer, "FB_DAMAGE_CLIPS", state->fb_damage_clips);
+
+	if (state->primary_in_fence_fd >= 0) {
+		liftoff_layer_set_property(layer, "IN_FENCE_FD", state->primary_in_fence_fd);
+	}
+
+	return true;
+}
+
 static bool disable_plane(struct wlr_drm_plane *plane) {
 	return liftoff_layer_set_property(plane->liftoff_layer, "FB_ID", 0) == 0;
 }
@@ -299,26 +317,8 @@ static bool add_connector(drmModeAtomicReq *req,
 	ok = ok && drm_atomic_connector_set_props(req, state, modeset);
 	ok = ok && drm_atomic_crtc_set_props(req, state);
 	if (active) {
-		ok = ok && set_plane_props(crtc->primary,
-			crtc->primary->liftoff_layer, state->primary_fb, 0,
-			&state->primary_viewport.dst_box,
-			&state->primary_viewport.src_box);
-		ok = ok && set_plane_props(crtc->primary,
-			crtc->liftoff_composition_layer, state->primary_fb, 0,
-			&state->primary_viewport.dst_box,
-			&state->primary_viewport.src_box);
-
-		liftoff_layer_set_property(crtc->primary->liftoff_layer,
-			"FB_DAMAGE_CLIPS", state->fb_damage_clips);
-		liftoff_layer_set_property(crtc->liftoff_composition_layer,
-			"FB_DAMAGE_CLIPS", state->fb_damage_clips);
-
-		if (state->primary_in_fence_fd >= 0) {
-			liftoff_layer_set_property(crtc->primary->liftoff_layer,
-				"IN_FENCE_FD", state->primary_in_fence_fd);
-			liftoff_layer_set_property(crtc->liftoff_composition_layer,
-				"IN_FENCE_FD", state->primary_in_fence_fd);
-		}
+		ok = ok && set_primary_plane_props(state, crtc->primary->liftoff_layer);
+		ok = ok && set_primary_plane_props(state, crtc->liftoff_composition_layer);
 
 		if (state->base->committed & WLR_OUTPUT_STATE_LAYERS) {
 			for (size_t i = 0; i < state->base->layers_len; i++) {
