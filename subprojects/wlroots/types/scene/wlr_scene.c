@@ -2792,7 +2792,10 @@ static enum scene_direct_scanout_result scene_entry_try_direct_scanout(
 		return SCANOUT_CANDIDATE;
 	}
 
-	wlr_output_state_copy(state, &pending);
+	if (!wlr_output_state_copy(state, &pending)) {
+		wlr_output_state_finish(&pending);
+		return SCANOUT_CANDIDATE;
+	}
 	wlr_output_state_finish(&pending);
 
 	struct wlr_scene_output_sample_event sample_event = {
