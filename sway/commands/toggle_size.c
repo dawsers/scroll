@@ -15,8 +15,11 @@ static const double EPSILON = 0.0001;
 
 static struct cmd_results *toggle_size(enum sway_toggle_size mode, double width_fraction,
 		double height_fraction) {
-	struct sway_container * current = config->handler_context.container;
 	struct sway_workspace *workspace = config->handler_context.workspace;
+	if (!workspace) {
+		return cmd_results_new(CMD_INVALID, "toggle_size active|all need an active workspace");
+	}
+	struct sway_container * current = config->handler_context.container;
 	enum sway_toggle_size old_mode = layout_toggle_size_mode(workspace);
 	double old_width = layout_toggle_size_width_fraction(workspace);
 	double old_height = layout_toggle_size_height_fraction(workspace);
