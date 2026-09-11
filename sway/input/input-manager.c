@@ -160,17 +160,6 @@ static void apply_input_type_config(struct sway_input_device *input_device) {
 	}
 }
 
-static struct sway_input_device *input_sway_device_from_wlr(
-		struct wlr_input_device *device) {
-	struct sway_input_device *input_device = NULL;
-	wl_list_for_each(input_device, &server.input->devices, link) {
-		if (input_device->wlr_device == device) {
-			return input_device;
-		}
-	}
-	return NULL;
-}
-
 static bool input_has_seat_fallback_configuration(void) {
 	struct sway_seat *seat = NULL;
 	wl_list_for_each(seat, &server.input->seats, link) {
@@ -197,16 +186,9 @@ void input_manager_verify_fallback_seat(void) {
 }
 
 static void handle_device_destroy(struct wl_listener *listener, void *data) {
-	struct wlr_input_device *device = data;
+	struct sway_input_device *input_device = wl_container_of(listener, input_device, device_destroy);
 
-	struct sway_input_device *input_device = input_sway_device_from_wlr(device);
-
-	if (!sway_assert(input_device, "could not find sway device")) {
-		return;
-	}
-
-	sway_log(SWAY_DEBUG, "removing device: '%s'",
-		input_device->identifier);
+	sway_log(SWAY_DEBUG, "removing device: '%s'", input_device->identifier);
 
 	struct sway_seat *seat = NULL;
 	wl_list_for_each(seat, &server.input->seats, link) {
