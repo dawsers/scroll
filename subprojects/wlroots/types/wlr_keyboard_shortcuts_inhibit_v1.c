@@ -34,7 +34,7 @@ static void keyboard_shortcuts_inhibitor_v1_destroy(
 		return;
 	}
 
-	wl_signal_emit_mutable(&inhibitor->events.destroy, inhibitor);
+	wl_signal_emit_mutable(&inhibitor->events.destroy, NULL);
 
 	assert(wl_list_empty(&inhibitor->events.destroy.listener_list));
 
@@ -164,7 +164,7 @@ keyboard_shortcuts_inhibit_impl = {
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_keyboard_shortcuts_inhibit_manager_v1 *manager =
 		wl_container_of(listener, manager, display_destroy);
-	wl_signal_emit_mutable(&manager->events.destroy, manager);
+	wl_signal_emit_mutable(&manager->events.destroy, NULL);
 
 	assert(wl_list_empty(&manager->events.new_inhibitor.listener_list));
 	assert(wl_list_empty(&manager->events.destroy.listener_list));

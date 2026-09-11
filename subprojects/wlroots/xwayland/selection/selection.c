@@ -297,9 +297,9 @@ static void handle_seat_set_selection(struct wl_listener *listener,
 
 static void handle_seat_set_primary_selection(struct wl_listener *listener,
 		void *data) {
-	struct wlr_seat *seat = data;
 	struct wlr_xwm *xwm =
 		wl_container_of(listener, xwm, seat_set_primary_selection);
+	struct wlr_seat *seat = xwm->seat;
 	struct wlr_primary_selection_source *source =
 		seat->primary_selection_source;
 

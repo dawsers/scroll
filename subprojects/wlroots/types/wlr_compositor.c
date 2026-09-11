@@ -563,7 +563,7 @@ static void surface_commit_state(struct wlr_surface *surface,
 		surface->role->commit(surface);
 	}
 
-	wl_signal_emit_mutable(&surface->events.commit, surface);
+	wl_signal_emit_mutable(&surface->events.commit, NULL);
 
 	// Release the buffer after emitting the commit event, so that listeners can
 	// access it. Don't leave the buffer locked so that wl_shm buffers can be
@@ -726,7 +726,7 @@ static void surface_handle_resource_destroy(struct wl_resource *resource) {
 
 	surface_destroy_role_object(surface);
 
-	wl_signal_emit_mutable(&surface->events.destroy, surface);
+	wl_signal_emit_mutable(&surface->events.destroy, NULL);
 	wlr_addon_set_finish(&surface->addons);
 
 	assert(wl_list_empty(&surface->events.client_commit.listener_list));

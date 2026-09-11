@@ -37,7 +37,7 @@ static void send_button_event(struct wlr_x11_output *output, uint32_t key,
 		.state = st,
 	};
 	wlr_pointer_notify_button(&output->pointer, &ev);
-	wl_signal_emit_mutable(&output->pointer.events.frame, &output->pointer);
+	wl_signal_emit_mutable(&output->pointer.events.frame, NULL);
 }
 
 static void send_axis_event(struct wlr_x11_output *output, int32_t delta,
@@ -52,7 +52,7 @@ static void send_axis_event(struct wlr_x11_output *output, int32_t delta,
 		.delta_discrete = delta * WLR_POINTER_AXIS_DISCRETE_STEP,
 	};
 	wl_signal_emit_mutable(&output->pointer.events.axis, &ev);
-	wl_signal_emit_mutable(&output->pointer.events.frame, &output->pointer);
+	wl_signal_emit_mutable(&output->pointer.events.frame, NULL);
 }
 
 static void send_pointer_position_event(struct wlr_x11_output *output,
@@ -64,7 +64,7 @@ static void send_pointer_position_event(struct wlr_x11_output *output,
 		.y = (double)y / output->wlr_output.height,
 	};
 	wl_signal_emit_mutable(&output->pointer.events.motion_absolute, &ev);
-	wl_signal_emit_mutable(&output->pointer.events.frame, &output->pointer);
+	wl_signal_emit_mutable(&output->pointer.events.frame, NULL);
 }
 
 static void send_touch_down_event(struct wlr_x11_output *output,

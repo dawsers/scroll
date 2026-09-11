@@ -694,7 +694,7 @@ failure:
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_screencopy_manager_v1 *manager =
 		wl_container_of(listener, manager, display_destroy);
-	wl_signal_emit_mutable(&manager->events.destroy, manager);
+	wl_signal_emit_mutable(&manager->events.destroy, NULL);
 
 	assert(wl_list_empty(&manager->events.destroy.listener_list));
 

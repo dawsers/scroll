@@ -207,7 +207,7 @@ void wlr_output_set_description(struct wlr_output *output, const char *desc) {
 	}
 	wlr_output_schedule_done(output);
 
-	wl_signal_emit_mutable(&output->events.description, output);
+	wl_signal_emit_mutable(&output->events.description, NULL);
 }
 
 static void output_apply_state(struct wlr_output *output,
@@ -394,7 +394,7 @@ void wlr_output_init(struct wlr_output *output, struct wlr_backend *backend,
 }
 
 void wlr_output_finish(struct wlr_output *output) {
-	wl_signal_emit_mutable(&output->events.destroy, output);
+	wl_signal_emit_mutable(&output->events.destroy, NULL);
 	wlr_addon_set_finish(&output->addons);
 
 	assert(wl_list_empty(&output->events.frame.listener_list));
@@ -847,7 +847,7 @@ bool wlr_output_commit_state(struct wlr_output *output,
 void wlr_output_send_frame(struct wlr_output *output) {
 	output->frame_pending = false;
 	if (output->enabled) {
-		wl_signal_emit_mutable(&output->events.frame, output);
+		wl_signal_emit_mutable(&output->events.frame, NULL);
 	}
 }
 
@@ -992,7 +992,7 @@ void wlr_output_update_needs_frame(struct wlr_output *output) {
 		return;
 	}
 	output->needs_frame = true;
-	wl_signal_emit_mutable(&output->events.needs_frame, output);
+	wl_signal_emit_mutable(&output->events.needs_frame, NULL);
 }
 
 const struct wlr_drm_format_set *wlr_output_get_primary_formats(

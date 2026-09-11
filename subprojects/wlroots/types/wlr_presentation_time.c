@@ -165,7 +165,7 @@ static void presentation_bind(struct wl_client *client, void *data,
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_presentation *presentation =
 		wl_container_of(listener, presentation, display_destroy);
-	wl_signal_emit_mutable(&presentation->events.destroy, presentation);
+	wl_signal_emit_mutable(&presentation->events.destroy, NULL);
 
 	assert(wl_list_empty(&presentation->events.destroy.listener_list));
 

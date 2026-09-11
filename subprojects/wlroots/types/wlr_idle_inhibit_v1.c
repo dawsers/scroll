@@ -32,7 +32,7 @@ static void idle_inhibitor_v1_destroy(struct wlr_idle_inhibitor_v1 *inhibitor) {
 		return;
 	}
 
-	wl_signal_emit_mutable(&inhibitor->events.destroy, inhibitor->surface);
+	wl_signal_emit_mutable(&inhibitor->events.destroy, NULL);
 
 	assert(wl_list_empty(&inhibitor->events.destroy.listener_list));
 
@@ -115,7 +115,7 @@ static const struct zwp_idle_inhibit_manager_v1_interface idle_inhibit_impl = {
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_idle_inhibit_manager_v1 *manager =
 		wl_container_of(listener, manager, display_destroy);
-	wl_signal_emit_mutable(&manager->events.destroy, manager);
+	wl_signal_emit_mutable(&manager->events.destroy, NULL);
 
 	assert(wl_list_empty(&manager->events.new_inhibitor.listener_list));
 	assert(wl_list_empty(&manager->events.destroy.listener_list));

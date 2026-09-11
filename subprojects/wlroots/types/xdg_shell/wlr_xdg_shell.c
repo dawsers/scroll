@@ -128,7 +128,7 @@ static void xdg_shell_bind(struct wl_client *wl_client, void *data,
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_xdg_shell *xdg_shell =
 		wl_container_of(listener, xdg_shell, display_destroy);
-	wl_signal_emit_mutable(&xdg_shell->events.destroy, xdg_shell);
+	wl_signal_emit_mutable(&xdg_shell->events.destroy, NULL);
 
 	assert(wl_list_empty(&xdg_shell->events.new_surface.listener_list));
 	assert(wl_list_empty(&xdg_shell->events.new_toplevel.listener_list));

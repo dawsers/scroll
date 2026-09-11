@@ -48,7 +48,7 @@ void wlr_renderer_destroy(struct wlr_renderer *r) {
 		return;
 	}
 
-	wl_signal_emit_mutable(&r->events.destroy, r);
+	wl_signal_emit_mutable(&r->events.destroy, NULL);
 
 	assert(wl_list_empty(&r->events.destroy.listener_list));
 	assert(wl_list_empty(&r->events.lost.listener_list));

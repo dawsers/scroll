@@ -35,7 +35,7 @@ struct wlr_output_layout *wlr_output_layout_create(struct wl_display *display) {
 
 static void output_layout_output_destroy(
 		struct wlr_output_layout_output *l_output) {
-	wl_signal_emit_mutable(&l_output->events.destroy, l_output);
+	wl_signal_emit_mutable(&l_output->events.destroy, NULL);
 
 	assert(wl_list_empty(&l_output->events.destroy.listener_list));
 
@@ -51,7 +51,7 @@ void wlr_output_layout_destroy(struct wlr_output_layout *layout) {
 		return;
 	}
 
-	wl_signal_emit_mutable(&layout->events.destroy, layout);
+	wl_signal_emit_mutable(&layout->events.destroy, NULL);
 
 	assert(wl_list_empty(&layout->events.add.listener_list));
 	assert(wl_list_empty(&layout->events.change.listener_list));
@@ -134,7 +134,7 @@ static void output_layout_reconfigure(struct wlr_output_layout *layout) {
 		max_p_x += output_p_box.width;
 	}
 
-	wl_signal_emit_mutable(&layout->events.change, layout);
+	wl_signal_emit_mutable(&layout->events.change, NULL);
 }
 
 static void output_update_global(struct wlr_output_layout *layout,

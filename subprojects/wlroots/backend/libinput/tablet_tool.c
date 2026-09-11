@@ -53,7 +53,7 @@ void init_device_tablet(struct wlr_libinput_input_device *dev) {
 }
 
 static void tool_destroy(struct tablet_tool *tool) {
-	wl_signal_emit_mutable(&tool->wlr_tool.events.destroy, &tool->wlr_tool);
+	wl_signal_emit_mutable(&tool->wlr_tool.events.destroy, NULL);
 	libinput_tablet_tool_unref(tool->handle);
 	libinput_tablet_tool_set_user_data(tool->handle, NULL);
 	wl_list_remove(&tool->link);

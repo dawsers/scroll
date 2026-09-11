@@ -126,7 +126,7 @@ static void foreign_toplevel_handle_close(struct wl_client *client,
 	if (!toplevel) {
 		return;
 	}
-	wl_signal_emit_mutable(&toplevel->events.request_close, toplevel);
+	wl_signal_emit_mutable(&toplevel->events.request_close, NULL);
 }
 
 static void foreign_toplevel_handle_set_rectangle(struct wl_client *client,
@@ -451,7 +451,7 @@ void wlr_foreign_toplevel_handle_v1_destroy(
 		return;
 	}
 
-	wl_signal_emit_mutable(&toplevel->events.destroy, toplevel);
+	wl_signal_emit_mutable(&toplevel->events.destroy, NULL);
 
 	assert(wl_list_empty(&toplevel->events.request_maximize.listener_list));
 	assert(wl_list_empty(&toplevel->events.request_minimize.listener_list));
@@ -638,7 +638,7 @@ static void foreign_toplevel_manager_bind(struct wl_client *client, void *data,
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_foreign_toplevel_manager_v1 *manager =
 		wl_container_of(listener, manager, display_destroy);
-	wl_signal_emit_mutable(&manager->events.destroy, manager);
+	wl_signal_emit_mutable(&manager->events.destroy, NULL);
 
 	assert(wl_list_empty(&manager->events.destroy.listener_list));
 

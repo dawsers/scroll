@@ -92,7 +92,7 @@ void wlr_keyboard_notify_modifiers(struct wlr_keyboard *keyboard,
 			keyboard->modifiers.latched = mods_latched;
 			keyboard->modifiers.locked = mods_locked;
 			keyboard->modifiers.group = group;
-			wl_signal_emit_mutable(&keyboard->events.modifiers, keyboard);
+			wl_signal_emit_mutable(&keyboard->events.modifiers, NULL);
 		}
 		return;
 	}
@@ -101,7 +101,7 @@ void wlr_keyboard_notify_modifiers(struct wlr_keyboard *keyboard,
 
 	bool updated = keyboard_modifier_update(keyboard);
 	if (updated) {
-		wl_signal_emit_mutable(&keyboard->events.modifiers, keyboard);
+		wl_signal_emit_mutable(&keyboard->events.modifiers, NULL);
 	}
 
 	keyboard_led_update(keyboard);
@@ -124,7 +124,7 @@ void wlr_keyboard_notify_key(struct wlr_keyboard *keyboard,
 
 	bool updated = keyboard_modifier_update(keyboard);
 	if (updated) {
-		wl_signal_emit_mutable(&keyboard->events.modifiers, keyboard);
+		wl_signal_emit_mutable(&keyboard->events.modifiers, NULL);
 	}
 
 	keyboard_led_update(keyboard);
@@ -200,7 +200,7 @@ void wlr_keyboard_led_update(struct wlr_keyboard *kb, uint32_t leds) {
 bool wlr_keyboard_set_keymap(struct wlr_keyboard *kb, struct xkb_keymap *keymap) {
 	if (keymap == NULL) {
 		keyboard_unset_keymap(kb);
-		wl_signal_emit_mutable(&kb->events.keymap, kb);
+		wl_signal_emit_mutable(&kb->events.keymap, NULL);
 		return true;
 	}
 
@@ -274,7 +274,7 @@ bool wlr_keyboard_set_keymap(struct wlr_keyboard *kb, struct xkb_keymap *keymap)
 
 	keyboard_modifier_update(kb);
 
-	wl_signal_emit_mutable(&kb->events.keymap, kb);
+	wl_signal_emit_mutable(&kb->events.keymap, NULL);
 
 	return true;
 
@@ -292,7 +292,7 @@ void wlr_keyboard_set_repeat_info(struct wlr_keyboard *kb, int32_t rate,
 	}
 	kb->repeat_info.rate = rate;
 	kb->repeat_info.delay = delay;
-	wl_signal_emit_mutable(&kb->events.repeat_info, kb);
+	wl_signal_emit_mutable(&kb->events.repeat_info, NULL);
 }
 
 uint32_t wlr_keyboard_get_modifiers(struct wlr_keyboard *kb) {

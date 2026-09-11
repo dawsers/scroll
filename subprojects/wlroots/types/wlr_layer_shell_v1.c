@@ -49,7 +49,7 @@ static void layer_surface_destroy(struct wlr_layer_surface_v1 *surface) {
 	wlr_surface_unmap(surface->surface);
 	layer_surface_reset(surface);
 
-	wl_signal_emit_mutable(&surface->events.destroy, surface);
+	wl_signal_emit_mutable(&surface->events.destroy, NULL);
 
 	assert(wl_list_empty(&surface->events.destroy.listener_list));
 	assert(wl_list_empty(&surface->events.new_popup.listener_list));
@@ -542,7 +542,7 @@ static void layer_shell_bind(struct wl_client *wl_client, void *data,
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_layer_shell_v1 *layer_shell =
 		wl_container_of(listener, layer_shell, display_destroy);
-	wl_signal_emit_mutable(&layer_shell->events.destroy, layer_shell);
+	wl_signal_emit_mutable(&layer_shell->events.destroy, NULL);
 
 	assert(wl_list_empty(&layer_shell->events.new_surface.listener_list));
 	assert(wl_list_empty(&layer_shell->events.destroy.listener_list));

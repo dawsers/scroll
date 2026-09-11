@@ -28,14 +28,14 @@ static void server_decoration_handle_request_mode(struct wl_client *client,
 		return;
 	}
 	decoration->mode = mode;
-	wl_signal_emit_mutable(&decoration->events.mode, decoration);
+	wl_signal_emit_mutable(&decoration->events.mode, NULL);
 	org_kde_kwin_server_decoration_send_mode(decoration->resource,
 		decoration->mode);
 }
 
 static void server_decoration_destroy(
 		struct wlr_server_decoration *decoration) {
-	wl_signal_emit_mutable(&decoration->events.destroy, decoration);
+	wl_signal_emit_mutable(&decoration->events.destroy, NULL);
 
 	assert(wl_list_empty(&decoration->events.destroy.listener_list));
 	assert(wl_list_empty(&decoration->events.mode.listener_list));
@@ -167,7 +167,7 @@ static void server_decoration_manager_bind(struct wl_client *client, void *data,
 static void handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_server_decoration_manager *manager =
 		wl_container_of(listener, manager, display_destroy);
-	wl_signal_emit_mutable(&manager->events.destroy, manager);
+	wl_signal_emit_mutable(&manager->events.destroy, NULL);
 
 	assert(wl_list_empty(&manager->events.new_decoration.listener_list));
 	assert(wl_list_empty(&manager->events.destroy.listener_list));

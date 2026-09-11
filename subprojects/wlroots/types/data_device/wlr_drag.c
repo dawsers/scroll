@@ -116,13 +116,13 @@ static void drag_set_focus(struct wlr_drag *drag,
 	wl_signal_add(&focus_client->events.destroy, &drag->seat_client_destroy);
 
 out:
-	wl_signal_emit_mutable(&drag->events.focus, drag);
+	wl_signal_emit_mutable(&drag->events.focus, NULL);
 }
 
 static void drag_icon_destroy(struct wlr_drag_icon *icon) {
 	icon->drag->icon = NULL;
 	wl_list_remove(&icon->surface_destroy.link);
-	wl_signal_emit_mutable(&icon->events.destroy, icon);
+	wl_signal_emit_mutable(&icon->events.destroy, NULL);
 
 	assert(wl_list_empty(&icon->events.destroy.listener_list));
 
@@ -161,7 +161,7 @@ static void drag_destroy(struct wlr_drag *drag) {
 	// to ensure that the wl_data_device.leave is sent before emitting the
 	// signal. This allows e.g. wl_pointer.enter to be sent in the destroy
 	// signal handler.
-	wl_signal_emit_mutable(&drag->events.destroy, drag);
+	wl_signal_emit_mutable(&drag->events.destroy, NULL);
 
 	assert(wl_list_empty(&drag->events.focus.listener_list));
 	assert(wl_list_empty(&drag->events.motion.listener_list));

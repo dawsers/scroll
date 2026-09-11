@@ -31,7 +31,7 @@ static void subsurface_destroy(struct wlr_subsurface *subsurface) {
 
 	wlr_surface_unmap(subsurface->surface);
 
-	wl_signal_emit_mutable(&subsurface->events.destroy, subsurface);
+	wl_signal_emit_mutable(&subsurface->events.destroy, NULL);
 
 	assert(wl_list_empty(&subsurface->events.destroy.listener_list));
 

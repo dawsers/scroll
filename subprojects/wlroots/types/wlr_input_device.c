@@ -18,7 +18,7 @@ void wlr_input_device_finish(struct wlr_input_device *wlr_device) {
 		return;
 	}
 
-	wl_signal_emit_mutable(&wlr_device->events.destroy, wlr_device);
+	wl_signal_emit_mutable(&wlr_device->events.destroy, NULL);
 
 	assert(wl_list_empty(&wlr_device->events.destroy.listener_list));
 

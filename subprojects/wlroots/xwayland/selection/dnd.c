@@ -277,8 +277,8 @@ static void xwm_set_drag_focus(struct wlr_xwm *xwm, struct wlr_xwayland_surface 
 }
 
 static void seat_handle_drag_focus(struct wl_listener *listener, void *data) {
-	struct wlr_drag *drag = data;
 	struct wlr_xwm *xwm = wl_container_of(listener, xwm, seat_drag_focus);
+	struct wlr_drag *drag = xwm->drag;
 
 	struct wlr_xwayland_surface *focus = NULL;
 	if (drag->focus != NULL) {

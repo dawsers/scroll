@@ -36,7 +36,7 @@ void handle_pointer_motion(struct libinput_event *event,
 		.unaccel_dy = libinput_event_pointer_get_dy_unaccelerated(pevent),
 	};
 	wl_signal_emit_mutable(&pointer->events.motion, &wlr_event);
-	wl_signal_emit_mutable(&pointer->events.frame, pointer);
+	wl_signal_emit_mutable(&pointer->events.frame, NULL);
 }
 
 void handle_pointer_motion_abs(struct libinput_event *event,
@@ -50,7 +50,7 @@ void handle_pointer_motion_abs(struct libinput_event *event,
 		.y = libinput_event_pointer_get_absolute_y_transformed(pevent, 1),
 	};
 	wl_signal_emit_mutable(&pointer->events.motion_absolute, &wlr_event);
-	wl_signal_emit_mutable(&pointer->events.frame, pointer);
+	wl_signal_emit_mutable(&pointer->events.frame, NULL);
 }
 
 static bool pointer_button_state_from_libinput(enum libinput_button_state state,
@@ -100,7 +100,7 @@ void handle_pointer_button(struct libinput_event *event,
 		return;
 	}
 	wlr_pointer_notify_button(pointer, &wlr_event);
-	wl_signal_emit_mutable(&pointer->events.frame, pointer);
+	wl_signal_emit_mutable(&pointer->events.frame, NULL);
 }
 
 void handle_pointer_axis(struct libinput_event *event,
@@ -143,7 +143,7 @@ void handle_pointer_axis(struct libinput_event *event,
 		}
 		wl_signal_emit_mutable(&pointer->events.axis, &wlr_event);
 	}
-	wl_signal_emit_mutable(&pointer->events.frame, pointer);
+	wl_signal_emit_mutable(&pointer->events.frame, NULL);
 }
 
 void handle_pointer_axis_value120(struct libinput_event *event,
@@ -180,7 +180,7 @@ void handle_pointer_axis_value120(struct libinput_event *event,
 		}
 		wl_signal_emit_mutable(&pointer->events.axis, &wlr_event);
 	}
-	wl_signal_emit_mutable(&pointer->events.frame, pointer);
+	wl_signal_emit_mutable(&pointer->events.frame, NULL);
 }
 
 void handle_pointer_swipe_begin(struct libinput_event *event,

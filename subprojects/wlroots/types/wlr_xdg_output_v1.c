@@ -235,7 +235,7 @@ static void manager_destroy(struct wlr_xdg_output_manager_v1 *manager) {
 		output_destroy(output);
 	}
 
-	wl_signal_emit_mutable(&manager->events.destroy, manager);
+	wl_signal_emit_mutable(&manager->events.destroy, NULL);
 
 	assert(wl_list_empty(&manager->events.destroy.listener_list));
 

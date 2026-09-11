@@ -69,7 +69,7 @@ static void seat_handle_get_touch(struct wl_client *client,
 }
 
 static void seat_client_destroy(struct wlr_seat_client *client) {
-	wl_signal_emit_mutable(&client->events.destroy, client);
+	wl_signal_emit_mutable(&client->events.destroy, NULL);
 
 	assert(wl_list_empty(&client->events.destroy.listener_list));
 
@@ -228,7 +228,7 @@ void wlr_seat_destroy(struct wlr_seat *seat) {
 		wlr_seat_touch_point_clear_focus(seat, 0, point->touch_id);
 	}
 
-	wl_signal_emit_mutable(&seat->events.destroy, seat);
+	wl_signal_emit_mutable(&seat->events.destroy, NULL);
 
 	assert(wl_list_empty(&seat->pointer_state.events.focus_change.listener_list));
 

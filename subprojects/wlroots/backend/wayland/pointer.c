@@ -144,8 +144,7 @@ static void pointer_handle_frame(void *data, struct wl_pointer *wl_pointer) {
 		return;
 	}
 
-	wl_signal_emit_mutable(&pointer->wlr_pointer.events.frame,
-		&pointer->wlr_pointer);
+	wl_signal_emit_mutable(&pointer->wlr_pointer.events.frame, NULL);
 }
 
 static void pointer_handle_axis_source(void *data,

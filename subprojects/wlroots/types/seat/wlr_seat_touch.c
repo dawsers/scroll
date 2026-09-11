@@ -112,7 +112,7 @@ static void touch_point_clear_focus(struct wlr_touch_point *point) {
 }
 
 static void touch_point_destroy(struct wlr_touch_point *point) {
-	wl_signal_emit_mutable(&point->events.destroy, point);
+	wl_signal_emit_mutable(&point->events.destroy, NULL);
 
 	assert(wl_list_empty(&point->events.destroy.listener_list));
 

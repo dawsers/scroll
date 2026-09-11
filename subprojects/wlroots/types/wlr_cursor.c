@@ -823,7 +823,7 @@ static void handle_pointer_axis(struct wl_listener *listener, void *data) {
 
 static void handle_pointer_frame(struct wl_listener *listener, void *data) {
 	struct wlr_cursor_device *device = wl_container_of(listener, device, frame);
-	wl_signal_emit_mutable(&device->cursor->events.frame, device->cursor);
+	wl_signal_emit_mutable(&device->cursor->events.frame, NULL);
 }
 
 static void handle_pointer_swipe_begin(struct wl_listener *listener, void *data) {
@@ -1196,7 +1196,7 @@ static void handle_layout_add(struct wl_listener *listener, void *data) {
 static void handle_layout_change(struct wl_listener *listener, void *data) {
 	struct wlr_cursor_state *state =
 		wl_container_of(listener, state, layout_change);
-	struct wlr_output_layout *layout = data;
+	struct wlr_output_layout *layout = state->layout;
 
 	if (!wlr_output_layout_contains_point(layout, NULL, state->cursor.x,
 			state->cursor.y) && !wl_list_empty(&layout->outputs)) {
