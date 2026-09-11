@@ -200,6 +200,6 @@ bool wlr_output_state_copy(struct wlr_output_state *dst,
 	return true;
 
 err:
-	wlr_output_state_finish(dst);
+	wlr_output_state_finish(&copy);
 	return false;
 }
