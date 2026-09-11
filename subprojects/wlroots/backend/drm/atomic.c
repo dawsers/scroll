@@ -574,6 +574,34 @@ static bool set_plane_in_fence_fd(drmModeAtomicReq *req,
 	return atomic_add(req, plane->id, plane->props.in_fence_fd, sync_file_fd);
 }
 
+static bool set_primary_plane_props(drmModeAtomicReq *req,
+		struct wlr_drm_connector_state *state) {
+	struct wlr_drm_connector *conn = state->connector;
+	struct wlr_drm_crtc *crtc = conn->crtc;
+	struct wlr_drm_plane *plane = crtc->primary;
+	bool ok = true;
+
+	ok = ok && set_plane_props(req, conn->backend, plane, state->primary_fb, crtc->id,
+		&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
+	if (plane->props.color_encoding != 0) {
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.color_encoding, state->primary_color_encoding);
+	}
+	if (plane->props.color_range != 0) {
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.color_range, state->primary_color_range);
+	}
+	if (plane->props.fb_damage_clips != 0) {
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.fb_damage_clips, state->fb_damage_clips);
+	}
+	if (state->primary_in_fence_fd >= 0) {
+		ok = ok && set_plane_in_fence_fd(req, plane, state->primary_in_fence_fd);
+	}
+
+	return ok;
+}
+
 static bool atomic_connector_add(drmModeAtomicReq *req,
 		struct wlr_drm_connector_state *state, bool modeset) {
 	struct wlr_drm_connector *conn = state->connector;
@@ -585,23 +613,7 @@ static bool atomic_connector_add(drmModeAtomicReq *req,
 	ok = ok && drm_atomic_connector_set_props(req, state, modeset);
 	ok = ok && drm_atomic_crtc_set_props(req, state);
 	if (active) {
-		ok = ok && set_plane_props(req, drm, crtc->primary, state->primary_fb, crtc->id,
-			&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
-		if (crtc->primary->props.color_encoding != 0) {
-			ok = ok && atomic_add(req, crtc->primary->id,
-				crtc->primary->props.color_encoding, state->primary_color_encoding);
-		}
-		if (crtc->primary->props.color_range != 0) {
-			ok = ok && atomic_add(req, crtc->primary->id,
-				crtc->primary->props.color_range, state->primary_color_range);
-		}
-		if (crtc->primary->props.fb_damage_clips != 0) {
-			ok = ok && atomic_add(req, crtc->primary->id,
-				crtc->primary->props.fb_damage_clips, state->fb_damage_clips);
-		}
-		if (state->primary_in_fence_fd >= 0) {
-			ok = ok && set_plane_in_fence_fd(req, crtc->primary, state->primary_in_fence_fd);
-		}
+		ok = ok && set_primary_plane_props(req, state);
 		if (crtc->cursor) {
 			if (drm_connector_is_cursor_visible(conn)) {
 				struct wlr_fbox cursor_src = {
