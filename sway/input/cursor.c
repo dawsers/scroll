@@ -913,8 +913,6 @@ static void handle_constraint_commit(struct wl_listener *listener,
 		void *data) {
 	struct sway_cursor *cursor =
 		wl_container_of(listener, cursor, constraint_commit);
-	struct wlr_pointer_constraint_v1 *constraint = cursor->active_constraint;
-	assert(constraint->surface == data);
 
 	check_constraint_region(cursor);
 }
@@ -1364,7 +1362,7 @@ static void warp_to_constraint_cursor_hint(struct sway_cursor *cursor) {
 void handle_constraint_destroy(struct wl_listener *listener, void *data) {
 	struct sway_pointer_constraint *sway_constraint =
 		wl_container_of(listener, sway_constraint, destroy);
-	struct wlr_pointer_constraint_v1 *constraint = data;
+	struct wlr_pointer_constraint_v1 *constraint = sway_constraint->constraint;
 	struct sway_cursor *cursor = sway_constraint->cursor;
 
 	wl_list_remove(&sway_constraint->set_region.link);
