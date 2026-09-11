@@ -69,6 +69,9 @@ void transaction_destroy(struct sway_transaction *transaction) {
 		if (node->instruction == instruction) {
 			node->instruction = NULL;
 		}
+		if (node->type == N_CONTAINER) {
+			free(instruction->container_state.formatted_title);
+		}
 		if (node->destroying && node->ntxnrefs == 0 && !node->dirty) {
 			switch (node->type) {
 			case N_ROOT:
@@ -155,8 +158,18 @@ static void copy_container_state(struct sway_container *container,
 	if (state->children) {
 		list_free(state->children);
 	}
+	if (state->formatted_title) {
+		free(state->formatted_title);
+	}
 
 	memcpy(state, &container->pending, sizeof(struct sway_container_state));
+	state->formatted_title = NULL;
+
+	if (container->pending.formatted_title) {
+		state->formatted_title = strdup(container->pending.formatted_title);
+		sway_assert(state->formatted_title,
+				"Unable to allocate formatted title");
+	}
 
 	if (!container->view) {
 		// We store a copy of the child list to avoid having it mutated after
@@ -276,8 +289,11 @@ static void apply_container_state(struct sway_container *container,
 	// Any child containers which are being deleted will be cleaned up in
 	// transaction_destroy().
 	list_free(container->current.children);
+	free(container->current.formatted_title);
 
 	memcpy(&container->current, state, sizeof(struct sway_container_state));
+
+	state->formatted_title = NULL;
 
 	if (view) {
 		if (view->saved_surface_tree) {
@@ -292,6 +308,10 @@ static void apply_container_state(struct sway_container *container,
 		if (view->surface) {
 			view_center_and_clip_surface(view);
 		}
+	}
+
+	if (!container->node.destroying) {
+		container_update_title_text(container);
 	}
 }
 

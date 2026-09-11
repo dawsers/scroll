@@ -474,20 +474,36 @@ void container_update_marks(struct sway_container *con) {
 	free(buffer);
 }
 
-void container_update_title_bar(struct sway_container *con) {
-	if (!con->formatted_title) {
+void container_update_title_text(struct sway_container *con) {
+	if (!con->current.formatted_title || !*con->current.formatted_title) {
+		if (con->title_bar.title_text) {
+			wlr_scene_node_destroy(con->title_bar.title_text->node);
+			con->title_bar.title_text = NULL;
+		}
 		return;
 	}
 
-	struct border_colors *colors = container_get_current_colors(con);
+	if (!con->title_bar.title_text) {
+		struct border_colors *colors = container_get_current_colors(con);
+		con->title_bar.title_text = sway_text_node_create(con->title_bar.tree,
+			con->current.formatted_title, colors->text, config->pango_markup);
+	} else {
+		sway_text_node_set_text(con->title_bar.title_text,
+			con->current.formatted_title);
+	}
+}
 
+void container_update_title_bar(struct sway_container *con) {
 	if (con->title_bar.title_text) {
 		wlr_scene_node_destroy(con->title_bar.title_text->node);
 		con->title_bar.title_text = NULL;
 	}
 
-	con->title_bar.title_text = sway_text_node_create(con->title_bar.tree,
-		con->formatted_title, colors->text, config->pango_markup);
+	if (con->current.formatted_title && *con->current.formatted_title) {
+		struct border_colors *colors = container_get_current_colors(con);
+		con->title_bar.title_text = sway_text_node_create(con->title_bar.tree,
+			con->current.formatted_title, colors->text, config->pango_markup);
+	}
 
 	// we always have to remake these text buffers completely for text font
 	// changes etc...
@@ -512,7 +528,8 @@ void container_destroy(struct sway_container *con) {
 	container_release_animation_variables(con);
 	node_map_remove(&con->node);
 	free(con->title);
-	free(con->formatted_title);
+	free(con->pending.formatted_title);
+	free(con->current.formatted_title);
 	free(con->title_format);
 	list_free(con->pending.children);
 	list_free(con->current.children);
@@ -792,7 +809,7 @@ size_t container_build_representation(enum sway_container_layout layout,
 				identifier = view_get_app_id(child->view);
 			}
 		} else {
-			identifier = child->formatted_title;
+			identifier = child->pending.formatted_title;
 		}
 		if (identifier) {
 			len += strlen(identifier);
@@ -810,20 +827,17 @@ size_t container_build_representation(enum sway_container_layout layout,
 void container_update_representation(struct sway_container *con) {
 	if (!con->view) {
 		size_t len = parse_title_format(con, NULL);
-		free(con->formatted_title);
-		con->formatted_title = calloc(len + 1, sizeof(char));
-		if (!sway_assert(con->formatted_title,
-					"Unable to allocate title string")) {
-			return;
+		free(con->pending.formatted_title);
+		con->pending.formatted_title = NULL;
+		if (len) {
+			con->pending.formatted_title = calloc(len + 1, sizeof(char));
+			if (!sway_assert(con->pending.formatted_title,
+						"Unable to allocate title string")) {
+				return;
+			}
+			parse_title_format(con, con->pending.formatted_title);
 		}
-		parse_title_format(con, con->formatted_title);
-
-		if (con->title_bar.title_text) {
-			sway_text_node_set_text(con->title_bar.title_text, con->formatted_title);
-			container_arrange_title_bar(con);
-		} else {
-			container_update_title_bar(con);
-		}
+		node_set_dirty(&con->node);
 	}
 	if (con->pending.parent) {
 		container_update_representation(con->pending.parent);

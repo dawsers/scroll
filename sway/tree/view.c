@@ -31,7 +31,6 @@
 #include "sway/input/seat.h"
 #include "sway/scene_descriptor.h"
 #include "sway/server.h"
-#include "sway/sway_text_node.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/view.h"
@@ -1277,7 +1276,9 @@ void view_update_title(struct sway_view *view, bool force) {
 	}
 
 	free(view->container->title);
-	free(view->container->formatted_title);
+	view->container->title = NULL;
+	free(view->container->pending.formatted_title);
+	view->container->pending.formatted_title = NULL;
 
 	size_t len = parse_title_format(view->container, NULL);
 
@@ -1288,21 +1289,12 @@ void view_update_title(struct sway_view *view, bool force) {
 		}
 
 		parse_title_format(view->container, buffer);
-		view->container->formatted_title = buffer;
-	} else {
-		view->container->formatted_title = NULL;
+		view->container->pending.formatted_title = buffer;
 	}
 
 	view->container->title = title ? strdup(title) : NULL;
 
-	// Update title after the global font height is updated
-	if (view->container->title_bar.title_text && len) {
-		sway_text_node_set_text(view->container->title_bar.title_text,
-			view->container->formatted_title);
-		container_arrange_title_bar(view->container);
-	} else {
-		container_update_title_bar(view->container);
-	}
+	node_set_dirty(&view->container->node);
 
 	ipc_event_window(view->container, "title");
 

@@ -101,6 +101,8 @@ struct sway_container_state {
 	double content_width, content_height;
 
 	float alpha;
+
+	char *formatted_title; // The title displayed in the title bar
 };
 
 struct sway_container {
@@ -140,7 +142,6 @@ struct sway_container {
 	struct sway_container_state pending;
 
 	char *title;           // The view's title (unformatted)
-	char *formatted_title; // The title displayed in the title bar
 	double title_width;
 
 	char *title_format;
@@ -249,6 +250,8 @@ bool container_has_ancestor(struct sway_container *container,
 void container_reap_empty(struct sway_container *con);
 
 void container_update_title_bar(struct sway_container *container);
+
+void container_update_title_text(struct sway_container *container);
 
 void container_update_marks(struct sway_container *container);
 
