@@ -235,6 +235,36 @@ static uint64_t convert_primaries_to_colorspace(uint32_t primaries) {
 	abort(); // unreachable
 }
 
+static bool convert_color_encoding(enum wlr_color_encoding encoding, uint32_t *out) {
+	switch (encoding) {
+	case WLR_COLOR_ENCODING_NONE:
+	case WLR_COLOR_ENCODING_BT601:
+		*out = WLR_DRM_COLOR_YCBCR_BT601;
+		break;
+	case WLR_COLOR_ENCODING_BT709:
+		*out = WLR_DRM_COLOR_YCBCR_BT709;
+		break;
+	case WLR_COLOR_ENCODING_BT2020:
+		*out = WLR_DRM_COLOR_YCBCR_BT2020;
+		break;
+	default:
+		wlr_log(WLR_DEBUG, "Unsupported color encoding %d", encoding);
+		return false;
+	}
+	return true;
+}
+
+static uint32_t convert_color_range(enum wlr_color_range range) {
+	switch (range) {
+	case WLR_COLOR_RANGE_NONE:
+	case WLR_COLOR_RANGE_LIMITED:
+		return WLR_DRM_COLOR_YCBCR_LIMITED_RANGE;
+	case WLR_COLOR_RANGE_FULL:
+		return WLR_DRM_COLOR_YCBCR_FULL_RANGE;
+	}
+	abort(); // unreachable
+}
+
 static uint64_t max_bpc_for_format(uint32_t format) {
 	switch (format) {
 	case DRM_FORMAT_XRGB2101010:
@@ -371,10 +401,31 @@ bool drm_atomic_connector_prepare(struct wlr_drm_connector_state *state, bool mo
 		return false;
 	}
 
+	if ((state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION)) {
+		if (crtc->primary->props.color_encoding == 0) {
+			wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_ENCODING property",
+				crtc->primary->id);
+			return false;
+		}
+		if (crtc->primary->props.color_range == 0) {
+			wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_RANGE property",
+				crtc->primary->id);
+			return false;
+		}
+	}
+
+	uint32_t color_encoding;
+	if (!convert_color_encoding(state->base->color_encoding, &color_encoding)) {
+		return false;
+	}
+	uint32_t color_range = convert_color_range(state->base->color_range);
+
 	state->mode_id = mode_id;
 	state->gamma_lut = gamma_lut;
 	state->fb_damage_clips = fb_damage_clips;
 	state->primary_in_fence_fd = in_fence_fd;
+	state->primary_color_encoding = color_encoding;
+	state->primary_color_range = color_range;
 	state->vrr_enabled = vrr_enabled;
 	state->colorspace = colorspace;
 	state->hdr_output_metadata = hdr_output_metadata;
@@ -453,61 +504,6 @@ static bool set_plane_props(drmModeAtomicReq *req, struct wlr_drm_backend *drm,
 		atomic_add(req, id, props->crtc_y, dst_box->y) &&
 		atomic_add(req, id, props->crtc_w, dst_box->width) &&
 		atomic_add(req, id, props->crtc_h, dst_box->height);
-}
-
-static bool set_color_encoding_and_range(drmModeAtomicReq *req,
-		struct wlr_drm_plane *plane, enum wlr_color_encoding encoding,
-		enum wlr_color_range range) {
-	uint32_t id = plane->id;
-	const struct wlr_drm_plane_props *props = &plane->props;
-
-	uint32_t color_encoding;
-	switch (encoding) {
-	case WLR_COLOR_ENCODING_NONE:
-	case WLR_COLOR_ENCODING_BT601:
-		color_encoding = WLR_DRM_COLOR_YCBCR_BT601;
-		break;
-	case WLR_COLOR_ENCODING_BT709:
-		color_encoding = WLR_DRM_COLOR_YCBCR_BT709;
-		break;
-	case WLR_COLOR_ENCODING_BT2020:
-		color_encoding = WLR_DRM_COLOR_YCBCR_BT2020;
-		break;
-	default:
-		wlr_log(WLR_DEBUG, "Unsupported color encoding %d", encoding);
-		return false;
-	}
-
-	if (!props->color_encoding) {
-		wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_ENCODING property",
-			id);
-		return false;
-	}
-
-	if (!atomic_add(req, id, props->color_encoding, color_encoding)) {
-		return false;
-	}
-
-	uint32_t color_range;
-	switch (range) {
-	case WLR_COLOR_RANGE_NONE:
-	case WLR_COLOR_RANGE_LIMITED:
-		color_range = WLR_DRM_COLOR_YCBCR_LIMITED_RANGE;
-		break;
-	case WLR_COLOR_RANGE_FULL:
-		color_range = WLR_DRM_COLOR_YCBCR_FULL_RANGE;
-		break;
-	default:
-		assert(0); // Unreachable
-	}
-
-	if (!props->color_range) {
-		wlr_log(WLR_DEBUG, "Plane %"PRIu32" is missing the COLOR_RANGE property",
-			id);
-		return false;
-	}
-
-	return atomic_add(req, id, props->color_range, color_range);
 }
 
 bool drm_atomic_connector_set_props(drmModeAtomicReq *req,
@@ -591,9 +587,13 @@ static bool atomic_connector_add(drmModeAtomicReq *req,
 	if (active) {
 		ok = ok && set_plane_props(req, drm, crtc->primary, state->primary_fb, crtc->id,
 			&state->primary_viewport.dst_box, &state->primary_viewport.src_box);
-		if (state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION) {
-			ok = ok && set_color_encoding_and_range(req, crtc->primary,
-				state->base->color_encoding, state->base->color_range);
+		if (crtc->primary->props.color_encoding != 0) {
+			ok = ok && atomic_add(req, crtc->primary->id,
+				crtc->primary->props.color_encoding, state->primary_color_encoding);
+		}
+		if (crtc->primary->props.color_range != 0) {
+			ok = ok && atomic_add(req, crtc->primary->id,
+				crtc->primary->props.color_range, state->primary_color_range);
 		}
 		if (crtc->primary->props.fb_damage_clips != 0) {
 			ok = ok && atomic_add(req, crtc->primary->id,
