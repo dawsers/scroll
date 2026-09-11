@@ -176,6 +176,11 @@ static bool set_primary_plane_props(const struct wlr_drm_connector_state *state,
 		liftoff_layer_set_property(layer, "IN_FENCE_FD", state->primary_in_fence_fd);
 	}
 
+	if (state->base->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION) {
+		liftoff_layer_set_property(layer, "COLOR_ENCODING", state->primary_color_encoding);
+		liftoff_layer_set_property(layer, "COLOR_RANGE", state->primary_color_range);
+	}
+
 	return true;
 }
 

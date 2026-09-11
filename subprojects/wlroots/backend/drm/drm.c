@@ -894,8 +894,8 @@ static bool drm_connector_prepare(struct wlr_drm_connector_state *conn_state, bo
 	}
 
 	if ((state->committed & WLR_OUTPUT_STATE_COLOR_REPRESENTATION) &&
-			conn->backend->iface != &atomic_iface) {
-		wlr_log(WLR_DEBUG, "Color representation is only supported by the atomic interface");
+			conn->backend->iface == &legacy_iface) {
+		wlr_log(WLR_DEBUG, "Color representation is not supported by the legacy interface");
 		return false;
 	}
 
