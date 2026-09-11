@@ -602,10 +602,43 @@ static bool set_primary_plane_props(drmModeAtomicReq *req,
 	return ok;
 }
 
+static bool set_cursor_plane_props(drmModeAtomicReq *req,
+		struct wlr_drm_connector_state *state) {
+	struct wlr_drm_connector *conn = state->connector;
+	struct wlr_drm_crtc *crtc = conn->crtc;
+	struct wlr_drm_plane *plane = crtc->cursor;
+
+	if (!drm_connector_is_cursor_visible(conn)) {
+		return plane_disable(req, plane);
+	}
+
+	bool ok = true;
+
+	struct wlr_fbox cursor_src = {
+		.width = state->cursor_fb->wlr_buf->width,
+		.height = state->cursor_fb->wlr_buf->height,
+	};
+	struct wlr_box cursor_dst = {
+		.x = conn->cursor_x,
+		.y = conn->cursor_y,
+		.width = state->cursor_fb->wlr_buf->width,
+		.height = state->cursor_fb->wlr_buf->height,
+	};
+	ok = ok && set_plane_props(req, conn->backend, plane, state->cursor_fb,
+		crtc->id, &cursor_dst, &cursor_src);
+	if (supports_cursor_hotspots(plane)) {
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.hotspot_x, conn->cursor_hotspot_x);
+		ok = ok && atomic_add(req, plane->id,
+			plane->props.hotspot_y, conn->cursor_hotspot_y);
+	}
+
+	return ok;
+}
+
 static bool atomic_connector_add(drmModeAtomicReq *req,
 		struct wlr_drm_connector_state *state, bool modeset) {
 	struct wlr_drm_connector *conn = state->connector;
-	struct wlr_drm_backend *drm = conn->backend;
 	struct wlr_drm_crtc *crtc = conn->crtc;
 	bool active = state->active;
 	bool ok = true;
@@ -615,28 +648,7 @@ static bool atomic_connector_add(drmModeAtomicReq *req,
 	if (active) {
 		ok = ok && set_primary_plane_props(req, state);
 		if (crtc->cursor) {
-			if (drm_connector_is_cursor_visible(conn)) {
-				struct wlr_fbox cursor_src = {
-					.width = state->cursor_fb->wlr_buf->width,
-					.height = state->cursor_fb->wlr_buf->height,
-				};
-				struct wlr_box cursor_dst = {
-					.x = conn->cursor_x,
-					.y = conn->cursor_y,
-					.width = state->cursor_fb->wlr_buf->width,
-					.height = state->cursor_fb->wlr_buf->height,
-				};
-				ok = ok && set_plane_props(req, drm, crtc->cursor, state->cursor_fb,
-					crtc->id, &cursor_dst, &cursor_src);
-				if (supports_cursor_hotspots(crtc->cursor)) {
-					ok = ok && atomic_add(req, crtc->cursor->id,
-						crtc->cursor->props.hotspot_x, conn->cursor_hotspot_x);
-					ok = ok && atomic_add(req, crtc->cursor->id,
-						crtc->cursor->props.hotspot_y, conn->cursor_hotspot_y);
-				}
-			} else {
-				ok = ok && plane_disable(req, crtc->cursor);
-			}
+			ok = ok && set_cursor_plane_props(req, state);
 		}
 	} else {
 		ok = ok && plane_disable(req, crtc->primary);
