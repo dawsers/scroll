@@ -47,6 +47,12 @@ enum sway_layout_align {
 	ALIGN_ALWAYS,
 };
 
+enum sway_layout_align_axis {
+	ALIGN_AXIS_NONE = 0,
+	ALIGN_AXIS_H = (1 << 0),
+	ALIGN_AXIS_V = (1 << 1)
+};
+
 enum sway_layout_pin {
 	PIN_BEGINNING,
 	PIN_END
@@ -117,6 +123,8 @@ struct sway_scroller {
 	} toggle_size;
 
 	enum sway_layout_align align;
+	uint32_t align_axes;
+	struct sway_container *align_container;
 };
 
 struct sway_scroller_modifiers {
@@ -202,6 +210,14 @@ enum sway_layout_reorder layout_modifiers_get_reorder(struct sway_workspace *wor
 
 void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align);
 enum sway_layout_align layout_workspace_get_align(struct sway_workspace *workspace);
+uint32_t layout_workspace_get_align_axes(struct sway_workspace *workspace);
+// Sets the new aligned container and its axes of alignment. If the container
+// is already aligned, axes add to the current ones.
+void layout_workspace_set_align_container(struct sway_workspace *workspace,
+		struct sway_container *container, uint32_t axes);
+struct sway_container *layout_workspace_get_align_container(struct sway_workspace *workspace);
+// Should focusing container keep the workspace's current alignment?
+bool layout_alignment_keep(struct sway_workspace *workspace, struct sway_container *container);
 
 // Layout API
 void layout_add_view(struct sway_workspace *workspace, struct sway_container *active, struct sway_container *view);

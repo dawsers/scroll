@@ -1309,8 +1309,7 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	if (config->align_reset_auto && last_workspace &&
 		last_workspace == new_workspace &&
 		layout_workspace_get_align(last_workspace) != ALIGN_NONE) {
-		// Reset alignment only if focused window is out of the viewport
-		if (container && !container_in_viewport(container)) {
+		if (container && !layout_alignment_keep(last_workspace, container)) {
 			layout_workspace_set_align(last_workspace, ALIGN_NONE);
 		}
 	}

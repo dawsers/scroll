@@ -1130,9 +1130,12 @@ void view_unmap(struct sway_view *view) {
 
 	layout_trail_remove_view(view);
 	focus_ring_remove_view(root->focus_ring, view);
+	struct sway_workspace *ws = view->container->pending.workspace;
+	if (ws && layout_workspace_get_align_container(ws) == view->container) {
+		layout_workspace_set_align(ws, ALIGN_NONE);
+	}
 
 	struct sway_container *parent = view->container->pending.parent;
-	struct sway_workspace *ws = view->container->pending.workspace;
 	const bool fullscreen = view->container->fullscreen;
 	list_add(root->unmapped_views, view);
 	view->container->pending.alpha = 0.0f;

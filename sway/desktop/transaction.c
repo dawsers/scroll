@@ -755,6 +755,21 @@ static double compute_active_offset(struct sway_workspace *workspace,
 static void arrange_container(struct sway_container *con,
 		bool title_bar, int gaps, struct sway_workspace *workspace);
 
+static enum sway_layout_align_axis layout_alignment_axis(struct sway_workspace *workspace,
+		struct sway_container *container, enum sway_container_layout workspace_layout,
+		enum sway_container_layout container_layout) {
+	enum sway_layout_align_axis axis = container_layout == L_HORIZ ? ALIGN_AXIS_H : ALIGN_AXIS_V;
+	if ((layout_workspace_get_align_axes(workspace) & axis) == ALIGN_AXIS_NONE) {
+		return ALIGN_AXIS_NONE;
+	}
+	if (container_layout == workspace_layout) {
+		return axis;
+	}
+	struct sway_container *aligned = layout_workspace_get_align_container(workspace);
+	return aligned && container->pending.parent == aligned->pending.parent ?
+		axis : ALIGN_AXIS_NONE;
+}
+
 static void arrange_children(struct sway_workspace *workspace,
 		enum sway_container_layout layout, list_t *children,
 		struct sway_container *active, struct wlr_scene_tree *content,
@@ -792,16 +807,19 @@ static void arrange_children(struct sway_workspace *workspace,
 	struct sway_container *pin = layout_pin_enabled(workspace) ?
 		layout_pin_get_container(workspace) : NULL;
 
-	if (layout != layout_get_type(workspace)) {
+	enum sway_container_layout workspace_layout = layout_get_type(workspace);
+	if (layout != workspace_layout) {
 		pin = NULL;
 	}
 
 	double offset;
-	if (workspace->gesture.scrolling ||	layout_modifiers_get_reorder(workspace) == REORDER_LAZY || jumping ||
-		layout_workspace_get_align(workspace) != ALIGN_NONE) {
+	if (workspace->gesture.scrolling ||	layout_modifiers_get_reorder(workspace) == REORDER_LAZY || jumping) {
 		offset = layout == L_HORIZ ? active->pending.x : active->pending.y;
 	} else {
-		if (active->pending.fullscreen_layout == FULLSCREEN_ENABLED && !layout_scale_enabled(workspace)) {
+		uint32_t aligned = layout_alignment_axis(workspace, active, workspace_layout, layout);
+		if (aligned != ALIGN_AXIS_NONE) {
+			offset = aligned == ALIGN_AXIS_H ? active->pending.x : active->pending.y;
+		} else if (active->pending.fullscreen_layout == FULLSCREEN_ENABLED && !layout_scale_enabled(workspace)) {
 			if (layout == L_HORIZ) {
 				offset = workspace->split.split != WORKSPACE_SPLIT_NONE ? workspace->split.output_area.x : workspace->output->lx;
 			} else {

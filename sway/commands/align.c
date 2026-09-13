@@ -41,28 +41,24 @@ static void set_parent_x(struct sway_container *parent, double x) {
 	parent->pending.x = x;
 	node_set_dirty(&parent->node);
 	arrange_workspace(parent->pending.workspace);
-	transaction_commit_dirty();
 }
 
 static void set_parent_y(struct sway_container *parent, double y) {
 	parent->pending.y = y;
 	node_set_dirty(&parent->node);
 	arrange_workspace(parent->pending.workspace);
-	transaction_commit_dirty();
 }
 
 static void set_container_x(struct sway_container *container, double x) {
 	container->pending.x = x;
 	node_set_dirty(&container->node);
 	arrange_container(container);
-	transaction_commit_dirty();
 }
 
 static void set_container_y(struct sway_container *container, double y) {
 	container->pending.y = y;
 	node_set_dirty(&container->node);
 	arrange_container(container);
-	transaction_commit_dirty();
 }
 
 struct cmd_results *cmd_align(int argc, char **argv) {
@@ -98,6 +94,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 
 	if (strcasecmp(argv[0], "reset") == 0) {
 		layout_workspace_set_align(workspace, ALIGN_NONE);
+		arrange_workspace(workspace);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
@@ -113,6 +110,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 	layout_workspace_set_align(workspace, config->align_reset_auto ? ALIGN_AUTO : ALIGN_ALWAYS);
 	int gap = workspace->gaps_inner;
 
+	uint32_t axes;
 	switch (direction) {
 	case DIR_LEFT: {
 		if (layout == L_HORIZ) {
@@ -120,6 +118,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 		} else {
 			set_container_x(container, workspace->x + scale * gap);
 		}
+		axes = ALIGN_AXIS_H;
 		break;
 	}
 	case DIR_RIGHT: {
@@ -128,20 +127,25 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 		} else {
 			set_container_x(container, workspace->x + workspace->width - scale * (container->pending.width + gap));
 		}
+		axes = ALIGN_AXIS_H;
 		break;
 	}
 	case DIR_CENTER: {
 		if (layout == L_HORIZ) {
 			if (mode == L_HORIZ) {
 				set_parent_x(parent, workspace->x + 0.5 * (workspace->width - scale * parent->pending.width));
+				axes = ALIGN_AXIS_H;
 			} else {
 				set_container_y(container, workspace->y + 0.5 * (workspace->height - scale * container->pending.height));
+				axes = ALIGN_AXIS_V;
 			}
 		} else {
 			if (mode == L_VERT) {
 				set_parent_y(parent, workspace->y + 0.5 * (workspace->height - scale * parent->pending.height));
+				axes = ALIGN_AXIS_V;
 			} else {
 				set_container_x(container, workspace->x + 0.5 * (workspace->width - scale * container->pending.width));
+				axes = ALIGN_AXIS_H;
 			}
 		}
 		break;
@@ -152,6 +156,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 		} else {
 			set_parent_y(parent, workspace->y + scale * gap);
 		}
+		axes = ALIGN_AXIS_V;
 		break;
 	}
 	case DIR_DOWN: {
@@ -160,6 +165,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 		} else {
 			set_parent_y(parent, workspace->y + workspace->height - scale * (parent->pending.height + gap));
 		}
+		axes = ALIGN_AXIS_V;
 		break;
 	}
 	case DIR_MIDDLE: {
@@ -170,11 +176,15 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 			set_parent_y(parent, workspace->y + 0.5 * (workspace->height - scale * parent->pending.height));
 			set_container_x(container, workspace->x + 0.5 * (workspace->width - scale * container->pending.width));
 		}
+		axes = ALIGN_AXIS_H | ALIGN_AXIS_V;
 		break;
 	}
 	default:
+		// We shouldn't be here if parsing was correct
+		axes = ALIGN_AXIS_NONE;
 		break;
 	}
 
+	layout_workspace_set_align_container(workspace, container, axes);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

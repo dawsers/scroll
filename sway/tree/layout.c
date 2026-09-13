@@ -84,6 +84,8 @@ void layout_init(struct sway_workspace *workspace) {
 	workspace->layout.overview = OVERVIEW_DISABLED;
 	workspace->layout.mem_scale = -1.0f;  // disabled
 	workspace->layout.align = ALIGN_NONE;
+	workspace->layout.align_axes = ALIGN_AXIS_NONE;
+	workspace->layout.align_container = NULL;
 	layout_toggle_size_init(workspace);
 	ipc_event_scroller("new", workspace);
 }
@@ -759,14 +761,61 @@ bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace) {
 }
 
 void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align) {
-	if (align != workspace->layout.align) {
-		workspace->layout.align = align;
-		node_set_dirty(&workspace->node);
+	if (align == workspace->layout.align) {
+		return;
 	}
+	workspace->layout.align = align;
+	if (align == ALIGN_NONE) {
+		workspace->layout.align_container = NULL;
+		workspace->layout.align_axes = ALIGN_AXIS_NONE;
+	}
+	node_set_dirty(&workspace->node);
 }
 
 enum sway_layout_align layout_workspace_get_align(struct sway_workspace *workspace) {
 	return workspace->layout.align;
+}
+
+uint32_t layout_workspace_get_align_axes(struct sway_workspace *workspace) {
+	return workspace->layout.align_axes;
+}
+
+void layout_workspace_set_align_container(struct sway_workspace *workspace,
+		struct sway_container *container, uint32_t axes) {
+	if (workspace->layout.align_container != container) {
+		workspace->layout.align_container = container;
+		workspace->layout.align_axes = axes;
+		return;
+	}
+	workspace->layout.align_axes |= axes;
+}
+
+struct sway_container *layout_workspace_get_align_container(struct sway_workspace *workspace) {
+	return workspace->layout.align_container;
+}
+
+bool layout_alignment_keep(struct sway_workspace *workspace, struct sway_container *container) {
+	if (layout_workspace_get_align(workspace) == ALIGN_ALWAYS) {
+		return true;
+	}
+	uint32_t axes = layout_workspace_get_align_axes(workspace);
+	if (axes == ALIGN_AXIS_NONE) {
+		return false;
+	}
+	uint32_t workspace_axis = layout_get_type(workspace) == L_HORIZ ? ALIGN_AXIS_H : ALIGN_AXIS_V;
+	if ((axes & workspace_axis) && !container_axes_in_viewport(container, workspace_axis)) {
+		return false;
+	}
+	uint32_t parent_axis = workspace_axis == ALIGN_AXIS_H ? ALIGN_AXIS_V : ALIGN_AXIS_H;
+	if (axes & parent_axis) {
+		struct sway_container *aligned_container = layout_workspace_get_align_container(workspace);
+		if (aligned_container &&
+				container->pending.parent == aligned_container->pending.parent &&
+				!container_axes_in_viewport(container, parent_axis)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 static int layout_insert_compute_index(list_t *list, void *active, enum sway_layout_insert pos) {

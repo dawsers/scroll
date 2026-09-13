@@ -62,8 +62,8 @@ The following commands may only be used in the configuration file.
 
 *align_reset_auto* <true|false>
 	The default value is _true_. If _true_, alignment is reset when changing
-	focus to a window outside of the viewport. If _false_, alignment can only
-	be reset through *align reset*.
+	focus to a new window breaks the current alignment. If _false_, alignment
+	can only be reset through *align reset*.
 
 *animations* <animations-subcommands...>
 	Subcommands are:
@@ -418,7 +418,7 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 	go back to automatic mode, you need to call _align_ reset.
 
 	See *align_reset_auto* for a configuration command to also reset alignment
-	when changing focus to a window outside of the viewport.
+	when changing focus to a new window would break the current alignment.
 
 	You can also center a window on your workspace using _middle_, it will
 	center its column, and also the window within the column.

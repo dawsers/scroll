@@ -464,4 +464,9 @@ struct sway_container *container_get_by_id(size_t id);
  */
 bool container_in_viewport(struct sway_container *container);
 
+/*
+ * If the container is fully in the viewport along axes, return true
+ */
+bool container_axes_in_viewport(struct sway_container *container, uint32_t axes);
+
 #endif

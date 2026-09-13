@@ -2390,7 +2390,27 @@ struct sway_container *container_get_by_id(size_t id) {
 		NULL;
 }
 
-bool container_in_viewport(struct sway_container *container) {
+static bool box_contains_box_axes(const struct wlr_box *bigger,
+		const struct wlr_box *smaller, uint32_t axes) {
+	if (wlr_box_empty(bigger) || wlr_box_empty(smaller)) {
+		return false;
+	}
+	if (axes & ALIGN_AXIS_H) {
+		if (smaller->x < bigger->x ||
+				smaller->x + smaller->width > bigger->x + bigger->width) {
+			return false;
+		}
+	}
+	if (axes & ALIGN_AXIS_V) {
+		if (smaller->y < bigger->y ||
+				smaller->y + smaller->height > bigger->y + bigger->height) {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool container_axes_in_viewport(struct sway_container *container, uint32_t axes) {
 	struct sway_workspace *workspace = container->pending.workspace;
 	if (!workspace) {
 		return false;
@@ -2406,5 +2426,10 @@ bool container_in_viewport(struct sway_container *container) {
 	} else {
 		output_get_box(workspace->output, &box_o);
 	}
-	return wlr_box_contains_box(&box_o, &box_c);
+	return box_contains_box_axes(&box_o, &box_c, axes);
+}
+
+
+bool container_in_viewport(struct sway_container *container) {
+	return container_axes_in_viewport(container, ALIGN_AXIS_H | ALIGN_AXIS_V);
 }
