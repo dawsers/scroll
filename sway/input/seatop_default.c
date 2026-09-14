@@ -518,6 +518,32 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
  * Functions used by handle_pointer_motion  /
  *----------------------------------------*/
 
+static void container_viewport_geometry(struct sway_workspace *workspace,
+		struct sway_container *container, struct wlr_fbox *viewport) {
+	if (container->pending.fullscreen_layout != FULLSCREEN_DISABLED) {
+		if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
+			viewport->x = workspace->split.output_area.x;
+			viewport->y = workspace->split.output_area.y;
+			viewport->width = workspace->split.output_area.width;
+			viewport->height = workspace->split.output_area.height;
+			return;
+		} else {
+			struct sway_output *output = workspace->output;
+			if (output) {
+				viewport->x = output->lx;
+				viewport->y = output->ly;
+				viewport->width = output->width;
+				viewport->height = output->height;
+				return;
+			}
+		}
+	}
+	viewport->x = workspace->x;
+	viewport->y = workspace->y;
+	viewport->width = workspace->width;
+	viewport->height = workspace->height;
+}
+
 static void check_focus_follows_mouse(struct sway_seat *seat,
 		struct seatop_default_event *e, struct sway_node *hovered_node) {
 	struct sway_node *focus = seat_get_focus(seat);
@@ -582,11 +608,14 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 				geometry.y >= ws->y + ws->height ||
 				geometry.y + geometry.height <= ws->y)) {
 			valid_focus = false;
-		} else if (config->focus_follows_mouse == FOLLOWS_FULL && !is_floating) {
-			if (geometry.x < ws->x ||
-					geometry.x + geometry.width > ws->x + ws->width ||
-					geometry.y < ws->y ||
-					geometry.y + geometry.height  > ws->y + ws->height) {
+		} else if (config->focus_follows_mouse == FOLLOWS_FULL && !is_floating &&
+				   !container_is_fullscreen_or_child(container)) {
+			struct wlr_fbox viewport;
+			container_viewport_geometry(ws, container, &viewport);
+			if (geometry.x < viewport.x ||
+					geometry.x + geometry.width > viewport.x + viewport.width ||
+					geometry.y < viewport.y ||
+					geometry.y + geometry.height  > viewport.y + viewport.height) {
 				valid_focus = false;
 			}
 		}
