@@ -31,7 +31,6 @@
 #include "util.h"
 #include "stringop.h"
 
-static bool terminate_request = false;
 static int exit_value = 0;
 static struct rlimit original_nofile_rlimit = {0};
 struct sway_server server = {0};
@@ -43,7 +42,6 @@ void sway_terminate(int exit_code) {
 		exit(exit_code);
 	} else {
 		// Running as server
-		terminate_request = true;
 		exit_value = exit_code;
 		ipc_event_shutdown("exit");
 		wl_event_loop_dispatch(server.wl_event_loop, 0); // flush IPC event
