@@ -355,14 +355,14 @@ static void keyboard_grab_send_repeat_info(
 static void handle_keyboard_keymap(struct wl_listener *listener, void *data) {
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab =
 		wl_container_of(listener, keyboard_grab, keyboard_keymap);
-	keyboard_grab_send_keymap(keyboard_grab, data);
+	keyboard_grab_send_keymap(keyboard_grab, keyboard_grab->keyboard);
 }
 
 static void handle_keyboard_repeat_info(struct wl_listener *listener,
 		void *data) {
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab =
 		wl_container_of(listener, keyboard_grab, keyboard_repeat_info);
-	keyboard_grab_send_repeat_info(keyboard_grab, data);
+	keyboard_grab_send_repeat_info(keyboard_grab, keyboard_grab->keyboard);
 }
 
 static void handle_keyboard_destroy(struct wl_listener *listener,
