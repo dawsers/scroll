@@ -571,33 +571,29 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 	// tabs, hence the view_is_visible check.
 	if (node_is_view(hovered_node) &&
 			view_is_visible(hovered_node->sway_container->view)) {
+		struct sway_container *container = hovered_node->sway_container;
+		struct sway_workspace *ws = container->pending.workspace;
+		bool valid_focus = true;
+		struct wlr_fbox geometry;
+		bool is_floating = container_is_floating(container);
+		container_current_geometry(container, &geometry);
+		if (!is_floating &&	(geometry.x >= ws->x + ws->width ||
+				geometry.x + geometry.width <= ws->x ||
+				geometry.y >= ws->y + ws->height ||
+				geometry.y + geometry.height <= ws->y)) {
+			valid_focus = false;
+		} else if (config->focus_follows_mouse == FOLLOWS_FULL && !is_floating) {
+			if (geometry.x < ws->x ||
+					geometry.x + geometry.width > ws->x + ws->width ||
+					geometry.y < ws->y ||
+					geometry.y + geometry.height  > ws->y + ws->height) {
+				valid_focus = false;
+			}
+		}
 		// e->previous_node is the node which the cursor was over previously.
 		// If focus_follows_mouse is yes and the cursor got over the view due
 		// to, say, a workspace switch, we don't want to set the focus.
 		// But if focus_follows_mouse is "always", we do.
-		// For scroller, we also check if the cursor is in the gaps_out area,
-		// and if it is, we only change focus if clicked or FOLLOWS_ALWAYS.
-		struct sway_container *container = hovered_node->sway_container;
-		struct sway_workspace *ws = container->pending.workspace;
-		// Check if the hovered_node is fully wihin the viewport if FOLLOWS_FULL
-		bool valid_focus = true;
-		if (config->focus_follows_mouse == FOLLOWS_FULL && !container_is_floating(container)) {
-			float scale = layout_scale_enabled(ws) ? layout_scale_get(ws) : 1.0f;
-			if (container->pending.x < ws->x ||
-				container->pending.x + container->pending.width * scale > ws->x + ws->width ||
-				container->pending.y < ws->y ||
-				container->pending.y + container->pending.height * scale > ws->y + ws->height) {
-				valid_focus = false;
-			}
-		}
-		double cx = seat->cursor->cursor->x;
-		double cy = seat->cursor->cursor->y;
-		if (layout_overview_workspaces_enabled()) {
-			layout_overview_workspaces_local_to_global(ws, &cx, &cy);
-		}
-		bool in_gaps = cx < ws->x || cx > ws->x + ws->width || cy < ws->y || cy > ws->y + ws->height ?
-			true : false;
-		valid_focus = valid_focus && !in_gaps;
 		if ((hovered_node != e->previous_node && valid_focus) ||
 				config->focus_follows_mouse == FOLLOWS_ALWAYS) {
 			seat_set_focus(seat, hovered_node);

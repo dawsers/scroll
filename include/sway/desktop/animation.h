@@ -109,6 +109,17 @@ bool animated_variable_set(struct sway_animated_variable *av, double value,
 	enum sway_animation_type type);
 
 /**
+ * Inherit the animation state of `parent` into `child`, so both variables
+ * animate together with identical values.
+ *
+ * This is used for tiled containers: a child shares one axis with its
+ * parent, so it must move together with it. Copying the state keeps the
+ * child's current value (xt) correct while the parent is animating.
+ */
+void animated_variable_inherit(struct sway_animated_variable *child,
+	struct sway_animated_variable *parent);
+
+/**
  * Set the span value, meaningful for floating or full screen containers,
  * zero tor tiled ones.
  */

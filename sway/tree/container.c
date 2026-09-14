@@ -2433,3 +2433,32 @@ bool container_axes_in_viewport(struct sway_container *container, uint32_t axes)
 bool container_in_viewport(struct sway_container *container) {
 	return container_axes_in_viewport(container, ALIGN_AXIS_H | ALIGN_AXIS_V);
 }
+
+void container_current_geometry(struct sway_container *con, struct wlr_fbox *geometry) {
+	struct sway_workspace *ws = con->pending.workspace ?
+		con->pending.workspace : con->current.workspace;
+	geometry->x = con->animation.x.animating ? con->animation.x.xt : con->pending.x;
+	geometry->y = con->animation.y.animating ? con->animation.y.xt : con->pending.y;
+	geometry->width = con->animation.w.animating ?
+		con->animation.w.xt : con->pending.width;
+	geometry->height = con->animation.h.animating ?
+		con->animation.h.xt : con->pending.height;
+	// Add the y offset if in the middle of a workspace switch
+	if (ws && !container_is_sticky_or_child(con)) {
+		geometry->y += workspace_switch_offset(ws);
+	}
+	if(layout_scale_enabled(ws)) {
+		double scale = (ws && ws->animation.s.animating) ?
+			ws->animation.s.xt : layout_scale_get(ws);
+		geometry->width *= scale;
+		geometry->height *= scale;
+		if (con->view && !con->pending.parent) {
+			// Floating window are special in scaled workspaces, because
+			// the virtual viewport is centered for them
+			const double minx = ws->output->lx + 0.5 * (1.0 - scale) * ws->output->width;
+			geometry->x = minx + scale * (geometry->x - ws->output->lx);
+			const double miny = ws->output->ly + 0.5 * (1.0 - scale) * ws->output->height;
+			geometry->y = miny + scale * (geometry->y - ws->output->ly);
+		}
+	}
+}

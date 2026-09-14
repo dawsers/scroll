@@ -945,21 +945,29 @@ static void animation_update_container(struct sway_container *con) {
 	con->current.y = con->pending.y;
 }
 
-static void set_children_positions(list_t *children,
+static void set_children_positions(struct sway_container *parent, list_t *children,
 		enum sway_container_layout layout, enum sway_animation_type type) {
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
 		if (layout == L_VERT) {
 			animated_variable_set(&child->animation.y, child->pending.y, type);
 			animated_variable_set_span(&child->animation.y, 0.0);
-			animated_variable_reset(&child->animation.x, child->pending.x);
+			if (parent) {
+				animated_variable_inherit(&child->animation.x, &parent->animation.x);
+			} else {
+				animated_variable_reset(&child->animation.x, child->pending.x);
+			}
 		} else {
 			animated_variable_set(&child->animation.x, child->pending.x, type);
 			animated_variable_set_span(&child->animation.x, 0.0);
-			animated_variable_reset(&child->animation.y, child->pending.y);
+			if (parent) {
+				animated_variable_inherit(&child->animation.y, &parent->animation.y);
+			} else {
+				animated_variable_reset(&child->animation.y, child->pending.y);
+			}
 		}
 		if (!child->view) {
-			set_children_positions(child->current.children,
+			set_children_positions(child, child->current.children,
 				child->current.layout, type);
 		}
 	}
@@ -979,7 +987,7 @@ static void set_workspace_positions(struct sway_workspace *ws,
 	if (fs) {
 		set_container_positions(fs, fs->animation.w.x1, fs->animation.h.x1, type);
 	} else {
-		set_children_positions(ws->tiling, layout_get_type(ws), type);
+		set_children_positions(NULL, ws->tiling, layout_get_type(ws), type);
 	}
 	for (int i = 0; i < ws->floating->length; ++i) {
 		struct sway_container *child = ws->floating->items[i];
@@ -2012,6 +2020,7 @@ static void animate_children(struct sway_workspace *workspace,
 			struct sway_animated_variable *y = &child->animation.y;
 			wlr_scene_node_set_enabled(&child->decoration.tree->node, true);
 			const double x = animated_variable_get_offset(y);
+			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			wlr_scene_node_set_position(&child->scene_tree->node, x, y->xt - workspace->y);
 			child->current.y = off;
 			child->pending.y = off;
@@ -2020,7 +2029,6 @@ static void animate_children(struct sway_workspace *workspace,
 				child->pending.x = parent->pending.x;
 			}
 			animated_variable_reset(&child->animation.x, child->pending.x);
-			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			animate_container(child, child->animation.w.xt, child->animation.h.xt,
 				true, 0, workspace);
 		}
@@ -2032,6 +2040,7 @@ static void animate_children(struct sway_workspace *workspace,
 			struct sway_animated_variable *x = &child->animation.x;
 			wlr_scene_node_set_enabled(&child->decoration.tree->node, true);
 			const double y = animated_variable_get_offset(x);
+			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			wlr_scene_node_set_position(&child->scene_tree->node, x->xt - workspace->x, y);
 			// Update child for next iteration. Transactions don't re-arrange
 			// the layout (arrange.c:apply_xxx()), so we need to set it here,
@@ -2044,7 +2053,6 @@ static void animate_children(struct sway_workspace *workspace,
 				child->pending.y = parent->pending.y;
 			}
 			animated_variable_reset(&child->animation.y, child->pending.y);
-			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			animate_container(child, child->animation.w.xt, child->animation.h.xt,
 				true, 0, workspace);
 		}

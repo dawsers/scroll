@@ -939,6 +939,37 @@ bool animated_variable_set(struct sway_animated_variable *av, double value,
 	return true;
 }
 
+void animated_variable_inherit(struct sway_animated_variable *child,
+		struct sway_animated_variable *parent) {
+	if (!child || !parent || child == parent || !animation) {
+		return;
+	}
+	if (!sway_assert(child->type == parent->type,
+		"animated_variable_inherit: cannot inherit a variable of a different type")) {
+		return;
+	}
+
+	child->x0 = parent->x0;
+	child->x1 = parent->x1;
+	child->xt = parent->xt;
+	child->animation = parent->animation;
+	child->start = parent->start;
+	child->curve = parent->curve;
+	child->span = parent->span;
+	child->ct = parent->ct;
+	child->cx = parent->cx;
+	child->cy = parent->cy;
+	child->pending_start = parent->pending_start;
+
+	if (parent->animating && !child->animating) {
+		wl_list_insert(&animation->variables, &child->link);
+	} else if (!parent->animating && child->animating) {
+		wl_list_remove(&child->link);
+		wl_list_init(&child->link);
+	}
+	child->animating = parent->animating;
+}
+
 void animated_variable_set_span(struct sway_animated_variable *av, double span) {
 	if (av->span == span) {
 		return;

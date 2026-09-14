@@ -380,6 +380,21 @@ function scroll.container_get_geometry(container) end
 --- @return table|nil
 function scroll.container_get_animated_geometry(container) end
 
+---
+--- Returns a table with the container's animated values,
+--- or nil if the container is invalid.
+--- This reflects the current animated variable values.
+--- The keys and values of that table are:
+---   x: number
+---   y: number
+---   width: number
+---   height: number
+---   animating: boolean
+---
+--- @param container integer
+---
+--- @return table|nil
+function scroll.container_get_animated_values(container) end
 
 ---
 --- Returns a string with the fullscreen state for container.

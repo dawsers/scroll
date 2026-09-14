@@ -102,38 +102,7 @@ struct sway_node *node_at_coords(
 			}
 
 			if (con && (!con->view || con->view->surface)) {
-				// Verify cursor is really inside the container. wlr_scene_node_at()
-				// may send false positives because it uses the size of the buffer
-				// but the coordinates are displaced by the border
-				double x, y, width, height;
-				struct sway_workspace *ws = con->pending.workspace;
-				// This will be false if not scaled, or ws is NULL
-				bool scaled = layout_scale_enabled(ws);
-				if (!scaled) {
-					x = con->pending.x;
-					y = con->pending.y;
-					width = con->pending.width;
-					height = con->pending.height;
-				} else {
-					float scale = layout_scale_get(ws);
-					width = scale * con->pending.width;
-					height = scale * con->pending.height;
-					if (con->view && !con->pending.parent) {
-						// Floating window are special in scaled workspaces, because
-						// the virtual viewport is centered for them
-						const double minx = ws->output->lx + 0.5 * (1.0 - scale) * ws->output->width;
-						x = minx + scale * (con->pending.x - ws->output->lx);
-						const double miny = ws->output->ly + 0.5 * (1.0 - scale) * ws->output->height;
-						y = miny + scale * (con->pending.y - ws->output->ly);
-					} else {
-						x = con->pending.x;
-						y = con->pending.y;
-					}
-				}
-				if (lx >= x && lx < x + width && ly >= y && ly < y + height) {
-					return &con->node;
-				}
-				return NULL;
+				return &con->node;
 			}
 
 			if (scene_descriptor_try_get(current, SWAY_SCENE_DESC_LAYER_SHELL)) {

@@ -2320,14 +2320,19 @@ local process_data = scroll.exec_process("kitty")
 	The keys of that table are "x", "y", "width" and "height", and the values
 	are floating point numbers.
 
-
 *container_get_animated_geometry(container)*
-	Returns a table with the _container_'s animated geometry (in layout coordinates),
-	or *nil* if the container is invalid.
-	This reflects the current animated position and size if an animation is running.
-	The keys of that table are "x", "y", "width" and "height", and the values
-	are floating point numbers.
+	Returns a table with the _container_'s animated geometry (in layout
+	coordinates), or *nil* if the container is invalid.
+	This reflects the current animated position and size if an animation is
+	running. The keys of that table are "x", "y", "width" and "height", and the
+	values are floating point numbers.
 
+*container_get_animated_values(container)*
+	Returns a table with the _container_'s animated variable values, or *nil*
+	if the container is invalid.
+	This reflects the current animated position and size if an animation is
+	running. The keys of that table are "x", "y", "width", "height" (floating
+	point values), and "animating" if the variable is currently animating.
 
 *container_get_fullscreen_mode(container)*
 	Returns a string with the _fullscreen_ state for _container_. Values can be

@@ -469,4 +469,9 @@ bool container_in_viewport(struct sway_container *container);
  */
 bool container_axes_in_viewport(struct sway_container *container, uint32_t axes);
 
+/**
+ * Returns the container's current geometry, correct even during an animation.
+ */
+void container_current_geometry(struct sway_container *con, struct wlr_fbox *geometry);
+
 #endif
