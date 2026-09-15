@@ -597,37 +597,38 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 	// tabs, hence the view_is_visible check.
 	if (node_is_view(hovered_node) &&
 			view_is_visible(hovered_node->sway_container->view)) {
-		struct sway_container *container = hovered_node->sway_container;
-		struct sway_workspace *ws = container->pending.workspace;
-		bool valid_focus = true;
-		struct wlr_fbox geometry;
-		bool is_floating = container_is_floating(container);
-		container_current_geometry(container, &geometry);
-		if (!is_floating &&	(geometry.x >= ws->x + ws->width ||
-				geometry.x + geometry.width <= ws->x ||
-				geometry.y >= ws->y + ws->height ||
-				geometry.y + geometry.height <= ws->y)) {
-			valid_focus = false;
-		} else if (config->focus_follows_mouse == FOLLOWS_FULL && !is_floating &&
-				   !container_is_fullscreen_or_child(container)) {
-			struct wlr_fbox viewport;
-			container_viewport_geometry(ws, container, &viewport);
-			if (geometry.x < viewport.x ||
-					geometry.x + geometry.width > viewport.x + viewport.width ||
-					geometry.y < viewport.y ||
-					geometry.y + geometry.height  > viewport.y + viewport.height) {
-				valid_focus = false;
-			}
-		}
 		// e->previous_node is the node which the cursor was over previously.
 		// If focus_follows_mouse is yes and the cursor got over the view due
 		// to, say, a workspace switch, we don't want to set the focus.
 		// But if focus_follows_mouse is "always", we do.
-		if ((hovered_node != e->previous_node && valid_focus) ||
-				config->focus_follows_mouse == FOLLOWS_ALWAYS) {
-			seat_set_focus(seat, hovered_node);
-			transaction_commit_dirty();
+		if (config->focus_follows_mouse != FOLLOWS_ALWAYS) {
+			if (hovered_node == e->previous_node) {
+				return;
+			}
+			struct sway_container *container = hovered_node->sway_container;
+			struct sway_workspace *ws = container->pending.workspace;
+			struct wlr_fbox geometry;
+			bool is_floating = container_is_floating(container);
+			container_current_geometry(container, &geometry);
+			if (!is_floating &&	(geometry.x >= ws->x + ws->width ||
+					geometry.x + geometry.width <= ws->x ||
+					geometry.y >= ws->y + ws->height ||
+					geometry.y + geometry.height <= ws->y)) {
+				return;
+			} else if (config->focus_follows_mouse == FOLLOWS_FULL && !is_floating &&
+					   !container_is_fullscreen_or_child(container)) {
+				struct wlr_fbox viewport;
+				container_viewport_geometry(ws, container, &viewport);
+				if (geometry.x < viewport.x ||
+						geometry.x + geometry.width > viewport.x + viewport.width ||
+						geometry.y < viewport.y ||
+						geometry.y + geometry.height  > viewport.y + viewport.height) {
+					return;
+				}
+			}
 		}
+		seat_set_focus(seat, hovered_node);
+		transaction_commit_dirty();
 	}
 }
 
