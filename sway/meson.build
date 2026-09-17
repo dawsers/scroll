@@ -244,6 +244,7 @@ sway_sources = files(
 	'tree/output.c',
 	'tree/layout.c',
 	'tree/space.c',
+	'tree/space_template.c',
 	'tree/scene.c',
 	'tree/scene/debug.c',
 	'tree/focus_ring.c',
