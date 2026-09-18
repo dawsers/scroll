@@ -1,0 +1,31 @@
+{
+	"version": 1,
+	"name": "writing",
+	"scroller": {
+		"mode": "horizontal",
+		"insert": "after",
+		"fit": "fitfraction",
+		"focus": true,
+		"center_horizontal": true,
+		"center_vertical": false,
+		"reorder": false
+	},
+	"tiling": [
+		{
+			"slot": "editor",
+			"size": { "width_fraction": 1.0, "height_fraction": 1.0 },
+			"view_hint": { "app_id": "^(nvim|writer)$" }
+		}
+	],
+	"floating": [
+		{
+			"slot": "reference",
+			"x": 0.6,
+			"y": 0.08,
+			"width": 0.35,
+			"height": 0.5,
+			"view_hint": { "app_id": "^foot$", "title": "reference" }
+		}
+	],
+	"focused_slot": "editor"
+}
