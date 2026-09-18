@@ -126,6 +126,7 @@ static void token_handle_commit(struct wl_client *client,
 
 	if (!token_init(token)) {
 		wl_client_post_no_memory(client);
+		wlr_xdg_activation_token_v1_destroy(token);
 		return;
 	}
 
@@ -141,6 +142,7 @@ error:;
 	char token_str[TOKEN_SIZE] = {0};
 	if (!generate_token(token_str)) {
 		wl_client_post_no_memory(client);
+		wlr_xdg_activation_token_v1_destroy(token);
 		return;
 	}
 
@@ -428,6 +430,10 @@ struct wlr_xdg_activation_token_v1 *wlr_xdg_activation_v1_add_token(
 		return NULL;
 	}
 	token->token = strdup(token_str);
+	if (token->token == NULL) {
+		wlr_xdg_activation_token_v1_destroy(token);
+		return NULL;
+	}
 
 	wl_list_insert(&activation->tokens, &token->link);
 
