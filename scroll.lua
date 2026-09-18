@@ -748,4 +748,50 @@ function scroll.animating() end
 ---
 function scroll.pending_transactions() end
 
+---
+--- Returns the canonical data of the space template saved under `name`
+--- (see the `space_template save` command) as a plain table: version,
+--- name, scroller, tiling, floating, focused_slot. This is a read-only
+--- disk lookup -- it never touches a live view or container.
+---
+--- On failure (an unsafe or unknown name, a corrupt file, ...) returns
+--- nil plus an error string.
+---
+--- @param name string
+---
+--- @return table|nil
+--- @return string|nil error
+function scroll.space_template_get(name) end
+
+---
+--- Binds every slot of the space template saved under `name` to a live
+--- window and applies it to the current workspace in one step: layout,
+--- split fractions, floating geometry, scroller settings, and focus. Any
+--- window already on the workspace that isn't part of the apply is moved
+--- to the scratchpad, never closed.
+---
+--- `mappings` is an array of tables, each either `{ slot = "editor",
+--- con_id = 3 }` (an explicit container id, e.g. from
+--- `scroll.container_get_id(container)`) or `{ slot = "editor", criteria
+--- = '[app_id="foot"]' }` (a criteria string as used in the config
+--- language; it must match exactly one window with a mapped view).
+---
+--- This function does no matching, launching, filling, retrying, or
+--- fallback selection on its own -- it only resolves the mapping the
+--- caller already decided on. Every slot must resolve to exactly one live
+--- window or nothing is changed: on failure this returns nil, an error
+--- string, and (when the failure names specific slots) an array of the
+--- affected slot names, so a script can launch/raise a default for each
+--- one and call this function again. See
+--- examples/space-templates/fill-then-retry.lua and
+--- examples/space-templates/launcher-placeholders.lua.
+---
+--- @param name string
+--- @param mappings table
+---
+--- @return boolean|nil
+--- @return string|nil error
+--- @return table|nil slots
+function scroll.space_template_apply(name, mappings) end
+
 return scroll

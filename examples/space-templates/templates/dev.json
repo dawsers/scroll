@@ -1,0 +1,33 @@
+{
+	"version": 1,
+	"name": "dev",
+	"scroller": {
+		"mode": "horizontal",
+		"insert": "after",
+		"fit": "fitsplit",
+		"focus": true,
+		"center_horizontal": false,
+		"center_vertical": false,
+		"reorder": false
+	},
+	"tiling": [
+		{
+			"layout": "horizontal",
+			"size": { "width_fraction": 1.0, "height_fraction": 1.0 },
+			"children": [
+				{
+					"slot": "editor",
+					"size": { "width_fraction": 0.65, "height_fraction": 1.0 },
+					"view_hint": { "app_id": "^(nvim|code)$" }
+				},
+				{
+					"slot": "terminal",
+					"size": { "width_fraction": 0.35, "height_fraction": 1.0 },
+					"view_hint": { "app_id": "^foot$" }
+				}
+			]
+		}
+	],
+	"floating": [],
+	"focused_slot": "editor"
+}
