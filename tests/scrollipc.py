@@ -12,6 +12,8 @@ IPC_GET_WORKSPACES: int = 1
 IPC_SUBSCRIBE: int = 2
 IPC_GET_VERSION: int = 7
 IPC_LUA_EVAL: int = 124
+IPC_GET_SPACE_TEMPLATE: int = 125
+IPC_APPLY_SPACE_TEMPLATE: int = 126
 
 
 class ScrollIPC:
@@ -74,6 +76,30 @@ class ScrollIPC:
         self._send(IPC_LUA_EVAL, code)
         reply_type, reply_payload = self._recv()
         if reply_type != IPC_LUA_EVAL:
+            raise ValueError(f"Unexpected reply type: {reply_type}")
+        result = json.loads(reply_payload)
+        assert isinstance(result, dict)
+        return result
+
+    def get_space_template(self, name: str) -> dict:
+        # The payload is the plain-text template name, not JSON.
+        self._send(IPC_GET_SPACE_TEMPLATE, name)
+        reply_type, reply_payload = self._recv()
+        if reply_type != IPC_GET_SPACE_TEMPLATE:
+            raise ValueError(f"Unexpected reply type: {reply_type}")
+        result = json.loads(reply_payload)
+        assert isinstance(result, dict)
+        return result
+
+    def apply_space_template(self, name: str, mappings: list) -> dict:
+        request = json.dumps({
+            "name": name,
+            "workspace": "current",
+            "mappings": mappings,
+        })
+        self._send(IPC_APPLY_SPACE_TEMPLATE, request)
+        reply_type, reply_payload = self._recv()
+        if reply_type != IPC_APPLY_SPACE_TEMPLATE:
             raise ValueError(f"Unexpected reply type: {reply_type}")
         result = json.loads(reply_payload)
         assert isinstance(result, dict)

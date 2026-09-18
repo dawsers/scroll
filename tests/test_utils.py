@@ -30,6 +30,12 @@ class ScrollInstance:
     def get_tree(self) -> dict:
         return self.ipc.get_tree()
 
+    def get_space_template(self, name: str) -> dict:
+        return self.ipc.get_space_template(name)
+
+    def apply_space_template(self, name: str, mappings: list) -> dict:
+        return self.ipc.apply_space_template(name, mappings)
+
     def read_log(self) -> str:
         return self.log_path.read_text()
 

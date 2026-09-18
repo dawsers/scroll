@@ -986,6 +986,10 @@ int main(int argc, char **argv) {
 		type = IPC_GET_BINDINGS;
 	} else if (strcasecmp(cmdtype, "lua_eval") == 0) {
 		type = IPC_LUA_EVAL;
+	} else if (strcasecmp(cmdtype, "get_space_template") == 0) {
+		type = IPC_GET_SPACE_TEMPLATE;
+	} else if (strcasecmp(cmdtype, "apply_space_template") == 0) {
+		type = IPC_APPLY_SPACE_TEMPLATE;
 	} else {
 		if (quiet) {
 			exit(EXIT_FAILURE);

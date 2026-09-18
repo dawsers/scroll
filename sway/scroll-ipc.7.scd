@@ -99,6 +99,13 @@ supported. *For all replies, any properties not listed are subject to removal.*
 |- 124
 :  LUA_EVAL
 :  Evaluate a buffer containing LUA code
+|- 125
+:  GET_SPACE_TEMPLATE
+:  Get the canonical JSON for a saved space template
+|- 126
+:  APPLY_SPACE_TEMPLATE
+:  Bind every slot of a saved space template to a live window and apply it
+   to the current workspace
 
 ## 0. RUN_COMMAND
 
@@ -1859,6 +1866,65 @@ LUA code: print("Hello!")
 	"success": true,
 	"results": [],
 	"stdout": "Hello!"
+}
+```
+
+## 125. GET_SPACE_TEMPLATE
+
+*MESSAGE*++
+The payload is the plain-text name of a template previously saved with
+_space_template save_ (see *scroll*(5)) -- not JSON.
+
+*REPLY*++
+On success, the template's canonical JSON object (_version_, _name_,
+_scroller_, _tiling_, _floating_, _focused_slot_). On failure, an object
+with _success_ (false), _error_, and optionally _path_/_detail_ describing
+where and why -- an unsafe or unknown name, or a corrupt file, for example.
+This never mutates anything; the legacy GET_SPACES message is unaffected
+and unrelated.
+
+## 126. APPLY_SPACE_TEMPLATE
+
+*MESSAGE*++
+A JSON object:
+
+```
+{
+	"name": "dev",
+	"workspace": "current",
+	"mappings": [
+		{ "slot": "editor", "con_id": 3 },
+		{ "slot": "terminal", "criteria": "[app_id=\"foot\"]" }
+	]
+}
+```
+
+_workspace_, if present, must be exactly _"current"_ -- v1 applies only to
+the current workspace, and does not accept an arbitrary target. _mappings_
+resolves each named slot to exactly one live window, either by _con_id_
+(an existing container id, as used elsewhere in this protocol) or by
+_criteria_ (a criteria string as used in the config language; it must match
+exactly one window with a mapped view, or the request fails naming that
+slot). There is no _fallback_, _retry_, _staging_, _pending_, _timeout_,
+_cancel_, or _commit_ field: apply is a single atomic operation, and an
+incomplete/ambiguous mapping is reported once via the reply below, not
+retried by the compositor.
+
+*REPLY*++
+On success, _{"success": true}_. On failure, an object with _success_
+(false), _error_, and -- when the failure names specific slots (missing,
+duplicate, or ambiguous bindings; a criteria match with zero or more than
+one result) -- a _slots_ array. A failing request performs no mutation:
+tree, focus, geometry, and scratchpad membership are all left exactly as
+they were.
+
+*Example Reply (failure):*
+
+```
+{
+	"success": false,
+	"error": "template slot has no binding",
+	"slots": ["terminal"]
 }
 ```
 

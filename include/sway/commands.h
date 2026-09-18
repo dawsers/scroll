@@ -227,6 +227,7 @@ sway_cmd cmd_snap_respect_gaps_inner;
 sway_cmd cmd_snap_respect_gaps_outer;
 sway_cmd cmd_snap_border_overlap;
 sway_cmd cmd_space;
+sway_cmd cmd_space_template;
 sway_cmd cmd_sticky;
 sway_cmd cmd_swaybg_command;
 sway_cmd cmd_swaynag_command;
