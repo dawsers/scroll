@@ -26,6 +26,21 @@ space_template_unit_test = executable(
 )
 test('space_template', space_template_unit_test)
 
+# G2 focused parser/persistence tests (issue #2): JSON schema round-trip,
+# structural-error delegation to G1's validator, and atomic XDG persistence.
+# Links json-c/pcre2 directly -- still no wlroots/Wayland dependency.
+space_template_json_unit_test = executable(
+	'space_template_json_unit_test',
+	files('unit/test_space_template_json.c', '../sway/tree/space_template.c', '../sway/tree/space_template_json.c'),
+	include_directories: [sway_inc],
+	# lib_sway_common, not -nolog -- see the identical comment on
+	# space_template_unit_test above.
+	link_with: [lib_sway_common],
+	dependencies: [jsonc, pcre2],
+	install: false,
+)
+test('space_template_json', space_template_json_unit_test)
+
 xcb_dep = dependency('xcb', required: false)
 if xcb_dep.found()
 	executable(
