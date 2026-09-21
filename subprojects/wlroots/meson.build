@@ -76,7 +76,7 @@ features = {
 	'gbm-allocator': false,
 	'udmabuf-allocator': false,
 	'session': false,
-	'color-management': false,
+	'icc-profile': false,
 }
 internal_features = {
 	'xcb-errors': false,
