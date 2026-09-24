@@ -1549,15 +1549,73 @@ void view_increment_content_scale(struct sway_view *view, double increment) {
 	view_set_content_scale(view, scale);
 }
 
-float view_get_content_scale(struct sway_view *view) {
 #if WLR_HAS_XWAYLAND
-	if (!config->xwayland_output_scale && view->type == SWAY_VIEW_XWAYLAND && view->container) {
+static struct wlr_xwayland_surface *xwayland_surface_from_wlr_surface(struct wlr_surface *surface) {
+	while (surface) {
+		struct wlr_xwayland_surface *xsurface =
+			wlr_xwayland_surface_try_from_wlr_surface(surface);
+		if (xsurface) {
+			return xsurface;
+		}
+		struct wlr_subsurface *subsurface = wlr_subsurface_try_from_wlr_surface(surface);
+		if (!subsurface) {
+			return NULL;
+		}
+		surface = subsurface->parent;
+	}
+	return NULL;
+}
+
+static float xwayland_surface_output_scale(struct wlr_xwayland_surface *xsurface) {
+	if (!xsurface || !root || !root->output_layout) {
+		return 1.0f;
+	}
+	struct wlr_output *output = wlr_output_layout_output_at_physical(
+			root->output_layout, xsurface->x, xsurface->y);
+	return output ? output->scale : 1.0f;
+}
+
+static float view_get_output_scale(struct sway_view *view) {
+	if (view->container) {
 		struct sway_workspace *workspace = view->container->pending.workspace;
 		if (workspace && workspace->output) {
-			float oscale = workspace->output->wlr_output->scale;
+			return workspace->output->wlr_output->scale;
+		}
+	}
+	if (!config->xwayland_output_scale && view->type == SWAY_VIEW_XWAYLAND) {
+		return xwayland_surface_output_scale(view->wlr_xwayland_surface);
+	}
+	return 1.0f;
+}
+#endif
+
+float view_get_surface_content_scale(struct wlr_surface *surface) {
+	struct sway_view *view = surface ? view_from_wlr_surface(surface) : NULL;
+	if (view) {
+		float scale = view_get_content_scale(view);
+		return scale > 0.0f ? scale : 1.0f;
+	}
+#if WLR_HAS_XWAYLAND
+	if (surface && !config->xwayland_output_scale) {
+		struct wlr_xwayland_surface *xsurface = xwayland_surface_from_wlr_surface(surface);
+		if (xsurface) {
+			float oscale = xwayland_surface_output_scale(xsurface);
 			if (oscale != 1.0f) {
-				return view->content_scale > 0.0f ? view->content_scale / oscale : 1.0f / oscale;
+				return 1.0f / oscale;
 			}
+		}
+	}
+#endif
+	return 1.0f;
+}
+
+float view_get_content_scale(struct sway_view *view) {
+#if WLR_HAS_XWAYLAND
+	if (!config->xwayland_output_scale && view->type == SWAY_VIEW_XWAYLAND) {
+		float oscale = view_get_output_scale(view);
+		if (oscale != 1.0f) {
+			float content_scale = view->content_scale > 0.0f ? view->content_scale : 1.0f;
+			return content_scale / oscale;
 		}
 	}
 #endif
@@ -1573,18 +1631,7 @@ void view_reset_content_scale(struct sway_view *view) {
 }
 
 bool view_is_content_scaled(struct sway_view *view) {
-#if WLR_HAS_XWAYLAND
-	if (!config->xwayland_output_scale && view->type == SWAY_VIEW_XWAYLAND && view->container) {
-		struct sway_workspace *workspace = view->container->pending.workspace;
-		if (workspace && workspace->output) {
-			float oscale = workspace->output->wlr_output->scale;
-			if (oscale != 1.0f) {
-				return true;
-			}
-		}
-	}
-#endif
-	return view->content_scale > 0.0f;
+	return view_get_content_scale(view) > 0.0f;
 }
 
 static void container_get_borders(struct sway_container *container, int *border_horiz, int *border_vert) {

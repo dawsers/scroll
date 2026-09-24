@@ -52,9 +52,11 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 			struct sway_view *view = view_from_wlr_surface(scene_surface->surface);
 			if (view) {
 				total_scale = view_get_total_scale(view);
-				if (total_scale <= 0.0) {
-					total_scale = 1.0;
-				}
+			} else {
+				total_scale = view_get_surface_content_scale(scene_surface->surface);
+			}
+			if (total_scale <= 0.0) {
+				total_scale = 1.0;
 			}
 		}
 
@@ -151,7 +153,8 @@ static bool scene_view_data(struct wlr_surface *surface, struct wlr_scene_view_d
 		}
 		return true;
 	} else {
-		data->total_scale = data->wscale = data->hscale = 1.0;
+		data->total_scale = view_get_surface_content_scale(surface);
+		data->wscale = data->hscale = 1.0;
 	}
 	return false;
 }
@@ -204,16 +207,7 @@ static bool scene_node_get_parent_total_scale(struct wlr_scene_node *node, doubl
 }
 
 static double scene_view_content_scale(struct wlr_surface *surface) {
-	struct sway_view *view = view_from_wlr_surface(surface);
-	if (view) {
-		double scale = view_get_content_scale(view);
-		if (scale < 0.0) {
-			scale = 1.0;
-		}
-		return scale;
-	} else {
-		return 1.0;
-	}
+	return view_get_surface_content_scale(surface);
 }
 
 static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,

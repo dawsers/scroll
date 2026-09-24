@@ -395,6 +395,8 @@ void view_increment_content_scale(struct sway_view *view, double increment);
 
 bool view_is_content_scaled(struct sway_view *view);
 
+float view_get_surface_content_scale(struct wlr_surface *surface);
+
 void xdg_toplevel_tag_manager_v1_handle_set_tag(struct wl_listener *listener, void *data);
 
 void view_reconfigure(struct sway_view *view);
