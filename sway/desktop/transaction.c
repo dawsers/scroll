@@ -1471,6 +1471,11 @@ static void arrange_workspace_tiling(struct sway_workspace *ws,
 	if (ws->tiling->length == 0) {
 		return;
 	}
+	if (ws->current.fullscreen) {
+		// When there is a full screen container, don't arrange tiling ones, or
+		// its coodinates will change.
+		return;
+	}
 	arrange_children(ws, layout_get_type(ws), ws->tiling,
 		ws->current.focused_inactive_child, ws->layers.tiling, ws->gaps_inner);
 	struct sway_container *pin = layout_pin_enabled(ws) ? layout_pin_get_container(ws) : NULL;

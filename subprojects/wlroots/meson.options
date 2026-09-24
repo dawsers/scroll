@@ -8,5 +8,5 @@ option('allocators', type: 'array', choices: ['auto', 'gbm', 'udmabuf'], value: 
 	description: 'Select built-in allocators')
 option('session', type: 'feature', value: 'auto', description: 'Enable session support')
 option('tests', type: 'boolean', value: false, description: 'Build tests and benchmarks')
-option('color-management', type: 'feature', value: 'auto', description: 'Enable support for color management')
+option('icc-profile', type: 'feature', value: 'auto', description: 'Enable support for ICC profiles')
 option('libliftoff', type: 'feature', value: 'auto', description: 'Enable support for libliftoff')

@@ -71,11 +71,11 @@ subdir('pixman')
 
 subdir('allocator')
 
-lcms2 = dependency('lcms2', required: get_option('color-management'))
+lcms2 = dependency('lcms2', required: get_option('icc-profile'))
 if lcms2.found()
 	wlr_deps += lcms2
 	wlr_files += files('color_lcms2.c')
-	features += { 'color-management': true }
+	features += { 'icc-profile': true }
 else
 	wlr_files += files('color_fallback.c')
 endif
