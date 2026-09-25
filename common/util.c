@@ -19,7 +19,7 @@ static uint64_t cpu_timestamp_fallback(void) {
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return (uint64_t)ts.tv_sec * 1000000000ull + ts.tv_nsec;
 }
-#define CPU_TIMSTAMP() cpu_timestamp_fallback()
+#define CPU_TIMESTAMP() cpu_timestamp_fallback()
 #endif
 
 int wrap(int i, int max) {
