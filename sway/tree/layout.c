@@ -4187,6 +4187,11 @@ static void apply_container_sizes(struct sway_container *container,
 	bool single = container->pending.parent ?
 		container->pending.parent->toggle_size.single : container->toggle_size.single;
 
+	if (op == OPERATION_RESIZE && mode == TOGGLE_SIZE_NONE && !single) {
+		set_sizes(container, new_width, new_height);
+		return;
+	}
+
 	enum sway_toggle_size_state state = container->toggle_size.state;
 	enum sway_toggle_size_state ns;
 	switch (mode) {
