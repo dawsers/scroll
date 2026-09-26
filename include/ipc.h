@@ -29,6 +29,8 @@ enum ipc_command_type {
 	IPC_GET_SPACES = 122,
 	IPC_GET_BINDINGS = 123,
 	IPC_LUA_EVAL = 124,
+	IPC_GET_SPACE_TEMPLATE = 125,
+	IPC_APPLY_SPACE_TEMPLATE = 126,
 
 	// Events sent from sway to clients. Events have the highest bits set.
 	IPC_EVENT_WORKSPACE = ((1<<31) | 0),

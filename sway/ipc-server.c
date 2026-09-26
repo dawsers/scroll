@@ -22,6 +22,7 @@
 #include "sway/ipc-server.h"
 #include "sway/output.h"
 #include "sway/server.h"
+#include "sway/space_template_ipc.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/keyboard.h"
 #include "sway/input/seat.h"
@@ -1025,6 +1026,31 @@ void ipc_client_handle_command(struct ipc_client *client, uint32_t payload_lengt
 	case IPC_LUA_EVAL:
 	{
 		json_object *resp = lua_eval(buf);
+		const char *json_string = json_object_to_json_string(resp);
+		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
+		json_object_put(resp);
+		goto exit_cleanup;
+	}
+
+	case IPC_GET_SPACE_TEMPLATE:
+	{
+		json_object *resp = space_template_ipc_get(buf);
+		const char *json_string = json_object_to_json_string(resp);
+		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
+		json_object_put(resp);
+		goto exit_cleanup;
+	}
+
+	case IPC_APPLY_SPACE_TEMPLATE:
+	{
+		// v1 operates on the current workspace only (D-05); the request's own
+		// "workspace" field (validated inside space_template_ipc_apply()) must
+		// agree with that, it never selects a different one.
+		struct json_object *request = json_tokener_parse(buf);
+		struct sway_seat *seat = input_manager_get_default_seat();
+		struct sway_workspace *workspace = seat_get_focused_workspace(seat);
+		json_object *resp = space_template_ipc_apply(request, workspace);
+		json_object_put(request);
 		const char *json_string = json_object_to_json_string(resp);
 		ipc_send_reply(client, payload_type, json_string, (uint32_t)strlen(json_string));
 		json_object_put(resp);

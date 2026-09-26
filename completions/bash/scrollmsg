@@ -22,6 +22,8 @@ _scrollmsg()
     'get_trails'
     'get_spaces'
     'get_bindings'
+    'get_space_template'
+    'apply_space_template'
     'lua_eval'
     'send_tick'
     'subscribe'

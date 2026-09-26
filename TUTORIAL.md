@@ -370,6 +370,60 @@ bindsym $mod+g mode "spaces"
 [Spaces](https://github.com/user-attachments/assets/32a076db-5cf1-49d1-8132-3822a137d231)
 
 
+## Space Templates
+
+A space template is a *durable* version of a space: instead of living only in
+the running compositor's memory, it is a named, versioned JSON file under
+`$XDG_CONFIG_HOME/scroll/templates/<name>.json` (typically
+`~/.config/scroll/templates/`), so it survives restarts and can be applied to
+windows that did not exist yet when it was saved. Where a space remembers
+*which windows* were where, a template remembers *slots*: named positions in
+a layout that any window can be bound into later.
+
+``` config
+bindsym $mod+t space_template save dev --with-hints
+```
+
+Saving is a one-shot command like `space save`. Applying is not usually a
+plain keybinding, though, because it needs a *mapping* -- which live window
+goes in which slot -- and working that out (by asking the user, by matching
+criteria, by launching something new) is exactly the part a Lua script is
+good at. See `examples/space-templates/` for two complete scripts:
+
+- `fill-then-retry.lua`: apply a template; for any slot that has no window
+  bound yet, launch a default program for it and apply again once it maps.
+- `launcher-placeholders.lua`: stage every slot with a real placeholder
+  terminal first, apply immediately so you see the layout right away, then
+  swap each placeholder for whatever application you choose in it.
+
+Both patterns are ordinary userland scripting against one primitive: apply a
+template with a set of slot mappings, whether via the `space_template apply
+<name> <mappings>` command, the `apply_space_template` IPC message, or
+`scroll.space_template_apply()` from Lua -- all three share the same
+contract. It either succeeds and rebuilds your workspace from the template in
+one step (layout, split fractions, floating geometry, scroller settings,
+focus), or fails and tells you exactly which slots still need a window. There
+is no partial apply, no compositor-created placeholder window, and no
+built-in retry/fallback/staging: every slot must resolve to exactly one live
+window (by container id, or a criteria string like config's `for_window`) or
+nothing changes at all. If apply fails, that is the whole interface -- fill
+the named slots yourself (launch something, or `[app_id="..."]` criteria-match
+an already-running window) and apply again.
+
+Applying a template only ever touches the current workspace. Any window
+already there that is not part of the template gets moved to the scratchpad
+(never closed) to make room, mirroring `space restore_hide`.
+
+A template's JSON is meant to be hand-edited: `space_template save <name>
+[--with-hints]` captures your current layout with generated slot names
+(`slot-1`, `slot-2`, ...) -- rename them to something meaningful
+(`"editor"`, `"terminal"`) in the saved file. `--with-hints` additionally
+records each slot's current `app_id`/`class`/`title` as optional matching
+hints for your own scripts; scroll itself never matches windows
+automatically. See *scroll-ipc*(7) for the full JSON schema and IPC message
+shapes, and *scroll*(5) for the `space_template` command.
+
+
 ## Scratchpad
 
 *scroll* adds some functionality to *sway*'s scratchpad. By using `scratchpad jump`

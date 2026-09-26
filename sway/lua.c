@@ -15,6 +15,8 @@
 #include "sway/ipc-server.h"
 #include "sway/desktop/transaction.h"
 #include "sway/server.h"
+#include "sway/space_template_ipc.h"
+#include "sway/input/seat.h"
 #include "stringop.h"
 
 #if 0
@@ -1979,6 +1981,98 @@ static int scroll_pending_transactions(lua_State *L) {
 	return 1;
 }
 
+// space_template_get(name) -> template_table | nil, error_string
+//
+// Returns the named template's canonical data (version, name, scroller,
+// tiling, floating, focused_slot) as a plain Lua table, or nil plus an
+// error string (unsafe/unknown name, corrupt file, etc.) on failure. This
+// never mutates anything and never touches a live view/container -- it is
+// a read of persisted G2 data, converted with the same json_to_lua() used
+// by scroll.json_to_lua() elsewhere in this file.
+static int scroll_space_template_get(lua_State *L) {
+	const char *name = luaL_checkstring(L, 1);
+
+	struct json_object *json = space_template_ipc_get(name);
+
+	struct json_object *success_json = NULL;
+	if (json_object_object_get_ex(json, "success", &success_json) &&
+			!json_object_get_boolean(success_json)) {
+		struct json_object *error_json = NULL;
+		const char *error = json_object_object_get_ex(json, "error", &error_json) ?
+			json_object_get_string(error_json) : "space_template_get failed";
+		lua_pushnil(L);
+		lua_pushstring(L, error);
+		json_object_put(json);
+		return 2;
+	}
+
+	json_to_lua(L, json);
+	json_object_put(json);
+	return 1;
+}
+
+// space_template_apply(name, mappings) -> true | nil, error_string, slots_table
+//
+// `mappings` is a plain Lua array of tables shaped like
+// `{ slot = "editor", con_id = 3 }` or `{ slot = "editor", criteria =
+// '[app_id="foot"]' }` -- exactly the JSON shape documented for the
+// apply_space_template IPC message in scroll-ipc(7). Matching, launching,
+// filling, and retrying are entirely the caller's job: this function adds
+// no bind/commit/cancel/pending/timeout/fallback/retry/staging machinery
+// and owns no compositor callback lifecycle of its own -- it resolves the
+// mapping the caller already decided on and applies the template in one
+// step (validate -> sweep -> arrange -> dissolve, see G3).
+//
+// On success returns `true`. On failure returns `nil, error_string,
+// slots_table` where `slots_table` (an array of slot-name strings, or nil
+// when the failure isn't slot-specific) names the missing/ambiguous/stale
+// slot(s) -- catch this and either launch/raise a default for each named
+// slot and call space_template_apply() again (fill-then-retry, see
+// examples/space-templates/fill-then-retry.lua), or hand it to a
+// placeholder-swap script (examples/space-templates/launcher-placeholders.lua).
+// Nothing here is retried automatically.
+static int scroll_space_template_apply(lua_State *L) {
+	const char *name = luaL_checkstring(L, 1);
+	luaL_checktype(L, 2, LUA_TTABLE);
+
+	struct json_object *mappings = lua_value_to_json(L, 2);
+
+	struct json_object *request = json_object_new_object();
+	json_object_object_add(request, "name", json_object_new_string(name));
+	json_object_object_add(request, "mappings", mappings);
+
+	struct sway_seat *seat = input_manager_current_seat();
+	struct sway_workspace *workspace = seat_get_focused_workspace(seat);
+
+	struct json_object *response = space_template_ipc_apply(request, workspace);
+	json_object_put(request);
+
+	struct json_object *success_json = NULL;
+	bool success = json_object_object_get_ex(response, "success", &success_json) &&
+		json_object_get_boolean(success_json);
+
+	if (success) {
+		json_object_put(response);
+		lua_pushboolean(L, true);
+		return 1;
+	}
+
+	struct json_object *error_json = NULL;
+	const char *error = json_object_object_get_ex(response, "error", &error_json) ?
+		json_object_get_string(error_json) : "space_template_apply failed";
+	lua_pushnil(L);
+	lua_pushstring(L, error);
+
+	struct json_object *slots_json = NULL;
+	if (json_object_object_get_ex(response, "slots", &slots_json)) {
+		json_to_lua(L, slots_json);
+	} else {
+		lua_pushnil(L);
+	}
+	json_object_put(response);
+	return 3;
+}
+
 // Module functions
 /* clang-format off */
 static luaL_Reg const scroll_lib[] = {
@@ -2061,6 +2155,8 @@ static luaL_Reg const scroll_lib[] = {
 	{ "remove_callback", scroll_remove_callback },
 	{ "animating", scroll_animating },
 	{ "pending_transactions", scroll_pending_transactions },
+	{ "space_template_get", scroll_space_template_get },
+	{ "space_template_apply", scroll_space_template_apply },
 	{ NULL, NULL }
 };
 /* clang-format on */

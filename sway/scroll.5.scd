@@ -995,6 +995,37 @@ set|plus|minus|toggle <amount>
 
 	_delete_ deletes the space with _name_ if there is any.
 
+*space_template* save <name> [--with-hints]
+*space_template* apply <name> [mappings]
+	A _space template_ is a durable, named tiling/floating layout stored as
+	JSON under _$XDG_CONFIG_HOME/scroll/templates/<name>.json_, with slot
+	identities instead of live window references, so it survives across
+	restarts and can be applied to windows launched after it was saved.
+
+	_save_ captures the current workspace's layout into a template named
+	_name_, generating a structural slot name (_slot-1_, _slot-2_, ...) for
+	each window in tree order. Edit the saved JSON file to give slots
+	meaningful names. With _--with-hints_, each slot additionally records
+	the current app_id/class/title of the window that was in it, purely as
+	optional matching hints for your own scripts -- scroll never uses them
+	automatically. _save_ overwrites any existing template with the same
+	name atomically: a save that fails (invalid data, a filesystem error)
+	never touches a previously saved file.
+
+	_apply_ binds every slot in template _name_ to a live window and
+	rebuilds the current workspace from the template in one step: layout,
+	split fractions, floating geometry, scroller settings, and focus. Any
+	window already on the workspace that isn't part of the apply is moved to
+	the scratchpad, never closed. _mappings_ is a JSON array naming, for each
+	slot, either an explicit container id or a criteria string, for example
+	_'[{"slot":"editor","con_id":3},{"slot":"terminal","criteria":"[app_id=\\"foot\\"]"}]'_.
+	Every slot must resolve to exactly one live window or the command fails,
+	naming the missing/ambiguous slot(s), and changes nothing -- there is no
+	partial apply, no built-in fallback, retry, or staging. If a slot can't
+	be filled, fill it yourself (or raise/launch a window for it) and run
+	_apply_ again; that fill-then-retry loop is ordinary scripting, not a
+	compositor feature.
+
 *sticky* enable|disable|toggle
 	"Sticks" a floating window to the current output so that it shows up on all
 	workspaces.
