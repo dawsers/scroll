@@ -334,4 +334,8 @@ void layout_fit_size_workspace(struct sway_workspace *workspace,
 void layout_fit_size_container(struct sway_container *container,
 	enum sway_layout_fit_group fit, bool equal);
 
+// Set the fraction of `container` along `axis` and rebalance its siblings
+void layout_fit_set_fraction(struct sway_container *container,
+	enum sway_layout_axis axis, double fraction);
+
 #endif // _SWAY_LAYOUT_H

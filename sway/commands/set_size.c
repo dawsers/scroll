@@ -71,7 +71,7 @@ static struct cmd_results *set_size_tiled(enum sway_layout_axis axis, double fra
 	}
 
 	if (horizontal) {
-		current->width_fraction = fraction;
+		layout_fit_set_fraction(current, AXIS_HORIZONTAL, fraction);
 		if (layout == L_HORIZ) {
 			// If it has children, propagate its width_fraction, overwriting whatever they had
 			for (int i = 0; i < current->pending.children->length; ++i) {
@@ -80,7 +80,7 @@ static struct cmd_results *set_size_tiled(enum sway_layout_axis axis, double fra
 			}
 		}
 	} else {
-		current->height_fraction = fraction;
+		layout_fit_set_fraction(current, AXIS_VERTICAL, fraction);
 		if (layout == L_VERT) {
 			// If it has children, propagate its width_fraction, overwriting whatever they had
 			for (int i = 0; i < current->pending.children->length; ++i) {

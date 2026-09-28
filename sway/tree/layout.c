@@ -77,7 +77,10 @@ list_t *layout_get_heights(struct sway_output *output) {
 	return config->layout_heights;
 }
 
-static void layout_toggle_size_init(struct sway_workspace *workspace);
+static void toggle_size_init(struct sway_workspace *workspace);
+static void fit_arrange_fractions(struct sway_container *container,
+				enum sway_layout_axis axis);
+static void fit_arrange_fractions_with_parent(struct sway_container *container);
 
 void layout_init(struct sway_workspace *workspace) {
 	layout_modifiers_init(workspace);
@@ -86,7 +89,7 @@ void layout_init(struct sway_workspace *workspace) {
 	workspace->layout.align = ALIGN_NONE;
 	workspace->layout.align_axes = ALIGN_AXIS_NONE;
 	workspace->layout.align_container = NULL;
-	layout_toggle_size_init(workspace);
+	toggle_size_init(workspace);
 	ipc_event_scroller("new", workspace);
 }
 
@@ -714,7 +717,7 @@ enum sway_layout_insert layout_modifiers_get_insert(struct sway_workspace *works
 }
 
 void layout_modifiers_set_fit(struct sway_workspace *workspace, enum sway_layout_fit fit) {
-	if (workspace->layout.modifiers.fit != fit) {
+	if (workspace && workspace->layout.modifiers.fit != fit) {
 		workspace->layout.modifiers.fit = fit;
 		if (fit != FIT_NONE) {
 			arrange_workspace(workspace);
@@ -724,7 +727,7 @@ void layout_modifiers_set_fit(struct sway_workspace *workspace, enum sway_layout
 }
 
 enum sway_layout_fit layout_modifiers_get_fit(struct sway_workspace *workspace) {
-	return workspace->layout.modifiers.fit;
+	return workspace ? workspace->layout.modifiers.fit : FIT_NONE;
 }
 
 void layout_modifiers_set_focus(struct sway_workspace *workspace, bool focus) {
@@ -2018,8 +2021,8 @@ void layout_container_jump_decoration_apply_scale(struct sway_container *con) {
 	}
 	struct sway_workspace *workspace = con->pending.workspace;
 	const double wscale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
-	const double width = con->pending.width;
-	const double height = con->pending.height;
+	const double width = fmax(con->pending.width, 1.0);
+	const double height = fmax(con->pending.height, 1.0);
 	sway_text_node_set_background(con->jump.text, config->jump_labels_background);
 	double jscale = config->jump_labels_scale;
 	double scale = fmin(width / con->jump.text->width, height / con->jump.text->height);
@@ -4113,7 +4116,7 @@ bool layout_trails_trailmarked(struct sway_view *view) {
 	return false;
 }
 
-static void layout_toggle_size_init(struct sway_workspace *workspace) {
+static void toggle_size_init(struct sway_workspace *workspace) {
 	workspace->layout.toggle_size.mode = TOGGLE_SIZE_NONE;
 	workspace->layout.toggle_size.container = NULL;
 	workspace->layout.toggle_size.width = 0.0;
@@ -4156,6 +4159,8 @@ static void pop_sizes(struct sway_container *container) {
 	}
 	container->width_fraction = container->toggle_size.saved_width_fraction;
 	container->height_fraction = container->toggle_size.saved_height_fraction;
+	fit_arrange_fractions(container, AXIS_HORIZONTAL);
+	fit_arrange_fractions(container, AXIS_VERTICAL);
 }
 
 static void set_sizes(struct sway_container *container, double width_fraction,
@@ -4468,6 +4473,18 @@ static void apply_container_and_parent_sizes(struct sway_container *container,
 	apply_container_sizes(container, width_fraction, height_fraction, op);
 }
 
+static void apply_container_and_children_sizes(struct sway_container *container,
+		double width_fraction, double height_fraction, enum sway_operation op) {
+	apply_container_sizes(container, width_fraction, height_fraction, op);
+	if (!container->pending.children) {
+		return;
+	}
+	for (int i = 0; i < container->pending.children->length; ++i) {
+		struct sway_container *child = container->pending.children->items[i];
+		apply_container_sizes(child, width_fraction, height_fraction, op);
+	}
+}
+
 void layout_toggle_size(struct sway_workspace *workspace,
 		struct sway_container *container, enum sway_toggle_size mode,
 		double width_fraction, double height_fraction) {
@@ -4482,10 +4499,11 @@ void layout_toggle_size(struct sway_workspace *workspace,
 
 	if (mode == TOGGLE_SIZE_ACTIVE) {
 		apply_container_and_parent_sizes(container, width_fraction, height_fraction, OPERATION_FOCUS);
+		fit_arrange_fractions_with_parent(container);
 	} else {
 		for (int i = 0; i < workspace->tiling->length; ++i) {
 			struct sway_container *con = workspace->tiling->items[i];
-			apply_container_sizes(con, width_fraction, height_fraction, OPERATION_FOCUS);
+			apply_container_and_children_sizes(con, width_fraction, height_fraction, OPERATION_FOCUS);
 		}
 	}
 	arrange_workspace(workspace);
@@ -4561,6 +4579,7 @@ void layout_toggle_size_change_focus(struct sway_node *last_focus,
 			apply_container_and_parent_sizes(new_container,
 				layout_toggle_size_width_fraction(new_workspace),
 				layout_toggle_size_height_fraction(new_workspace), OPERATION_FOCUS);
+			fit_arrange_fractions_with_parent(new_container);
 			node_set_dirty(&new_container->node);
 		}
 		new_workspace->layout.toggle_size.container = new_container;
@@ -4577,6 +4596,7 @@ void layout_toggle_size_change_focus(struct sway_node *last_focus,
 			apply_container_and_parent_sizes(new_container,
 				layout_toggle_size_width_fraction(new_workspace),
 				layout_toggle_size_height_fraction(new_workspace), OPERATION_FOCUS);
+			fit_arrange_fractions_with_parent(new_container);
 			new_workspace->layout.toggle_size.container = new_container;
 			arrange_workspace(new_workspace);
 			node_set_dirty(&new_container->node);
@@ -4596,6 +4616,7 @@ void layout_toggle_size_container(struct sway_container *container,
 		node_set_dirty(&container->pending.parent->node);
 	}
 	apply_container_sizes(container, width_fraction, height_fraction, OPERATION_TOGGLE);
+	fit_arrange_fractions_with_parent(container);
 	struct sway_workspace *workspace = container->pending.workspace;
 	arrange_workspace(workspace);
 	node_set_dirty(&container->node);
@@ -4935,4 +4956,123 @@ void layout_fit_size_container(struct sway_container *container,
 	animation_set_type(ANIMATION_WINDOW_SIZE);
 
 	return;
+}
+
+// Minimum width/height fraction for a container in fit mode
+static const double EPSILON = 0.001;
+
+static double container_axis_fraction(struct sway_container *container,
+		enum sway_layout_axis axis) {
+	return (axis & AXIS_HORIZONTAL) ? container->width_fraction :
+		container->height_fraction;
+}
+
+static void container_set_axis_fraction(struct sway_container *container,
+		enum sway_layout_axis axis, double fraction) {
+	if (axis & AXIS_HORIZONTAL) {
+		container->width_fraction = fraction;
+	} else {
+		container->height_fraction = fraction;
+	}
+}
+
+// Returns the containers that share the viewport with `container` along `axis`
+static list_t *fit_get_siblings(struct sway_container *container,
+		enum sway_layout_axis axis) {
+	struct sway_workspace *workspace = container->pending.workspace;
+	if (!workspace || container_is_floating(container)) {
+		return NULL;
+	}
+	if (container->pending.fullscreen_mode != FULLSCREEN_NONE ||
+			container->pending.fullscreen_layout != FULLSCREEN_DISABLED) {
+		return NULL;
+	}
+	if (workspace_is_fullscreen(workspace) ||
+			layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		return NULL;
+	}
+	list_t *children;
+	enum sway_container_layout layout;
+	if (container->pending.parent) {
+		children = container->pending.parent->pending.children;
+		layout = container->pending.parent->pending.layout;
+	} else {
+		children = workspace->tiling;
+		layout = layout_get_type(workspace);
+	}
+	if (list_find(children, container) < 0) {
+		return NULL;
+	}
+	if ((layout == L_HORIZ && !(axis & AXIS_HORIZONTAL)) ||
+			(layout == L_VERT && !(axis & AXIS_VERTICAL)) ||
+			layout == L_NONE) {
+		return NULL;
+	}
+	return children;
+}
+
+static void fit_arrange_fractions(struct sway_container *container,
+		enum sway_layout_axis axis) {
+	if (!container) {
+		return;
+	}
+	struct sway_workspace *workspace = container->pending.workspace;
+	if (layout_modifiers_get_fit(workspace) == FIT_NONE) {
+		return;
+	}
+	list_t *children = fit_get_siblings(container, axis);
+	if (!children) {
+		return;
+	}
+	int nsiblings = children->length - 1;
+	double fraction = container_axis_fraction(container, axis);
+	if (nsiblings <= 0) {
+		container_set_axis_fraction(container, axis,
+			fmax(EPSILON, fmin(fraction, 1.0)));
+		return;
+	}
+	fraction = fmax(EPSILON, fmin(fraction, 1.0));
+	container_set_axis_fraction(container, axis, fraction);
+
+	double total = 0.0;
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *child = children->items[i];
+		if (child != container) {
+			total += container_axis_fraction(child, axis);
+		}
+	}
+	double scale;
+	if (total > 0.0) {
+		scale = (1.0 - fraction) / total;
+	} else {
+		scale = (1.0 - fraction) / nsiblings;
+	}
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *child = children->items[i];
+		if (child != container) {
+			container_set_axis_fraction(child, axis,
+				fmaxf(EPSILON, container_axis_fraction(child, axis) * scale));
+		}
+	}
+}
+
+void layout_fit_set_fraction(struct sway_container *container,
+		enum sway_layout_axis axis, double fraction) {
+	if (!container) {
+		return;
+	}
+	container_set_axis_fraction(container, axis, fraction);
+	fit_arrange_fractions(container, axis);
+}
+
+static void fit_arrange_fractions_with_parent(struct sway_container *container) {
+	if (!container) {
+		return;
+	}
+	if (container->pending.parent) {
+		fit_arrange_fractions(container->pending.parent, AXIS_HORIZONTAL);
+		fit_arrange_fractions(container->pending.parent, AXIS_VERTICAL);
+	}
+	fit_arrange_fractions(container, AXIS_HORIZONTAL);
+	fit_arrange_fractions(container, AXIS_VERTICAL);
 }

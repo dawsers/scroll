@@ -121,7 +121,8 @@ static struct cmd_results *cycle_size_tiled(enum sway_layout_axis axis, int inc)
 			current->width_fraction = output->scroller_options.default_width;
 		}
 		double fraction = current->width_fraction;
-		current->width_fraction = get_closest_fraction(fraction, layout_get_widths(output), inc);
+		layout_fit_set_fraction(current, AXIS_HORIZONTAL,
+			get_closest_fraction(fraction, layout_get_widths(output), inc));
 		if (layout == L_HORIZ) {
 			// If it has children, propagate its width_fraction, overwriting whatever they had
 			for (int i = 0; i < current->pending.children->length; ++i) {
@@ -134,7 +135,8 @@ static struct cmd_results *cycle_size_tiled(enum sway_layout_axis axis, int inc)
 			current->height_fraction = output->scroller_options.default_height;
 		}
 		double fraction = current->height_fraction;
-		current->height_fraction = get_closest_fraction(fraction, layout_get_heights(output), inc);
+		layout_fit_set_fraction(current, AXIS_VERTICAL,
+			get_closest_fraction(fraction, layout_get_heights(output), inc));
 		if (layout == L_VERT) {
 			// If it has children, propagate its width_fraction, overwriting whatever they had
 			for (int i = 0; i < current->pending.children->length; ++i) {
