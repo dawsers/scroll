@@ -209,6 +209,12 @@ The following commands may only be used in the configuration file.
 	Sets the length of the focus ring. The default value is _0_, which means
 	every window will be included. Values over _0_ set the length of the ring.
 
+*focus_ring_wrap* <true|false>
+	Enables wrapping the in the *focus_ring* command. Calling *focus_ring next*
+	on the last window of the ring focuses the first one, and calling
+	*focus_ring prev* on the first window focuses the last one.
+	Default value is _false_.
+
 *fullscreen_movefocus* <true|false> [follow|nofollow]
 	Default value is _true_ and _nofollow_.
 
@@ -531,9 +537,10 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 
 *focus_ring* prev|next|first|last|set|remove
 	Navigate the focus ring. The focus ring stores windows in creation order.
-	You can manipulate the focus ring, changing the order or windows or removing
+	You can manipulate the focus ring, changing the order of windows or removing
 	them from the list. See *focus_ring_length* for an option to control the
-	size of the focus ring.
+	size of the focus ring and *focus_ring_wrap* to wrap around its ends when
+	navigating with _prev_ and _next_.
 
 	_prev_: focus the previous view in the focus ring.
 

@@ -435,6 +435,7 @@ bindsym $mod+backslash mode "modifiers"
 #
 
 # focus_ring_length 0
+# focus_ring_wrap false
 
 # mode "focus_ring" {
 #     bindsym bracketleft focus_ring prev

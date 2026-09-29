@@ -1279,10 +1279,12 @@ removing windows (`remove`) or setting the current one as the last one in the
 ring (`set`).
 
 You can use `focus_ring prev|next|first|last` to navigate the ring focusing its
-windows.
+windows. By default navigation stops at both ends of the ring, set the
+`focus_ring_wrap` option to `true` if you want it to wrap around instead.
 
 ``` config
 # focus_ring_length 0
+# focus_ring_wrap false
 bindsym $mod+Shift+bracketleft focus_ring prev
 bindsym $mod+Shift+bracketright focus_ring next
 bindsym $mod+Shift+Return focus_ring set
@@ -2160,7 +2162,8 @@ each one of them:
 
 `align_reset_auto`, `animations`, `cursor_shake_magnify`,
 `cursor_shake_magnify_sensitivity`, `cycle_size_wrap`, `focus_ring_length`,
-`fullscreen_movefocus`, `gesture_scroll_enable`, `gesture_scroll_fingers`,
+`focus_ring_wrap`, `fullscreen_movefocus`,
+`gesture_scroll_enable`, `gesture_scroll_fingers`,
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_Default_mode`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,

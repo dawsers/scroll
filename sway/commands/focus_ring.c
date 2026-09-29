@@ -56,6 +56,15 @@ struct cmd_results *cmd_focus_ring_length(int argc, char **argv) {
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
+struct cmd_results *cmd_focus_ring_wrap(int argc, char **argv) {
+	struct cmd_results *error = checkarg(argc, "focus_ring_wrap", EXPECTED_AT_LEAST, 1);
+	if (error) {
+		return error;
+	}
+	config->focus_ring_wrap = parse_boolean(argv[0], config->focus_ring_wrap);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
 struct cmd_results *cmd_focus_ring(int argc, char **argv) {
 	if (!root->outputs->length) {
 		return cmd_results_new(CMD_INVALID,

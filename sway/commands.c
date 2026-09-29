@@ -125,6 +125,7 @@ static const struct cmd_handler config_handlers[] = {
 	{ "cycle_size_wrap", cmd_cycle_size_wrap },
 	{ "default_orientation", cmd_default_orientation },
 	{ "focus_ring_length", cmd_focus_ring_length },
+	{ "focus_ring_wrap", cmd_focus_ring_wrap },
 	{ "fullscreen_movefocus", cmd_fullscreen_movefocus },
 	{ "gesture_scroll_enable", cmd_gesture_scroll_enable },
 	{ "gesture_scroll_fingers", cmd_gesture_scroll_fingers },

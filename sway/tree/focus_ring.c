@@ -27,6 +27,12 @@ static void focus_container(struct sway_seat *seat,
 	seat_set_focus_container(seat, container);
 }
 
+static int first_index(struct sway_focus_ring *focus_ring) {
+	int len = config->focus_ring_length > 0 ? config->focus_ring_length :
+		focus_ring->ring->length;
+	return max(focus_ring->ring->length - len, 0);
+}
+
 void focus_ring_next(struct sway_focus_ring *focus_ring,
 		struct sway_seat *seat) {
 	if (!focus_ring->ring->length) {
@@ -35,13 +41,18 @@ void focus_ring_next(struct sway_focus_ring *focus_ring,
 	if (focus_ring->ring->length == 1) {
 		struct sway_view *view = focus_ring->ring->items[focus_ring->index];
 		focus_container(seat, view->container);
+		return;
 	}
 	int index = focus_ring->index + 1;
-	if (index < focus_ring->ring->length) {
-		struct sway_view *view = focus_ring->ring->items[index];
-		focus_container(seat, view->container);
-		++focus_ring->index;
+	if (index >= focus_ring->ring->length) {
+		if (!config->focus_ring_wrap) {
+			return;
+		}
+		index = first_index(focus_ring);
 	}
+	struct sway_view *view = focus_ring->ring->items[index];
+	focus_container(seat, view->container);
+	focus_ring->index = index;
 }
 
 void focus_ring_prev(struct sway_focus_ring *focus_ring,
@@ -52,15 +63,18 @@ void focus_ring_prev(struct sway_focus_ring *focus_ring,
 	if (focus_ring->ring->length == 1) {
 		struct sway_view *view = focus_ring->ring->items[focus_ring->index];
 		focus_container(seat, view->container);
+		return;
 	}
 	int index = focus_ring->index - 1;
-	int len = config->focus_ring_length > 0 ? config->focus_ring_length :
-		focus_ring->ring->length;
-	if (index >= max(focus_ring->ring->length - len, 0)) {
-		struct sway_view *view = focus_ring->ring->items[index];
-		focus_container(seat, view->container);
-		focus_ring->index--;
+	if (index < first_index(focus_ring)) {
+		if (!config->focus_ring_wrap) {
+			return;
+		}
+		index = focus_ring->ring->length - 1;
 	}
+	struct sway_view *view = focus_ring->ring->items[index];
+	focus_container(seat, view->container);
+	focus_ring->index = index;
 }
 
 void focus_ring_first(struct sway_focus_ring *focus_ring,
@@ -68,9 +82,7 @@ void focus_ring_first(struct sway_focus_ring *focus_ring,
 	if (!focus_ring->ring->length) {
 		return;
 	}
-	int len = config->focus_ring_length > 0 ? config->focus_ring_length :
-		focus_ring->ring->length;
-	focus_ring->index = max(focus_ring->ring->length - len, 0);
+	focus_ring->index = first_index(focus_ring);
 	struct sway_view *view = focus_ring->ring->items[focus_ring->index];
 	focus_container(seat, view->container);
 }
