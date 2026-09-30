@@ -12,6 +12,7 @@
 #include "list.h"
 #include "sway/log.h"
 #include "stringop.h"
+#include "util.h"
 
 static struct workspace_config *workspace_config_find_or_create(char *ws_name) {
 	struct workspace_config *wsc = workspace_find_config(ws_name);
@@ -461,5 +462,15 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 		workspace_switch(ws);
 		seat_consider_warp_to_focus(seat);
 	}
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *cmd_workspace_switch_wrapping(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "workspace_switch_wrapping", EXPECTED_EQUAL_TO, 1))) {
+		return error;
+	}
+
+	config->workspace_switch_wrapping = parse_boolean(argv[0], config->workspace_switch_wrapping);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

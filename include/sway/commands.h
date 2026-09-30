@@ -249,6 +249,7 @@ sway_cmd cmd_unbindsym;
 sway_cmd cmd_unmark;
 sway_cmd cmd_urgent;
 sway_cmd cmd_workspace;
+sway_cmd cmd_workspace_switch_wrapping;
 sway_cmd cmd_workspace_labels_background;
 sway_cmd cmd_workspace_labels_color;
 sway_cmd cmd_workspace_labels_height;
