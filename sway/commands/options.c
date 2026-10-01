@@ -64,6 +64,16 @@ struct cmd_results *cmd_workspace_next_on_output_create_empty(int argc, char **a
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
+struct cmd_results *cmd_workspace_switch_wrapping(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "workspace_switch_wrapping", EXPECTED_EQUAL_TO, 1))) {
+		return error;
+	}
+
+	config->workspace_switch_wrapping = parse_boolean(argv[0], config->workspace_switch_wrapping);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
 struct cmd_results *cmd_xdg_activation_force(int argc, char **argv) {
 	struct cmd_results *error =
 		checkarg(argc, "xdg_activation_force", EXPECTED_EQUAL_TO, 1);

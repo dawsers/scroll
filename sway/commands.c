@@ -113,6 +113,7 @@ static const struct cmd_handler handlers[] = {
 	{ "unbindsym", cmd_unbindsym },
 	{ "workspace", cmd_workspace },
 	{ "workspace_auto_back_and_forth", cmd_ws_auto_back_and_forth },
+	{ "workspace_switch_wrapping", cmd_workspace_switch_wrapping },
 	{ "xdg_activation_force", cmd_xdg_activation_force },
 };
 

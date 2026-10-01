@@ -1789,6 +1789,10 @@ The default colors are:
 *workspace* prev_on_output|next_on_output
 	Switches to the next workspace on the current output.
 
+*workspace_switch_wrapping* yes|no
+	When switching to next/previous workspace, wrap around when reaching
+	the first or last workspace on the current output. Defaults is _yes_.
+
 *workspace* back_and_forth
 	Switches to the previously focused workspace.
 

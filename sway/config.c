@@ -369,6 +369,7 @@ static void config_defaults(struct sway_config *config) {
 	config->focus_follows_mouse = FOLLOWS_YES;
 	config->mouse_warping = WARP_OUTPUT;
 	config->focus_wrapping = WRAP_NO;
+	config->workspace_switch_wrapping = true;
 	config->validating = false;
 	config->reloading = false;
 	config->active = false;

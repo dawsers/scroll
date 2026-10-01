@@ -731,8 +731,7 @@ struct sway_workspace *workspace_next(struct sway_workspace *workspace) {
 
 /**
  * Get the previous or next workspace on the specified output. Wraps around at
- * the end and beginning.  If next is false, the previous workspace is returned,
- * otherwise the next one is returned.
+ * the end and beginning if workspace_switch_wrapping is enabled.
  */
 static struct sway_workspace *workspace_output_prev_next_impl(
 		struct sway_output *output, int dir) {
@@ -753,7 +752,13 @@ static struct sway_workspace *workspace_output_prev_next_impl(
 			return ws;
 		}
 	}
-	size_t new_index = wrap(index + dir, output->workspaces->length);
+
+	size_t new_index;
+	if (config->workspace_switch_wrapping) {
+		new_index = wrap(index + dir, output->workspaces->length);
+	} else {
+		new_index = max(0, min(index + dir, output->workspaces->length - 1));
+	}
 	return output->workspaces->items[new_index];
 }
 
