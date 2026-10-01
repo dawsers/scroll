@@ -99,10 +99,12 @@ static void head_destroy_custom_mode_resources(struct wlr_output_head_v1 *head) 
 	}
 }
 
-static bool head_has_custom_mode_resources(const struct wlr_output_head_v1 *head) {
+static bool head_has_custom_mode_resource(
+		const struct wlr_output_head_v1 *head, struct wl_client *client) {
 	struct wl_resource *resource;
 	wl_resource_for_each(resource, &head->mode_resources) {
-		if (wl_resource_get_user_data(resource) == NULL) {
+		if (wl_resource_get_client(resource) == client &&
+				wl_resource_get_user_data(resource) == NULL) {
 			return true;
 		}
 	}
@@ -916,26 +918,31 @@ static bool manager_update_head(struct wlr_output_manager_v1 *manager,
 	// to the wlr_output_head
 	struct wlr_output_mode *mode;
 	wl_list_for_each(mode, &head->state.output->modes, link) {
-		bool found = false;
-		struct wl_resource *mode_resource;
-		wl_resource_for_each(mode_resource, &head->mode_resources) {
-			if (mode_from_resource(mode_resource) == mode) {
-				found = true;
-				break;
+		struct wl_resource *resource;
+		wl_resource_for_each(resource, &head->resources) {
+			struct wl_client *client = wl_resource_get_client(resource);
+			bool found = false;
+			struct wl_resource *mode_resource;
+			wl_resource_for_each(mode_resource, &head->mode_resources) {
+				if (wl_resource_get_client(mode_resource) == client &&
+						mode_from_resource(mode_resource) == mode) {
+					found = true;
+					break;
+				}
 			}
-		}
-		if (!found) {
-			struct wl_resource *resource;
-			wl_resource_for_each(resource, &head->resources) {
+			if (!found) {
 				head_send_mode(head, resource, mode);
 			}
 		}
 	}
 
-	if (next->mode == NULL && next->enabled && !head_has_custom_mode_resources(head)) {
+	if (next->mode == NULL && next->enabled) {
 		struct wl_resource *resource;
 		wl_resource_for_each(resource, &head->resources) {
-			head_send_mode(head, resource, NULL);
+			struct wl_client *client = wl_resource_get_client(resource);
+			if (!head_has_custom_mode_resource(head, client)) {
+				head_send_mode(head, resource, NULL);
+			}
 		}
 	} else if (next->mode != NULL) {
 		head_destroy_custom_mode_resources(head);
