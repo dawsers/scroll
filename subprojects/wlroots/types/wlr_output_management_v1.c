@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <wlr/backend.h>
@@ -304,7 +305,7 @@ static void config_head_handle_set_adaptive_sync(struct wl_client *client,
 	default:
 		wl_resource_post_error(config_head_resource,
 			ZWLR_OUTPUT_CONFIGURATION_HEAD_V1_ERROR_INVALID_ADAPTIVE_SYNC_STATE,
-			"client requested invalid adaptive sync state %ul", state);
+			"client requested invalid adaptive sync state %" PRIu32, state);
 		break;
 	}
 }
