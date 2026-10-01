@@ -597,6 +597,7 @@ static void manager_handle_create_configuration(struct wl_client *client,
 	config->resource = wl_resource_create(client,
 		&zwlr_output_configuration_v1_interface, version, id);
 	if (config->resource == NULL) {
+		free(config);
 		wl_client_post_no_memory(client);
 		return;
 	}
