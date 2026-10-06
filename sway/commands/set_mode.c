@@ -113,6 +113,14 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 			layout_modifiers_set_reorder(current, REORDER_LAZY);
 			success = true;
 		}
+
+        if (strcasecmp(argv[i], "floating") == 0) {
+			layout_modifiers_set_floating(current, true);
+			success = true;
+		} else if (strcasecmp(argv[i], "nofloating") == 0) {
+			layout_modifiers_set_floating(current, false);
+			success = true;
+		}
 	}
 
 	if (success) {
@@ -125,7 +133,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
-	const char usage[] = "Expected 'set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]'";
+	const char usage[] = "Expected 'set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating>]'";
 
 	return cmd_results_new(CMD_INVALID, "%s", usage);
 }

@@ -1536,6 +1536,9 @@ An object called "scroller", containing the following properties:
 |- reorder
 :  string
 :  auto (reorder) or lazy (no reorder)
+|- floating
+:  boolean
+:  Open new windows as floating windows?
 
 
 *Example Reply:*
@@ -1552,7 +1555,8 @@ An object called "scroller", containing the following properties:
 		"focus": true,
 		"center_horizontal": false,
 		"center_vertical": false,
-		"reorder": "auto"
+		"reorder": "auto",
+		"floating": false
 	}
 }
 ```
@@ -2387,6 +2391,8 @@ The following change types are currently available:
 :  Changed mode for center horizontally
 |- center_vertical
 :  Changed mode for center vertically
+|- floating
+:  Changed the workspace floating windows mode
 
 For a description of the properties, see _GET_SCROLLER_
 

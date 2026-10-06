@@ -425,6 +425,8 @@ mode "modifiers" {
     bindsym w set_mode fitfraction; mode default
     bindsym Shift+w set_mode fitsplit; mode default
     bindsym Ctrl+w set_mode nofit; mode default
+    bindsym f set_mode floating; mode default
+    bindsym Shift+f set_mode nofloating; mode default
 
     # Return to default mode
     bindsym Escape mode "default"

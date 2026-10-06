@@ -128,6 +128,16 @@ int parse_into_modifiers(int argc, char **argv,
 			modifiers->reorder_set = true;
 			++success;
 		}
+
+		if (strcasecmp(argv[i], "floating") == 0) {
+			modifiers->floating = true;
+			modifiers->floating_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "nofloating") == 0) {
+			modifiers->floating = false;
+			modifiers->floating_set = true;
+			++success;
+		}
 	}
 	if (success > 0) {
 		// Modifiers had some fields set
@@ -138,7 +148,8 @@ int parse_into_modifiers(int argc, char **argv,
 
 static struct cmd_results *cmd_workspace_layout_default_mode(int argc, char **argv, int mode_location) {
 	const char expected[] = "Expected 'workspace <name> layout_default_mode "
-		"[<h|v> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]";
+		"[<h|v> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> "
+		"<center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating>]";
 	if (mode_location == 0) {
 		return cmd_results_new(CMD_INVALID, "%s", expected);
 	}

@@ -616,6 +616,8 @@ void layout_default_modifiers_set_default(struct sway_scroller_modifiers *modifi
 		modifiers->center_horizontal = false;
 		modifiers->center_vertical_set = true;
 		modifiers->center_vertical = false;
+		modifiers->floating_set = true;
+		modifiers->floating = false;
 	}
 }
 
@@ -658,6 +660,11 @@ static void modifiers_merge(struct sway_scroller_modifiers *dst, struct sway_scr
 		dst->center_vertical_set = true;
 		dst->set = true;
 	}
+	if (src->floating_set) {
+		dst->floating = src->floating;
+		dst->floating_set = true;
+		dst->set = true;
+	}
 }
 
 void layout_modifiers_init(struct sway_workspace *workspace) {
@@ -684,6 +691,7 @@ void layout_modifiers_init(struct sway_workspace *workspace) {
 	layout->modifiers.focus = modifiers.focus;
 	layout->modifiers.center_horizontal = modifiers.center_horizontal;
 	layout->modifiers.center_vertical = modifiers.center_vertical;
+	layout->modifiers.floating = modifiers.floating;
 }
 
 void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_layout_reorder reorder) {
@@ -761,6 +769,18 @@ bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace) {
 		return false;
 	}
 	return workspace->layout.modifiers.center_vertical;
+}
+
+void layout_modifiers_set_floating(struct sway_workspace *workspace, bool floating) {
+	if (!workspace || workspace->layout.modifiers.floating == floating) {
+		return;
+	}
+	workspace->layout.modifiers.floating = floating;
+	ipc_event_scroller("floating", workspace);
+}
+
+bool layout_modifiers_get_floating(struct sway_workspace *workspace) {
+	return workspace ? workspace->layout.modifiers.floating : false;
 }
 
 void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align) {

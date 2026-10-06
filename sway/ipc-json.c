@@ -1579,6 +1579,8 @@ json_object *ipc_json_describe_scroller(struct sway_workspace *workspace) {
 	enum sway_layout_reorder reorder = layout_modifiers_get_reorder(workspace);
 	json_object_object_add(object, "reorder",
 		json_object_new_string(reorder == REORDER_AUTO ? "auto" : "lazy"));
+	bool floating = layout_modifiers_get_floating(workspace);
+	json_object_object_add(object, "floating", json_object_new_boolean(floating));
 
 	return object;
 }

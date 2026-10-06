@@ -261,6 +261,7 @@ must be separated by one space. For example:
 	affects that workspace.
 
 	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
+	_nofloating_
 	and the mode will be given by the type of layout assigned to the output,
 	or its landscape/portrait configuration if none was assigned.
 

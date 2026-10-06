@@ -1486,6 +1486,9 @@ static int scroll_workspace_get_mode(lua_State *L) {
 	lua_pushboolean(L, layout_modifiers_get_center_vertical(workspace) ? 1 : 0);
 	lua_setfield(L, -2, "center_vertical");
 
+	lua_pushboolean(L, layout_modifiers_get_floating(workspace) ? 1 : 0);
+	lua_setfield(L, -2, "floating");
+
 	return 1;
 }
 
@@ -1556,6 +1559,11 @@ static int scroll_workspace_set_mode(lua_State *L) {
 
 	if (lua_getfield(L, 2, "center_vertical") == LUA_TBOOLEAN) {
 		layout_modifiers_set_center_vertical(workspace, lua_toboolean(L, 3));
+	}
+	lua_pop(L, 1);
+
+	if (lua_getfield(L, 2, "floating") == LUA_TBOOLEAN) {
+		layout_modifiers_set_floating(workspace, lua_toboolean(L, 3));
 	}
 	lua_pop(L, 1);
 

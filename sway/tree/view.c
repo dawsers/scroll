@@ -1021,7 +1021,8 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view->container->pending.decoration.shadow_color_g = config->decoration.shadow_color[1];
 	view->container->pending.decoration.shadow_color_b = config->decoration.shadow_color[2];
 	view->container->pending.decoration.shadow_color_a = config->decoration.shadow_color[3];
-	if (view->impl->wants_floating && view->impl->wants_floating(view)) {
+	if (layout_modifiers_get_floating(ws) ||
+			(view->impl->wants_floating && view->impl->wants_floating(view))) {
 		view->container->pending.border = config->floating_border;
 		view->container->pending.border_thickness = config->floating_border_thickness;
 		container_set_floating(view->container, true);

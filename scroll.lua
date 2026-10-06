@@ -527,6 +527,7 @@ function scroll.workspace_get_floating(workspace) end
 ---   focus: true|false
 ---   center_horizontal: true|false
 ---   center_vertical: true|false
+---   floating: true|false
 ---
 --- @param workspace integer
 ---
@@ -544,6 +545,7 @@ function scroll.workspace_get_mode(workspace) end
 ---   focus: true|false
 ---   center_horizontal: true|false
 ---   center_vertical: true|false
+---   floating: true|false
 ---
 --- @param workspace integer
 --- @param modifiers table

@@ -663,6 +663,8 @@ mode "modifiers" {
     bindsym w set_mode fitfraction; mode default
     bindsym Shift+w set_mode fitsplit; mode default
     bindsym Ctrl+w set_mode nofit; mode default
+    bindsym f set_mode floating; mode default
+    bindsym Shift+f set_mode nofloating; mode default
 
     # Return to default mode
     bindsym Escape mode "default"
@@ -798,7 +800,7 @@ At window creation time, *scroll* can apply several modifiers to the
 current working mode (*h/v*). `set_mode` supports extra arguments:
 
 ``` config
-set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto>]
+set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating>]
 ```
 
 1. `<h|v|t>`: set horizontal, vertical, or toggle the current mode.
@@ -827,6 +829,11 @@ regardless of what you do, until you set `reorder_auto` again.
 (or not) on the screen. The default value is the one in your configuration.
 7. `center_vert/nocenter_vert`: It will keep the active window centered
 (or not) in its column. The default value is the one in your configuration.
+8. `floating/nofloating`: floating windows mode. `nofloating` (default) is
+the normal *scroll* behavior, where new windows are tiled. `floating` makes
+any window mapped in this workspace open as a floating window. Only new
+windows are affected, and `for_window` can still override it, so you can use
+`floating disable` as a rule to bring a window back to the tiling layout.
 
 You can skip any number of parameters when calling the command, and their
 order doesn't matter.

@@ -306,6 +306,7 @@ The following commands may only be used in the configuration file.
 	arguments and meaning.
 
 	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
+	_nofloating_
 	and the mode will be given by the type of layout assigned to the output,
 	or its landscape/portrait configuration if none was assigned.
 
@@ -918,7 +919,7 @@ set|plus|minus|toggle <amount>
 *set_mode* [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction>
 <focus|nofocus>
 <center_horiz|nocenter_horiz> <center_vert|nocenter_vert>
-<reorder_auto|noreorder_auto>]
+<reorder_auto|noreorder_auto> <floating|nofloating>]
 	Modes and mode modifiers are per workspace.
 	At window creation time, scroll can apply several modifiers to the current
 	working mode (h/v). It supports extra arguments:
@@ -954,6 +955,14 @@ set|plus|minus|toggle <amount>
 
 	_center_vert/nocenter_vert_: It will keep the active window centered
 	(or not) in its column.
+
+	_floating_/nofloating_: floating windows mode, nofloating (default) or
+	floating. When floating is set, any window that gets mapped in this
+	workspace will be placed as a floating window instead of being tiled.
+	It only affects new windows, existing ones are left where they are, and
+	you can send any window back to the tiling layout with *floating disable*.
+	_for_window_ criteria are applied after this modifier, so they can still
+	send the window to tiling mode in a floating workspace.
 
 	You can skip any number of parameters when calling the command, and
 	their order doesn't matter.
@@ -1826,6 +1835,7 @@ The default colors are:
 	affects that ourput's workspaces.
 
 	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
+	_nofloating_
 	and the mode will be given by the type of layout assigned to the output,
 	or its landscape/portrait configuration if none was assigned.
 
@@ -2416,6 +2426,8 @@ local process_data = scroll.exec_process("kitty")
 
 	_center_vertical_: true|false
 
+	_floating_: true|false
+
 *workspace_set_mode(workspace, modifiers)*
 	Sets the mode _modifiers_ for _workspace_. The _modifiers_ table can
 	override any number of modifiers. The keys and values that table can include
@@ -2432,6 +2444,8 @@ local process_data = scroll.exec_process("kitty")
 	_center_horizontal_: true|false
 
 	_center_vertical_: true|false
+
+	_floating_: true|false
 
 *workspace_get_layout_type(workspace)*
 	Returns the layout type, _"horizontal"_ or _"vertical"_.
