@@ -154,6 +154,11 @@ Install scroll: `dnf install scroll`
 Thanks to @Diax170 for maintaining a nix flake of scroll in his repository,
 [here](https://github.com/Diax170/scroll-flake).
 
+### Gentoo
+
+There is an ebuild for scroll in the [gentoo-tilarids](https://github.com/tilarids/gentoo-tilarids) overlay,
+[here](https://github.com/tilarids/gentoo-tilarids/blob/main/gui-wm/scroll/scroll-9999.ebuild).
+
 ### Artix Linux and Arch-derived Distributions not Using `systemd`
 
 Artix uses `elogind` instead of `systemd`'s login daemon to provide some
