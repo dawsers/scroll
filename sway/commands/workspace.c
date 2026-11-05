@@ -303,46 +303,9 @@ struct cmd_results *cmd_workspace(int argc, char **argv) {
 	}
 
 	if (strcasecmp(argv[0], "split") == 0) {
-		const char *expected = "Expected 'workspace split [h|v|reset] [<fraction>] [<gap>]'";
-		struct sway_workspace *workspace = config->handler_context.workspace;
-		if (!workspace) {
-			return cmd_results_new(CMD_INVALID,
-					"This command only works when called from a workspace");
-		}
-		enum sway_workspace_split split = WORKSPACE_SPLIT_VERTICAL;
-		double fraction = 0.5;
-		int gap = 0;
-		if (argc > 1) {
-			if (strcasecmp(argv[1], "h") == 0) {
-				split = WORKSPACE_SPLIT_HORIZONTAL;
-			} else if (strcasecmp(argv[1], "v") == 0) {
-				split = WORKSPACE_SPLIT_VERTICAL;
-			} else if (strcasecmp(argv[1], "reset") == 0) {
-				workspace_split_reset(workspace);
-				return cmd_results_new(CMD_SUCCESS, NULL);
-			} else {
-				return cmd_results_new(CMD_INVALID, "%s", expected);
-			}
-			if (argc > 2) {
-				char *end;
-				fraction = strtod(argv[2], &end);
-				if (*end) {
-					return cmd_results_new(CMD_INVALID, "%s", expected);
-				}
-				fraction = fmin(fmax(0.1, fraction), 0.9);
-				if (argc > 3) {
-					gap = strtol(argv[3], &end, 10);
-					if (*end) {
-						return cmd_results_new(CMD_INVALID, "%s", expected);
-					}
-					if (gap < 0) {
-						gap = 0;
-					}
-				}
-			}
-		}
-		workspace_split(workspace, split, fraction, gap);
-		return cmd_results_new(CMD_SUCCESS, NULL);
+		sway_log(SWAY_INFO,
+				"'workspace split' is deprecated, use 'virtual_output split'");
+		return cmd_virtual_output(argc, argv);
 	}
 
 	int output_location = -1;

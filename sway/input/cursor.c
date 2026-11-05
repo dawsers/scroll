@@ -31,6 +31,7 @@
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/virtual_output.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 #include "sway/desktop/transaction.h"
 
@@ -151,18 +152,14 @@ struct sway_node *node_at_coords(
 			}
 		}
 	} else {
-		ws = output_get_active_workspace(output);
+		// The pointer may be over a different virtual output of this physical
+		// output. Virtual outputs behave like real outputs here.
+		struct sway_virtual_output *vo = output_virtual_output_at_coords(output, lx, ly);
+		ws = vo ? virtual_output_get_active_workspace(vo) :
+			output_get_active_workspace(output);
 	}
 	if (!ws) {
 		return NULL;
-	}
-	if (ws->split.split != WORKSPACE_SPLIT_NONE) {
-		// We may be hovering over the other workspace of the split
-		struct sway_workspace *sibling = ws->split.sibling;
-		if (lx >= sibling->split.output_area.x && lx < sibling->split.output_area.x + sibling->split.output_area.width &&
-			ly >= sibling->split.output_area.y && ly < sibling->split.output_area.y + sibling->split.output_area.height) {
-			return &sibling->node;
-		}
 	}
 
 	return &ws->node;

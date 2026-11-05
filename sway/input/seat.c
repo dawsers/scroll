@@ -32,6 +32,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/desktop/transaction.h"
@@ -1301,6 +1302,15 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	}
 
 	seat->has_focus = true;
+
+	// In maximized_virtual_output mode, focusing a workspace of a different
+	// virtual output, changes which one is active, recompute its geometry
+	if (new_workspace && new_workspace->virtual_output &&
+			new_workspace->virtual_output->output->maximize_virtual_output &&
+			(!last_workspace ||
+			 last_workspace->virtual_output != new_workspace->virtual_output)) {
+		arrange_output(new_workspace->virtual_output->output);
+	}
 
 	if (config->smart_gaps && new_workspace) {
 		// When smart gaps is on, gaps may change when the focus changes so

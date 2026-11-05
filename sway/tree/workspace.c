@@ -16,6 +16,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/desktop/transaction.h"
@@ -356,15 +357,8 @@ void workspace_consider_destroy(struct sway_workspace *ws) {
 		return;
 	}
 
-	struct sway_workspace *sibling = NULL;
-	if (ws->split.split != WORKSPACE_SPLIT_NONE) {
-		sibling = ws->split.sibling;
-		if (sibling->tiling->length || sibling->floating->length) {
-			return;
-		}
-		if (sibling->output && output_get_active_workspace(sibling->output) == sibling) {
-			return;
-		}
+	if (ws->virtual_output && virtual_output_get_active_workspace(ws->virtual_output) == ws) {
+		return;
 	}
 
 	struct sway_seat *seat;
@@ -373,15 +367,9 @@ void workspace_consider_destroy(struct sway_workspace *ws) {
 		if (node == &ws->node) {
 			return;
 		}
-		if (sibling && node == &sibling->node) {
-			return;
-		}
 	}
 
 	workspace_begin_destroy(ws);
-	if (sibling) {
-		workspace_begin_destroy(sibling);
-	}
 }
 
 static bool workspace_valid_on_output(const char *output_name,
@@ -731,11 +719,15 @@ struct sway_workspace *workspace_next(struct sway_workspace *workspace) {
 }
 
 /**
- * Get the previous or next workspace on the specified output. Wraps around at
- * the end and beginning if workspace_switch_wrapping is enabled.
+ * Get the previous or next workspace on the specified virtual output. Virtual
+ * outputs are treated like real outputs for this command. Wraps around at the
+ * end and beginning if workspace_switch_wrapping is enabled.
  */
 static struct sway_workspace *workspace_output_prev_next_impl(
-		struct sway_output *output, int dir) {
+		struct sway_virtual_output *vo, int dir) {
+	if (!vo) {
+		return NULL;
+	}
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_workspace *workspace = seat_get_focused_workspace(seat);
 	if (!workspace) {
@@ -744,32 +736,35 @@ static struct sway_workspace *workspace_output_prev_next_impl(
 		return NULL;
 	}
 
-	int index = list_find(output->workspaces, workspace);
+	int index = list_find(vo->workspaces, workspace);
+	if (index < 0) {
+		index = 0;
+	}
 	if (config->workspace_next_on_output_create_empty) {
-		if (index + dir >= output->workspaces->length) {
-			char *ws_name = workspace_next_name(output->wlr_output->name);
-			struct sway_workspace *ws = workspace_create(output, ws_name);
-			free(ws_name);
-			return ws;
+		if (index + dir >= vo->workspaces->length) {
+			return virtual_output_create_workspace(vo);
 		}
 	}
 
+	if (!vo->workspaces->length) {
+		return virtual_output_create_workspace(vo);
+	}
 	size_t new_index;
 	if (config->workspace_switch_wrapping) {
-		new_index = wrap(index + dir, output->workspaces->length);
+		new_index = wrap(index + dir, vo->workspaces->length);
 	} else {
-		new_index = max(0, min(index + dir, output->workspaces->length - 1));
+		new_index = max(0, min(index + dir, vo->workspaces->length - 1));
 	}
-	return output->workspaces->items[new_index];
+	return vo->workspaces->items[new_index];
 }
 
 
 struct sway_workspace *workspace_output_next(struct sway_workspace *current) {
-	return workspace_output_prev_next_impl(current->output, 1);
+	return workspace_output_prev_next_impl(current ? current->virtual_output : NULL, 1);
 }
 
 struct sway_workspace *workspace_output_prev(struct sway_workspace *current) {
-	return workspace_output_prev_next_impl(current->output, -1);
+	return workspace_output_prev_next_impl(current ? current->virtual_output : NULL, -1);
 }
 
 struct sway_workspace *workspace_auto_back_and_forth(
@@ -837,11 +832,16 @@ bool workspace_container_visible(struct sway_workspace *workspace,
 	if (!output) {
 		return false;
 	}
+	struct wlr_box *area = workspace_get_output_area(workspace);
+	const double min_x = area ? area->x : output->lx;
+	const double min_y = area ? area->y : output->ly;
+	const double max_x = min_x + (area ? area->width : output->width);
+	const double max_y = min_y + (area ? area->height : output->height);
 	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
-	if (container->pending.x >= output->lx + output->width ||
-			container->pending.x + scale * container->pending.width <= output->lx ||
-			container->pending.y >= output->ly + output->height ||
-			container->pending.y + scale * container->pending.height <= output->ly) {
+	if (container->pending.x >= max_x ||
+			container->pending.x + scale * container->pending.width <= min_x ||
+			container->pending.y >= max_y ||
+			container->pending.y + scale * container->pending.height <= min_y) {
 		return false;
 	}
 	return true;
@@ -946,6 +946,8 @@ static void animate_workspace_switch(struct sway_output *output,
 		struct sway_workspace *from, struct sway_workspace *to) {
 	bool down = workspace_switch_down(output, from, to);
 	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
+	struct wlr_box *area = workspace_get_output_area(to);
+	const int output_height = area ? area->height : output->height;
 
 	// Make sure container positions are re-arranged in case there are several
 	// commands happening in the workspace_switch transaction.
@@ -979,10 +981,10 @@ static void animate_workspace_switch(struct sway_output *output,
 
 	double delta;
 	if (down) {
-		delta = output->height + max_y_from - (from_y + from_height)
+		delta = output_height + max_y_from - (from_y + from_height)
 			+ (from_y - min_y_to);
 	} else {
-		delta = output->height + max_y_to - (from_y + from_height)
+		delta = output_height + max_y_to - (from_y + from_height)
 			+ (from_y - min_y_from);
 		delta = -delta;
 	}
@@ -1011,6 +1013,8 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	if (!old_ws) {
 		old_ws = seat_get_focused_workspace(seat);
 	}
+	// Store old_vo: old_ws may be detached and lose its virtual output if empty
+	struct sway_virtual_output *old_vo = old_ws ? old_ws->virtual_output : NULL;
 
 	struct sway_node *next = seat_get_focus_inactive(seat, &workspace->node);
 	if (next == NULL) {
@@ -1023,7 +1027,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 		(old_ws->output && old_ws->output == workspace->output) ||
 		(old_ws->output && !workspace->output) ||
 		(!old_ws->output && workspace->output)) &&
-		workspace->split.sibling != old_ws &&
+		(!old_vo || old_vo == workspace->virtual_output) &&
 		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
 		struct sway_output *output = old_ws->output ? old_ws->output : workspace->output;
 		animate_workspace_switch(output, old_ws, workspace);
@@ -1041,19 +1045,14 @@ bool workspace_is_visible(struct sway_workspace *ws) {
 	if (ws->node.destroying) {
 		return false;
 	}
-	if (layout_overview_workspaces_enabled()) {
+	if (layout_overview_workspaces_enabled() || workspace_is_panning(ws)) {
 		return true;
 	}
-	struct sway_workspace *workspace = output_get_active_workspace(ws->output);
-	if (workspace == ws) {
-		return true;
+	if (ws->virtual_output) {
+		return virtual_output_is_visible(ws->virtual_output) &&
+			virtual_output_get_active_workspace(ws->virtual_output) == ws;
 	}
-	if (workspace &&
-		workspace->split.split != WORKSPACE_SPLIT_NONE &&
-		workspace->split.sibling == ws) {
-		return true;
-	}
-	return false;
+	return ws->output && output_get_active_workspace(ws->output) == ws;
 }
 
 bool workspace_is_empty(struct sway_workspace *ws) {
@@ -1192,9 +1191,7 @@ static void set_workspace(struct sway_container *container, void *data) {
 }
 
 void workspace_detach(struct sway_workspace *workspace) {
-	if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
-		workspace_split_reset(workspace);
-	}
+	virtual_output_detach_workspace(workspace);
 	struct sway_output *output = workspace->output;
 	int index = list_find(output->workspaces, workspace);
 	if (index != -1) {
@@ -1377,71 +1374,52 @@ size_t workspace_num_sticky_containers(struct sway_workspace *ws) {
 	return count;
 }
 
+struct wlr_box *workspace_get_output_area(struct sway_workspace *workspace) {
+	if (workspace->virtual_output) {
+		return &workspace->virtual_output->output_area;
+	}
+	if (workspace->output && workspace->output->root_virtual_output) {
+		return &workspace->output->root_virtual_output->output_area;
+	}
+	return NULL;
+}
+
 struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace) {
-	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
-		return &workspace->output->usable_area;
-	} else {
-		return &workspace->split.usable_area;
+	if (workspace->virtual_output) {
+		return &workspace->virtual_output->usable_area;
 	}
+	return workspace->output ? &workspace->output->usable_area : NULL;
 }
 
-void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split split,
-		double fraction, int gap) {
-	if (!workspace || !workspace->output ||
-		!(split == WORKSPACE_SPLIT_HORIZONTAL || split == WORKSPACE_SPLIT_VERTICAL)) {
-		return;
-	}
+bool workspace_is_split_output(struct sway_workspace *workspace) {
+	struct wlr_box *box = workspace_get_output_area(workspace);
 	struct sway_output *output = workspace->output;
-	struct sway_workspace *child;
-	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
-		char *name = workspace_next_name(output->wlr_output->name);
-		child = workspace_create(workspace->output, name);
-	} else {
-		child = workspace->split.sibling;
+	if (!box || !output) {
+		return false;
 	}
-	child->split.sibling = workspace;
-	child->split.fraction = fraction;
-	child->split.gap = gap;
-	workspace->split.sibling = child;
-	workspace->split.fraction = fraction;
-	workspace->split.gap = gap;
-	if (split == WORKSPACE_SPLIT_VERTICAL) {
-		workspace->split.split = WORKSPACE_SPLIT_LEFT;
-		child->split.split = WORKSPACE_SPLIT_RIGHT;
-	} else {
-		workspace->split.split = WORKSPACE_SPLIT_TOP;
-		child->split.split = WORKSPACE_SPLIT_BOTTOM;
-	}
-	child->x = 0;
-	child->y = 0;
-	child->width = 0;
-	child->height = 0;
-	workspace->x = 0;
-	workspace->y = 0;
-	workspace->width = 0;
-	workspace->height = 0;
-	arrange_workspace(workspace);
-	arrange_workspace(child);
-	child->layers.tiling->node.info.output_box = &child->split.output_area;
-	workspace->layers.tiling->node.info.output_box = &workspace->split.output_area;
-	output_damage_whole(output);
-	node_set_dirty(&workspace->node);
-	node_set_dirty(&child->node);
+	return box->x != output->lx || box->y != output->ly ||
+		box->width != output->width || box->height != output->height;
 }
 
-void workspace_split_reset(struct sway_workspace *workspace) {
-	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
+void workspace_move_to_virtual_output(struct sway_workspace *workspace,
+		struct sway_virtual_output *virtual_output) {
+	if (!workspace || !virtual_output ||
+			workspace->virtual_output == virtual_output) {
 		return;
 	}
-	workspace->split.split = WORKSPACE_SPLIT_NONE;
-	workspace->layers.tiling->node.info.output_box = NULL;
-	struct sway_workspace *sibling = workspace->split.sibling;
-	sibling->split.split = WORKSPACE_SPLIT_NONE;
-	sibling->layers.tiling->node.info.output_box = NULL;
-	arrange_workspace(workspace);
-	arrange_workspace(sibling);
+	struct sway_virtual_output *old_vo = workspace->virtual_output;
+	virtual_output_set_workspace(workspace, virtual_output);
+
+	// A virtual output always keeps at least one workspace
+	if (old_vo && old_vo->workspaces->length == 0) {
+		virtual_output_create_workspace(old_vo);
+	}
+	if (workspace->output) {
+		output_sort_workspaces(workspace->output);
+		node_set_dirty(&workspace->output->node);
+	}
 	node_set_dirty(&workspace->node);
-	node_set_dirty(&sibling->node);
+	ipc_event_workspace(NULL, workspace, "move");
 }
 
 void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
@@ -1458,6 +1436,8 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 		ipc_event_workspace(NULL, second, "rename");
 		return;
 	}
+	struct sway_virtual_output *first_vo = first->virtual_output;
+	struct sway_virtual_output *second_vo = second->virtual_output;
 	if (first->output != second->output) {
 		struct sway_output *first_output = first->output;
 		struct sway_output *second_output = second->output;
@@ -1469,36 +1449,11 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 	}
 	output_sort_workspaces(second->output);
 
-	struct sway_workspace *first_sibling = first->split.split == WORKSPACE_SPLIT_NONE ?
-		NULL : first->split.sibling;
-	struct sway_workspace *second_sibling = second->split.split == WORKSPACE_SPLIT_NONE ?
-		NULL : second->split.sibling;
-
-	// Swap split structures and fix them. If the workspaces are not split, no harm done
-	struct sway_workspace_split_data data = first->split;
-	first->split = second->split;
-	second->split = data;
-	// Fix siblings
-	if (first_sibling) {
-		if (first_sibling == second) {
-			first->split.sibling = second;
-		} else {
-			first_sibling->split.sibling = second;
-		}
+	// Swap the virtual outputs so both workspaces keep their place on screen.
+	if (first_vo && second_vo) {
+		virtual_output_set_workspace(first, second_vo);
+		virtual_output_set_workspace(second, first_vo);
 	}
-	if (second_sibling) {
-		if (second_sibling == first) {
-			second->split.sibling = first;
-		} else {
-			second_sibling->split.sibling = first;
-		}
-	}
-
-	// Update scene node info for split/non-split workspaces
-	first->layers.tiling->node.info.output_box = first->split.split == WORKSPACE_SPLIT_NONE ?
-		NULL : &first->split.output_area;
-	second->layers.tiling->node.info.output_box = second->split.split == WORKSPACE_SPLIT_NONE ?
-		NULL : &second->split.output_area;
 
 	arrange_workspace(first);
 	arrange_workspace(second);

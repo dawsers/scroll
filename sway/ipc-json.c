@@ -16,6 +16,7 @@
 #include "sway/tree/container.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/space.h"
 #include "sway/output.h"
 #include "sway/input/input-manager.h"
@@ -343,6 +344,40 @@ static void ipc_json_describe_enabled_output(struct sway_output *output,
 	struct wlr_output *wlr_output = output->wlr_output;
 	json_object_object_add(object, "non_desktop", json_object_new_boolean(false));
 	json_object_object_add(object, "active", json_object_new_boolean(true));
+	json_object_object_add(object, "maximize_virtual_output",
+			json_object_new_boolean(output->maximize_virtual_output));
+	if (output->virtual_outputs) {
+		json_object *virtual_outputs = json_object_new_array();
+		struct sway_virtual_output *active =
+			output_virtual_outputs_get_active(output);
+		for (int i = 0; i < output->virtual_outputs->length; ++i) {
+			struct sway_virtual_output *vo =
+				output->virtual_outputs->items[i];
+			if (vo->children[0]) {
+				continue;
+			}
+			json_object *vo_object = json_object_new_object();
+			json_object_object_add(vo_object, "name",
+					json_object_new_string(vo->name));
+			json_object_object_add(vo_object, "visible",
+					json_object_new_boolean(virtual_output_is_visible(vo)));
+			json_object_object_add(vo_object, "active",
+					json_object_new_boolean(vo == active));
+			json_object_object_add(vo_object, "rect",
+					ipc_json_create_rect(&vo->output_area));
+			json_object_object_add(vo_object, "split_rect",
+					ipc_json_create_rect(&vo->split_area));
+			json_object *workspaces = json_object_new_array();
+			for (int j = 0; j < vo->workspaces->length; ++j) {
+				struct sway_workspace *ws = vo->workspaces->items[j];
+				json_object_array_add(workspaces,
+						json_object_new_string(ws->name));
+			}
+			json_object_object_add(vo_object, "workspaces", workspaces);
+			json_object_array_add(virtual_outputs, vo_object);
+		}
+		json_object_object_add(object, "virtual_outputs", virtual_outputs);
+	}
 	json_object_object_add(object, "dpms",
 			json_object_new_boolean(wlr_output->enabled));
 	json_object_object_add(object, "power",
@@ -521,6 +556,12 @@ static void ipc_json_describe_workspace(struct sway_workspace *workspace,
 	json_object_object_add(object, "fullscreen_mode", json_object_new_int(1));
 	json_object_object_add(object, "output", workspace->output ?
 			json_object_new_string(workspace->output->wlr_output->name) : NULL);
+	json_object_object_add(object, "virtual_output",
+			workspace->virtual_output && workspace->virtual_output->name ?
+			json_object_new_string(workspace->virtual_output->name) : NULL);
+	json_object_object_add(object, "virtual_output_visible",
+			json_object_new_boolean(
+				virtual_output_is_visible(workspace->virtual_output)));
 	json_object_object_add(object, "urgent",
 			json_object_new_boolean(workspace->urgent));
 	json_object_object_add(object, "representation", workspace->representation ?

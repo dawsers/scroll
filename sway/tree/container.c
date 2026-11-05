@@ -20,6 +20,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/node.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/xdg_decoration.h"
@@ -1347,7 +1348,7 @@ struct sway_output *container_floating_find_output(struct sway_container *con) {
  * Find the workspace containing the center of the floating container.
  *
  * Use this function **only** for cases where the layout is in overview
- * workspaces and/or the workspace is a split workspace,
+ * workspaces and/or the physical output is split into virtual outputs.
  */
 static struct sway_workspace *container_floating_find_workspace(struct sway_output *output,
 		struct sway_container *con) {
@@ -1369,14 +1370,22 @@ static struct sway_workspace *container_floating_find_workspace(struct sway_outp
 				.width = workspace->jump.width,
 				.height = workspace->jump.height
 			};
-			if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
-				workspace_box.x += (workspace->split.output_area.x - output->lx) * workspace->jump.width / output->width;
-				workspace_box.y += (workspace->split.output_area.y - output->ly) * workspace->jump.height / output->height;
-				workspace_box.width = workspace->jump.width * workspace->split.output_area.width / output->width;
-				workspace_box.height = workspace->jump.height * workspace->split.output_area.height / output->height;
+			struct wlr_box *area = workspace_get_output_area(workspace);
+			if (area && workspace_is_split_output(workspace)) {
+				workspace_box.x += (area->x - output->lx) * workspace->jump.width / output->width;
+				workspace_box.y += (area->y - output->ly) * workspace->jump.height / output->height;
+				workspace_box.width = workspace->jump.width * area->width / output->width;
+				workspace_box.height = workspace->jump.height * area->height / output->height;
 			}
 		} else {
-			workspace_box = workspace->split.output_area;
+			// Only the active workspace of a visible virtual output can be
+			// the destination of a floating container
+			struct sway_virtual_output *vo = workspace->virtual_output;
+			if (!vo || !virtual_output_is_visible(vo) ||
+					virtual_output_get_active_workspace(vo) != workspace) {
+				continue;
+			}
+			workspace_box = vo->output_area;
 		}
 		wlr_box_closest_point(&workspace_box, center_x, center_y,
 			&closest_x, &closest_y);
@@ -1413,8 +1422,7 @@ void container_floating_move_to(struct sway_container *con,
 	}
 	struct sway_workspace *new_workspace;
 	if (layout_overview_workspaces_enabled() ||
-		(old_workspace->split.split != WORKSPACE_SPLIT_NONE &&
-		 old_workspace->output == new_output)) {
+			output_has_multiple_visible_virtual_outputs(new_output)) {
 		new_workspace = container_floating_find_workspace(new_output, con);
 		if (!sway_assert(new_workspace, "Unable to find any workspace")) {
 			return;
@@ -1447,7 +1455,7 @@ void container_floating_move_to(struct sway_container *con,
 			con->transform = output_box;
 		}
 		if (layout_overview_workspaces_enabled() ||
-			new_workspace->split.split != WORKSPACE_SPLIT_NONE) {
+				output_has_multiple_visible_virtual_outputs(new_output)) {
 			// Add the new workspace to the focus stack because for
 			// splits and overview workspaces it is not done automatically,
 			// as there is no change of output
@@ -2425,7 +2433,12 @@ bool container_axes_in_viewport(struct sway_container *container, uint32_t axes)
 	if (floating) {
 		root_get_box(root, &box_o);
 	} else {
-		output_get_box(workspace->output, &box_o);
+		struct wlr_box *area = workspace_get_output_area(workspace);
+		if (area) {
+			box_o = *area;
+		} else {
+			output_get_box(workspace->output, &box_o);
+		}
 	}
 	return box_contains_box_axes(&box_o, &box_c, axes);
 }
@@ -2453,13 +2466,18 @@ void container_current_geometry(struct sway_container *con, struct wlr_fbox *geo
 			ws->animation.s.xt : layout_scale_get(ws);
 		geometry->width *= scale;
 		geometry->height *= scale;
-		if (con->view && !con->pending.parent) {
+		if (con->view && !con->pending.parent && ws && ws->output) {
 			// Floating window are special in scaled workspaces, because
 			// the virtual viewport is centered for them
-			const double minx = ws->output->lx + 0.5 * (1.0 - scale) * ws->output->width;
-			geometry->x = minx + scale * (geometry->x - ws->output->lx);
-			const double miny = ws->output->ly + 0.5 * (1.0 - scale) * ws->output->height;
-			geometry->y = miny + scale * (geometry->y - ws->output->ly);
+			struct wlr_box *area = workspace_get_output_area(ws);
+			const double ox = area ? area->x : ws->output->lx;
+			const double oy = area ? area->y : ws->output->ly;
+			const double ow = area ? area->width : ws->output->width;
+			const double oh = area ? area->height : ws->output->height;
+			const double minx = ox + 0.5 * (1.0 - scale) * ow;
+			geometry->x = minx + scale * (geometry->x - ox);
+			const double miny = oy + 0.5 * (1.0 - scale) * oh;
+			geometry->y = miny + scale * (geometry->y - oy);
 		}
 	}
 }

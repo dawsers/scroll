@@ -1,6 +1,7 @@
 #include "sway/tree/layout.h"
 #include "sway/output.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/arrange.h"
 #include "sway/sway_text_node.h"
 #include "sway/input/seat.h"
@@ -230,14 +231,8 @@ void layout_overview_recompute_scale(struct sway_workspace *workspace) {
 		return;
 	}
 	double fw, fh;
-	double ww, wh;
-	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
-		ww = workspace->width;
-		wh = workspace->height;
-	} else {
-		ww = workspace->split.usable_area.width;
-		wh = workspace->split.usable_area.height;
-	}
+	const double ww = workspace->width;
+	const double wh = workspace->height;
 	if (mode == OVERVIEW_FLOATING) {
 		double minx, maxx, miny, maxy;
 		layout_compute_bounding_box(workspace->floating, &minx, &maxx, &miny, &maxy);
@@ -1755,10 +1750,14 @@ static bool filter_workspace_disable(struct sway_workspace *workspace, void *dat
 
 static bool workspace_is_active(struct sway_workspace *workspace) {
 	struct sway_output *output = workspace->output;
-	bool active = output->wlr_output->enabled &&
-		(output->current.active_workspace == workspace ||
-		 (workspace->split.split != WORKSPACE_SPLIT_NONE && output->current.active_workspace == workspace->split.sibling));
-	return active;
+	if (!output || !output->wlr_output->enabled) {
+		return false;
+	}
+	if (workspace->virtual_output) {
+		return virtual_output_is_visible(workspace->virtual_output) &&
+			virtual_output_get_active_workspace(workspace->virtual_output) == workspace;
+	}
+	return output->current.active_workspace == workspace;
 }
 
 static bool filter_workspace_active_disable(struct sway_workspace *workspace, void *data) {
@@ -1869,30 +1868,30 @@ static bool filter_container_visible(struct sway_workspace *workspace,
 	struct workspace_visibility_data visibility;
 	visibility.scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
 	struct sway_output *output = workspace->output;
-	if (output) {
-		if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
-			visibility.minx = workspace->split.output_area.x;
-			visibility.miny = workspace->split.output_area.y;
-			visibility.maxx = workspace->split.output_area.x + workspace->split.output_area.width;
-			visibility.maxy = workspace->split.output_area.y + workspace->split.output_area.height;
-		} else {
-			visibility.minx = output->lx;
-			visibility.miny = output->ly;
-			visibility.maxx = output->lx + output->width;
-			visibility.maxy = output->ly + output->height;
-		}
-	} else {
-		if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
-			visibility.minx = workspace->split.usable_area.x;
-			visibility.miny = workspace->split.usable_area.y;
-			visibility.maxx = workspace->split.usable_area.x + workspace->split.usable_area.width;
-			visibility.maxy = workspace->split.usable_area.y + workspace->split.usable_area.height;
+	struct wlr_box *area = workspace_get_output_area(workspace);
+	if (output && area) {
+		visibility.minx = area->x;
+		visibility.miny = area->y;
+		visibility.maxx = area->x + area->width;
+		visibility.maxy = area->y + area->height;
+	} else if (!output) {
+		struct wlr_box *usable = workspace_get_output_usable_area(workspace);
+		if (usable) {
+			visibility.minx = usable->x;
+			visibility.miny = usable->y;
+			visibility.maxx = usable->x + usable->width;
+			visibility.maxy = usable->y + usable->height;
 		} else {
 			visibility.minx = workspace->x;
 			visibility.miny = workspace->y;
 			visibility.maxx = workspace->x + workspace->width;
 			visibility.maxy = workspace->y + workspace->height;
 		}
+	} else {
+		visibility.minx = output->lx;
+		visibility.miny = output->ly;
+		visibility.maxx = output->lx + output->width;
+		visibility.maxy = output->ly + output->height;
 	}
 	return filter_container_and_children(filter_container_visible_child, workspace, container, &visibility);
 }
@@ -2460,18 +2459,10 @@ static void organize_jump_windows(struct sway_workspace *workspace) {
 		}
 	}
 
-	double wx, wy, ww, wh;
-	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
-		wx = workspace->x;
-		wy = workspace->y;
-		ww = workspace->width;
-		wh = workspace->height;
-	} else {
-		wx = workspace->split.usable_area.x;
-		wy = workspace->split.usable_area.y;
-		ww = workspace->split.usable_area.width;
-		wh = workspace->split.usable_area.height;
-	}
+	const double wx = workspace->x;
+	const double wy = workspace->y;
+	const double ww = workspace->width;
+	const double wh = workspace->height;
 	const double dx = (minx + 0.5 * (maxx - minx)) - (wx + 0.5 * ww);
 	const double dy = (miny + 0.5 * (maxy - miny)) - (wy + 0.5 * wh);
 
@@ -2515,17 +2506,20 @@ static void organize_jump_windows_apply_scale(struct sway_workspace *workspace) 
 	}
 	const double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
 	double minx, miny, wox, woy;
-	if (workspace->split.split == WORKSPACE_SPLIT_NONE) {
-		minx = workspace->output->lx + 0.5 * (1.0 - scale) * workspace->output->width;
-		miny = workspace->output->ly + 0.5 * (1.0 - scale) * workspace->output->height;
-		wox = workspace->output->lx;
-		woy = workspace->output->ly;
-	} else {
-		minx = workspace->split.output_area.x + 0.5 * (1.0 - scale) * workspace->split.output_area.width;
-		miny = workspace->split.output_area.y + 0.5 * (1.0 - scale) * workspace->split.output_area.height;
-		wox = workspace->split.output_area.x;
-		woy = workspace->split.output_area.y;
+	struct wlr_box box = {0};
+	struct wlr_box *area = workspace_get_output_area(workspace);
+	if (area) {
+		box = *area;
+	} else if (workspace->output) {
+		box.x = workspace->output->lx;
+		box.y = workspace->output->ly;
+		box.width = workspace->output->width;
+		box.height = workspace->output->height;
 	}
+	minx = box.x + 0.5 * (1.0 - scale) * box.width;
+	miny = box.y + 0.5 * (1.0 - scale) * box.height;
+	wox = box.x;
+	woy = box.y;
 	for (int i = 0; i < workspace->tiling->length; ++i) {
 		struct sway_container *con = workspace->tiling->items[i];
 		fix_coordinates(con, scale, minx, miny, wox, woy);

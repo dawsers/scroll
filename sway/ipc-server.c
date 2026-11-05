@@ -620,10 +620,8 @@ static void ipc_get_workspaces_callback(struct sway_workspace *workspace,
 			json_object_new_boolean(focused));
 	json_object_array_add((json_object *)data, workspace_json);
 
-	focused_ws = output_get_active_workspace(workspace->output);
-	bool visible = workspace == focused_ws;
 	json_object_object_add(workspace_json, "visible",
-			json_object_new_boolean(visible));
+			json_object_new_boolean(workspace_is_visible(workspace)));
 }
 
 static void ipc_get_marks_callback(struct sway_container *con, void *data) {

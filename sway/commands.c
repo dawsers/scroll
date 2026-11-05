@@ -111,6 +111,7 @@ static const struct cmd_handler handlers[] = {
 	{ "unbindgesture", cmd_unbindgesture },
 	{ "unbindswitch", cmd_unbindswitch },
 	{ "unbindsym", cmd_unbindsym },
+	{ "virtual_output", cmd_virtual_output },
 	{ "workspace", cmd_workspace },
 	{ "workspace_auto_back_and_forth", cmd_ws_auto_back_and_forth },
 	{ "workspace_switch_wrapping", cmd_workspace_switch_wrapping },

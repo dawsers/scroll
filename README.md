@@ -58,8 +58,8 @@ supports some added features:
   portrait or landscape monitors. You can define the layout orientation per
   output (monitor).
 
-* For ultra-wide displays, you can split a workspace in two and show them both
-  at the same time (`workspace split` command).
+* For ultra-wide displays, you can split a monitor into several virtual
+  outputs (`virtual_output` command).
 
 * Optionally, minimize windows to scratchpad.
 
@@ -1537,7 +1537,7 @@ scroll.add_callback("workspace_create", on_create_ws, nil)
 Examples:
 
 ```
-lua $lua_scripts/workspace_exec.lua 1 workspace split v 0.5
+lua $lua_scripts/workspace_exec.lua 1 virtual_output split v 0.5
 lua $lua_scripts/workspace_exec.lua 3 exec kitty yazi
 lua $lua_scripts/workspace_exec.lua 1 exec kitty
 ```
@@ -2160,8 +2160,8 @@ features, among them:
   portrait or landscape monitors. You can define the layout orientation per
   output (monitor).
 
-* For ultra-wide displays, you can split a workspace in two and show them both
-  at the same time (`workspace split` command).
+* For ultra-wide displays, split a monitor into several virtual outputs
+  (`virtual_output` command).
 
 Aside from the differences mentioned above, *scroll* adds many new commands
 and configuration options. For those familiar with *sway*, this is a list that
@@ -2205,7 +2205,7 @@ insertion location.
 `focus_follows_mouse full`, `focus_wrapping stay`,
 `fullscreen_on_request default|layout`, `titlebar_border_radius`,
 `kill focused|unfocused|all`, `send_shortcut`, `workspace swap`,
-`workspace split`, `xdg_activation_force`
+`virtual_output`, `xdg_activation_force`
 
 `lua`, `lua_eval` and API
 

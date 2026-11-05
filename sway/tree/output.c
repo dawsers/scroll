@@ -3,7 +3,7 @@
 #include <string.h>
 #include <strings.h>
 #include <wlr/types/wlr_ext_workspace_v1.h>
-#include "sway/tree/workspace.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/ipc-server.h"
 #include "sway/layers.h"
 #include "sway/output.h"
@@ -148,6 +148,8 @@ struct sway_output *output_create(struct wlr_output *wlr_output) {
 	output->current.workspaces = create_list();
 	wl_list_init(&output->layer_surfaces);
 
+	output_virtual_outputs_create(output);
+
 	return output;
 }
 
@@ -275,6 +277,7 @@ void output_destroy(struct sway_output *output) {
 	node_map_remove(&output->node);
 
 	destroy_scene_layers(output);
+	output_virtual_outputs_destroy(output);
 	list_free(output->workspaces);
 	list_free(output->current.workspaces);
 	list_free_items_and_destroy(output->scroller_options.heights);
@@ -345,6 +348,14 @@ void output_add_workspace(struct sway_output *output,
 	}
 	list_add(output->workspaces, workspace);
 	workspace->output = output;
+	output_virtual_outputs_update_geometry(output);
+	if (!workspace->virtual_output) {
+		struct sway_virtual_output *vo = output_virtual_outputs_get_active(output);
+		if (!vo) {
+			vo = output_virtual_outputs_get_default(output);
+		}
+		virtual_output_attach_workspace(vo, workspace);
+	}
 	if (workspace->output && workspace->output->ext_workspace_group) {
 		wlr_ext_workspace_handle_v1_set_group(workspace->ext_workspace,
 			workspace->output->ext_workspace_group);

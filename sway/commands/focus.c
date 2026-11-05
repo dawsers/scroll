@@ -11,6 +11,7 @@
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/layout.h"
 #include "stringop.h"
 #include "util.h"
@@ -239,16 +240,18 @@ static struct sway_node *node_get_in_direction_tiling(
 		current = current->pending.parent;
 	}
 
-	// Check if this is a split workspace and we can move focus between the two siblings
 	if (container->pending.workspace) {
 		struct sway_workspace *ws = container->pending.workspace;
-		if ((dir == DIR_LEFT && ws->split.split == WORKSPACE_SPLIT_RIGHT) ||
-			(dir == DIR_RIGHT && ws->split.split == WORKSPACE_SPLIT_LEFT)) {
-			return get_node_in_workspace_direction(ws->split.sibling, dir);
-		}
-		if ((dir == DIR_UP && ws->split.split == WORKSPACE_SPLIT_BOTTOM) ||
-			(dir == DIR_DOWN && ws->split.split == WORKSPACE_SPLIT_TOP)) {
-			return get_node_in_workspace_direction(ws->split.sibling, dir);
+		if (ws->virtual_output) {
+			struct sway_virtual_output *vo = virtual_output_get_in_direction(
+					ws->virtual_output, layout_to_wlr_direction(dir));
+			if (vo) {
+				struct sway_workspace *target =
+					virtual_output_get_active_workspace(vo);
+				if (target) {
+					return get_node_in_workspace_direction(target, dir);
+				}
+			}
 		}
 	}
 	// Check a different output
@@ -361,8 +364,10 @@ static struct cmd_results *focus_output(struct sway_seat *seat,
 	}
 	char *identifier = join_args(argv, argc);
 	struct sway_output *output = output_by_name_or_id(identifier);
+	struct sway_virtual_output *vo = output ? NULL :
+		virtual_output_by_name(identifier);
 
-	if (!output) {
+	if (!output && !vo) {
 		enum sway_layout_direction direction = DIR_INVALID;
 		if (!parse_direction(identifier, &direction)) {
 			free(identifier);
@@ -375,22 +380,37 @@ static struct cmd_results *focus_output(struct sway_seat *seat,
 			return cmd_results_new(CMD_FAILURE,
 				"No focused workspace to base directions off of.");
 		}
-		output = output_get_in_direction(ws->output, layout_to_wlr_direction(direction));
+		// A virtual output in the requested direction takes precedence over a
+		// different physical output
+		if (ws->virtual_output) {
+			vo = virtual_output_get_in_direction(ws->virtual_output,
+					layout_to_wlr_direction(direction));
+		}
+		if (!vo) {
+			output = output_get_in_direction(ws->output,
+					layout_to_wlr_direction(direction));
 
-		if (!output) {
-			int center_lx = ws->output->lx + ws->output->width / 2;
-			int center_ly = ws->output->ly + ws->output->height / 2;
-			struct wlr_output *target = wlr_output_layout_farthest_output(
-					root->output_layout, opposite_direction(layout_to_wlr_direction(direction)),
-					ws->output->wlr_output, center_lx, center_ly);
-			if (target) {
-				output = output_from_wlr_output(target);
+			if (!output) {
+				int center_lx = ws->output->lx + ws->output->width / 2;
+				int center_ly = ws->output->ly + ws->output->height / 2;
+				struct wlr_output *target = wlr_output_layout_farthest_output(
+						root->output_layout, opposite_direction(layout_to_wlr_direction(direction)),
+						ws->output->wlr_output, center_lx, center_ly);
+				if (target) {
+					output = output_from_wlr_output(target);
+				}
 			}
 		}
 	}
 
 	free(identifier);
-	if (output) {
+	if (vo) {
+		struct sway_workspace *target = virtual_output_get_active_workspace(vo);
+		if (target) {
+			seat_set_focus(seat, seat_get_focus_inactive(seat, &target->node));
+			seat_consider_warp_to_focus(seat);
+		}
+	} else if (output) {
 		seat_set_focus(seat, seat_get_focus_inactive(seat, &output->node));
 		seat_consider_warp_to_focus(seat);
 	}
@@ -498,17 +518,19 @@ struct cmd_results *cmd_focus(int argc, char **argv) {
 	}
 
 	if (node->type == N_WORKSPACE) {
-		if (node->sway_workspace->split.split != WORKSPACE_SPLIT_NONE) {
-			struct sway_workspace *ws = node->sway_workspace;
-			if ((direction == DIR_LEFT && ws->split.split == WORKSPACE_SPLIT_RIGHT) ||
-				(direction == DIR_RIGHT && ws->split.split == WORKSPACE_SPLIT_LEFT) ||
-				(direction == DIR_DOWN && ws->split.split == WORKSPACE_SPLIT_TOP) ||
-				(direction == DIR_UP && ws->split.split == WORKSPACE_SPLIT_BOTTOM)) {
-				struct sway_container *container = seat_get_focus_inactive_tiling(seat, ws->split.sibling);
-				node = container ? &container->node : &ws->split.sibling->node;
-				seat_set_focus(seat, node);
-				seat_consider_warp_to_focus(seat);
-				return cmd_results_new(CMD_SUCCESS, NULL);
+		struct sway_virtual_output *vo = node->sway_workspace->virtual_output;
+		if (vo) {
+			struct sway_virtual_output *target = virtual_output_get_in_direction(
+					vo, layout_to_wlr_direction(direction));
+			if (target) {
+				struct sway_workspace *ws =
+					virtual_output_get_active_workspace(target);
+				if (ws) {
+					seat_set_focus(seat,
+							seat_get_focus_inactive(seat, &ws->node));
+					seat_consider_warp_to_focus(seat);
+					return cmd_results_new(CMD_SUCCESS, NULL);
+				}
 			}
 		}
 		// Jump to the next output

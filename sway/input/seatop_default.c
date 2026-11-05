@@ -16,6 +16,7 @@
 #include "sway/scene_descriptor.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/log.h"
 #include "util.h"
 #if WLR_HAS_XWAYLAND
@@ -54,12 +55,18 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 	double scale = layout_scale_enabled(cont->pending.workspace) ? layout_scale_get(cont->pending.workspace) : 1.0;
 	double x, y, yb;
 	if (container_is_floating(cont) && cont->pending.workspace && cont->pending.workspace->output) {
-		struct sway_output *output = cont->pending.workspace->output;
-		const double minx = output->lx + 0.5 * (1.0 - scale) * output->width;
-		x = minx + scale * (cont->pending.x - output->lx);
-		const double miny = output->ly + 0.5 * (1.0 - scale) * output->height;
-		y = miny + scale * (cont->pending.y - output->ly);
-		yb = miny + scale * (cont->pending.y + (cont->pending.border == B_NORMAL ? container_titlebar_height() : 0.0) - output->ly);
+		struct sway_workspace *ws = cont->pending.workspace;
+		struct wlr_box *area = workspace_get_output_area(ws);
+		struct sway_output *output = ws->output;
+		const double ox = area ? area->x : output->lx;
+		const double oy = area ? area->y : output->ly;
+		const double ow = area ? area->width : output->width;
+		const double oh = area ? area->height : output->height;
+		const double minx = ox + 0.5 * (1.0 - scale) * ow;
+		x = minx + scale * (cont->pending.x - ox);
+		const double miny = oy + 0.5 * (1.0 - scale) * oh;
+		y = miny + scale * (cont->pending.y - oy);
+		yb = miny + scale * (cont->pending.y + (cont->pending.border == B_NORMAL ? container_titlebar_height() : 0.0) - oy);
 	} else {
 		x = cont->pending.x;
 		y = cont->pending.y;
@@ -521,21 +528,13 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 static void container_viewport_geometry(struct sway_workspace *workspace,
 		struct sway_container *container, struct wlr_fbox *viewport) {
 	if (container->pending.fullscreen_layout != FULLSCREEN_DISABLED) {
-		if (workspace->split.split != WORKSPACE_SPLIT_NONE) {
-			viewport->x = workspace->split.output_area.x;
-			viewport->y = workspace->split.output_area.y;
-			viewport->width = workspace->split.output_area.width;
-			viewport->height = workspace->split.output_area.height;
+		struct wlr_box *area = workspace_get_output_area(workspace);
+		if (area) {
+			viewport->x = area->x;
+			viewport->y = area->y;
+			viewport->width = area->width;
+			viewport->height = area->height;
 			return;
-		} else {
-			struct sway_output *output = workspace->output;
-			if (output) {
-				viewport->x = output->lx;
-				viewport->y = output->ly;
-				viewport->width = output->width;
-				viewport->height = output->height;
-				return;
-			}
 		}
 	}
 	viewport->x = workspace->x;
@@ -586,7 +585,9 @@ static void check_focus_follows_mouse(struct sway_seat *seat,
 		struct sway_output *focused_output = node_get_output(focus);
 		struct sway_output *hovered_output = node_get_output(hovered_node);
 		struct sway_workspace *hovered_ws = hovered_node->sway_workspace;
-		if (hovered_output != focused_output || hovered_ws->split.split != WORKSPACE_SPLIT_NONE) {
+		struct sway_workspace *focused_ws = seat_get_focused_workspace(seat);
+		if (hovered_output != focused_output ||
+				(focused_ws && focused_ws->virtual_output != hovered_ws->virtual_output)) {
 			seat_set_focus(seat, seat_get_focus_inactive(seat, hovered_node));
 			transaction_commit_dirty();
 		}

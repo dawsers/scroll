@@ -13,6 +13,7 @@
 
 struct sway_server;
 struct sway_container;
+struct sway_virtual_output;
 
 enum sway_layer_shell_type {
 	LAYER_SHELL_NONE = 0,
@@ -65,6 +66,10 @@ struct sway_output {
 	bool enabled;
 	list_t *workspaces;
 	struct wl_list layer_surfaces; // sway_layer_surface.link
+
+	struct sway_virtual_output *root_virtual_output;
+	list_t *virtual_outputs; // struct sway_virtual_output
+	bool maximize_virtual_output;
 
 	struct sway_output_state current;
 

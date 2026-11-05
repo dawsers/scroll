@@ -522,10 +522,13 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 	Moves focus to the parent of the focused container.
 
 *focus* output up|right|down|left
-	Moves focus to the next output in the specified direction.
+	Moves focus to the next output in the specified direction. When the
+	physical output is split into virtual outputs, a virtual output in that
+	direction takes precedence over another physical output.
 
 *focus* output <name>
-	Moves focus to the named output.
+	Moves focus to the named output. A virtual output can also be addressed
+	by its name.
 
 *focus* tiling
 	Sets focus to the last focused tiling container.
@@ -751,9 +754,13 @@ set|plus|minus|toggle <amount>
 
 *move* workspace [to] output up|right|down|left
 	Moves the focused workspace to next output in the specified direction.
+	If the physical output is split, the workspace is moved to the virtual
+	output in that direction instead.
 
 *move* workspace to [output] up|right|down|left
 	Moves the focused workspace to next output in the specified direction.
+	If the physical output is split, the workspace is moved to the virtual
+	output in that direction instead.
 
 *nop* <comment>
 	A no operation command that can be used to override default behaviour. The
@@ -1777,6 +1784,25 @@ The default colors are:
 	state. Using _allow_ or _deny_ controls the window's ability to set itself
 	as urgent. By default, windows are allowed to set their own urgency.
 
+*virtual_output* split [h|v|reset] [<fraction>] [<gap>]
+	Splits the virtual output containing the focused workspace horizontally
+	(_h_) or vertically (_v_), creating a new virtual output with its own
+	workspace. The original virtual output retains a _fraction_ (0.1-0.9) of
+	the total size, leaving an empty gap of integer _gap_ pixels between the
+	two virtual outputs. Each virtual output has its own list of workspaces and
+	its own independent layout. A virtual output can be split again, so a
+	physical output may contain any number of virtual outputs whose combined
+	area is the area of the physical output.
+
+	_reset_ undoes the split containing the current virtual output, moving the
+	workspaces of the removed virtual outputs into the surviving one.
+
+*virtual_output* toggle
+	Maximizes/restores the virtual output. When enabled, the active virtual
+	output takes the whole physical output, making the other virtual outputs
+	invisible. Focusing a workspace of a different virtual output makes that
+	virtual output the active one.
+
 *workspace* [--no-auto-back-and-forth] [number] <[num:]name>
 	Switches to the specified workspace. The _num:_ portion of the name is
 	optional and will be used for ordering. If _num:_ is not given and
@@ -1796,7 +1822,8 @@ The default colors are:
 	if currently on the last workspace.
 
 *workspace* prev_on_output|next_on_output
-	Switches to the next workspace on the current output.
+	Switches to the next workspace on the current output. Virtual outputs are
+	treated like real outputs.
 
 *workspace_switch_wrapping* yes|no
 	When switching to next/previous workspace, wrap around when reaching
@@ -1883,8 +1910,8 @@ scroll.add_callback("workspace_create", on_create_ws, nil)
 set $lua_scripts /home/xxxx/.config/scroll/scripts
 
 # Examples
-# split workspace 1 as soon as it gets created
-lua $lua_scripts/workspace_exec.lua 1 workspace split v 0.5
+# split the virtual output of workspace 1 as soon as it gets created
+lua $lua_scripts/workspace_exec.lua 1 virtual_output split v 0.5
 # open a kitty terminal every time terminal 1 is created
 lua $lua_scripts/workspace_exec.lua 1 exec kitty
 ```
@@ -1895,19 +1922,6 @@ lua $lua_scripts/workspace_exec.lua 1 exec kitty
 	workspace names are swapped, leaving the containers where they are. This is
 	useful if you just want to re-organize your workspace names. See the
 	*rename* command if you just want to rename a workspace.
-
-*workspace* split [h|v|reset] [<fraction>] [<gap>]
-	Splits the current workspace horizontally (_h_) or vertically (_v_), and the
-	original workspace retains a _fraction_ (0.1-0.9) of the total size, leaving
-	an empty gap of integer _gap_ pixels between the two new workspaces.
-	The two workspaces have independent layouts.
-	A workspace can only be split once, so there can only be at most two visible
-	workspaces per output.
-	_reset_ undoes the split, making each of the workspaces use the full output
-	again.
-	If you call the command on an already split workspace, it will apply the
-	new parameters, also setting the active workspace 'left' (if _v_) or 'top'
-	(if _h_ splitting).
 
 *workspace_auto_back_and_forth* yes|no
 	When _yes_, repeating a workspace switch command will switch back to the
@@ -2463,18 +2477,6 @@ local process_data = scroll.exec_process("kitty")
 *workspace_get_pin(workspace)*
 	Returns the _workspace's_ pinned container ID, or nil if none.
 
-*workspace_get_split(workspace)*
-	Returns a table with the split state for _workspace_. The
-	keys and values of that table are:
-
-	_split_: "none"|"top"|"bottom"|"left"|"right"
-
-	_fraction_: number
-
-	_gap_: integer number
-
-	_sibling_: the sibling workspace's ID
-
 *workspace_get_output(workspace)*
 	Returns the _workspace's_ output ID, or nil if none.
 
@@ -2489,6 +2491,35 @@ local process_data = scroll.exec_process("kitty")
 
 *output_get_workspaces(output)*
 	Returns an array with all the existing workspaces assigned to _output_.
+
+*output_get_virtual_outputs(output)*
+	Returns an array with a table describing every virtual output of _output_.
+	The internal nodes of the split tree, which only describe a split and hold
+	no workspaces, are not included. An invalid _output_, or an output without
+	virtual outputs, returns an empty array. The keys and values of each table
+	are:
+
+	_name_: the virtual output's name
+
+	_visible_: true if the virtual output is currently visible
+
+	_active_: true if this is the active virtual output of _output_
+
+	_rect_: effective geometry, a table with _x_, _y_, _width_ and _height_
+	fields in layout coordinates. When the physical output is maximized, the
+	active virtual output covers the whole physical output
+
+	_split_rect_: the same geometry without the maximize override
+
+	_usable_rect_: the virtual output's usable area
+
+	_workspaces_: an array with the IDs of its workspaces
+
+	_workspace_names_: an array with the names of its workspaces
+
+	_active_workspace_: the ID of its active workspace, or nil
+
+	_maximized_: true when _maximize_virtual_output_ is enabled on _output_
 
 *root_get_outputs()*
 	Returns an array with all the outputs (displays).

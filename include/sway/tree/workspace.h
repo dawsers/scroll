@@ -8,19 +8,10 @@
 #include "sway/tree/layout.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
-
-enum sway_workspace_split {
-	WORKSPACE_SPLIT_NONE,
-	WORKSPACE_SPLIT_HORIZONTAL,
-	WORKSPACE_SPLIT_VERTICAL,
-
-	WORKSPACE_SPLIT_LEFT,
-	WORKSPACE_SPLIT_RIGHT,
-	WORKSPACE_SPLIT_TOP,
-	WORKSPACE_SPLIT_BOTTOM,
-};
+#include "sway/tree/virtual_output.h"
 
 struct sway_view;
+struct sway_virtual_output;
 
 struct sway_workspace_state {
 	struct sway_container *fullscreen;
@@ -57,6 +48,7 @@ struct sway_workspace {
 	struct side_gaps gaps_outer;
 
 	struct sway_output *output; // NULL if no outputs are connected
+	struct sway_virtual_output *virtual_output; // NULL if not attached
 	list_t *floating;           // struct sway_container
 	list_t *tiling;             // struct sway_container
 	list_t *output_priority;
@@ -78,15 +70,6 @@ struct sway_workspace {
 		struct sway_container *pin;
 		enum sway_layout_pin pin_position;
 	} gesture;
-
-	struct sway_workspace_split_data {
-		enum sway_workspace_split split;
-		double fraction;
-		int gap;
-		struct sway_workspace *sibling;
-		struct wlr_box output_area;
-		struct wlr_box usable_area;
-	} split;
 
 	struct {
 		struct sway_animated_variable s; // scale for overview/zoom
@@ -210,16 +193,6 @@ size_t workspace_num_tiling_views(struct sway_workspace *ws);
 size_t workspace_num_sticky_containers(struct sway_workspace *ws);
 
 /**
- * Splits a workspace into two, creating a new one
- */
-void workspace_split(struct sway_workspace *workspace, enum sway_workspace_split split,
-	double fraction, int gap);
-
-void workspace_split_reset(struct sway_workspace *workspace);
-
-struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace);
-
-/**
  * Swaps two workspaces. If name_only is true, only their names are swapped.
  */
 void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
@@ -231,5 +204,23 @@ void workspace_move_to_output(struct sway_workspace *workspace,
 bool sway_ext_workspace_init(void);
 void sway_ext_workspace_output_enable(struct sway_output *output);
 void sway_ext_workspace_output_disable(struct sway_output *output);
+
+/**
+ * Geometry of the virtual output the workspace belongs to. The usable area is
+ * relative to the physical output, the output area is in layout coordinates.
+ */
+struct wlr_box *workspace_get_output_area(struct sway_workspace *workspace);
+
+struct wlr_box *workspace_get_output_usable_area(struct sway_workspace *workspace);
+
+/**
+ * True when the virtual output of this workspace does not cover the whole
+ * physical output (ie. the physical output is split).
+ */
+bool workspace_is_split_output(struct sway_workspace *workspace);
+
+/** Move a workspace to another virtual output. */
+void workspace_move_to_virtual_output(struct sway_workspace *workspace,
+		struct sway_virtual_output *virtual_output);
 
 #endif

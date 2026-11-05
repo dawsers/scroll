@@ -16,6 +16,7 @@
 #include "sway/tree/workspace.h"
 #include "sway/tree/space.h"
 #include "sway/tree/node.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/focus_ring.h"
 #include "list.h"
 #include "sway/log.h"
@@ -396,9 +397,11 @@ static bool default_workspace_filter(struct sway_workspace *workspace, void *dat
 	struct sway_output *output = workspace->output;
 	bool activated = output->wlr_output->enabled;
 	if (!layout_overview_workspaces_enabled() && !workspace_is_panning(workspace)) {
-		activated = activated &&
-			(output->current.active_workspace == workspace ||
-			 (workspace->split.split != WORKSPACE_SPLIT_NONE && output->current.active_workspace == workspace->split.sibling));
+		// Each visible virtual output shows its active workspace, just like a
+		// real output shows one workspace at a time.
+		struct sway_virtual_output *vo = workspace->virtual_output;
+		activated = activated && vo && virtual_output_is_visible(vo) &&
+			virtual_output_get_active_workspace(vo) == workspace;
 	}
 	return activated;
 }

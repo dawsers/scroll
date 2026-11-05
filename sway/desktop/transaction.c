@@ -18,6 +18,7 @@
 #include "sway/layers.h"
 #include "sway/tree/container.h"
 #include "sway/tree/node.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/tree/layout.h"
@@ -824,11 +825,10 @@ static void arrange_children(struct sway_workspace *workspace,
 		if (aligned != ALIGN_AXIS_NONE) {
 			offset = aligned == ALIGN_AXIS_H ? active->pending.x : active->pending.y;
 		} else if (active->pending.fullscreen_layout == FULLSCREEN_ENABLED && !layout_scale_enabled(workspace)) {
-			if (layout == L_HORIZ) {
-				offset = workspace->split.split != WORKSPACE_SPLIT_NONE ? workspace->split.output_area.x : workspace->output->lx;
-			} else {
-				offset = workspace->split.split != WORKSPACE_SPLIT_NONE ? workspace->split.output_area.y : workspace->output->ly;
-			}
+			struct wlr_box *area = workspace_get_output_area(workspace);
+			offset = layout == L_HORIZ ?
+				(area ? area->x : workspace->output->lx) :
+				(area ? area->y : workspace->output->ly);
 		} else {
 			offset = compute_active_offset(workspace, layout, children, active_idx,
 				workspace->width, workspace->height, gaps, pin);
@@ -1344,18 +1344,11 @@ static void animate_fullscreen(struct wlr_scene_tree *tree,
 
 static void scaled_floating_position(struct sway_workspace *ws, double scale,
 		const double x_in, const double y_in, double *x_out, double *y_out) {
-	double wox, woy, wow, woh;
-	if (ws->split.split == WORKSPACE_SPLIT_NONE) {
-		wox = ws->output->lx;
-		woy = ws->output->ly;
-		wow = ws->output->width;
-		woh = ws->output->height;
-	} else {
-		wox = ws->split.output_area.x;
-		woy = ws->split.output_area.y;
-		wow = ws->split.output_area.width;
-		woh = ws->split.output_area.height;
-	}
+	struct wlr_box *area = workspace_get_output_area(ws);
+	const double wox = area ? area->x : ws->output->lx;
+	const double woy = area ? area->y : ws->output->ly;
+	const double wow = area ? area->width : ws->output->width;
+	const double woh = area ? area->height : ws->output->height;
 	const double minx = wox + 0.5 * (1.0 - scale) * wow;
 	const double miny = woy + 0.5 * (1.0 - scale) * woh;
 	*x_out = minx + scale * (x_in - wox);
@@ -1404,11 +1397,22 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 		} else {
 			for (int i = 0; i < root->outputs->length; i++) {
 				struct sway_output *output = root->outputs->items[i];
-				struct sway_workspace *active = output->current.active_workspace;
-
-				if (active && active->fullscreen &&
-						container_is_transient_for(floater, active->fullscreen)) {
-					layer = root->layers.fullscreen;
+				if (!output->virtual_outputs) {
+					continue;
+				}
+				for (int j = 0; j < output->virtual_outputs->length; j++) {
+					struct sway_virtual_output *vo =
+						output->virtual_outputs->items[j];
+					if (!virtual_output_is_visible(vo)) {
+						continue;
+					}
+					struct sway_workspace *active =
+						virtual_output_get_active_workspace(vo);
+					if (active && active->fullscreen &&
+							container_is_transient_for(floater, active->fullscreen)) {
+						layer = root->layers.fullscreen;
+						break;
+					}
 				}
 			}
 		}
@@ -1694,6 +1698,7 @@ static void animate_layers(struct sway_output *output) {
 static void arrange_output(struct sway_output *output) {
 	arrange_layers(output);
 	bool output_fs = root->filters->output_fullscreen_filter(output, root->filters->output_fullscreen_filter_data);
+	bool split_fs = output_fullscreen_needs_background(output);
 	for (int i = 0; i < output->current.workspaces->length; i++) {
 		struct sway_workspace *child = output->current.workspaces->items[i];
 
@@ -1719,9 +1724,7 @@ static void arrange_output(struct sway_output *output) {
 			wlr_scene_node_set_enabled(&child->layers.tiling->node, !fs && tiling);
 			wlr_scene_node_set_enabled(&child->layers.fullscreen->node, fs);
 
-			if ((child->split.split != WORKSPACE_SPLIT_NONE &&
-				(child->current.fullscreen || child->split.sibling->current.fullscreen)) ||
-				output_fs) {
+			if (split_fs || output_fs) {
 				wlr_scene_node_set_enabled(&output->layers.shell_background->node, true);
 				wlr_scene_node_set_enabled(&output->layers.shell_bottom->node, true);
 				wlr_scene_node_set_enabled(&output->layers.fullscreen->node, true);
