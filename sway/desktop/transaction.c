@@ -302,7 +302,13 @@ static void apply_container_state(struct sway_container *container,
 
 	if (view) {
 		if (view->saved_surface_tree) {
-			if (!container->node.destroying || container->node.ntxnrefs == 1) {
+			// Keep the last frame of a closing view, so the fade out
+			// animation has something to fade. It is destroyed together
+			// with the view when the animation ends.
+			const bool closing = container->node.destroying &&
+				list_find(root->unmapped_views, view) >= 0;
+			if (!closing && (!container->node.destroying ||
+					container->node.ntxnrefs == 1)) {
 				view_remove_saved_buffer(view);
 			}
 		}
@@ -1960,8 +1966,25 @@ static void animate_root(struct sway_root *root) {
 			if (a->x0 != a->x1) {
 				container->pending.alpha = a->xt;
 			}
+			const float alpha = container->pending.alpha;
 			container_update(container);
+			// Fade the saved content of the view
+			output_configure_scene(NULL, &container->scene_tree->node, alpha);
 			container->pending.alpha = old_alpha;
+			// container_update() fades the borders, but the shadow is a separate
+			// scene node, so it needs to be faded too.
+			struct wlr_scene_shadow *shadow = container->shadow;
+			if (shadow && shadow->enabled) {
+				float color[4] = {
+					container->pending.decoration.shadow_color_r * alpha,
+					container->pending.decoration.shadow_color_g * alpha,
+					container->pending.decoration.shadow_color_b * alpha,
+					container->pending.decoration.shadow_color_a * alpha,
+				};
+				wlr_scene_shadow_set_properties(shadow, shadow->width,
+					shadow->height, true, shadow->dynamic, shadow->size,
+					shadow->blur, shadow->offset, color);
+			}
 			view_reconfigure(view);
 		}
 	}
