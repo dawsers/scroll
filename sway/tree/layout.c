@@ -409,16 +409,21 @@ static void workspace_name_decoration(struct sway_workspace *ws, bool enable) {
 	wlr_scene_node_set_enabled(&ws->jump.name_tree->node, true);
 }
 
-static void overview_workspaces_recompute_scale(struct sway_output *output) {
-	const struct wlr_box *usable_area = &output->usable_area;
+static void overview_virtual_output_recompute_scale(struct sway_virtual_output *vo) {
+	struct sway_output *output = vo->output;
+	const struct wlr_box *usable_area = &vo->usable_area;
 	const double left = usable_area->x;
 	const double top = usable_area->y;
-	const double width = output->width;
-	const double height = output->height;
-	const int length = output->workspaces->length;
+	const double width = vo->output_area.width;
+	const double height = vo->output_area.height;
+	const int length = vo->workspaces->length;
+	if (length == 0 || width <= 0 || height <= 0) {
+		return;
+	}
 	const int rows = ceil(sqrt(length));
-	const double scale = fmin((usable_area->width - config->workspace_labels_height * (rows + 1)) / (rows * width),
-		(usable_area->height - config->workspace_labels_height * (rows + 1)) / (rows * height));
+	const double scale = fmax(0.0, fmin(
+		(usable_area->width - config->workspace_labels_height * (rows + 1)) / (rows * width),
+		(usable_area->height - config->workspace_labels_height * (rows + 1)) / (rows * height)));
 	const int per_row = length / rows;
 	int remain = length % rows;
 	int j = 0;
@@ -431,10 +436,14 @@ static void overview_workspaces_recompute_scale(struct sway_output *output) {
 		const double gapx = (usable_area->width - cols * scale * width) / (cols + 1);
 		const double gapy = (usable_area->height - rows * scale * height) / (rows + 1);
 		for (int c = 0; c < cols; ++c) {
-			struct sway_workspace *child = output->workspaces->items[j++];
+			struct sway_workspace *child = vo->workspaces->items[j++];
 			wlr_scene_node_reparent(&child->jump.text_tree->node, output->layers.shell_overlay);
 			wlr_scene_node_reparent(&child->jump.name_tree->node, output->layers.shell_overlay);
-			child->layout.fullscreen = child->fullscreen;
+			// Only save fullscreen state when entering overview, not on a
+			// recompute (it has already been disabled)
+			if (child->layers.tiling->node.info.workspace != child) {
+				child->layout.fullscreen = child->fullscreen;
+			}
 			child->jump.x = round(left + gapx + c * (scale * width + gapx));
 			child->jump.y = round(top + gapy + r * (scale * height + gapy));
 			child->jump.width = ceil(scale * width);
@@ -450,6 +459,24 @@ static void overview_workspaces_recompute_scale(struct sway_output *output) {
 			for (int f = 0; f < child->floating->length; ++f) {
 				struct sway_container *con = child->floating->items[f];
 				con->scene_tree->node.info.workspace = child;
+			}
+		}
+	}
+}
+
+static void overview_workspaces_recompute_scale(struct sway_output *output) {
+	output_virtual_outputs_update_geometry(output);
+	for (int i = 0; i < output->virtual_outputs->length; ++i) {
+		struct sway_virtual_output *vo = output->virtual_outputs->items[i];
+		if (vo->children[0]) {
+			continue;
+		}
+		overview_virtual_output_recompute_scale(vo);
+		if (!virtual_output_is_visible(vo)) {
+			for (int j = 0; j < vo->workspaces->length; ++j) {
+				struct sway_workspace *ws = vo->workspaces->items[j];
+				wlr_scene_node_set_enabled(&ws->jump.text_tree->node, false);
+				workspace_name_decoration(ws, false);
 			}
 		}
 	}
@@ -509,12 +536,12 @@ bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspac
 		const double y = *ly - output->ly;
 		for (int j = 0; j < output->workspaces->length; ++j) {
 			struct sway_workspace *child = output->workspaces->items[j];
+			if (!virtual_output_is_visible(child->virtual_output)) {
+				continue;
+			}
 			if (x >= child->jump.x && x < child->jump.x + child->jump.width &&
 				y >= child->jump.y && y < child->jump.y + child->jump.height) {
-				const double rx = (x - child->jump.x) / child->jump.width * output->width;
-				const double ry = (y - child->jump.y) / child->jump.height * output->height;
-				*lx = rx + output->lx;
-				*ly = ry + output->ly;
+				layout_overview_workspaces_local_to_global(child, lx, ly);
 				*workspace = child;
 				return true;
 			}
@@ -530,10 +557,14 @@ void layout_overview_workspaces_global_to_local(struct sway_workspace *workspace
 		return;
 	}
 	struct sway_output *output = workspace->output;
-	const double lx = *x - output->lx;
-	const double ly = *y - output->ly;
-	const double rx = workspace->jump.x + lx / output->width * workspace->jump.width;
-	const double ry = workspace->jump.y + ly / output->height * workspace->jump.height;
+	struct wlr_box *area = workspace_get_output_area(workspace);
+	if (!area || area->width <= 0 || area->height <= 0) {
+		return;
+	}
+	const double lx = *x - area->x;
+	const double ly = *y - area->y;
+	const double rx = workspace->jump.x + lx / area->width * workspace->jump.width;
+	const double ry = workspace->jump.y + ly / area->height * workspace->jump.height;
 	*x = rx + output->lx;
 	*y = ry + output->ly;
 }
@@ -545,12 +576,16 @@ void layout_overview_workspaces_local_to_global(struct sway_workspace *workspace
 		return;
 	}
 	struct sway_output *output = workspace->output;
+	struct wlr_box *area = workspace_get_output_area(workspace);
+	if (!area || workspace->jump.width <= 0 || workspace->jump.height <= 0) {
+		return;
+	}
 	const double lx = *x - output->lx;
 	const double ly = *y - output->ly;
-	const double rx = (lx - workspace->jump.x) / workspace->jump.width * output->width;
-	const double ry = (ly - workspace->jump.y) / workspace->jump.height * output->height;
-	*x = rx + output->lx;
-	*y = ry + output->ly;
+	const double rx = (lx - workspace->jump.x) / workspace->jump.width * area->width;
+	const double ry = (ly - workspace->jump.y) / workspace->jump.height * area->height;
+	*x = rx + area->x;
+	*y = ry + area->y;
 }
 
 void layout_scale_set(struct sway_workspace *workspace, double scale) {

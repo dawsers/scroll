@@ -63,6 +63,7 @@ struct wlr_scene_workspace_data {
 	double x, y;
 	double width, height;
 	double scale;
+	double wx, wy; // workspace origin wrt physical output (for virtual outputs)
 };
 
 struct wlr_scene_view_data {

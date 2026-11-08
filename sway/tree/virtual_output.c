@@ -17,6 +17,7 @@
 #include "sway/tree/root.h"
 #include "sway/tree/virtual_output.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/layout.h"
 #include "list.h"
 
 static int virtual_output_next_id = 0;
@@ -370,6 +371,7 @@ void virtual_output_set_workspace(struct sway_workspace *ws,
 	arrange_workspace(ws);
 	node_set_dirty(&ws->node);
 	node_set_dirty(&vo->output->node);
+	layout_overview_workspaces_recompute_scale();
 }
 
 struct sway_workspace *virtual_output_create_workspace(
@@ -404,6 +406,7 @@ void output_virtual_outputs_arrange(struct sway_output *output) {
 		arrange_workspace(ws);
 	}
 	node_set_dirty(&output->node);
+	layout_overview_workspaces_recompute_scale();
 	if (output->enabled && output->scene_output) {
 		output_damage_whole(output);
 	}

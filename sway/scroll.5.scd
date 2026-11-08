@@ -866,9 +866,9 @@ set|plus|minus|toggle <amount>
 	to see where things are and move the active focus, or reposition windows.
 
 *scale_workspaces* enable|disable|toggle
-	This command will show a global overview where each output renders all its
-	workspaces. As in *scale_workspace*, you will be able to interact with
-	the windows normally.
+	This command will show a global overview where each output (or virtual
+	output) renders all its	workspaces. As in *scale_workspace*, you will be
+	able to interact with the windows normally.
 
 *scratchpad* show|jump
 	_show_ shows a window from the scratchpad. Repeatedly using this command will

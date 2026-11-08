@@ -1927,6 +1927,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 	pixman_region32_copy(&render_region, &node->visible);
 	pixman_region32_translate(&render_region, -data->logical.x, -data->logical.y);
 	if (workspace) {
+		pixman_region32_translate(&render_region, -workspace_data.wx, -workspace_data.wy);
 		scale_region(&render_region, scale, false);
 		pixman_region32_translate(&render_region, dx, dy);
 		// Clip against "mini-workspace"
@@ -1948,8 +1949,8 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 	};
 	scene_node_get_size(node, &dst_fbox.width, &dst_fbox.height);
 	if (workspace) {
-		dst_fbox.x = ceil(dst_fbox.x * scale + dx);
-		dst_fbox.y = ceil(dst_fbox.y * scale + dy);
+		dst_fbox.x = ceil((dst_fbox.x - workspace_data.wx) * scale + dx);
+		dst_fbox.y = ceil((dst_fbox.y - workspace_data.wy) * scale + dy);
 		dst_fbox.width = ceil(dst_fbox.width * scale);
 		dst_fbox.height = ceil(dst_fbox.height * scale);
 	}
@@ -1959,6 +1960,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 	pixman_region32_init(&opaque);
 	scene_node_opaque_region(node, x, y, &opaque);
 	if (workspace) {
+		pixman_region32_translate(&opaque, -workspace_data.wx, -workspace_data.wy);
 		scale_region(&opaque, scale, false);
 		pixman_region32_translate(&opaque, dx, dy);
 		pixman_region32_intersect_rect(&opaque, &opaque, dx, dy,

@@ -2,6 +2,7 @@
 #include "sway/tree/root.h"
 #include "sway/tree/layout.h"
 #include "sway/output.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/workspace.h"
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/animation.h"
@@ -129,6 +130,12 @@ static bool scene_workspace_data(struct wlr_scene_node *node, struct wlr_scene_w
 		data->width = workspace->jump.width;
 		data->height = workspace->jump.height;
 		data->scale = workspace->jump.scale;
+		struct wlr_box *area = workspace_get_output_area(workspace);
+		data->wx = area ? area->x - workspace->output->lx : 0;
+		data->wy = area ? area->y - workspace->output->ly : 0;
+		if (!virtual_output_is_visible(workspace->virtual_output)) {
+			data->width = data->height = 0;
+		}
 		return true;
 	}
 	return false;
