@@ -121,7 +121,7 @@ void free_config(struct sway_config *config) {
 		}
 		list_free(config->bars);
 	}
-	list_free(config->cmd_queue);
+	list_free_items_and_destroy(config->cmd_queue);
 	if (config->workspace_configs) {
 		for (int i = 0; i < config->workspace_configs->length; i++) {
 			free_workspace_config(config->workspace_configs->items[i]);
