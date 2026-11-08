@@ -926,6 +926,10 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	view_populate_pid(view);
 	// X11 clients can remap an unmapped view, so make sure we remove it
 	unmapped_views_remove(view);
+	// and drop the frame we kept for its fade out animation
+	if (view->saved_surface_tree) {
+		view_remove_saved_buffer(view);
+	}
 	view->container = container_create(view);
 
 	if (view->ctx == NULL) {
