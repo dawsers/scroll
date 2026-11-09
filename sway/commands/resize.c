@@ -301,9 +301,9 @@ static struct cmd_results *resize_set_tiled(struct sway_container *container,
 		}
 		if (width->unit == MOVEMENT_UNIT_PPT ||
 				width->unit == MOVEMENT_UNIT_DEFAULT) {
-			if (width->amount <= 1.0 && width->amount >= 0.05) {
+			if (width->amount <= 100 && width->amount >= 5) {
 				fail = false;
-				con->width_fraction = width->amount;
+				con->width_fraction = width->amount / 100.0;
 				con->pending.width = workspace->width * con->width_fraction - gaps;
 				// If it has children, propagate its width, overwriting whatever they had
 				if (con->pending.children) {
@@ -337,9 +337,9 @@ static struct cmd_results *resize_set_tiled(struct sway_container *container,
 		}
 		if (height->unit == MOVEMENT_UNIT_PPT ||
 				height->unit == MOVEMENT_UNIT_DEFAULT) {
-			if (height->amount <= 1.0 && height->amount >= 0.05) {
+			if (height->amount <= 100 && height->amount >= 5) {
 				fail = false;
-				con->height_fraction = height->amount;
+				con->height_fraction = height->amount / 100.0;
 				con->pending.height = con->pending.workspace->height * con->height_fraction - gaps;
 				// If it has children, propagate its height, overwriting whatever they had
 				if (con->pending.children) {
