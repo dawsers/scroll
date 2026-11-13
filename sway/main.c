@@ -429,9 +429,9 @@ shutdown:
 	sway_log(SWAY_INFO, "Shutting down scroll");
 
 	server_fini(&server);
+	animation_destroy();
 	root_destroy(root);
 	root = NULL;
-	animation_destroy();
 	node_map_fini();
 
 	free(config_path);
