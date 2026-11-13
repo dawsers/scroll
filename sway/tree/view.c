@@ -1376,7 +1376,7 @@ bool view_is_fully_visible(struct sway_view *view) {
 		return false;
 	}
 	struct wlr_box box_c, box_o;
-	container_get_box(view->container, &box_c);
+	layout_container_screen_wlr_box(view->container, false, &box_c);
 	bool floating = container_is_floating(view->container);
 	if (floating) {
 		root_get_box(root, &box_o);
@@ -1397,7 +1397,7 @@ bool view_is_fully_visible(struct sway_view *view) {
 		struct sway_container *con = workspace->floating->items[i];
 		if (i > idx) {
 			struct wlr_box box;
-			container_get_box(con, &box);
+			layout_container_screen_wlr_box(con, false, &box);
 			if (wlr_box_intersects(&box_c, &box)) {
 				return false;
 			}
@@ -1764,7 +1764,6 @@ void view_reconfigure(struct sway_view *view) {
 }
 
 double view_get_total_scale(struct sway_view *view) {
-	double scale;
 	if (!view) {
 		return -1.0;
 	}
@@ -1772,22 +1771,10 @@ double view_get_total_scale(struct sway_view *view) {
 	if (!container) {
 		return -1.0;
 	}
-	if (container_is_fullscreen_or_child(container)) {
-		scale = -1.0;
-	} else {
-		struct sway_workspace *ws = container->pending.workspace;
-		if (ws && ws->output) {
-			if (animation_animating_output(ws->output->wlr_output)) {
-				scale = ws->animation.s.xt;
-			} else {
-				scale = layout_scale_get(ws);
-			}
-		} else {
-			scale = -1.0;
-		}
-	}
+	// What is on screen, like the container position
+	double scale = layout_transform_container_scale(container, true);
 	if (view_is_content_scaled(view)) {
-		scale = (scale > 0.0f ? scale : 1.0) * view_get_content_scale(view);
+		scale *= view_get_content_scale(view);
 	}
 	return scale;
 }

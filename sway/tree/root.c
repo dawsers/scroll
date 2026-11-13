@@ -235,7 +235,15 @@ void root_scratchpad_show(struct sway_container *con) {
 	if (new_ws->output) {
 		struct wlr_box output_box;
 		output_get_box(new_ws->output, &output_box);
-		floating_fix_coordinates(con, &con->transform, &output_box);
+		struct wlr_fbox old = {
+			.x = con->transform.x, .y = con->transform.y,
+			.width = con->transform.width, .height = con->transform.height,
+		};
+		struct wlr_fbox new = {
+			.x = output_box.x, .y = output_box.y,
+			.width = output_box.width, .height = output_box.height,
+		};
+		floating_fix_coordinates(con, &old, &new);
 	}
 	set_container_transform(new_ws, con);
 

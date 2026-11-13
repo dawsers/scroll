@@ -2,6 +2,7 @@
 #define _SWAY_LAYOUT_H
 
 #include "sway/tree/container.h"
+#include <wlr/util/box.h>
 #include <wlr/util/edges.h>
 
 enum sway_layout_reorder {
@@ -342,5 +343,82 @@ void layout_fit_size_container(struct sway_container *container,
 // Set the fraction of `container` along `axis` and rebalance its siblings
 void layout_fit_set_fraction(struct sway_container *container,
 	enum sway_layout_axis axis, double fraction);
+
+// Layout Coordinate Transforms.
+//
+// Container positions and sizes are stored in unscaled layout coordinates,
+// which are the same as screen coordinates when the workspace is not scaled.
+// Consider A to be the screen anchor (center of the workspace's output area),
+// and C the layout point. If the workspace scale is s, the transform is:
+//
+//           screen = A + s * (layout - C)
+//
+// We keep A and C separate instead of simplifying, so in the future we can
+// add viewport panning.
+struct sway_layout_transform {
+	double scale;
+	double x, y;
+};
+
+double layout_transform_workspace_scale(struct sway_workspace *workspace,
+		bool animated);
+
+// 1.0 if it is full screen or has no workspace/output
+double layout_transform_container_scale(struct sway_container *container,
+		bool animated);
+
+void layout_transform_workspace_get(struct sway_workspace *workspace,
+		bool animated, struct sway_layout_transform *transform);
+
+// Identity if it is full screen or it has no workspace/output
+void layout_transform_container_get(struct sway_container *container,
+		bool animated, struct sway_layout_transform *transform);
+
+static inline double layout_transform_x(const struct sway_layout_transform *t, double x) {
+	return t->scale * x + t->x;
+}
+
+static inline double layout_transform_y(const struct sway_layout_transform *t, double y) {
+	return t->scale * y + t->y;
+}
+
+// Layout to screen
+static inline void layout_transform_point(const struct sway_layout_transform *t,
+		double *x, double *y) {
+	*x = t->scale * *x + t->x;
+	*y = t->scale * *y + t->y;
+}
+
+// Screen to layout
+static inline void layout_transform_point_inv(const struct sway_layout_transform *t,
+		double *x, double *y) {
+	*x = (*x - t->x) / t->scale;
+	*y = (*y - t->y) / t->scale;
+}
+
+static inline void layout_transform_box(const struct sway_layout_transform *t,
+		struct wlr_fbox *box) {
+	layout_transform_point(t, &box->x, &box->y);
+	box->width *= t->scale;
+	box->height *= t->scale;
+}
+
+static inline void layout_transform_box_inv(const struct sway_layout_transform *t,
+		struct wlr_fbox *box) {
+	layout_transform_point_inv(t, &box->x, &box->y);
+	box->width /= t->scale;
+	box->height /= t->scale;
+}
+
+// The workspace box (usable area minus outer gaps) in layout coordinates
+void layout_vp_box(struct sway_workspace *workspace, struct wlr_fbox *box);
+
+// Animated bounding box for the container
+void layout_container_screen_box(struct sway_container *container, bool animated,
+		struct wlr_fbox *box);
+
+// The same, rounded to integer coordinates
+void layout_container_screen_wlr_box(struct sway_container *container,
+		bool animated, struct wlr_box *box);
 
 #endif // _SWAY_LAYOUT_H

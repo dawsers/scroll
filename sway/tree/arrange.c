@@ -237,8 +237,8 @@ void arrange_workspace(struct sway_workspace *workspace) {
 			area->width, area->height, area->x, area->y);
 
 	bool first_arrange = workspace->width == 0 && workspace->height == 0;
-	struct wlr_box prev_box;
-	workspace_get_box(workspace, &prev_box);
+	struct wlr_fbox prev_vp;
+	layout_vp_box(workspace, &prev_vp);
 
 	double prev_x = workspace->x - workspace->current_gaps.left;
 	double prev_y = workspace->y - workspace->current_gaps.top;
@@ -253,9 +253,9 @@ void arrange_workspace(struct sway_workspace *workspace) {
 	if (!first_arrange && (diff_x != 0 || diff_y != 0)) {
 		for (int i = 0; i < workspace->floating->length; ++i) {
 			struct sway_container *floater = workspace->floating->items[i];
-			struct wlr_box workspace_box;
-			workspace_get_box(workspace, &workspace_box);
-			floating_fix_coordinates(floater, &prev_box, &workspace_box);
+			struct wlr_fbox vp;
+			layout_vp_box(workspace, &vp);
+			floating_fix_coordinates(floater, &prev_vp, &vp);
 			// Set transformation for scratchpad windows.
 			if (floater->scratchpad) {
 				struct wlr_box output_box;

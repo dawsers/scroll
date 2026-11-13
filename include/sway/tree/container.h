@@ -271,7 +271,7 @@ void floating_calculate_constraints(int *min_width, int *max_width,
 		int *min_height, int *max_height);
 
 void floating_fix_coordinates(struct sway_container *con,
-		struct wlr_box *old, struct wlr_box *new);
+		const struct wlr_fbox *old, const struct wlr_fbox *new);
 
 void container_floating_resize_and_center(struct sway_container *con);
 

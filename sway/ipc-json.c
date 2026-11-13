@@ -849,6 +849,10 @@ json_object *ipc_json_describe_node(struct sway_node *node) {
 	node_get_box(node, &box);
 	if (node->type == N_CONTAINER) {
 		struct sway_container *con = node->sway_container;
+		struct sway_layout_transform transform;
+		layout_transform_container_get(con, false, &transform);
+		box.x = round(layout_transform_x(&transform, box.x));
+		box.y = round(layout_transform_y(&transform, box.y));
 		bool has_titlebar = con->title_bar.tree->node.enabled;
 		if (has_titlebar) {
 			struct wlr_box deco_rect = {0, 0, 0, 0};

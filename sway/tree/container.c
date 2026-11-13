@@ -891,7 +891,8 @@ void floating_calculate_constraints(int *min_width, int *max_width,
 
 }
 
-void floating_fix_coordinates(struct sway_container *con, struct wlr_box *old, struct wlr_box *new) {
+void floating_fix_coordinates(struct sway_container *con,
+		const struct wlr_fbox *old, const struct wlr_fbox *new) {
 	if (!old->width || !old->height) {
 		// Fall back to centering on the workspace.
 		container_floating_move_to_center(con);
@@ -1319,8 +1320,10 @@ void container_floating_translate(struct sway_container *con,
  * center.
  */
 struct sway_output *container_floating_find_output(struct sway_container *con) {
-	double center_x = con->pending.x + con->pending.width / 2;
-	double center_y = con->pending.y + con->pending.height / 2;
+	struct wlr_fbox screen;
+	layout_container_screen_box(con, false, &screen);
+	double center_x = screen.x + screen.width / 2;
+	double center_y = screen.y + screen.height / 2;
 	if (layout_overview_workspaces_enabled()) {
 		layout_overview_workspaces_global_to_local(con->pending.workspace, &center_x, &center_y);
 	}
@@ -1405,6 +1408,36 @@ static struct sway_workspace *container_floating_find_workspace(struct sway_outp
 	return closest_workspace;
 }
 
+// Move the floating container from the layout coordinates of one workspace
+// to the other's, keeping its position on screen
+static void container_floating_rebase(struct sway_container *con,
+		struct sway_workspace *from, struct sway_workspace *to) {
+	if (!from || !to || !from->output || !to->output) {
+		return;
+	}
+	struct sway_layout_transform t_from, t_to;
+	layout_transform_workspace_get(from, false, &t_from);
+	layout_transform_workspace_get(to, false, &t_to);
+	if (t_from.scale == t_to.scale && t_from.x == t_to.x && t_from.y == t_to.y) {
+		return;
+	}
+	// Keep the center, which decides the output of the container
+	const double hw = 0.5 * con->pending.width, hh = 0.5 * con->pending.height;
+	double x = con->pending.x + hw, y = con->pending.y + hh;
+	layout_transform_point(&t_from, &x, &y);
+	layout_transform_point_inv(&t_to, &x, &y);
+	container_floating_translate(con, x - hw - con->pending.x,
+		y - hh - con->pending.y, false);
+	// Also the current position, so the animation starts from the right place
+	const double chw = 0.5 * con->current.width, chh = 0.5 * con->current.height;
+	x = con->current.x + chw;
+	y = con->current.y + chh;
+	layout_transform_point(&t_from, &x, &y);
+	layout_transform_point_inv(&t_to, &x, &y);
+	con->current.x = x - chw;
+	con->current.y = y - chh;
+}
+
 void container_floating_move_to(struct sway_container *con,
 		double lx, double ly, bool snap) {
 	if (!sway_assert(container_is_floating(con),
@@ -1442,6 +1475,9 @@ void container_floating_move_to(struct sway_container *con,
 			// animation starts from the right place
 			layout_overview_workspaces_global_to_local(old_workspace, &con->current.x, &con->current.y);
 			layout_overview_workspaces_local_to_global(new_workspace, &con->current.x, &con->current.y);
+		} else {
+			// If the workspace transforms are different, modify the position
+			container_floating_rebase(con, old_workspace, new_workspace);
 		}
 		container_detach(con);
 		workspace_add_floating(new_workspace, con);
@@ -2425,10 +2461,7 @@ bool container_axes_in_viewport(struct sway_container *container, uint32_t axes)
 		return false;
 	}
 	struct wlr_box box_c, box_o;
-	container_get_box(container, &box_c);
-	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
-	box_c.width *= scale;
-	box_c.height *= scale;
+	layout_container_screen_wlr_box(container, false, &box_c);
 	bool floating = container_is_floating(container);
 	if (floating) {
 		root_get_box(root, &box_o);
@@ -2451,33 +2484,9 @@ bool container_in_viewport(struct sway_container *container) {
 void container_current_geometry(struct sway_container *con, struct wlr_fbox *geometry) {
 	struct sway_workspace *ws = con->pending.workspace ?
 		con->pending.workspace : con->current.workspace;
-	geometry->x = con->animation.x.animating ? con->animation.x.xt : con->pending.x;
-	geometry->y = con->animation.y.animating ? con->animation.y.xt : con->pending.y;
-	geometry->width = con->animation.w.animating ?
-		con->animation.w.xt : con->pending.width;
-	geometry->height = con->animation.h.animating ?
-		con->animation.h.xt : con->pending.height;
+	layout_container_screen_box(con, true, geometry);
 	// Add the y offset if in the middle of a workspace switch
 	if (ws && !container_is_sticky_or_child(con)) {
 		geometry->y += workspace_switch_offset(ws);
-	}
-	if(layout_scale_enabled(ws)) {
-		double scale = (ws && ws->animation.s.animating) ?
-			ws->animation.s.xt : layout_scale_get(ws);
-		geometry->width *= scale;
-		geometry->height *= scale;
-		if (con->view && !con->pending.parent && ws && ws->output) {
-			// Floating window are special in scaled workspaces, because
-			// the virtual viewport is centered for them
-			struct wlr_box *area = workspace_get_output_area(ws);
-			const double ox = area ? area->x : ws->output->lx;
-			const double oy = area ? area->y : ws->output->ly;
-			const double ow = area ? area->width : ws->output->width;
-			const double oh = area ? area->height : ws->output->height;
-			const double minx = ox + 0.5 * (1.0 - scale) * ow;
-			geometry->x = minx + scale * (geometry->x - ox);
-			const double miny = oy + 0.5 * (1.0 - scale) * oh;
-			geometry->y = miny + scale * (geometry->y - oy);
-		}
 	}
 }

@@ -76,6 +76,13 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	int amount_y = 0;
 	int moved_x = seat->cursor->cursor->x - e->ref_lx;
 	int moved_y = seat->cursor->cursor->y - e->ref_ly;
+	if (e->con->pending.workspace) {
+		// The pointer moves in screen pixels, the container in layout units
+		const double scale =
+			layout_transform_workspace_scale(e->con->pending.workspace, true);
+		moved_x = round(moved_x / scale);
+		moved_y = round(moved_y / scale);
+	}
 
 	if (e->edge_x) {
 		if (e->edge_x & WLR_EDGE_LEFT) {

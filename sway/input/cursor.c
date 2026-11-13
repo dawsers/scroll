@@ -1196,18 +1196,13 @@ void cursor_warp_to_container(struct sway_cursor *cursor,
 	}
 
 	struct wlr_box box;
-	container_get_box(container, &box);
-	struct sway_workspace *workspace = container->pending.workspace;
-	float scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
-	box.width *= scale;
-	box.height *= scale;
-	if (!force && wlr_box_contains_point(&box, cursor->cursor->x,
-			cursor->cursor->y)) {
+	layout_container_screen_wlr_box(container, false, &box);
+	if (!force && wlr_box_contains_point(&box, cursor->cursor->x, cursor->cursor->y)) {
 		return;
 	}
 
-	double x = container->pending.x + scale * container->pending.width / 2.0;
-	double y = container->pending.y + scale * container->pending.height / 2.0;
+	const double x = box.x + 0.5 * box.width;
+	const double y = box.y + 0.5 * box.height;
 
 	wlr_cursor_warp(cursor->cursor, NULL, x, y);
 	cursor_unhide(cursor);

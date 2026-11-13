@@ -133,16 +133,11 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	struct sway_workspace *workspace = con->pending.workspace;
 	enum sway_container_layout layout = layout_get_type(workspace);
 	struct wlr_box node_box;
-	node_get_box(&con->node, &node_box);
+	layout_container_screen_wlr_box(con, true, &node_box);
 	node_box.x -= workspace->x;
 	node_box.y -= workspace->y;
-	int drop_layout_border = DROP_LAYOUT_BORDER;
-	if (layout_scale_enabled(workspace)) {
-		float scale = layout_scale_get(workspace);
-		drop_layout_border *= scale;
-		node_box.width *= scale;
-		node_box.height *= scale;
-	}
+	int drop_layout_border = DROP_LAYOUT_BORDER *
+		layout_transform_workspace_scale(workspace, true);
 	struct wlr_box box = node_box;
 	int gap_x = 0, gap_y = 0;
 	if (move_parent) {

@@ -52,26 +52,12 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 	if (layout_overview_workspaces_enabled()) {
 		layout_overview_workspaces_local_to_global(cont->pending.workspace, &cx, &cy);
 	}
-	double scale = layout_scale_enabled(cont->pending.workspace) ? layout_scale_get(cont->pending.workspace) : 1.0;
-	double x, y, yb;
-	if (container_is_floating(cont) && cont->pending.workspace && cont->pending.workspace->output) {
-		struct sway_workspace *ws = cont->pending.workspace;
-		struct wlr_box *area = workspace_get_output_area(ws);
-		struct sway_output *output = ws->output;
-		const double ox = area ? area->x : output->lx;
-		const double oy = area ? area->y : output->ly;
-		const double ow = area ? area->width : output->width;
-		const double oh = area ? area->height : output->height;
-		const double minx = ox + 0.5 * (1.0 - scale) * ow;
-		x = minx + scale * (cont->pending.x - ox);
-		const double miny = oy + 0.5 * (1.0 - scale) * oh;
-		y = miny + scale * (cont->pending.y - oy);
-		yb = miny + scale * (cont->pending.y + (cont->pending.border == B_NORMAL ? container_titlebar_height() : 0.0) - oy);
-	} else {
-		x = cont->pending.x;
-		y = cont->pending.y;
-		yb = cont->pending.y + (cont->pending.border == B_NORMAL ? scale * container_titlebar_height() : 0.0);
-	}
+	const double scale = layout_transform_container_scale(cont, true);
+	struct wlr_fbox box;
+	layout_container_screen_box(cont, true, &box);
+	const double x = box.x, y = box.y, width = box.width, height = box.height;
+	const double yb = y + (cont->pending.border == B_NORMAL ?
+		scale * container_titlebar_height() : 0.0);
 	enum wlr_edges edge = 0;
 	const double border_thickness = cont->pending.border_thickness > 0 ?
 		fmax(1.0, scale * cont->pending.border_thickness) : 0.0;
@@ -81,10 +67,10 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 	if (cont->pending.border_top && cy >= yb && cy < yb + border_thickness) {
 		edge |= WLR_EDGE_TOP;
 	}
-	if (cont->pending.border_right && cx >= x + scale * cont->pending.width - border_thickness) {
+	if (cont->pending.border_right && cx >= x + width - border_thickness) {
 		edge |= WLR_EDGE_RIGHT;
 	}
-	if (cont->pending.border_bottom && cy >= y + scale * cont->pending.height - border_thickness) {
+	if (cont->pending.border_bottom && cy >= y + height - border_thickness) {
 		edge |= WLR_EDGE_BOTTOM;
 	}
 
@@ -397,9 +383,11 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 	if (cont && !is_floating_or_child && mod_pressed && mod_resize_btn_pressed &&
 			state == WL_POINTER_BUTTON_STATE_PRESSED) {
 		edge = 0;
-		edge |= cursor->cursor->x > cont->pending.x + cont->pending.width / 2 ?
+		struct wlr_fbox box;
+		layout_container_screen_box(cont, true, &box);
+		edge |= cursor->cursor->x > box.x + box.width / 2 ?
 			WLR_EDGE_RIGHT : WLR_EDGE_LEFT;
-		edge |= cursor->cursor->y > cont->pending.y + cont->pending.height / 2 ?
+		edge |= cursor->cursor->y > box.y + box.height / 2 ?
 			WLR_EDGE_BOTTOM : WLR_EDGE_TOP;
 
 		const char *image = NULL;
@@ -460,9 +448,11 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		if (mod_resize_btn_pressed) {
 			struct sway_container *floater = container_toplevel_ancestor(cont);
 			edge = 0;
-			edge |= cursor->cursor->x > floater->pending.x + floater->pending.width / 2 ?
+			struct wlr_fbox box;
+			layout_container_screen_box(floater, true, &box);
+			edge |= cursor->cursor->x > box.x + box.width / 2 ?
 				WLR_EDGE_RIGHT : WLR_EDGE_LEFT;
-			edge |= cursor->cursor->y > floater->pending.y + floater->pending.height / 2 ?
+			edge |= cursor->cursor->y > box.y + box.height / 2 ?
 				WLR_EDGE_BOTTOM : WLR_EDGE_TOP;
 			seat_set_focus_container(seat, floater);
 			seatop_begin_resize_floating(seat, floater, edge);

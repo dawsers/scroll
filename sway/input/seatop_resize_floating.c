@@ -45,6 +45,13 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	// Positive is down/right
 	double mouse_move_x = cursor->cursor->x - e->ref_lx;
 	double mouse_move_y = cursor->cursor->y - e->ref_ly;
+	if (con->pending.workspace) {
+		// The pointer moves in screen pixels, the container in layout units
+		const double scale =
+			layout_transform_workspace_scale(con->pending.workspace, true);
+		mouse_move_x /= scale;
+		mouse_move_y /= scale;
+	}
 
 	if (edge == WLR_EDGE_TOP || edge == WLR_EDGE_BOTTOM) {
 		mouse_move_x = 0;

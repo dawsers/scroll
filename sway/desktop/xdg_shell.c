@@ -54,14 +54,19 @@ static void popup_unconstrain(struct sway_xdg_popup *popup) {
 	popup->scene_tree->node.info.workspace =
 		layout_overview_workspaces_enabled() ? workspace : NULL;
 
+	struct sway_layout_transform transform;
+	layout_transform_container_get(view->container, false, &transform);
 	float scale = view_is_content_scaled(view) ? view_get_content_scale(view) : 1.0f;
-	scale *= layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0f;
+	scale *= transform.scale;
 
 	// the output box expressed in the coordinate system of the toplevel parent
 	// of the popup
+	double content_x = view->container->pending.content_x;
+	double content_y = view->container->pending.content_y;
+	layout_transform_point(&transform, &content_x, &content_y);
 	struct wlr_box output_toplevel_sx_box = {
-		.x = (workspace->x - view->container->pending.content_x + view->geometry.x) / scale,
-		.y = (workspace->y - view->container->pending.content_y + view->geometry.y) / scale,
+		.x = (workspace->x - content_x + view->geometry.x) / scale,
+		.y = (workspace->y - content_y + view->geometry.y) / scale,
 		.width = workspace->width / scale,
 		.height = workspace->height / scale,
 	};

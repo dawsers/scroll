@@ -14,6 +14,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
+#include "sway/tree/layout.h"
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
 #include "sway/tree/virtual_output.h"
@@ -133,13 +134,14 @@ static void container_move_to_workspace(struct sway_container *container,
 		container_handle_fullscreen_reparent(container);
 		// If changing output, adjust the coordinates of the window.
 		if (old_output != workspace->output && !container->pending.fullscreen_mode) {
-			struct wlr_box workspace_box, old_workspace_box;
-			workspace_get_box(workspace, &workspace_box);
-			workspace_get_box(old_workspace, &old_workspace_box);
-			floating_fix_coordinates(container, &old_workspace_box, &workspace_box);
+			// What each workspace shows, in its layout coordinates
+			struct wlr_fbox vp, old_vp;
+			layout_vp_box(workspace, &vp);
+			layout_vp_box(old_workspace, &old_vp);
+			floating_fix_coordinates(container, &old_vp, &vp);
 			if (container->scratchpad && workspace->output) {
-				struct wlr_box output_box;
-				output_get_box(workspace->output, &output_box);
+				struct wlr_box workspace_box;
+				workspace_get_box(workspace, &workspace_box);
 				container->transform = workspace_box;
 			}
 		}

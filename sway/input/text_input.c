@@ -142,9 +142,14 @@ static void constrain_popup(struct sway_input_popup *popup) {
 
 	if (popup->desc.view) {
 		struct sway_view *view = popup->desc.view;
+		double content_x = view->container->pending.content_x;
+		double content_y = view->container->pending.content_y;
+		struct sway_layout_transform transform;
+		layout_transform_container_get(view->container, false, &transform);
+		layout_transform_point(&transform, &content_x, &content_y);
 		output = wlr_output_layout_output_at(root->output_layout,
-			view->container->pending.content_x + view->geometry.x,
-			view->container->pending.content_y + view->geometry.y);
+			content_x + view->geometry.x,
+			content_y + view->geometry.y);
 
 		parent.width = view->geometry.width;
 		parent.height = view->geometry.height;
