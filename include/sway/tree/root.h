@@ -7,42 +7,20 @@
 #include <wlr/render/wlr_texture.h>
 #include <wlr/types/wlr_scene.h>
 #include "sway/tree/container.h"
+#include "sway/tree/layout.h"
 #include "sway/tree/node.h"
 #include "list.h"
 
 extern struct sway_root *root;
 
-typedef bool (*sway_root_output_filter_func_t)(
-	struct sway_output *output, void *data);
+struct criteria;
 
-typedef bool (*sway_root_workspace_filter_func_t)(
-	struct sway_workspace *workspace, void *data);
-
-typedef bool (*sway_root_container_filter_func_t)(
-	struct sway_workspace *workspace, struct sway_container *container, void *data);
-
-// Filters used during arrange_root()
+// Filters describe which containers are visible
 struct sway_root_filters {
 	bool reset;	// the filter can be reset
-	// Decide whether to add this output to the scene graph (SG)
-	sway_root_output_filter_func_t output_filter;
-	void *output_filter_data;
-	// Decide whether to enable fullscreen mode and background regardless
-	// of the active workspace fullscreen state
-	sway_root_output_filter_func_t output_fullscreen_filter;
-	void *output_fullscreen_filter_data;
-	// Decide whether to add this workspace to the SG
-	sway_root_workspace_filter_func_t workspace_filter;
-	void *workspace_filter_data;
-	// Decide whether to add floating containers of this workspace to the SG
-	sway_root_workspace_filter_func_t workspace_floating_filter;
-	void *workspace_floating_filter_data;
-	// Decide whether to add tiling containers of this workspace to the SG
-	sway_root_workspace_filter_func_t workspace_tiling_filter;
-	void *workspace_tiling_filter_data;
-	// Decide whether to add this container to the SG
-	sway_root_container_filter_func_t container_filter;
-	void *container_filter_data;
+	enum sway_layout_filter filter;
+	enum sway_layout_filter_apply apply;
+	struct criteria *criteria; // can be NULL if no criteria applied
 };
 
 struct sway_root {
@@ -106,7 +84,7 @@ struct sway_root {
 		struct wl_signal new_node;
 	} events;
 
-	// Filters used during arrange_root()
+	// The active filter
 	struct sway_root_filters *filters;
 	// All the accessible sets of filters, the first item is the default filters
 	list_t *filters_list;

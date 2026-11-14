@@ -387,79 +387,13 @@ void root_get_box(struct sway_root *root, struct wlr_box *box) {
 	box->height = root->height;
 }
 
-static bool default_output_filter(struct sway_output *output, void *data) {
-	return true;
-}
-
-static bool default_output_fullscreen_filter(struct sway_output *output, void *data) {
-	for (int i = 0; i < output->workspaces->length; ++i) {
-		struct sway_workspace *workspace = output->workspaces->items[i];
-		if (workspace_is_panning(workspace) && workspace->current.fullscreen) {
-			return true;
-		}
-	}
-	return false;
-}
-
-static bool default_workspace_filter(struct sway_workspace *workspace, void *data) {
-	struct sway_output *output = workspace->output;
-	bool activated = output->wlr_output->enabled;
-	if (!layout_overview_workspaces_enabled() && !workspace_is_panning(workspace)) {
-		// Each visible virtual output shows its active workspace, just like a
-		// real output shows one workspace at a time.
-		struct sway_virtual_output *vo = workspace->virtual_output;
-		activated = activated && vo && virtual_output_is_visible(vo) &&
-			virtual_output_get_active_workspace(vo) == workspace;
-	}
-	return activated;
-}
-
-static bool default_workspace_tiling_filter(struct sway_workspace *workspace, void *data) {
-	bool tiling = true;
-	if (layout_overview_mode(workspace) == OVERVIEW_FLOATING) {
-		tiling = false;
-	}
-	return tiling;
-}
-
-static bool default_workspace_floating_filter(struct sway_workspace *workspace, void *data) {
-	bool floating = true;
-	if (layout_overview_mode(workspace) == OVERVIEW_TILING) {
-		floating = false;
-	}
-	return floating;
-}
-
-static bool default_container_filter(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	if (workspace_is_panning(workspace)) {
-		return workspace_container_visible(workspace, container);
-	}
-	return true;
-}
-
-static void filters_set_default(struct sway_root_filters *filters) {
-	filters->output_filter = default_output_filter;
-	filters->output_filter_data = NULL;
-	filters->output_fullscreen_filter = default_output_fullscreen_filter;
-	filters->output_fullscreen_filter_data = NULL;
-	filters->workspace_filter = default_workspace_filter;
-	filters->workspace_filter_data = NULL;
-	filters->workspace_tiling_filter = default_workspace_tiling_filter;
-	filters->workspace_tiling_filter_data = NULL;
-	filters->workspace_floating_filter = default_workspace_floating_filter;
-	filters->workspace_floating_filter_data = NULL;
-	filters->container_filter = default_container_filter;
-	filters->container_filter_data = NULL;
-}
-
 /*
  * Delete all the filters on the list, and set the default ones as current.
  */
 void root_filters_reset(struct sway_root *root) {
 	if (root->filters_list->length == 0) {
+		// The default filter (LAYOUT_FILTER_ALL) shows everything
 		struct sway_root_filters *filters = calloc(1, sizeof(struct sway_root_filters));
-		filters_set_default(filters);
 		list_add(root->filters_list, filters);
 	}
 	for (int i = root->filters_list->length - 1; i > 0; i--) {
@@ -476,8 +410,8 @@ void root_filters_reset(struct sway_root *root) {
  * Create a sway_root_filters struct, push it to the filters_list and make it active.
  */
 struct sway_root_filters *root_filters_create(struct sway_root *root) {
+	// The default filter (LAYOUT_FILTER_ALL) shows everything
 	struct sway_root_filters *filters = calloc(1, sizeof(struct sway_root_filters));
-	filters_set_default(filters);
 	list_add(root->filters_list, filters);
 	root->filters = filters;
 	return filters;

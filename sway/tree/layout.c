@@ -1,6 +1,7 @@
 #include "sway/tree/layout.h"
 #include "sway/output.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/filter.h"
 #include "sway/tree/virtual_output.h"
 #include "sway/tree/arrange.h"
 #include "sway/sway_text_node.h"
@@ -152,7 +153,7 @@ static void overview_jump_update_bounding_box(const struct sway_container *conta
 	if (container->pending.children) {
 		for (int i = 0; i < container->pending.children->length; ++i) {
 			struct sway_container *con = container->pending.children->items[i];
-			if (!root->filters->container_filter(con->pending.workspace, con, root->filters->container_filter_data)) {
+			if (con->pending.filtered) {
 				continue;
 			}
 			overview_jump_update_bounding_box(con, minx, maxx, miny, maxy, gaps);
@@ -174,28 +175,20 @@ static void overview_jump_update_bounding_box(const struct sway_container *conta
 }
 
 static void overview_jump_recompute_scale(struct sway_workspace *workspace) {
-	bool tiling_enabled = root->filters->workspace_tiling_filter(workspace,
-			root->filters->workspace_tiling_filter_data);
-	bool floating_enabled = root->filters->workspace_floating_filter(workspace,
-			root->filters->workspace_floating_filter_data);
 	double minx = DBL_MAX, maxx = -DBL_MAX, miny = DBL_MAX, maxy = -DBL_MAX;
-	if (floating_enabled) {
-		for (int i = 0; i < workspace->floating->length; ++i) {
-			struct sway_container *con = workspace->floating->items[i];
-			if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
-				continue;
-			}
-			overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy, 0.0);
+	for (int i = 0; i < workspace->floating->length; ++i) {
+		struct sway_container *con = workspace->floating->items[i];
+		if (con->pending.filtered) {
+			continue;
 		}
+		overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy, 0.0);
 	}
-	if (tiling_enabled) {
-		for (int i = 0; i < workspace->tiling->length; ++i) {
-			struct sway_container *con = workspace->tiling->items[i];
-			if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
-				continue;
-			}
-			overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy, workspace->gaps_inner);
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *con = workspace->tiling->items[i];
+		if (con->pending.filtered) {
+			continue;
 		}
+		overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy, workspace->gaps_inner);
 	}
 	const double maxw = maxx - minx;
 	const double maxh = maxy - miny;
@@ -1776,293 +1769,25 @@ static void switch_workspace(struct sway_workspace *workspace) {
 	seat_consider_warp_to_focus(seat);
 }
 
-static bool filter_workspace_disable(struct sway_workspace *workspace, void *data) {
-	return false;
-}
-
-static bool workspace_is_active(struct sway_workspace *workspace) {
-	struct sway_output *output = workspace->output;
-	if (!output || !output->wlr_output->enabled) {
-		return false;
-	}
-	if (workspace->virtual_output) {
-		return virtual_output_is_visible(workspace->virtual_output) &&
-			virtual_output_get_active_workspace(workspace->virtual_output) == workspace;
-	}
-	return output->current.active_workspace == workspace;
-}
-
-static bool filter_workspace_active_disable(struct sway_workspace *workspace, void *data) {
-	return !workspace_is_active(workspace);
-}
-
-static bool filter_workspace_active_enable(struct sway_workspace *workspace, void *data) {
-	return workspace_is_active(workspace);
-}
-
-static bool filter_container_and_children(sway_root_container_filter_func_t container_filter,
-		struct sway_workspace *workspace, struct sway_container *container, void *data) {
-	if (container->pending.children) {
-		for (int i = 0; i < container->pending.children->length; ++i) {
-			struct sway_container *con = container->pending.children->items[i];
-			if (filter_container_and_children(container_filter, workspace, con, data)) {
-				return true;
-			}
-		}
-	} else if (container->view) {
-		return container_filter(workspace, container, data);
-	}
-	return false;
-}
-
-static bool container_is_focused_child(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	struct sway_container *focused = data;
-	return container == focused || container->pending.parent == focused;
-}
-
-static bool container_is_focused(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	struct sway_seat *seat = input_manager_current_seat();
-	struct sway_node *focused_node = seat_get_focus_inactive(seat, &workspace->node);
-	if (!focused_node || focused_node->type != N_CONTAINER) {
-		return false;
-	}
-	struct sway_container *focused = focused_node->sway_container;
-	// I want to filter all the siblings of the focused container
-	if (focused->pending.parent) {
-		focused = focused->pending.parent;
-	}
-	return filter_container_and_children(container_is_focused_child, workspace, container, focused);
-}
-
-static bool filter_container_enable(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	return container_is_focused(workspace, container, data);
-}
-
-static bool filter_container_active_enable(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	bool active = workspace_is_active(workspace);
-	if (active) {
-		return filter_container_enable(workspace, container, data);
-	}
-	return false;
-}
-
-static bool filter_container_active_only_enable(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	bool active = workspace_is_active(workspace);
-	if (active) {
-		return filter_container_enable(workspace, container, data);
-	}
-	return true;
-}
-
-static bool filter_trailmarks_enable_child(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	return layout_trails_trailmarked(container->view);
-}
-
-static bool filter_trailmarks_enable(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	return filter_container_and_children(filter_trailmarks_enable_child, workspace, container, NULL);
-}
-
-static bool filter_trailmarks_active_enable(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	bool active = workspace_is_active(workspace);
-	if (active) {
-		return filter_container_and_children(filter_trailmarks_enable_child, workspace, container, NULL);
-	}
-	return true;
-}
-
-struct workspace_visibility_data {
-	double minx, miny, maxx, maxy;
-};
-
-static bool filter_container_visible_child(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	struct workspace_visibility_data *visibility = data;
-	struct wlr_fbox box;
-	layout_container_screen_box(container, false, &box);
-	if (box.x < visibility->minx ||
-		box.x + box.width > visibility->maxx ||
-		box.y < visibility->miny ||
-		box.y + box.height > visibility->maxy) {
-		return false;
-	}
-	return true;
-}
-
-static bool filter_container_visible(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	struct workspace_visibility_data visibility;
-	struct sway_output *output = workspace->output;
-	struct wlr_box *area = workspace_get_output_area(workspace);
-	if (output && area) {
-		visibility.minx = area->x;
-		visibility.miny = area->y;
-		visibility.maxx = area->x + area->width;
-		visibility.maxy = area->y + area->height;
-	} else if (!output) {
-		struct wlr_box *usable = workspace_get_output_usable_area(workspace);
-		if (usable) {
-			visibility.minx = usable->x;
-			visibility.miny = usable->y;
-			visibility.maxx = usable->x + usable->width;
-			visibility.maxy = usable->y + usable->height;
-		} else {
-			visibility.minx = workspace->x;
-			visibility.miny = workspace->y;
-			visibility.maxx = workspace->x + workspace->width;
-			visibility.maxy = workspace->y + workspace->height;
-		}
-	} else {
-		visibility.minx = output->lx;
-		visibility.miny = output->ly;
-		visibility.maxx = output->lx + output->width;
-		visibility.maxy = output->ly + output->height;
-	}
-	return filter_container_and_children(filter_container_visible_child, workspace, container, &visibility);
-}
-
-static bool filter_container_active_visible(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	bool active = workspace_is_active(workspace);
-	if (active) {
-		return filter_container_visible(workspace, container, data);
-	}
-	return true;
-}
-
-static bool filter_container_criteria_child(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	struct criteria *criteria = data;
-	return criteria_matches_view(criteria, container->view);
-}
-
-static bool filter_container_criteria(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	return filter_container_and_children(filter_container_criteria_child, workspace, container, data);
-}
-
-static bool filter_scratchpad_enable_child(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	return container->scratchpad;
-}
-
-static bool filter_scratchpad_enable(struct sway_workspace *workspace,
-		struct sway_container *container, void *data) {
-	return filter_container_and_children(filter_scratchpad_enable_child, workspace, container, NULL);
-}
-
-
-static bool filter_workspace_active_or_overview_enable(struct sway_workspace *workspace, void *data) {
-	return workspace_is_active(workspace) || layout_overview_workspaces_enabled();
-}
-
 static void filter_configure(struct sway_root_filters *filters,
 		enum sway_layout_filter filter, enum sway_layout_filter_apply apply) {
-	switch (filter) {
-	case LAYOUT_FILTER_ALL:
-		break;
-	case LAYOUT_FILTER_TILING:
-		switch (apply) {
-		case LAYOUT_FILTER_APPLY_ACTIVE:
-			filters->workspace_filter = filter_workspace_active_enable;
-			filters->workspace_floating_filter = filter_workspace_disable;
-			break;
-		case LAYOUT_FILTER_APPLY_ALL:
-			filters->workspace_filter = filter_workspace_active_or_overview_enable;
-			filters->workspace_floating_filter = filter_workspace_disable;
-			break;
-		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			filters->workspace_floating_filter = filter_workspace_active_disable;
-			break;
-		}
-		break;
-	case LAYOUT_FILTER_FLOATING:
-		switch (apply) {
-		case LAYOUT_FILTER_APPLY_ACTIVE:
-			filters->workspace_filter = filter_workspace_active_enable;
-			filters->workspace_tiling_filter = filter_workspace_disable;
-			break;
-		case LAYOUT_FILTER_APPLY_ALL:
-			filters->workspace_filter = filter_workspace_active_or_overview_enable;
-			filters->workspace_tiling_filter = filter_workspace_disable;
-			break;
-		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			filters->workspace_tiling_filter = filter_workspace_active_disable;
-			break;
-		}
-		break;
-	case LAYOUT_FILTER_CONTAINER: {
-		switch (apply) {
-		case LAYOUT_FILTER_APPLY_ACTIVE:
-			filters->container_filter = filter_container_active_enable;
-			break;
-		case LAYOUT_FILTER_APPLY_ALL:
-			filters->container_filter = filter_container_enable;
-			break;
-		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			filters->container_filter = filter_container_active_only_enable;
-			break;
-		}
-		break;
-	}
-	case LAYOUT_FILTER_TRAILMARK:
-		switch (apply) {
-		case LAYOUT_FILTER_APPLY_ACTIVE:
-			filters->workspace_filter = filter_workspace_active_enable;
-			filters->container_filter = filter_trailmarks_active_enable;
-			break;
-		case LAYOUT_FILTER_APPLY_ALL:
-			filters->container_filter = filter_trailmarks_enable;
-			break;
-		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			filters->container_filter = filter_trailmarks_active_enable;
-			break;
-		}
-		break;
-	case LAYOUT_FILTER_VISIBLE:
-		switch (apply) {
-		case LAYOUT_FILTER_APPLY_ACTIVE:
-			filters->workspace_filter = filter_workspace_active_enable;
-			filters->container_filter = filter_container_active_visible;
-			break;
-		case LAYOUT_FILTER_APPLY_ALL:
-			filters->container_filter = filter_container_visible;
-			break;
-		case LAYOUT_FILTER_APPLY_ACTIVE_ONLY:
-			filters->container_filter = filter_container_active_visible;
-			break;
-		}
-		break;
-	case LAYOUT_FILTER_SCRATCHPAD:
-		filters->workspace_filter = filter_workspace_active_enable;
-		filters->workspace_tiling_filter = filter_workspace_disable;
-		filters->container_filter = filter_scratchpad_enable;
-		break;
-	}
+	filters->filter = filter;
+	filters->apply = apply;
 	node_set_dirty(&root->node);
-}
-
-static void set_dirty(struct sway_container *container, void *data) {
-	node_set_dirty(&container->node);
 }
 
 void layout_filter_reset() {
 	root_filters_reset(root);
-	root_for_each_container(set_dirty, NULL);
+	node_set_dirty(&root->node);
+	filter_apply();
 }
 
 void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply apply) {
-	layout_filter_reset();
+	root_filters_reset(root);
 	struct sway_root_filters *filters = root_filters_create(root);
 	filters->reset = true;
 	filter_configure(filters, filter, apply);
+	filter_apply();
 }
 
 void layout_container_jump_decoration_apply_scale(struct sway_container *con) {
@@ -2224,7 +1949,7 @@ static void organize_container_compute_overlapping_bounds(struct sway_container 
 	if (overlap->pending.children) {
 		for (int i = 0; i < overlap->pending.children->length; ++i) {
 			struct sway_container *con = overlap->pending.children->items[i];
-			if (!root->filters->container_filter(con->pending.workspace, con, root->filters->container_filter_data)) {
+			if (con->pending.filtered) {
 				continue;
 			}
 			organize_container_compute_overlapping_bounds(container, con,
@@ -2249,29 +1974,24 @@ static void organize_container_compute_overlapping_bounds(struct sway_container 
 }
 
 static void organize_compute_overlapping_bounds(struct sway_workspace *workspace,
-		bool tiling_enabled, bool floating_enabled,
 		struct sway_container *container, double *minx, double *maxx,
 		double *miny, double *maxy) {
 	*minx = DBL_MAX; *maxx = -DBL_MAX; *miny = DBL_MAX; *maxy = -DBL_MAX;
-	if (floating_enabled) {
-		for (int i = 0; i < workspace->floating->length; ++i) {
-			struct sway_container *con = workspace->floating->items[i];
-			if (!root->filters->container_filter(con->pending.workspace, con, root->filters->container_filter_data)) {
-				continue;
-			}
-			organize_container_compute_overlapping_bounds(container, con,
-				minx, maxx, miny, maxy);
+	for (int i = 0; i < workspace->floating->length; ++i) {
+		struct sway_container *con = workspace->floating->items[i];
+		if (con->pending.filtered) {
+			continue;
 		}
+		organize_container_compute_overlapping_bounds(container, con,
+			minx, maxx, miny, maxy);
 	}
-	if (tiling_enabled) {
-		for (int j = 0; j < workspace->tiling->length; ++j) {
-			struct sway_container *con = workspace->tiling->items[j];
-			if (!root->filters->container_filter(con->pending.workspace, con, root->filters->container_filter_data)) {
-				continue;
-			}
-			organize_container_compute_overlapping_bounds(container, con,
-				minx, maxx, miny, maxy);
+	for (int j = 0; j < workspace->tiling->length; ++j) {
+		struct sway_container *con = workspace->tiling->items[j];
+		if (con->pending.filtered) {
+			continue;
 		}
+		organize_container_compute_overlapping_bounds(container, con,
+			minx, maxx, miny, maxy);
 	}
 }
 
@@ -2281,7 +2001,7 @@ static int overlapping_containers(struct sway_container *container,
 	if (tiled->pending.children) {
 		for (int i = 0; i < tiled->pending.children->length; ++i) {
 			struct sway_container *con = tiled->pending.children->items[i];
-			if (!root->filters->container_filter(con->pending.workspace, con, root->filters->container_filter_data)) {
+			if (con->pending.filtered) {
 				continue;
 			}
 			over += overlapping_containers(con, container);
@@ -2300,8 +2020,7 @@ static int compare_id(const void *data1, const void *data2) {
 	return con2->node.id - con1->node.id;
 }
 
-static struct sway_container *organize_maximum_overlap(struct sway_workspace *workspace,
-		bool tiling_enabled, bool floating_enabled) {
+static struct sway_container *organize_maximum_overlap(struct sway_workspace *workspace) {
 	struct sway_container *max_con = NULL;
 	// When computing the maximum overlap with a tiling container, I need
 	// to use the children for the bounding box, but don't need to verify
@@ -2317,29 +2036,25 @@ static struct sway_container *organize_maximum_overlap(struct sway_workspace *wo
 	int max_over = 0;
 	for (int i = 0; i < ordered->length; ++i) {
 		struct sway_container *con1 = ordered->items[i];
-		if (!root->filters->container_filter(con1->pending.workspace, con1, root->filters->container_filter_data)) {
+		if (con1->pending.filtered) {
 			continue;
 		}
 		int over = 0;
-		if (floating_enabled) {
-			for (int j = 0; j < workspace->floating->length; ++j) {
-				struct sway_container *con2 = workspace->floating->items[j];
-				if (!root->filters->container_filter(con2->pending.workspace, con2, root->filters->container_filter_data)) {
-					continue;
-				}
-				if (con1 != con2 && containers_overlap(con1, con2)) {
-					++over;
-				}
+		for (int j = 0; j < workspace->floating->length; ++j) {
+			struct sway_container *con2 = workspace->floating->items[j];
+			if (con2->pending.filtered) {
+				continue;
+			}
+			if (con1 != con2 && containers_overlap(con1, con2)) {
+				++over;
 			}
 		}
-		if (tiling_enabled) {
-			for (int j = 0; j < workspace->tiling->length; ++j) {
-				struct sway_container *con2 = workspace->tiling->items[j];
-				if (!root->filters->container_filter(con2->pending.workspace, con2, root->filters->container_filter_data)) {
-					continue;
-				}
-				over += overlapping_containers(con1, con2);
+		for (int j = 0; j < workspace->tiling->length; ++j) {
+			struct sway_container *con2 = workspace->tiling->items[j];
+			if (con2->pending.filtered) {
+				continue;
 			}
+			over += overlapping_containers(con1, con2);
 		}
 		if (over > max_over) {
 			max_over = over;
@@ -2350,17 +2065,15 @@ static struct sway_container *organize_maximum_overlap(struct sway_workspace *wo
 	return max_con;
 }
 
-static void organize_deoverlap(struct sway_workspace *workspace,
-		bool tiling_enabled, bool floating_enabled) {
+static void organize_deoverlap(struct sway_workspace *workspace) {
 	while (true) {
-		struct sway_container *container = organize_maximum_overlap(workspace,
-			tiling_enabled, floating_enabled);
+		struct sway_container *container = organize_maximum_overlap(workspace);
 		if (!container) {
 			break;
 		}
 		double minx, maxx, miny, maxy;
-		organize_compute_overlapping_bounds(workspace, tiling_enabled, floating_enabled,
-			container, &minx, &maxx, &miny, &maxy);
+		organize_compute_overlapping_bounds(workspace, container,
+			&minx, &maxx, &miny, &maxy);
 		const double dx = maxx - container->pending.x;
 		const double dy = maxy - container->pending.y;
 		if (fabs(dx) < fabs(dy)) {
@@ -2393,7 +2106,7 @@ static void organize_arrange_tiled_containers(struct sway_workspace *workspace,
 		double off = offset;
 		for (int i = 0; i < children->length; ++i) {
 			struct sway_container *child = children->items[i];
-			if (!root->filters->container_filter(workspace, child, root->filters->container_filter_data)) {
+			if (child->pending.filtered) {
 				continue;
 			}
 			struct sway_container *parent = child->pending.parent;
@@ -2411,7 +2124,7 @@ static void organize_arrange_tiled_containers(struct sway_workspace *workspace,
 		double off = offset;
 		for (int i = 0; i < children->length; ++i) {
 			struct sway_container *child = children->items[i];
-			if (!root->filters->container_filter(workspace, child, root->filters->container_filter_data)) {
+			if (child->pending.filtered) {
 				continue;
 			}
 			struct sway_container *parent = child->pending.parent;
@@ -2451,10 +2164,8 @@ static void organize_jump_begin(struct sway_workspace *workspace) {
 }
 
 static void organize_jump_windows(struct sway_workspace *workspace) {
-	bool tiling_enabled = root->filters->workspace_tiling_filter(workspace,
-			root->filters->workspace_tiling_filter_data);
-	bool floating_enabled = root->filters->workspace_floating_filter(workspace,
-			root->filters->workspace_floating_filter_data);
+	bool tiling_enabled = filter_workspace_tiling_enabled(workspace);
+	bool floating_enabled = filter_workspace_floating_enabled(workspace);
 	// Restore positions
 	if (tiling_enabled) {
 		for (int i = 0; i < workspace->tiling->length; ++i) {
@@ -2470,10 +2181,10 @@ static void organize_jump_windows(struct sway_workspace *workspace) {
 			struct sway_container *con = workspace->floating->items[i];
 			organize_restore_positions(con);
 		}
-		organize_deoverlap(workspace, tiling_enabled, floating_enabled);
+		organize_deoverlap(workspace);
 		for (int i = 0; i < workspace->floating->length; ++i) {
 			struct sway_container *con = workspace->floating->items[i];
-			if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
+			if (con->pending.filtered) {
 				continue;
 			}
 			overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy, 0.0);
@@ -2484,7 +2195,7 @@ static void organize_jump_windows(struct sway_workspace *workspace) {
 	if (tiling_enabled) {
 		for (int i = 0; i < workspace->tiling->length; ++i) {
 			struct sway_container *con = workspace->tiling->items[i];
-			if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
+			if (con->pending.filtered) {
 				continue;
 			}
 			overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy, workspace->gaps_inner);
@@ -2501,7 +2212,7 @@ static void organize_jump_windows(struct sway_workspace *workspace) {
 	if (tiling_enabled) {
 		for (int i = 0; i < workspace->tiling->length; ++i) {
 			struct sway_container *con = workspace->tiling->items[i];
-			if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
+			if (con->pending.filtered) {
 				continue;
 			}
 			translate_container_and_children(con, dx, dy);
@@ -2511,7 +2222,7 @@ static void organize_jump_windows(struct sway_workspace *workspace) {
 	if (floating_enabled) {
 		for (int i = 0; i < workspace->floating->length; ++i) {
 			struct sway_container *con = workspace->floating->items[i];
-			if (!root->filters->container_filter(workspace, con, root->filters->container_filter_data)) {
+			if (con->pending.filtered) {
 				continue;
 			}
 			translate_container_and_children(con, dx, dy);
@@ -2568,7 +2279,7 @@ static void jump_generate_labels(struct sway_container *view, void *data) {
 
 static void jump_for_each_container(struct sway_workspace *workspace,
 		struct sway_container *container, void (*f)(struct sway_container *view, void *data), void *data) {
-	if (!root->filters->container_filter(workspace, container, root->filters->container_filter_data)) {
+	if (container->pending.filtered) {
 		return;
 	}
 	if (container->pending.children) {
@@ -2584,8 +2295,7 @@ static void jump_for_each_container(struct sway_workspace *workspace,
 static void jump_for_each_view(void (*f)(struct sway_container *view, void *data), void *data) {
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
-		if (!output->enabled || !output->wlr_output->enabled ||
-			!root->filters->output_filter(output, root->filters->output_filter_data)) {
+		if (!output->enabled || !output->wlr_output->enabled) {
 			continue;
 		}
 		for (int j = 0; j < output->workspaces->length; ++j) {
@@ -2594,23 +2304,17 @@ static void jump_for_each_view(void (*f)(struct sway_container *view, void *data
 			if (!workspace || workspace->node.destroying) {
 				continue;
 			}
-			bool activated = root->filters->workspace_filter(workspace, root->filters->workspace_filter_data);
+			bool activated = filter_workspace_enabled(workspace);
 			if (!activated) {
 				continue;
 			}
-			bool floating = root->filters->workspace_floating_filter(workspace, root->filters->workspace_floating_filter_data);
-			bool tiling = root->filters->workspace_tiling_filter(workspace, root->filters->workspace_tiling_filter_data);
-			if (floating) {
-				for (int k = 0; k < workspace->floating->length; k++) {
-					struct sway_container *container = workspace->floating->items[k];
-					jump_for_each_container(workspace, container, f, data);
-				}
+			for (int k = 0; k < workspace->floating->length; k++) {
+				struct sway_container *container = workspace->floating->items[k];
+				jump_for_each_container(workspace, container, f, data);
 			}
-			if (tiling) {
-				for (int k = 0; k < workspace->tiling->length; k++) {
-					struct sway_container *container = workspace->tiling->items[k];
-					jump_for_each_container(workspace, container, f, data);
-				}
+			for (int k = 0; k < workspace->tiling->length; k++) {
+				struct sway_container *container = workspace->tiling->items[k];
+				jump_for_each_container(workspace, container, f, data);
 			}
 		}
 	}
@@ -2652,7 +2356,7 @@ static void jump_begin_common_cb(struct jump_data *jump_data) {
 			if (!workspace || workspace->node.destroying) {
 				continue;
 			}
-			bool activated = root->filters->workspace_filter(workspace, root->filters->workspace_filter_data);
+			bool activated = filter_workspace_enabled(workspace);
 			if (!activated) {
 				continue;
 			}
@@ -2694,7 +2398,7 @@ static void jump_overview_restore_cb(struct jump_data *jump_data) {
 			if (!workspace || workspace->node.destroying) {
 				continue;
 			}
-			bool activated = root->filters->workspace_filter(workspace, root->filters->workspace_filter_data);
+			bool activated = filter_workspace_enabled(workspace);
 			if (!activated) {
 				continue;
 			}
@@ -2870,11 +2574,11 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 	}
 	jump_data->root_filters = root_filters_create(root);
 	if (criteria) {
-		jump_data->root_filters->container_filter = filter_container_criteria;
-		jump_data->root_filters->container_filter_data = criteria;
+		jump_data->root_filters->criteria = criteria;
 	} else {
 		filter_configure(jump_data->root_filters, filter, overview_workspaces ? LAYOUT_FILTER_APPLY_ALL : LAYOUT_FILTER_APPLY_ACTIVE);
 	}
+	filter_apply();
 	jump_for_each_view(jump_add_windows, jump_data);
 
 	if (jump_data->nwindows == 0) {
@@ -2895,6 +2599,8 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 
 	if (jump_data->jump_overview_prepare) {
 		jump_data->jump_overview_prepare(jump_data);
+		// Preparing the overview may change the filtered views
+		filter_apply();
 	}
 
 	animation_set_type(ANIMATION_JUMP);

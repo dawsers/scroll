@@ -484,6 +484,9 @@ They are expected to be used with *bindsym* or at runtime through *scrollmsg*(1)
 	_trilmark_ filters all the windows that are trailmarked in the current trail.
 	_visible_ shows only those windows that are completely visible.
 
+	Windows fade in or out when they become visible or hidden by a filter,
+	using the _fade_in_ and _fade_out_ animations.
+
 *fit_size* <h|v> <active|visible|all|toend|tobeg> <proportional|equal>
 	Allows re-fitting the columns (horizontal mode) or windows (vertical mode)
 	you want to the screen extents. It accepts an argument related to the

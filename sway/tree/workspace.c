@@ -15,6 +15,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
+#include "sway/tree/filter.h"
 #include "sway/tree/node.h"
 #include "sway/tree/virtual_output.h"
 #include "sway/tree/view.h"
@@ -850,8 +851,7 @@ static void workspace_visible_extent(struct sway_workspace *workspace,
 	}
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *con = children->items[i];
-		if (!root->filters->container_filter(workspace, con,
-				root->filters->container_filter_data)) {
+		if (con->pending.filtered) {
 			continue;
 		}
 		if (!workspace_container_visible(workspace, con)) {
@@ -875,16 +875,6 @@ static void workspace_visible_extent(struct sway_workspace *workspace,
 			}
 		}
 	}
-}
-
-static bool switch_tiling_enabled(struct sway_workspace *workspace) {
-	return root->filters->workspace_tiling_filter(workspace,
-		root->filters->workspace_tiling_filter_data);
-}
-
-static bool switch_floating_enabled(struct sway_workspace *workspace) {
-	return root->filters->workspace_floating_filter(workspace,
-		root->filters->workspace_floating_filter_data);
 }
 
 // Set ws's offset from origin to destination. If already animating, keep
@@ -957,24 +947,18 @@ static void animate_workspace_switch(struct sway_output *output,
 	// Cancel previous switches if there are any.
 	workspace_switch_cancel_pending(output, to->output);
 
+	filter_apply();
+
 	double min_y_to = to->y, max_y_to = to->y + to->height;
-	if (switch_tiling_enabled(to)) {
-		workspace_visible_extent(to, to->tiling, &min_y_to, &max_y_to);
-	}
-	if (switch_floating_enabled(to)) {
-		workspace_visible_extent(to, to->floating, &min_y_to, &max_y_to);
-	}
+	workspace_visible_extent(to, to->tiling, &min_y_to, &max_y_to);
+	workspace_visible_extent(to, to->floating, &min_y_to, &max_y_to);
 
 	const double from_y = from ? from->y : to->y;
 	const int from_height = from ? from->height : to->height;
 	double min_y_from = from_y, max_y_from = from_y + from_height;
 	if (from) {
-		if (switch_tiling_enabled(from)) {
-			workspace_visible_extent(from, from->tiling, &min_y_from, &max_y_from);
-		}
-		if (switch_floating_enabled(from)) {
-			workspace_visible_extent(from, from->floating, &min_y_from, &max_y_from);
-		}
+		workspace_visible_extent(from, from->tiling, &min_y_from, &max_y_from);
+		workspace_visible_extent(from, from->floating, &min_y_from, &max_y_from);
 	}
 
 	double delta;

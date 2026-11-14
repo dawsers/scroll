@@ -634,18 +634,8 @@ void animation_begin() {
 	animation_sweep_transactions();
 }
 
-static bool animation_output_filter(struct sway_output *output, void *data) {
-	return is_animating_output(output->wlr_output);
-}
-
 void animation_animate(struct wlr_output *output) {
 	animated_variables_update();
-
-	// Save old filters and push new
-	sway_root_output_filter_func_t old_filter = root->filters->output_filter;
-	void *old_filter_data = root->filters->output_filter_data;
-	root->filters->output_filter = animation_output_filter;
-	root->filters->output_filter_data = NULL;
 
 	// Set current output so callback_step only processes this output
 	// instead of looping all animating outputs (avoids N² work)
@@ -654,10 +644,6 @@ void animation_animate(struct wlr_output *output) {
 	animation->current.callbacks.callback_step(animation->current.callbacks.callback_step_data);
 	animation->stepping = false;
 	animation->current_output = NULL;
-
-	// Restore old filters
-	root->filters->output_filter = old_filter;
-	root->filters->output_filter_data = old_filter_data;
 
 	if (animated_variables_count() == 0) {
 		// All the animated variables reached their destinations, so there is

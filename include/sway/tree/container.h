@@ -102,6 +102,9 @@ struct sway_container_state {
 
 	float alpha;
 
+	// The container is hidden by the active filter. Set by filter_apply()
+	bool filtered;
+
 	char *formatted_title; // The title displayed in the title bar
 };
 
@@ -213,6 +216,7 @@ struct sway_container {
 	struct {
 		double x, y;
 		double width, height;
+		bool filtered;
 	} arrange_data;
 
 	struct {

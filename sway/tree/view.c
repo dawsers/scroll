@@ -33,6 +33,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
+#include "sway/tree/filter.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/config.h"
@@ -1101,6 +1102,9 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	if (set_focus) {
 		input_manager_set_focus(&view->container->node);
 	}
+
+	filter_apply();
+	view->container->current.filtered = view->container->pending.filtered;
 
 	if (view->ext_foreign_toplevel) {
 		update_ext_foreign_toplevel(view);
