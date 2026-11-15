@@ -258,6 +258,9 @@ bool layout_scroll_begin(struct sway_seat *seat);
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity);
 // Finish scrolling swipe and return true if scrolling, else false
 bool layout_scroll_end(struct sway_seat *seat);
+// Stop scrolling a workspace that may not be the seat's current one, without
+// changing the focus.
+void layout_scroll_cancel(struct sway_workspace *workspace);
 
 // Pin
 

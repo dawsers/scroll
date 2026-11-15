@@ -1545,6 +1545,25 @@ The default colors are:
 	windows that are spawned in floating mode, not windows that become floating
 	afterwards.
 
+*drag_edge_scroll* enable|disable|toggle
+	Sets whether or not dragging something (a file, an image, selected text...)
+	to the edges of an output scrolls its workspace, so you can drop on a
+	window that was outside of the viewport. Workspaces with a horizontal
+	layout scroll at the left and right edges of the output, and those with a
+	vertical layout at the top and bottom edges. Scrolling starts after the
+	cursor stays at the edge for a moment, its speed depends on how close to
+	the edge the cursor is, and it stops at the first or last container. When
+	enabled, the window where you drop gets the focus. The default is
+	_disable_. _toggle_ should not be used in the config file.
+
+*drag_edge_scroll* zone <pixels>
+	Sets the size of the area at each edge of the output that triggers
+	*drag_edge_scroll*. The default is _48_.
+
+*drag_edge_scroll* speed <pixels per second>
+	Sets the scrolling speed of *drag_edge_scroll* when the cursor is at the
+	very edge of the output. The default is _2000_.
+
 *exec* <shell command>
 	Executes _shell command_ with sh.
 
