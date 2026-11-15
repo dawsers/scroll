@@ -3094,9 +3094,13 @@ void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float se
 	workspace->gesture.dy += dy;
 	if (layout_get_type(workspace) == L_HORIZ) {
 		scroll_container(get_mouse_container(seat), 0.0, dy);
+		// The transaction above used the pending animation type
+		animation_set_type(ANIMATION_DISABLED);
 		scroll_workspace(workspace, dx, 0.0);
 	} else {
 		scroll_container(get_mouse_container(seat), dx, 0.0);
+		// The transaction above used the pending animation type
+		animation_set_type(ANIMATION_DISABLED);
 		scroll_workspace(workspace, 0.0, dy);
 	}
 }
