@@ -120,10 +120,11 @@ bool workspace_is_visible(struct sway_workspace *ws);
 bool workspace_is_panning(struct sway_workspace *ws);
 
 /**
- * When a command performs several workspace switches in the same transaction,
- * we call this function to compress those animations into one.
+ * Start the animation of a workspace switch. Called at transaction time, so any
+ * number of switches in the same transaction are condensed into one animation.
  */
-void workspace_switch_validate(void);
+void workspace_switch_animate(struct sway_output *output,
+		struct sway_workspace *from, struct sway_workspace *to);
 
 /**
  * Returns the animated offset for the workspace during a workspace switch

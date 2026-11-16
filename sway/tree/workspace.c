@@ -809,24 +809,6 @@ void workspace_hide(struct sway_workspace *ws) {
 	}
 }
 
-void workspace_switch_validate(void) {
-	for (int i = 0; i < root->outputs->length; ++i) {
-		struct sway_output *output = root->outputs->items[i];
-		struct sway_workspace *active = output_get_active_workspace(output);
-		for (int j = 0; j < output->workspaces->length; ++j) {
-			struct sway_workspace *ws = output->workspaces->items[j];
-			if (!ws->animation.off.pending_start) {
-				continue;
-			}
-			// It is the active workspace the one arriving to its offset = 0
-			bool arriving = ws->animation.off.x1 == 0.0;
-			if (arriving != (ws == active)) {
-				animated_variable_cancel(&ws->animation.off);
-			}
-		}
-	}
-}
-
 bool workspace_container_visible(struct sway_workspace *workspace,
 		struct sway_container *container) {
 	struct sway_output *output = workspace->output;
@@ -886,26 +868,6 @@ static void workspace_switch_set_offset(struct sway_workspace *ws, double origin
 	}
 	animated_variable_reset(&ws->animation.off, origin);
 	animated_variable_set(&ws->animation.off, destination, ANIMATION_WORKSPACE_SWITCH);
-	node_set_dirty(&ws->node);
-}
-
-static void workspace_switch_cancel_output(struct sway_output *output) {
-	for (int j = 0; j < output->workspaces->length; ++j) {
-		struct sway_workspace *ws = output->workspaces->items[j];
-		animated_variable_cancel(&ws->animation.off);
-	}
-}
-
-// Remove the panning offset for these outputs that were never animated.
-// A command in the same transaction replaced the switch.
-static void workspace_switch_cancel_pending(struct sway_output *one,
-		struct sway_output *two) {
-	if (one) {
-		workspace_switch_cancel_output(one);
-	}
-	if (two && two != one) {
-		workspace_switch_cancel_output(two);
-	}
 }
 
 static bool workspace_switch_down(struct sway_output *output,
@@ -930,24 +892,18 @@ static bool workspace_switch_down(struct sway_output *output,
 	return f_idx < t_idx;
 }
 
-static void animate_workspace_switch(struct sway_output *output,
+void workspace_switch_animate(struct sway_output *output,
 		struct sway_workspace *from, struct sway_workspace *to) {
+	if (!from || !to || to == from || to->node.destroying ||
+			to->output != output) {
+		return;
+	}
+	if (from->virtual_output && from->virtual_output != to->virtual_output) {
+		return;
+	}
 	bool down = workspace_switch_down(output, from, to);
-	animation_set_type(ANIMATION_WORKSPACE_SWITCH);
 	struct wlr_box *area = workspace_get_output_area(to);
 	const int output_height = area ? area->height : output->height;
-
-	// Make sure container positions are re-arranged in case there are several
-	// commands happening in the workspace_switch transaction.
-	transaction_workspace_arrange(to);
-	if (from) {
-		transaction_workspace_arrange(from);
-	}
-
-	// Cancel previous switches if there are any.
-	workspace_switch_cancel_pending(output, to->output);
-
-	filter_apply();
 
 	double min_y_to = to->y, max_y_to = to->y + to->height;
 	workspace_visible_extent(to, to->tiling, &min_y_to, &max_y_to);
@@ -1011,8 +967,13 @@ bool workspace_switch(struct sway_workspace *workspace) {
 		(!old_ws->output && workspace->output)) &&
 		(!old_vo || old_vo == workspace->virtual_output) &&
 		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
-		struct sway_output *output = old_ws->output ? old_ws->output : workspace->output;
-		animate_workspace_switch(output, old_ws, workspace);
+		animation_set_type(ANIMATION_WORKSPACE_SWITCH);
+		if (workspace->output) {
+			workspace->output->workspace_switch_animated = true;
+			node_set_dirty(&workspace->output->node);
+		}
+		node_set_dirty(&old_ws->node);
+		node_set_dirty(&workspace->node);
 	} else {
 		arrange_workspace(workspace);
 	}

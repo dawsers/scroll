@@ -40,10 +40,28 @@ static void fill_container(struct sway_space_container *space_container,
 	}
 }
 
+// A tiling container restored from a space
+struct space_restored {
+	struct sway_space_container *space_container;
+	struct sway_container *container;
+};
+
+static void space_restored_add(list_t *restored,
+		struct sway_space_container *space_container,
+		struct sway_container *container) {
+	struct space_restored *item = malloc(sizeof(*item));
+	if (!item) {
+		return;
+	}
+	item->space_container = space_container;
+	item->container = container;
+	list_add(restored, item);
+}
+
 static struct sway_container *layout_space_container_restore_tiling(struct sway_workspace *workspace,
 		struct sway_space_container *space_container,
 		struct sway_space_container *focused, struct sway_container *parent,
-		list_t *view_float) {
+		list_t *view_float, list_t *restored) {
 	if (space_container->children) {
 		struct sway_container *parent = container_create(NULL);
 		parent->pending.workspace = workspace;
@@ -53,7 +71,7 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 		for (int i = 0; i < space_container->children->length; ++i) {
 			struct sway_space_container *space_con = space_container->children->items[i];
 			struct sway_container *child = layout_space_container_restore_tiling(workspace,
-				space_con, focused, parent, view_float);
+				space_con, focused, parent, view_float, restored);
 			if (child) {
 				has_children = true;
 			}
@@ -63,6 +81,7 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 		}
 		if (has_children) {
 			fill_container(space_container, parent);
+			space_restored_add(restored, space_container, parent);
 			container_update_representation(parent);
 			node_set_dirty(&parent->node);
 			list_add(workspace->tiling, parent);
@@ -96,6 +115,7 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 			node_set_dirty(&container->node);
 			list_add(parent->pending.children, container);
 			fill_container(space_container, container);
+			space_restored_add(restored, space_container, container);
 			container_update_representation(container);
 			node_set_dirty(&parent->node);
 		}
@@ -229,14 +249,24 @@ void layout_space_restore(struct sway_space *space, struct sway_workspace *works
 		list_free(data.views);
 	}
 	list_t *view_float = create_list();
+	list_t *restored = create_list();
 	for (int i = 0; i < space->tiling->length; ++i) {
 		struct sway_space_container *container = space->tiling->items[i];
-		layout_space_container_restore_tiling(workspace, container, space->focused, NULL, view_float);
+		layout_space_container_restore_tiling(workspace, container, space->focused, NULL, view_float, restored);
 	}
 	for (int i = 0; i < space->floating->length; ++i) {
 		struct sway_space_container *container = space->floating->items[i];
 		layout_space_container_restore_floating(workspace, container, space->focused, view_float);
 	}
+	// The workspace may have been arranged while it was being restored (when
+	// setting focus, for example), moving the containers restored until then.
+	// Set the saved positions again, so the workspace is arranged from them.
+	for (int i = 0; i < restored->length; ++i) {
+		struct space_restored *item = restored->items[i];
+		item->container->pending.x = item->space_container->x;
+		item->container->pending.y = item->space_container->y;
+	}
+	list_free_items_and_destroy(restored);
 	if (space->tiling->length + space->floating->length > 0) {
 		arrange_workspace(workspace);
 		node_set_dirty(&workspace->node);

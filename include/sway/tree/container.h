@@ -212,13 +212,6 @@ struct sway_container {
 		double width, height;
 	} old_content;
 
-	// Data saved for transaction_workspace_arrange()
-	struct {
-		double x, y;
-		double width, height;
-		bool filtered;
-	} arrange_data;
-
 	struct {
 		struct wl_signal destroy;
 	} events;

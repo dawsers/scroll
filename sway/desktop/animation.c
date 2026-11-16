@@ -821,15 +821,6 @@ void animated_variable_reset(struct sway_animated_variable *av, double value) {
 	animated_variable_finish(av);
 }
 
-void animated_variable_cancel(struct sway_animated_variable *av) {
-	if (!av->animating || !av->pending_start) {
-		// The variable is not animating, or the animation has already begun
-		return;
-	}
-	av->x1 = av->x0;
-	animated_variable_finish(av);
-}
-
 // Start a new animation for the variable, from its current value to `value`.
 static void animated_variable_start(struct sway_animated_variable *av,
 		double value) {

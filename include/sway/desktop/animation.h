@@ -90,12 +90,6 @@ void animated_variable_release(struct sway_animated_variable *av);
 void animated_variable_reset(struct sway_animated_variable *av, double value);
 
 /**
- * Set the destination value of the variable to its original one. It does nothing
- * if the animation has already begun, or if the variable is not animating.
- */
-void animated_variable_cancel(struct sway_animated_variable *av);
-
-/**
  * Set the destination of the variable.
  * 1. If the animation is ending, the variable moves to its final value.
  * 2. If the variable is not affected by the assigned value, it keeps its

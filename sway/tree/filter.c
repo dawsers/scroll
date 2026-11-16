@@ -182,9 +182,6 @@ static void filter_workspace_data_init(struct filter_workspace_data *data,
 	case LAYOUT_FILTER_VISIBLE:
 		data->applies = active || filters->apply == LAYOUT_FILTER_APPLY_ALL;
 		if (data->applies) {
-			// We need to compute the positions now instead of waiting for the
-			// transaction to happen
-			transaction_workspace_arrange(workspace);
 			filter_workspace_visible_area(data);
 		}
 		break;

@@ -27,6 +27,7 @@ enum sway_layer_shell_type {
 struct sway_output_state {
 	list_t *workspaces;
 	struct sway_workspace *active_workspace;
+	bool workspace_switch_animated;
 };
 
 struct sway_output {
@@ -70,6 +71,8 @@ struct sway_output {
 	struct sway_virtual_output *root_virtual_output;
 	list_t *virtual_outputs; // struct sway_virtual_output
 	bool maximize_virtual_output;
+
+	bool workspace_switch_animated; // animate a switch in the next transaction
 
 	struct sway_output_state current;
 

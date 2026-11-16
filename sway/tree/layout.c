@@ -280,6 +280,7 @@ static void overview_push_container_position(struct sway_container *container, v
 static void overview_pop_container_position(struct sway_container *container, void *data) {
 	container->pending.x = container->overview.x;
 	container->pending.y = container->overview.y;
+	node_set_dirty(&container->node);
 }
 
 static void overview_push_positions(struct sway_workspace *workspace,
@@ -362,6 +363,7 @@ void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_over
 			arrange_root();
 		}
 	}
+	arrange_workspace(workspace);
 	if (!root->jumping) {
 		animation_set_type(ANIMATION_OVERVIEW);
 		ipc_event_scroller("overview", workspace);
@@ -586,6 +588,7 @@ void layout_scale_set(struct sway_workspace *workspace, double scale) {
 		workspace->scale = scale;
 		node_set_dirty(&workspace->node);
 		workspace_set_views_dirty(workspace);
+		arrange_workspace(workspace);
 		ipc_event_scroller("scale", workspace);
 	}
 }
@@ -598,6 +601,7 @@ void layout_scale_reset(struct sway_workspace *workspace) {
 		workspace->scale = -1.0;
 		node_set_dirty(&workspace->node);
 		workspace_set_views_dirty(workspace);
+		arrange_workspace(workspace);
 		ipc_event_scroller("scale", workspace);
 	}
 }
@@ -2216,7 +2220,6 @@ static void organize_jump_windows(struct sway_workspace *workspace) {
 				continue;
 			}
 			translate_container_and_children(con, dx, dy);
-			arrange_container(con);
 		}
 	}
 	if (floating_enabled) {
@@ -2903,6 +2906,7 @@ static void scroll_workspace(struct sway_workspace *workspace, double dx, double
 		}
 	}
 	node_set_dirty(&workspace->node);
+	arrange_workspace(workspace);
 	transaction_commit_dirty();
 }
 
@@ -2923,6 +2927,7 @@ static void scroll_container(struct sway_container *container, double dx, double
 		}
 	}
 	node_set_dirty(&container->node);
+	arrange_container(container);
 	transaction_commit_dirty();
 }
 
@@ -2968,6 +2973,7 @@ static void layout_scroll_float_pinned_container(struct sway_workspace *workspac
 	list_add(workspace->floating, pin);
 	node_set_dirty(&workspace->node);
 	//node_set_dirty(&pin->node);
+	arrange_workspace(workspace);
 	transaction_commit_dirty();
 }
 
@@ -3033,6 +3039,7 @@ static void layout_scroll_unfloat_pinned_container(struct sway_workspace *worksp
 	layout_pin_set(workspace, pin, pos);
 	node_set_dirty(&workspace->node);
 	node_set_dirty(&pin->node);
+	arrange_workspace(workspace);
 	transaction_commit_dirty();
 	workspace->gesture.scrolling = false;
 }
@@ -3210,6 +3217,9 @@ bool layout_scroll_end(struct sway_seat *seat) {
 	if (workspace->gesture.pin) {
 		layout_scroll_unfloat_pinned_container(workspace);
 		if (scrolling_in_pin_direction(layout, scrolling_direction)) {
+			// Scrolling ended: arrange for the pin
+			arrange_workspace(workspace);
+			transaction_commit_dirty();
 			return true;
 		}
 	}

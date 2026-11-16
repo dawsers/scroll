@@ -1180,7 +1180,6 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 				node_set_dirty(&container->node);
 				node_set_dirty(&new_workspace->node);
 			}
-			arrange_workspace(new_workspace);
 			container_raise_floating(container);
 		}
 	}
@@ -1198,6 +1197,10 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 
 	// Deny setting focus to a view which is hidden by a fullscreen container or global
 	if (container && container_obstructing_fullscreen_container(container)) {
+		if (new_workspace) {
+			// Full screen may have changed above
+			arrange_workspace(new_workspace);
+		}
 		return;
 	}
 
@@ -1242,6 +1245,10 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 	if (container) {
 		seat_set_raw_focus(seat, &container->node);
 		seat_send_focus(&container->node, seat);
+		if (new_workspace) {
+			// Arrange now that the container has focus
+			arrange_workspace(new_workspace);
+		}
 	}
 
 	// emit ipc events

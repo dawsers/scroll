@@ -40,25 +40,21 @@ static bool parse_direction(const char *name,
 static void set_parent_x(struct sway_container *parent, double x) {
 	parent->pending.x = x;
 	node_set_dirty(&parent->node);
-	arrange_workspace(parent->pending.workspace);
 }
 
 static void set_parent_y(struct sway_container *parent, double y) {
 	parent->pending.y = y;
 	node_set_dirty(&parent->node);
-	arrange_workspace(parent->pending.workspace);
 }
 
 static void set_container_x(struct sway_container *container, double x) {
 	container->pending.x = x;
 	node_set_dirty(&container->node);
-	arrange_container(container);
 }
 
 static void set_container_y(struct sway_container *container, double y) {
 	container->pending.y = y;
 	node_set_dirty(&container->node);
-	arrange_container(container);
 }
 
 struct cmd_results *cmd_align(int argc, char **argv) {
@@ -187,5 +183,6 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 	}
 
 	layout_workspace_set_align_container(workspace, container, axes);
+	arrange_workspace(workspace);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

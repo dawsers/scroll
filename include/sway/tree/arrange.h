@@ -6,6 +6,10 @@ struct sway_workspace;
 struct sway_container;
 struct sway_node;
 
+/**
+ * The arrange functions set the sizes and the positions of the pending state
+ * so the nodes are ready to be committed in a transaction.
+ */
 void arrange_container(struct sway_container *container);
 
 void arrange_workspace(struct sway_workspace *workspace);
