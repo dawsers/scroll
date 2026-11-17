@@ -11,6 +11,8 @@
 #include "sway/desktop/launcher.h"
 #include "sway/tree/container.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/layout.h"
+#include "sway/tree/virtual_output.h"
 #include "sway/tree/root.h"
 
 static const char expected_syntax[] =
@@ -99,6 +101,8 @@ struct cmd_results *cmd_rename(int argc, char **argv) {
 	wlr_ext_workspace_handle_v1_set_name(workspace->ext_workspace, workspace->name);
 
 	output_sort_workspaces(workspace->output);
+	virtual_output_sort_workspaces(workspace->virtual_output);
+	layout_overview_workspaces_recompute_scale();
 	ipc_event_workspace(NULL, workspace, "rename");
 
 	return cmd_results_new(CMD_SUCCESS, NULL);

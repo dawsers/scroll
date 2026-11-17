@@ -1370,6 +1370,15 @@ void workspace_move_to_virtual_output(struct sway_workspace *workspace,
 	ipc_event_workspace(NULL, workspace, "move");
 }
 
+static void workspace_swap_update_order(struct sway_workspace *first,
+		struct sway_workspace *second) {
+	virtual_output_sort_workspaces(first->virtual_output);
+	if (second->virtual_output != first->virtual_output) {
+		virtual_output_sort_workspaces(second->virtual_output);
+	}
+	layout_overview_workspaces_recompute_scale();
+}
+
 void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 		bool name_only) {
 	char *name = first->name;
@@ -1380,6 +1389,7 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 		if (second->output != first->output) {
 			output_sort_workspaces(second->output);
 		}
+		workspace_swap_update_order(first, second);
 		ipc_event_workspace(NULL, first, "rename");
 		ipc_event_workspace(NULL, second, "rename");
 		return;
@@ -1402,6 +1412,7 @@ void workspace_swap(struct sway_workspace *first, struct sway_workspace *second,
 		virtual_output_set_workspace(first, second_vo);
 		virtual_output_set_workspace(second, first_vo);
 	}
+	workspace_swap_update_order(first, second);
 
 	arrange_workspace(first);
 	arrange_workspace(second);
