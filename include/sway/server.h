@@ -136,6 +136,8 @@ struct sway_server {
 	// regardless of readiness.
 	size_t txn_timeout_ms;
 
+	struct sway_animation_manager *animation_manager;
+
 	// Stores a transaction after it has been committed, but is waiting for
 	// views to ack the new dimensions before being applied. A queued
 	// transaction is frozen and must not have new instructions added to it.

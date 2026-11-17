@@ -17,7 +17,15 @@ sway_sources = files(
 	'xdg_activation_v1.c',
 	'xdg_decoration.c',
 
-	'desktop/animation.c',
+	'animation/bezier.c',
+	'animation/clock.c',
+	'animation/decay.c',
+	'animation/group.c',
+	'animation/manager.c',
+	'animation/spring.c',
+	'animation/variable.c',
+
+	'desktop/animate.c',
 	'desktop/idle_inhibit_v1.c',
 	'desktop/layer_shell.c',
 	'desktop/output.c',

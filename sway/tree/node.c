@@ -297,3 +297,36 @@ void node_set_focus_warp(struct sway_node *node, enum sway_node_focus_warp warp)
 enum sway_node_focus_warp node_get_focus_warp(struct sway_node *node) {
 	return node->focus_warp;
 }
+
+void node_ref(struct sway_node *node) {
+	++node->refs;
+}
+
+void node_unref(struct sway_node *node) {
+	if (!sway_assert(node->refs > 0, "Node without references")) {
+		return;
+	}
+	if (--node->refs > 0 || !node->destroying || node->dirty) {
+		return;
+	}
+	switch (node->type) {
+	case N_ROOT:
+		sway_assert(false, "Never reached");
+		break;
+	case N_LAYER_SURFACE:
+		layer_surface_destroy(node->sway_layer_surface);
+		break;
+	case N_LAYER_POPUP:
+		layer_popup_destroy(node->sway_layer_popup);
+		break;
+	case N_OUTPUT:
+		output_destroy(node->sway_output);
+		break;
+	case N_WORKSPACE:
+		workspace_destroy(node->sway_workspace);
+		break;
+	case N_CONTAINER:
+		container_destroy(node->sway_container);
+		break;
+	}
+}

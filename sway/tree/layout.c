@@ -14,7 +14,7 @@
 #include "wlr/types/wlr_cursor.h"
 #include "sway/ipc-server.h"
 #include <libevdev/libevdev.h>
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/criteria.h"
 
 struct sway_trails {
@@ -365,7 +365,7 @@ void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_over
 	}
 	arrange_workspace(workspace);
 	if (!root->jumping) {
-		animation_set_type(ANIMATION_OVERVIEW);
+		transaction_set_animation(ANIMATION_OVERVIEW);
 		ipc_event_scroller("overview", workspace);
 	}
 }
@@ -2474,7 +2474,7 @@ static void jump_handle_keyboard_key_end(void *data) {
 	}
 	free(jump_data);
 	lua_execute_jump_end_cbs(focused);
-	animation_set_type(ANIMATION_JUMP);
+	transaction_set_animation(ANIMATION_JUMP);
 	transaction_commit_dirty();
 	override_input(false, NULL, NULL, NULL, NULL);
 }
@@ -2606,7 +2606,7 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 		filter_apply();
 	}
 
-	animation_set_type(ANIMATION_JUMP);
+	transaction_set_animation(ANIMATION_JUMP);
 	jump_data->nkeys = jump_data->nwindows == 1 ? 1 : ceil(log10(jump_data->nwindows) / log10(config->jump_labels_keys->length));
 
 	jump_for_each_view(jump_generate_labels, jump_data);
@@ -3046,7 +3046,7 @@ static void layout_scroll_unfloat_pinned_container(struct sway_workspace *worksp
 
 // Gestures
 bool layout_scroll_begin(struct sway_seat *seat) {
-	animation_set_type(ANIMATION_DISABLED);
+	transaction_set_animation(ANIMATION_DISABLED);
 	struct sway_workspace *workspace = seat->workspace;
 	// Check if we can scroll
 	double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
@@ -3089,7 +3089,7 @@ bool layout_scroll_begin(struct sway_seat *seat) {
 }
 
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity) {
-	animation_set_type(ANIMATION_DISABLED);
+	transaction_set_animation(ANIMATION_DISABLED);
 	struct sway_workspace *workspace = seat->workspace;
 	if (workspace->tiling->length == 0) {
 		return;
@@ -3106,6 +3106,9 @@ void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float se
 		scroll_container(get_mouse_container(seat), dx, 0.0);
 		scroll_workspace(workspace, 0.0, dy);
 	}
+	// The containers follow the gesture. This also keeps their velocity for
+	// the animation that starts when the gesture ends.
+	transaction_track_workspace(workspace);
 }
 
 static void scroll_end_horizontal(struct sway_seat *seat, list_t *children, int active_idx,
@@ -3190,6 +3193,53 @@ static void scroll_end_vertical(struct sway_seat *seat, list_t *children, int ac
 	}
 }
 
+static double scroll_project(list_t *children, bool horizontal) {
+	const double friction = config->gesture_scroll_friction;
+	if (friction <= 0.0 || children->length == 0) {
+		return 0.0;
+	}
+	struct sway_container *first = children->items[0];
+	const double velocity = animated_variable_get_velocity(
+		horizontal ? &first->animation.x : &first->animation.y);
+	const double distance = velocity / friction;
+	if (fabs(distance) < 1.0) {
+		return 0.0;
+	}
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *con = children->items[i];
+		if (horizontal) {
+			con->pending.x += distance;
+		} else {
+			con->pending.y += distance;
+		}
+	}
+	return distance;
+}
+
+static void scroll_project_gesture(struct sway_seat *seat,
+		struct sway_workspace *workspace) {
+	if (config->gesture_scroll_friction <= 0.0 || workspace->tiling->length == 0) {
+		return;
+	}
+	const bool horizontal =
+		fabs(workspace->gesture.dx) > fabs(workspace->gesture.dy);
+	list_t *children = workspace->tiling;
+	if (horizontal != (layout_get_type(workspace) == L_HORIZ)) {
+		// Scrolling inside a column (or row)
+		struct sway_container *container = get_mouse_container(seat);
+		if (!container || !container->pending.children) {
+			return;
+		}
+		children = container->pending.children;
+	}
+	const double distance = scroll_project(children, horizontal);
+	if (horizontal) {
+		workspace->gesture.dx += distance;
+	} else {
+		workspace->gesture.dy += distance;
+	}
+}
+
 static bool scrolling_in_pin_direction(enum sway_container_layout layout,
 		enum sway_layout_direction dir) {
 	if ((layout == L_HORIZ && (dir == DIR_LEFT || dir == DIR_RIGHT)) ||
@@ -3200,8 +3250,12 @@ static bool scrolling_in_pin_direction(enum sway_container_layout layout,
 }
 
 bool layout_scroll_end(struct sway_seat *seat) {
-	animation_set_type(ANIMATION_DEFAULT);
+	transaction_set_animation(ANIMATION_DEFAULT);
 	struct sway_workspace *workspace = seat->workspace;
+	if (workspace->gesture.scrolling) {
+		scroll_project_gesture(seat, workspace);
+	}
+	transaction_untrack_workspace(workspace);
 	if (!workspace->gesture.scrolling) {
 		return false;
 	}
@@ -3219,6 +3273,7 @@ bool layout_scroll_end(struct sway_seat *seat) {
 		if (scrolling_in_pin_direction(layout, scrolling_direction)) {
 			// Scrolling ended: arrange for the pin
 			arrange_workspace(workspace);
+			transaction_set_animation(ANIMATION_GESTURE);
 			transaction_commit_dirty();
 			return true;
 		}
@@ -3252,6 +3307,7 @@ bool layout_scroll_end(struct sway_seat *seat) {
 		}
 	}
 	arrange_workspace(workspace);
+	transaction_set_animation(ANIMATION_GESTURE);
 	transaction_commit_dirty();
 	return true;
 }
@@ -4663,7 +4719,7 @@ void layout_fit_size_workspace(struct sway_workspace *workspace,
 		return;
 	}
 	fit_size_workspace(workspace, fit, equal);
-	animation_set_type(ANIMATION_WINDOW_SIZE);
+	transaction_set_animation(ANIMATION_WINDOW_SIZE);
 
 	return;
 }
@@ -4679,7 +4735,7 @@ void layout_fit_size_container(struct sway_container *container,
 		return;
 	}
 	fit_size_container(container->pending.parent ? container->pending.parent : container, fit, equal);
-	animation_set_type(ANIMATION_WINDOW_SIZE);
+	transaction_set_animation(ANIMATION_WINDOW_SIZE);
 
 	return;
 }
@@ -4821,7 +4877,7 @@ static void transform_anchor(struct sway_workspace *workspace, double *ax, doubl
 
 double layout_transform_workspace_scale(struct sway_workspace *workspace,
 		bool animated) {
-	const double scale = animated ? workspace->animation.s.xt :
+	const double scale = animated ? workspace->animation.s.value :
 		layout_scale_get(workspace);
 	return scale > 0.0 ? scale : 1.0;
 }
@@ -4885,13 +4941,13 @@ void layout_container_screen_box(struct sway_container *container, bool animated
 		box->height = container->pending.height;
 	} else {
 		box->x = container->animation.x.animating ?
-			container->animation.x.xt : container->pending.x;
+			container->animation.x.value : container->pending.x;
 		box->y = container->animation.y.animating ?
-			container->animation.y.xt : container->pending.y;
+			container->animation.y.value : container->pending.y;
 		box->width = container->animation.w.animating ?
-			container->animation.w.xt : container->pending.width;
+			container->animation.w.value : container->pending.width;
 		box->height = container->animation.h.animating ?
-			container->animation.h.xt : container->pending.height;
+			container->animation.h.value : container->pending.height;
 	}
 	struct sway_layout_transform transform;
 	layout_transform_container_get(container, animated, &transform);

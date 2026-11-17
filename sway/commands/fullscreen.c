@@ -5,7 +5,7 @@
 #include "sway/tree/container.h"
 #include "sway/tree/view.h"
 #include "util.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 
 struct cmd_results *cmd_fullscreen_on_request(int argc, char **argv) {
 	struct cmd_results *error;

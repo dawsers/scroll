@@ -1,6 +1,8 @@
 #include <strings.h>
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
+#include "sway/desktop/transaction.h"
 #include "sway/commands.h"
+#include "sway/server.h"
 #include "sway/log.h"
 #include "util.h"
 
@@ -10,6 +12,7 @@ static const struct cmd_handler animations_config_handlers[] = {
 	{ "enabled", animations_cmd_enabled },
 	{ "fade_in", animations_cmd_fade_in },
 	{ "fade_out", animations_cmd_fade_out },
+	{ "gesture", animations_cmd_gesture },
 	{ "jump", animations_cmd_jump },
 	{ "layer_shell", animations_cmd_layer_shell },
 	{ "overview", animations_cmd_overview },
@@ -59,13 +62,47 @@ struct cmd_results *animations_cmd_style(int argc, char **argv) {
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
-static struct cmd_results *parse_animation_curve(int argc, char **argv, struct sway_animation_path **path) {
+// Parse an animation description, and assign it to an animation type
+static struct cmd_results *parse_animation_spec(int argc, char **argv,
+		enum sway_animation_type type) {
+	struct sway_animation_manager *manager = server.animation_manager;
 	bool enabled = parse_boolean(argv[0], true);
+	if (argc >= 2 && strcasecmp(argv[1], "spring") == 0) {
+		if (argc < 4) {
+			return cmd_results_new(CMD_INVALID,
+				"Expected '<yes|no> spring <response_ms> <damping_ratio>'");
+		}
+		const double response = strtod(argv[2], NULL);
+		const double damping = strtod(argv[3], NULL);
+		if (response <= 0.0 || damping <= 0.0) {
+			return cmd_results_new(CMD_INVALID,
+				"The response and the damping ratio of a spring must be positive");
+		}
+		animation_manager_set_spec(manager, type,
+			animation_spec_create_spring(enabled, response, damping));
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
+	if (argc >= 2 && strcasecmp(argv[1], "decay") == 0) {
+		if (argc < 3) {
+			return cmd_results_new(CMD_INVALID,
+				"Expected '<yes|no> decay <rate>'");
+		}
+		const double rate = strtod(argv[2], NULL);
+		if (rate <= 0.0) {
+			return cmd_results_new(CMD_INVALID,
+				"The rate of a decay must be positive");
+		}
+		animation_manager_set_spec(manager, type,
+			animation_spec_create_decay(enabled, rate));
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
+
+	struct sway_animation_path *path = NULL;
 	if (argc == 1) {
-		animation_path_destroy(*path);
-		*path = animation_path_create(enabled);
+		path = animation_path_create(enabled);
 		struct sway_animation_curve *curve = create_animation_curve(0, 0, NULL, false, 0.0, 0, NULL);
-		animation_path_add_curve(*path, curve);
+		animation_path_add_curve(path, curve);
+		animation_manager_set_spec(manager, type, animation_spec_create_path(path));
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 	uint32_t duration = strtol(argv[1], NULL, 10);
@@ -76,7 +113,7 @@ static struct cmd_results *parse_animation_curve(int argc, char **argv, struct s
 	bool var_simple = false;
 	bool error = false;
 	while (arg < argc) {
-		if (strcasecmp(argv[arg], "var") == 0) {
+		if (strcasecmp(argv[arg], "var") == 0 && arg + 2 < argc) {
 			++arg;
 			if (strcasecmp(argv[arg], "simple") == 0) {
 				var_simple = true;
@@ -89,7 +126,7 @@ static struct cmd_results *parse_animation_curve(int argc, char **argv, struct s
 			if (!var_list) {
 				error = true;
 			}
-		} else if (strcasecmp(argv[arg], "off") == 0) {
+		} else if (strcasecmp(argv[arg], "off") == 0 && arg + 3 < argc) {
 			++arg;
 			off_scale = strtod(argv[arg++], NULL);
 			off_order = strtol(argv[arg++], NULL, 10);
@@ -101,137 +138,88 @@ static struct cmd_results *parse_animation_curve(int argc, char **argv, struct s
 			++arg;
 		}
 	}
+	struct sway_animation_curve *curve = NULL;
 	if (var_list || off_list) {
-		animation_path_destroy(*path);
-		*path = animation_path_create(enabled);
-		struct sway_animation_curve *curve = create_animation_curve(duration, var_order, var_list, var_simple, off_scale, off_order, off_list);
-		animation_path_add_curve(*path, curve);
+		curve = create_animation_curve(duration, var_order, var_list, var_simple, off_scale, off_order, off_list);
 		if (var_list) {
 			list_free_items_and_destroy(var_list);
 		}
 		if (off_list) {
 			list_free_items_and_destroy(off_list);
 		}
-		return cmd_results_new(CMD_SUCCESS, NULL);
+		if (!curve) {
+			return cmd_results_new(CMD_FAILURE, "Invalid animation curve");
+		}
 	} else if (error) {
 		return cmd_results_new(CMD_FAILURE, "Error parsing animations array");
 	} else {
-		animation_path_destroy(*path);
-		*path = animation_path_create(enabled);
-		struct sway_animation_curve *curve = create_animation_curve(duration, 0, NULL, false, 0.0, 0, NULL);
-		animation_path_add_curve(*path, curve);
-		return cmd_results_new(CMD_SUCCESS, NULL);
+		curve = create_animation_curve(duration, 0, NULL, false, 0.0, 0, NULL);
 	}
+	path = animation_path_create(enabled);
+	animation_path_add_curve(path, curve);
+	animation_manager_set_spec(manager, type, animation_spec_create_path(path));
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+static struct cmd_results *animations_cmd_type(int argc, char **argv,
+		const char *name, enum sway_animation_type type) {
+	struct cmd_results *error;
+	if ((error = checkarg(argc, name, EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	return parse_animation_spec(argc, argv, type);
 }
 
 struct cmd_results *animations_cmd_default(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "default", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	error = parse_animation_curve(argc, argv, &config->anim_default);
-	animation_set_type(ANIMATION_DEFAULT);
-	return error;
+	return animations_cmd_type(argc, argv, "default", ANIMATION_DEFAULT);
 }
 
 struct cmd_results *animations_cmd_window_open(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "window_open", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->window_open);
+	return animations_cmd_type(argc, argv, "window_open", ANIMATION_WINDOW_OPEN);
 }
 
 struct cmd_results *animations_cmd_window_move(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "window_move", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->window_move);
+	return animations_cmd_type(argc, argv, "window_move", ANIMATION_WINDOW_MOVE);
 }
 
 struct cmd_results *animations_cmd_window_move_float(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "window_move_float", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->window_move_float);
+	return animations_cmd_type(argc, argv, "window_move_float", ANIMATION_WINDOW_MOVE_FLOAT);
 }
 
 struct cmd_results *animations_cmd_window_fullscreen(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "window_fullscreen", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->window_fullscreen);
+	return animations_cmd_type(argc, argv, "window_fullscreen", ANIMATION_WINDOW_FULLSCREEN);
 }
 
 struct cmd_results *animations_cmd_window_size(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "window_size", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->window_size);
+	return animations_cmd_type(argc, argv, "window_size", ANIMATION_WINDOW_SIZE);
 }
 
 struct cmd_results *animations_cmd_workspace_switch(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "workspace_switch", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->workspace_switch);
+	return animations_cmd_type(argc, argv, "workspace_switch", ANIMATION_WORKSPACE_SWITCH);
 }
 
 struct cmd_results *animations_cmd_overview(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "overview", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->overview);
+	return animations_cmd_type(argc, argv, "overview", ANIMATION_OVERVIEW);
 }
 
 struct cmd_results *animations_cmd_jump(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "jump", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->jump);
+	return animations_cmd_type(argc, argv, "jump", ANIMATION_JUMP);
 }
 
 struct cmd_results *animations_cmd_layer_shell(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "layer_shell", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->layer_shell);
+	return animations_cmd_type(argc, argv, "layer_shell", ANIMATION_LAYER_SHELL);
 }
 
 struct cmd_results *animations_cmd_fade_in(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "fade_in", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->fade_in);
+	return animations_cmd_type(argc, argv, "fade_in", ANIMATION_FADE_IN);
 }
 
 struct cmd_results *animations_cmd_fade_out(int argc, char **argv) {
-	struct cmd_results *error;
-	if ((error = checkarg(argc, "fade_out", EXPECTED_AT_LEAST, 1))) {
-		return error;
-	}
-	struct sway_animation_config *config = animation_get_config();
-	return parse_animation_curve(argc, argv, &config->fade_out);
+	return animations_cmd_type(argc, argv, "fade_out", ANIMATION_FADE_OUT);
+}
+
+struct cmd_results *animations_cmd_gesture(int argc, char **argv) {
+	return animations_cmd_type(argc, argv, "gesture", ANIMATION_GESTURE);
 }
 
 struct cmd_results *cmd_animations(int argc, char **argv) {

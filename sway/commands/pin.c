@@ -9,7 +9,7 @@
 #include "sway/tree/layout.h"
 #include "sway/tree/workspace.h"
 #include "sway/output.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 
 struct cmd_results *cmd_pin(int argc, char **argv) {
 	if (!root->outputs->length) {

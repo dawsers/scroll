@@ -189,6 +189,9 @@ struct sway_container {
 	// Hidden scratchpad containers have a NULL parent.
 	bool scratchpad;
 
+	// The container is closing and kept alive by its last animation
+	bool exiting;
+
 	// Stores last output size and position for adjusting coordinates of
 	// scratchpad windows.
 	// Unused for non-scratchpad windows.

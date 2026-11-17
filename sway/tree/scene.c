@@ -5,7 +5,7 @@
 #include "sway/tree/virtual_output.h"
 #include "sway/tree/workspace.h"
 #include "sway/scene_descriptor.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/layers.h"
 
 static bool scene_fullscreen_global_enabled() {
@@ -220,11 +220,12 @@ static double scene_view_content_scale(struct wlr_surface *surface) {
 static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
 		struct wlr_scene_layer_surface_data *data) {
 	struct sway_layer_surface *surface = layer_surface->data;
-	if (surface && animation_animating()) {
-		data->x = surface->animation.x.xt;
-		data->y = surface->animation.y.xt;
-		data->width = surface->animation.w.xt;
-		data->height = surface->animation.h.xt;
+	if (surface && (surface->animation.w.animating ||
+			surface->animation.h.animating)) {
+		data->x = surface->animation.x.value;
+		data->y = surface->animation.y.value;
+		data->width = surface->animation.w.value;
+		data->height = surface->animation.h.value;
 		return true;
 	} else {
 		data->x = surface->pending.x;
@@ -236,9 +237,7 @@ static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
 }
 
 static void animate(struct wlr_output *output) {
-	if (animation_animating_output(output)) {
-		animation_animate(output);
-	}
+	animation_animate(output);
 }
 
 static bool output_needs_frame(struct wlr_output *output) {

@@ -652,6 +652,7 @@ struct sway_config {
 	uint32_t gesture_scroll_fingers;
 	float gesture_scroll_sentitivity;
 	float gesture_scroll_sentitivity_mouse;
+	float gesture_scroll_friction;
 	struct {
 		int border_radius;
 		bool dim;

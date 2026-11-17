@@ -163,6 +163,7 @@ sway_cmd cmd_gesture_scroll_enable;
 sway_cmd cmd_gesture_scroll_fingers;
 sway_cmd cmd_gesture_scroll_sensitivity;
 sway_cmd cmd_gesture_scroll_sensitivity_mouse;
+sway_cmd cmd_gesture_scroll_friction;
 sway_cmd cmd_hide_edge_borders;
 sway_cmd cmd_include;
 sway_cmd cmd_inhibit_idle;
@@ -402,5 +403,6 @@ sway_cmd animations_cmd_jump;
 sway_cmd animations_cmd_layer_shell;
 sway_cmd animations_cmd_fade_in;
 sway_cmd animations_cmd_fade_out;
+sway_cmd animations_cmd_gesture;
 
 #endif

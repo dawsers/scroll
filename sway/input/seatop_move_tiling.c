@@ -10,7 +10,7 @@
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 
 // Thickness of the dropzone when dragging to the edge of a layout container
 #define DROP_LAYOUT_BORDER 30
@@ -228,7 +228,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	} else {
 		handle_motion_prethreshold(seat);
 	}
-	animation_set_type(ANIMATION_DISABLED);
+	transaction_set_animation(ANIMATION_DISABLED);
 	transaction_commit_dirty();
 }
 
@@ -255,7 +255,7 @@ static void finalize_move(struct sway_seat *seat) {
 	ipc_event_window(con, "move");
 	seat_set_focus(seat, &con->node);
 	arrange_workspace(workspace);
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE);
 	transaction_commit_dirty();
 	seatop_begin_default(seat);
 }
@@ -327,7 +327,7 @@ void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
 	seat->seatop_data = e;
 
 	container_raise_floating(con);
-	animation_set_type(ANIMATION_DISABLED);
+	transaction_set_animation(ANIMATION_DISABLED);
 	transaction_commit_dirty();
 	wlr_seat_pointer_notify_clear_focus(seat->wlr_seat);
 }

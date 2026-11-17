@@ -108,6 +108,7 @@ layout_heights [0.33333333 0.5 0.666666667 1.0]
 # snap_respect_gaps_inner false
 # snap_respect_gaps_outer false
 # snap_border_overlap false
+# gesture_scroll_friction 0
 
 # Animations
 animations {
@@ -122,6 +123,7 @@ animations {
     layer_shell yes 300 var 3 [ 0 0 1 1 ]
     fade_in yes 300 var simple [ 0.32 0 0.67 0 ]
     fade_out yes 300 var simple [ 0.33 1 0.68 1 ]
+    gesture yes decay 8
     # You can also define curves for the following events
     # window_move_float
     # overview

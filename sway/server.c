@@ -63,7 +63,7 @@
 #include "sway/input/cursor.h"
 #include "sway/tree/root.h"
 #include "sway/tree/workspace.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/tree/node.h"
 
 #if WLR_HAS_XWAYLAND

@@ -9,7 +9,8 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/tree/layout.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
+#include "sway/desktop/transaction.h"
 
 static const double EPSILON = 0.0001;
 
@@ -34,7 +35,7 @@ static struct cmd_results *toggle_size(enum sway_toggle_size mode, double width_
 		}
 	}
 
-	animation_set_type(ANIMATION_WINDOW_SIZE);
+	transaction_set_animation(ANIMATION_WINDOW_SIZE);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
@@ -75,7 +76,7 @@ struct cmd_results *cmd_toggle_size(int argc, char **argv) {
 		if (!current) {
 			return cmd_results_new(CMD_INVALID, "toggle_size this needs an active container");
 		}
-		animation_set_type(ANIMATION_WINDOW_SIZE);
+		transaction_set_animation(ANIMATION_WINDOW_SIZE);
 		layout_toggle_size_container(current, width_fraction, height_fraction);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}

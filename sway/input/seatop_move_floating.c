@@ -31,10 +31,11 @@ static void cursor_layout_coords(struct sway_seat *seat, struct sway_container *
 static void finalize_move(struct sway_seat *seat) {
 	struct seatop_move_floating_event *e = seat->seatop_data;
 
+	transaction_untrack_container(e->con);
 	// We "move" the container to its own location
 	// so it discovers its output again.
 	container_floating_move_to(e->con, e->con->pending.x, e->con->pending.y, true);
-	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 	transaction_commit_dirty();
 
 	seatop_begin_default(seat);
@@ -60,8 +61,14 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	double cx, cy;
 	cursor_layout_coords(seat, e->con, &cx, &cy);
 	container_floating_move_to(e->con, cx + e->dx, cy + e->dy, true);
-	animation_set_type(ANIMATION_DISABLED);
+	transaction_track_container(e->con);
+	transaction_set_animation(ANIMATION_DISABLED);
 	transaction_commit_dirty();
+}
+
+static void handle_end(struct sway_seat *seat) {
+	struct seatop_move_floating_event *e = seat->seatop_data;
+	transaction_untrack_container(e->con);
 }
 
 static void handle_unref(struct sway_seat *seat, struct sway_container *con) {
@@ -75,6 +82,7 @@ static const struct sway_seatop_impl seatop_impl = {
 	.button = handle_button,
 	.pointer_motion = handle_pointer_motion,
 	.tablet_tool_tip = handle_tablet_tool_tip,
+	.end = handle_end,
 	.unref = handle_unref,
 };
 
@@ -98,7 +106,7 @@ void seatop_begin_move_floating(struct sway_seat *seat,
 	seat->seatop_data = e;
 
 	container_raise_floating(con);
-	animation_set_type(ANIMATION_DISABLED);
+	transaction_set_animation(ANIMATION_DISABLED);
 	transaction_commit_dirty();
 
 	cursor_set_image(cursor, "grab", NULL);

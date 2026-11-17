@@ -48,7 +48,9 @@ struct sway_node {
 	size_t id;
 
 	struct sway_transaction_instruction *instruction;
-	size_t ntxnrefs;
+	// References that keep the node alive after it starts being destroyed,
+	// like transactions or animations that include it.
+	size_t refs;
 	bool destroying;
 
 	// If true, indicates that the container has pending state that differs from
@@ -63,6 +65,18 @@ struct sway_node {
 };
 
 void node_init(struct sway_node *node, enum sway_node_type type, void *thing);
+
+/**
+ * Keep the node alive, even if it starts being destroyed, until the
+ * last reference is released with node_unref().
+ */
+void node_ref(struct sway_node *node);
+
+/**
+ * Release a reference to the node. A node that is being destroyed is freed
+ * when its last reference is released.
+ */
+void node_unref(struct sway_node *node);
 
 const char *node_type_to_str(enum sway_node_type type);
 

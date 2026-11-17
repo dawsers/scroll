@@ -21,7 +21,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/desktop/transaction.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "list.h"
 #include "sway/log.h"
 #include "util.h"
@@ -204,8 +204,8 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 	ws->ext_workspace->data = ws;
 
 	node_init(&ws->node, N_WORKSPACE, ws);
-	animated_variable_init(&ws->animation.s, 1.0, ANIMATED_VARIABLE_NONE);
-	animated_variable_init(&ws->animation.off, 0.0, ANIMATED_VARIABLE_NONE);
+	animated_variable_init(&ws->animation.s, server.animation_manager, 1.0, ANIMATED_VARIABLE_NONE);
+	animated_variable_init(&ws->animation.off, server.animation_manager, 0.0, ANIMATED_VARIABLE_NONE);
 
 	bool failed = false;
 	ws->layers.tiling = alloc_scene_tree(root->staging, &failed);
@@ -303,8 +303,8 @@ void workspace_destroy(struct sway_workspace *workspace) {
 				"Tried to free workspace which wasn't marked as destroying")) {
 		return;
 	}
-	if (!sway_assert(workspace->node.ntxnrefs == 0, "Tried to free workspace "
-				"which is still referenced by transactions")) {
+	if (!sway_assert(workspace->node.refs == 0, "Tried to free workspace "
+				"which is still referenced")) {
 		return;
 	}
 	animated_variable_release(&workspace->animation.s);
@@ -797,7 +797,7 @@ bool workspace_is_panning(struct sway_workspace *ws) {
 }
 
 double workspace_switch_offset(struct sway_workspace *ws) {
-	return ws->animation.off.animating ? ws->animation.off.xt : 0.0;
+	return ws->animation.off.animating ? ws->animation.off.value : 0.0;
 }
 
 void workspace_hide(struct sway_workspace *ws) {
@@ -867,7 +867,12 @@ static void workspace_switch_set_offset(struct sway_workspace *ws, double origin
 		return;
 	}
 	animated_variable_reset(&ws->animation.off, origin);
-	animated_variable_set(&ws->animation.off, destination, ANIMATION_WORKSPACE_SWITCH);
+	const struct sway_animation_options options = {
+		.spec = animation_get_spec(ANIMATION_WORKSPACE_SWITCH),
+		.group = transaction_get_animation_group(),
+		.clock = output_animation_clock(ws->output),
+	};
+	animated_variable_set(&ws->animation.off, destination, &options);
 }
 
 static bool workspace_switch_down(struct sway_output *output,
@@ -967,7 +972,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 		(!old_ws->output && workspace->output)) &&
 		(!old_vo || old_vo == workspace->virtual_output) &&
 		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
-		animation_set_type(ANIMATION_WORKSPACE_SWITCH);
+		transaction_set_animation(ANIMATION_WORKSPACE_SWITCH);
 		if (workspace->output) {
 			workspace->output->workspace_switch_animated = true;
 			node_set_dirty(&workspace->output->node);

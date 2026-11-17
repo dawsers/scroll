@@ -18,7 +18,7 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/xdg_decoration.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 
 static struct sway_xdg_popup *popup_create(
 	struct wlr_xdg_popup *wlr_popup, struct sway_view *view,
@@ -391,7 +391,7 @@ static void handle_set_title(struct wl_listener *listener, void *data) {
 	struct sway_view *view = &xdg_shell_view->view;
 	view_update_title(view, false);
 	view_execute_criteria(view);
-	transaction_commit_dirty_delayed();
+	transaction_commit_dirty();
 }
 
 static void handle_set_app_id(struct wl_listener *listener, void *data) {
@@ -400,7 +400,7 @@ static void handle_set_app_id(struct wl_listener *listener, void *data) {
 	struct sway_view *view = &xdg_shell_view->view;
 	view_update_app_id(view);
 	view_execute_criteria(view);
-	transaction_commit_dirty_delayed();
+	transaction_commit_dirty();
 }
 
 static void handle_new_popup(struct wl_listener *listener, void *data) {
@@ -429,7 +429,7 @@ static void handle_request_maximize(struct wl_listener *listener, void *data) {
 	wlr_xdg_surface_schedule_configure(toplevel->base);
 
 	struct sway_container *container = xdg_shell_view->view.container;
-	animation_set_type(ANIMATION_WINDOW_SIZE);
+	transaction_set_animation(ANIMATION_WINDOW_SIZE);
 	layout_toggle_size_container(container, 1.0, 1.0);
 	transaction_commit_dirty();
 }
@@ -673,5 +673,5 @@ void xdg_toplevel_tag_manager_v1_handle_set_tag(struct wl_listener *listener, vo
 	free(xdg_shell_view->tag);
 	xdg_shell_view->tag = strdup(event->tag);
 	view_execute_criteria(view);
-	transaction_commit_dirty_delayed();
+	transaction_commit_dirty();
 }

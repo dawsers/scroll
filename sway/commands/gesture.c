@@ -219,3 +219,23 @@ struct cmd_results *cmd_gesture_scroll_sensitivity_mouse(int argc, char **argv) 
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
+
+/**
+ * Set the friction of flicks for gesture scrolling in config
+ */
+struct cmd_results *cmd_gesture_scroll_friction(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "gesture_scroll_friction", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+
+	char *end = NULL;
+	const float friction = strtof(argv[0], &end);
+	if (end == argv[0] || *end != '\0' || friction < 0.0f) {
+		return cmd_results_new(CMD_INVALID,
+			"Expected 'gesture_scroll_friction <number>', 0 or higher");
+	}
+	config->gesture_scroll_friction = friction;
+
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}

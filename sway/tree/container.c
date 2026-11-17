@@ -10,7 +10,7 @@
 #include <wlr/types/wlr_subcompositor.h>
 #include "sway/config.h"
 #include "sway/desktop/transaction.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 #include "sway/ipc-server.h"
@@ -50,15 +50,15 @@ static struct wlr_scene_decoration *alloc_decoration_node(struct wlr_scene_tree 
 }
 
 static void container_init_animation_variables(struct sway_container *con) {
-	animated_variable_init(&con->animation.x, con->current.x,
+	animated_variable_init(&con->animation.x, server.animation_manager, con->current.x,
 		ANIMATED_VARIABLE_POSITION);
-	animated_variable_init(&con->animation.y, con->current.y,
+	animated_variable_init(&con->animation.y, server.animation_manager, con->current.y,
 		ANIMATED_VARIABLE_POSITION);
-	animated_variable_init(&con->animation.w, con->current.width,
+	animated_variable_init(&con->animation.w, server.animation_manager, con->current.width,
 		ANIMATED_VARIABLE_SIZE);
-	animated_variable_init(&con->animation.h, con->current.height,
+	animated_variable_init(&con->animation.h, server.animation_manager, con->current.height,
 		ANIMATED_VARIABLE_SIZE);
-	animated_variable_init(&con->animation.a, con->current.alpha,
+	animated_variable_init(&con->animation.a, server.animation_manager, con->current.alpha,
 		ANIMATED_VARIABLE_FADE);
 }
 
@@ -523,8 +523,8 @@ void container_destroy(struct sway_container *con) {
 				"Tried to free container which wasn't marked as destroying")) {
 		return;
 	}
-	if (!sway_assert(con->node.ntxnrefs == 0, "Tried to free container "
-				"which is still referenced by transactions")) {
+	if (!sway_assert(con->node.refs == 0, "Tried to free container "
+				"which is still referenced")) {
 		return;
 	}
 	container_release_animation_variables(con);
@@ -1109,7 +1109,7 @@ void container_set_floating(struct sway_container *container, bool enable) {
 
 	// Lua callbacks
 	lua_execute_view_float_cbs(container->view);
-	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 }
 
 void container_set_geometry_from_content(struct sway_container *con) {
@@ -1568,7 +1568,7 @@ static void container_fullscreen_workspace(struct sway_container *con) {
 				"Expected a non-fullscreen container")) {
 		return;
 	}
-	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	con->pending.fullscreen_mode = FULLSCREEN_WORKSPACE;
 	con->fullscreen = true;
@@ -1604,7 +1604,7 @@ static void container_fullscreen_global(struct sway_container *con) {
 				"Expected a non-fullscreen container")) {
 		return;
 	}
-	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	root->fullscreen_global = con;
 	con->saved_x = con->pending.x;
@@ -1630,7 +1630,7 @@ void container_fullscreen_disable(struct sway_container *con) {
 				"Expected a fullscreen container")) {
 		return;
 	}
-	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	con->pending.x = con->saved_x;
 	con->pending.y = con->saved_y;
@@ -1790,7 +1790,7 @@ void container_set_fullscreen_layout(struct sway_container *con,
 	if (layout_scale_enabled(workspace)) {
 		return;
 	}
-	animation_set_type(ANIMATION_WINDOW_FULLSCREEN);
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	container_set_fullscreen_application(con, mode);
 	con->pending.fullscreen_layout = mode;

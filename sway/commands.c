@@ -131,6 +131,7 @@ static const struct cmd_handler config_handlers[] = {
 	{ "fullscreen_movefocus", cmd_fullscreen_movefocus },
 	{ "gesture_scroll_enable", cmd_gesture_scroll_enable },
 	{ "gesture_scroll_fingers", cmd_gesture_scroll_fingers },
+	{ "gesture_scroll_friction", cmd_gesture_scroll_friction },
 	{ "gesture_scroll_sensitivity", cmd_gesture_scroll_sensitivity },
 	{ "gesture_scroll_sensitivity_mouse", cmd_gesture_scroll_sensitivity_mouse },
 	{ "include", cmd_include },

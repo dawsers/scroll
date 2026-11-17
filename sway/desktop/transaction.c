@@ -10,7 +10,7 @@
 #include "sway/scene_descriptor.h"
 #include "sway/desktop/idle_inhibit_v1.h"
 #include "sway/desktop/transaction.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/input/cursor.h"
 #include "sway/input/input-manager.h"
 #include "sway/output.h"
@@ -34,6 +34,8 @@ struct sway_transaction {
 	size_t num_waiting;
 	size_t num_configures;
 	struct timespec commit_time;
+	int refs;
+	enum sway_animation_type animation;
 	bool disable_animations;
 };
 
@@ -59,44 +61,25 @@ static struct sway_transaction *transaction_create(void) {
 	}
 	transaction->instructions = create_list();
 	transaction->workspaces = create_list();
+	transaction->refs = 1;
+	transaction->animation = ANIMATION_DEFAULT;
 	return transaction;
 }
 
-void transaction_destroy(struct sway_transaction *transaction) {
+static void transaction_destroy(struct sway_transaction *transaction) {
 	// Free instructions
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
 		struct sway_node *node = instruction->node;
-		node->ntxnrefs--;
 		if (node->instruction == instruction) {
 			node->instruction = NULL;
 		}
 		if (node->type == N_CONTAINER) {
 			free(instruction->container_state.formatted_title);
 		}
-		if (node->destroying && node->ntxnrefs == 0 && !node->dirty) {
-			switch (node->type) {
-			case N_ROOT:
-				sway_assert(false, "Never reached");
-				break;
-			case N_LAYER_SURFACE:
-				layer_surface_destroy(node->sway_layer_surface);
-				break;
-			case N_LAYER_POPUP:
-				layer_popup_destroy(node->sway_layer_popup);
-				break;
-			case N_OUTPUT:
-				output_destroy(node->sway_output);
-				break;
-			case N_WORKSPACE:
-				workspace_destroy(node->sway_workspace);
-				break;
-			case N_CONTAINER:
-				container_destroy(node->sway_container);
-				break;
-			}
-		}
+		// Nodes that are being destroyed are freed when their last reference is gone
+		node_unref(node);
 		free(instruction);
 	}
 	list_free(transaction->instructions);
@@ -106,6 +89,20 @@ void transaction_destroy(struct sway_transaction *transaction) {
 		wl_event_source_remove(transaction->timer);
 	}
 	free(transaction);
+}
+
+struct sway_transaction *transaction_ref(struct sway_transaction *transaction) {
+	++transaction->refs;
+	return transaction;
+}
+
+void transaction_unref(struct sway_transaction *transaction) {
+	if (!transaction) {
+		return;
+	}
+	if (--transaction->refs == 0) {
+		transaction_destroy(transaction);
+	}
 }
 
 static void copy_output_state(struct sway_output *output,
@@ -227,7 +224,7 @@ static void transaction_add_node(struct sway_transaction *transaction,
 
 	// Check if we have an instruction for this node already, in which case we
 	// update that instead of creating a new one.
-	if (node->ntxnrefs > 0) {
+	if (node->refs > 0) {
 		for (int idx = 0; idx < transaction->instructions->length; idx++) {
 			struct sway_transaction_instruction *other =
 				transaction->instructions->items[idx];
@@ -248,7 +245,7 @@ static void transaction_add_node(struct sway_transaction *transaction,
 		instruction->server_request = server_request;
 
 		list_add(transaction->instructions, instruction);
-		node->ntxnrefs++;
+		node_ref(node);
 	} else if (server_request) {
 		instruction->server_request = true;
 	}
@@ -315,7 +312,7 @@ static void apply_container_state(struct sway_container *container,
 			const bool closing = container->node.destroying &&
 				list_find(root->unmapped_views, view) >= 0;
 			if (!closing && (!container->node.destroying ||
-					container->node.ntxnrefs == 1)) {
+					container->node.refs == 1)) {
 				view_remove_saved_buffer(view);
 			}
 		}
@@ -424,11 +421,12 @@ static void animation_update_container(struct sway_container *con) {
 }
 
 static void set_children_positions(struct sway_container *parent, list_t *children,
-		enum sway_container_layout layout, enum sway_animation_type type) {
+		enum sway_container_layout layout,
+		const struct sway_animation_options *options) {
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
 		if (layout == L_VERT) {
-			animated_variable_set(&child->animation.y, child->current.y, type);
+			animated_variable_set(&child->animation.y, child->current.y, options);
 			animated_variable_set_span(&child->animation.y, 0.0);
 			if (parent) {
 				animated_variable_inherit(&child->animation.x, &parent->animation.x);
@@ -436,7 +434,7 @@ static void set_children_positions(struct sway_container *parent, list_t *childr
 				animated_variable_reset(&child->animation.x, child->current.x);
 			}
 		} else {
-			animated_variable_set(&child->animation.x, child->current.x, type);
+			animated_variable_set(&child->animation.x, child->current.x, options);
 			animated_variable_set_span(&child->animation.x, 0.0);
 			if (parent) {
 				animated_variable_inherit(&child->animation.y, &parent->animation.y);
@@ -446,69 +444,33 @@ static void set_children_positions(struct sway_container *parent, list_t *childr
 		}
 		if (!child->view) {
 			set_children_positions(child, child->current.children,
-				child->current.layout, type);
+				child->current.layout, options);
 		}
 	}
 }
 
 static void set_container_positions(struct sway_container *con, double width,
-		double height, enum sway_animation_type type) {
-	animated_variable_set(&con->animation.x, con->pending.x, type);
-	animated_variable_set(&con->animation.y, con->pending.y, type);
+		double height, const struct sway_animation_options *options) {
+	animated_variable_set(&con->animation.x, con->pending.x, options);
+	animated_variable_set(&con->animation.y, con->pending.y, options);
 	animated_variable_set_span(&con->animation.x, width);
 	animated_variable_set_span(&con->animation.y, height);
 }
 
 static void set_workspace_positions(struct sway_workspace *ws,
-		enum sway_animation_type type) {
+		const struct sway_animation_options *options) {
 	struct sway_container *fs = ws->current.fullscreen;
 	if (fs) {
-		set_container_positions(fs, fs->animation.w.x1, fs->animation.h.x1, type);
+		set_container_positions(fs, fs->animation.w.target, fs->animation.h.target, options);
 	} else {
-		set_children_positions(NULL, ws->tiling, layout_get_type(ws), type);
+		set_children_positions(NULL, ws->tiling, layout_get_type(ws), options);
 	}
 	for (int i = 0; i < ws->floating->length; ++i) {
 		struct sway_container *child = ws->floating->items[i];
 		if (child->current.fullscreen_mode != FULLSCREEN_NONE) {
 			continue;
 		}
-		set_container_positions(child, ws->width, ws->height, type);
-	}
-}
-
-// Finalize the animation positions.
-// save_animation_variables() stores the origin of the positions when the
-// transaction is committed. When the transaction is applied, the current state
-// has the final position of every container, and animation_set_positions()
-// sets them as the target of the animation variables for every node, active
-// or not, so the animation can begin.
-static void animation_set_positions(void) {
-	enum sway_animation_type type = animation_get_pending_type();
-	animation_reset_outputs();
-
-	struct sway_container *fs = root->fullscreen_global;
-	if (fs) {
-		set_container_positions(fs, fs->animation.w.x1, fs->animation.h.x1, type);
-	} else {
-		for (int i = 0; i < root->outputs->length; ++i) {
-			struct sway_output *output = root->outputs->items[i];
-			if (!output->enabled) {
-				continue;
-			}
-			for (int j = 0; j < output->workspaces->length; ++j) {
-				struct sway_workspace *ws = output->workspaces->items[j];
-				if (ws->node.destroying) {
-					continue;
-				}
-				set_workspace_positions(ws, type);
-			}
-		}
-	}
-	// animated variables advance with every output, and they may belong to any
-	// output, so when there are any variables left animating, we need to add
-	// all outputs to the animation, so we make sure the animation finishes.
-	if (animated_variables_count() > 0) {
-		animation_add_all_outputs();
+		set_container_positions(child, ws->width, ws->height, options);
 	}
 }
 
@@ -539,19 +501,6 @@ static bool container_animating(struct sway_container *con) {
 	return con->animation.x.animating || con->animation.y.animating ||
 		con->animation.w.animating || con->animation.h.animating ||
 		con->animation.a.animating;
-}
-
-bool transaction_delays_destruction(struct sway_transaction *transaction) {
-	for (int i = 0; i < transaction->instructions->length; ++i) {
-		struct sway_transaction_instruction *instruction =
-			transaction->instructions->items[i];
-		struct sway_node *node = instruction->node;
-		if (node->type == N_CONTAINER && node->destroying &&
-				container_animating(node->sway_container)) {
-			return true;
-		}
-	}
-	return false;
 }
 
 static void animate_children(struct sway_workspace *workspace,
@@ -638,12 +587,12 @@ static void animate_view(struct sway_container *con,
 			h / (h + 2 * size * scale) :
 			w / (w + 2 * size * scale);
 		// Coordinates relative to center
-		double x = 0.5 * root->width - con->animation.x.xt;
-		double y = 0.5 * root->height - con->animation.y.xt;
+		double x = 0.5 * root->width - con->animation.x.value;
+		double y = 0.5 * root->height - con->animation.y.value;
 		double proj_x = 0.5 * root->width - x / ratio;
 		double proj_y = 0.5 * root->height - y / ratio;
-		sx = decoration->node.x + proj_x - con->animation.x.xt;
-		sy = decoration->node.y + proj_y - con->animation.y.xt;
+		sx = decoration->node.x + proj_x - con->animation.x.value;
+		sy = decoration->node.y + proj_y - con->animation.y.value;
 		sw = width / ratio;
 		sh = height / ratio;
 	} else {
@@ -657,10 +606,10 @@ static void animate_view(struct sway_container *con,
 	// The shadow is a separate scene node, it needs to fade with a container
 	// that is appearing or disappearing.
 	const struct sway_animated_variable *fade = &con->animation.a;
-	const double opaque = fmax(fade->x0, fade->x1);
+	const double opaque = fmax(fade->origin, fade->target);
 	const float shadow_alpha = fade->animating && opaque > 0.0 &&
-		(fade->x0 == 0.0 || fade->x1 == 0.0) ?
-		fmin(fmax(fade->xt / opaque, 0.0), 1.0) : 1.0f;
+		(fade->origin == 0.0 || fade->target == 0.0) ?
+		fmin(fmax(fade->value / opaque, 0.0), 1.0) : 1.0f;
 	float shadow_color[4] = {
 		con->pending.decoration.shadow_color_r * shadow_alpha,
 		con->pending.decoration.shadow_color_g * shadow_alpha,
@@ -725,9 +674,9 @@ static void animate_view(struct sway_container *con,
 #endif
 
 	struct sway_animated_variable *a = &con->animation.a;
-	if (a->x0 != a->x1) {
+	if (a->origin != a->target) {
 		const float old_alpha = con->pending.alpha;
-		con->pending.alpha = a->xt;
+		con->pending.alpha = a->value;
 		output_configure_scene(NULL, &con->scene_tree->node, con->pending.alpha);
 		container_update(con);
 		con->pending.alpha = old_alpha;
@@ -821,22 +770,22 @@ static void animate_fullscreen(struct wlr_scene_tree *tree,
 		return;
 	}
 	animation_update_container(fs);
-	const double fx = fs->animation.x.xt;
-	const double fy = fs->animation.y.xt;
+	const double fx = fs->animation.x.value;
+	const double fy = fs->animation.y.value;
 	if (ws) {
 		struct sway_output *output = ws->output;
 		// The container moves with its workspace layer, but the background of
 		// the output does not, so pan it too.
 		const double pan = workspace_switch_offset(ws);
 		wlr_scene_node_set_position(&output->fullscreen_background->node, fx - output->lx, fy + pan - output->ly);
-		wlr_scene_rect_set_size(output->fullscreen_background, fs->animation.w.xt, fs->animation.h.xt);
+		wlr_scene_rect_set_size(output->fullscreen_background, fs->animation.w.value, fs->animation.h.value);
 		wlr_scene_node_set_position(fs_node, fx - output->lx, fy - output->ly);
 		wlr_scene_node_set_position(&fs->view->output_handler->node, fx - output->lx, fy - output->ly);
 	} else {
 		wlr_scene_node_set_position(fs_node, fx, fy);
 		wlr_scene_node_set_position(&fs->view->output_handler->node, fx, fy);
 	}
-	wlr_scene_buffer_set_dest_size(fs->view->output_handler, fs->animation.w.xt, fs->animation.h.xt);
+	wlr_scene_buffer_set_dest_size(fs->view->output_handler, fs->animation.w.value, fs->animation.h.value);
 	view_reconfigure(fs->view);
 }
 
@@ -868,8 +817,8 @@ static void floating_set_position(struct sway_workspace *ws, struct sway_contain
 	struct sway_layout_transform transform;
 	layout_transform_container_get(con, true, &transform);
 	wlr_scene_node_set_position(&con->scene_tree->node,
-		layout_transform_x(&transform, con->animation.x.xt),
-		layout_transform_y(&transform, con->animation.y.xt) + pan);
+		layout_transform_x(&transform, con->animation.x.value),
+		layout_transform_y(&transform, con->animation.y.value) + pan);
 }
 
 static void arrange_workspace_floating(struct sway_workspace *ws) {
@@ -940,7 +889,7 @@ static void animate_workspace_floating(struct sway_workspace *ws) {
 		}
 		animation_update_container(child);
 		floating_set_position(ws, child);
-		animate_container(child, child->animation.w.xt, child->animation.h.xt,
+		animate_container(child, child->animation.w.value, child->animation.h.value,
 			true, ws->gaps_inner, ws);
 	}
 }
@@ -991,8 +940,8 @@ static void layer_surface_resize_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *user_data) {
 	struct sway_layer_surface *surface = user_data;
 	const double total_scale = 1.0;
-	const double wscale = surface->animation.w.xt > 0.0 ? surface->animation.w.xt / fmax(1.0, surface->animation.w.x1) : 0.0;
-	const double hscale = surface->animation.h.xt > 0.0 ? surface->animation.h.xt / fmax(1.0, surface->animation.h.x1) : 0.0;
+	const double wscale = surface->animation.w.value > 0.0 ? surface->animation.w.value / fmax(1.0, surface->animation.w.target) : 0.0;
+	const double hscale = surface->animation.h.value > 0.0 ? surface->animation.h.value / fmax(1.0, surface->animation.h.target) : 0.0;
 	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
 	wlr_scene_surface_resize(scene_surface, total_scale, wscale, hscale, 0.0f, 0.0f);
 }
@@ -1001,22 +950,22 @@ static void layer_popup_resize_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *user_data) {
 	struct sway_layer_popup *popup = user_data;
 	const double total_scale = 1.0;
-	const double width = fmax(1.0, popup->animation.w.xt);
-	const double height = fmax(1.0, popup->animation.h.xt);
-	const double wscale = width / fmax(1.0, popup->animation.w.x1);
-	const double hscale = height / fmax(1.0, popup->animation.h.x1);
+	const double width = fmax(1.0, popup->animation.w.value);
+	const double height = fmax(1.0, popup->animation.h.value);
+	const double wscale = width / fmax(1.0, popup->animation.w.target);
+	const double hscale = height / fmax(1.0, popup->animation.h.target);
 	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
 	wlr_scene_surface_resize(scene_surface, total_scale, wscale, hscale, 0.0f, 0.0f);
 	double x, y;
 	if (popup->toplevel->layer_surface->current.desired_height == 0) {
-		x = popup->pending.x >= popup->toplevel->pending.x ? 0.0: popup->animation.w.x1 - width;
+		x = popup->pending.x >= popup->toplevel->pending.x ? 0.0: popup->animation.w.target - width;
 	} else {
-		x = 0.5 * (popup->animation.w.x1 - width);
+		x = 0.5 * (popup->animation.w.target - width);
 	}
 	if (popup->toplevel->layer_surface->current.desired_width == 0) {
-		y = popup->pending.y >= popup->toplevel->pending.y ? 0.0 : popup->animation.h.x1 - height;
+		y = popup->pending.y >= popup->toplevel->pending.y ? 0.0 : popup->animation.h.target - height;
 	} else {
-		y = 0.5 * (popup->animation.h.x1 - height);
+		y = 0.5 * (popup->animation.h.target - height);
 	}
 	wlr_scene_node_set_position(&buffer->node, x, y);
 }
@@ -1040,15 +989,15 @@ static void animate_layer(struct wlr_scene_tree *tree,
 			continue;
 		}
 
-		if (surface->animation.w.x1 != 0.0 && surface->animation.h.x1 != 0.0) {
+		if (surface->animation.w.target != 0.0 && surface->animation.h.target != 0.0) {
 			wlr_scene_node_for_each_buffer(&surface->tree->node, layer_surface_resize_iterator, surface);
 		} else {
-			surface->animation.w.xt = surface->layer_surface->current.desired_width;
-			surface->animation.h.xt = surface->layer_surface->current.desired_height;
+			surface->animation.w.value = surface->layer_surface->current.desired_width;
+			surface->animation.h.value = surface->layer_surface->current.desired_height;
 		}
 		struct wlr_box box = {0};
 		wlr_scene_layer_surface_v1_get_box(surface->scene, full_area, usable_area,
-			surface->animation.w.xt, surface->animation.h.xt, &box);
+			surface->animation.w.value, surface->animation.h.value, &box);
 		wlr_scene_node_set_position(&surface->scene->tree->node, box.x, box.y);
 
 		for (int i = 0; i < surface->layer_popups->length; ++i) {
@@ -1306,65 +1255,66 @@ static void scene_arrange_root(struct sway_root *root) {
 	arrange_popups(root->layers.popup);
 }
 
-static void animate_root(struct sway_root *root) {
-	struct sway_container *fs = root->fullscreen_global;
+static void animate_unmapped_views(void) {
+	for (int i = 0; i < root->unmapped_views->length; ++i) {
+		struct sway_view *view = root->unmapped_views->items[i];
+		struct sway_container *container = view->container;
+		if (!container) {
+			continue;
+		}
+		struct sway_animated_variable *a = &container->animation.a;
+		const float old_alpha = container->pending.alpha;
+		if (a->origin != a->target) {
+			container->pending.alpha = a->value;
+		}
+		const float alpha = container->pending.alpha;
+		container_update(container);
+		// Fade the saved content of the view
+		output_configure_scene(NULL, &container->scene_tree->node, alpha);
+		container->pending.alpha = old_alpha;
+		// container_update() fades the borders, but the shadow is a separate
+		// scene node, so it needs to be faded too.
+		struct wlr_scene_shadow *shadow = container->shadow;
+		if (shadow && shadow->enabled) {
+			float color[4] = {
+				container->pending.decoration.shadow_color_r * alpha,
+				container->pending.decoration.shadow_color_g * alpha,
+				container->pending.decoration.shadow_color_b * alpha,
+				container->pending.decoration.shadow_color_a * alpha,
+			};
+			wlr_scene_shadow_set_properties(shadow, shadow->width,
+				shadow->height, true, shadow->dynamic, shadow->size,
+				shadow->blur, shadow->offset, color);
+		}
+		view_reconfigure(view);
+	}
+}
 
+void transaction_animate_output(struct sway_output *output) {
+	struct sway_container *fs = root->fullscreen_global;
+	if (fs) {
+		animate_fullscreen(root->layers.fullscreen_global, fs, NULL);
+	} else if (output->enabled && output->wlr_output->enabled) {
+		animate_output(output);
+	}
+	animate_unmapped_views();
+	arrange_popups(root->layers.popup);
+}
+
+void transaction_animate_outputs(void) {
+	struct sway_container *fs = root->fullscreen_global;
 	if (fs) {
 		animate_fullscreen(root->layers.fullscreen_global, fs, NULL);
 	} else {
-		// When called from a per-output render path, only animate the
-		// output currently being rendered. This avoids O(N²) work where
-		// each output's render re-animates all other outputs.
-		struct wlr_output *cur = animation_get_current_output();
-		if (cur && cur->data) {
-			struct sway_output *output = cur->data;
-			if (output->enabled && output->wlr_output->enabled) {
-				animate_output(output);
-			}
-		} else {
-			for (int i = 0; i < root->outputs->length; i++) {
-				struct sway_output *output = root->outputs->items[i];
-				if (!output->enabled || !output->wlr_output->enabled) {
-					continue;
-				}
-				animate_output(output);
-			}
-		}
-	}
-	if (root->unmapped_views->length > 0) {
-		for (int i = 0; i < root->unmapped_views->length; ++i) {
-			struct sway_view *view = root->unmapped_views->items[i];
-			struct sway_container *container = view->container;
-			if (!container) {
+		for (int i = 0; i < root->outputs->length; i++) {
+			struct sway_output *output = root->outputs->items[i];
+			if (!output->enabled || !output->wlr_output->enabled) {
 				continue;
 			}
-			struct sway_animated_variable *a = &container->animation.a;
-			const float old_alpha = container->pending.alpha;
-			if (a->x0 != a->x1) {
-				container->pending.alpha = a->xt;
-			}
-			const float alpha = container->pending.alpha;
-			container_update(container);
-			// Fade the saved content of the view
-			output_configure_scene(NULL, &container->scene_tree->node, alpha);
-			container->pending.alpha = old_alpha;
-			// container_update() fades the borders, but the shadow is a separate
-			// scene node, so it needs to be faded too.
-			struct wlr_scene_shadow *shadow = container->shadow;
-			if (shadow && shadow->enabled) {
-				float color[4] = {
-					container->pending.decoration.shadow_color_r * alpha,
-					container->pending.decoration.shadow_color_g * alpha,
-					container->pending.decoration.shadow_color_b * alpha,
-					container->pending.decoration.shadow_color_a * alpha,
-				};
-				wlr_scene_shadow_set_properties(shadow, shadow->width,
-					shadow->height, true, shadow->dynamic, shadow->size,
-					shadow->blur, shadow->offset, color);
-			}
-			view_reconfigure(view);
+			animate_output(output);
 		}
 	}
+	animate_unmapped_views();
 	arrange_popups(root->layers.popup);
 }
 
@@ -1449,9 +1399,9 @@ static void animate_children(struct sway_workspace *workspace,
 			const double x = scale * animated_variable_get_offset(y);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			wlr_scene_node_set_position(&child->scene_tree->node, x,
-				layout_transform_y(&transform, y->xt) - workspace->y);
+				layout_transform_y(&transform, y->value) - workspace->y);
 			animated_variable_reset(&child->animation.x, child->current.x);
-			animate_container(child, child->animation.w.xt, child->animation.h.xt,
+			animate_container(child, child->animation.w.value, child->animation.h.value,
 				true, 0, workspace);
 		}
 	} else if (layout == L_HORIZ) {
@@ -1462,9 +1412,9 @@ static void animate_children(struct sway_workspace *workspace,
 			const double y = scale * animated_variable_get_offset(x);
 			wlr_scene_node_reparent(&child->scene_tree->node, content);
 			wlr_scene_node_set_position(&child->scene_tree->node,
-				layout_transform_x(&transform, x->xt) - workspace->x, y);
+				layout_transform_x(&transform, x->value) - workspace->x, y);
 			animated_variable_reset(&child->animation.y, child->current.y);
-			animate_container(child, child->animation.w.xt, child->animation.h.xt,
+			animate_container(child, child->animation.w.value, child->animation.h.value,
 				true, 0, workspace);
 		}
 	} else {
@@ -1472,36 +1422,18 @@ static void animate_children(struct sway_workspace *workspace,
 	}
 }
 
-static void animation_callback(void *data) {
-	animate_root(root);
-}
-
-static void animation_callback_end(void *data) {
-	cursor_rebase_all();
-}
-
-void config_default_animation_callbacks() {
-	struct sway_animation_callbacks callbacks;
-	callbacks.callback_begin = NULL;
-	callbacks.callback_begin_data = NULL;
-	callbacks.callback_step = animation_callback;
-	callbacks.callback_step_data = NULL;
-	callbacks.callback_end = animation_callback_end;
-	callbacks.callback_end_data = NULL;
-	animation_set_default_callbacks(&callbacks);
-}
-
 static void transaction_commit_pending(void);
 
-static bool transaction_has_server_request(struct sway_transaction *transaction) {
-	for (int i = 0; i < transaction->instructions->length; ++i) {
-		struct sway_transaction_instruction *instruction =
-			transaction->instructions->items[i];
-		if (instruction->server_request) {
-			return true;
-		}
-	}
-	return false;
+static void sync_animation_variables(bool animate);
+static void animate_transaction(struct sway_transaction *transaction,
+	struct sway_animation_group *group);
+static void transaction_animations_done(void *data);
+
+// The group of the animations for the transaction being applied
+static struct sway_animation_group *applying_group = NULL;
+
+struct sway_animation_group *transaction_get_animation_group(void) {
+	return applying_group;
 }
 
 static void transaction_progress(void) {
@@ -1511,27 +1443,28 @@ static void transaction_progress(void) {
 	if (server.queued_transaction->num_waiting > 0) {
 		return;
 	}
-	transaction_apply(server.queued_transaction);
+	struct sway_transaction *transaction = server.queued_transaction;
+	// The group tells when every animation started by the transaction is over
+	struct sway_animation_group *group = animation_group_create(
+		server.animation_manager, transaction_animations_done, NULL);
+	applying_group = group;
+	// Variables that are not animating start from where their nodes are
+	sync_animation_variables(!transaction->disable_animations);
+	transaction_apply(transaction);
 	scene_arrange_root(root);
-	struct sway_animation_config *animation_config = animation_get_config();
-	bool animation_enabled = animation_config->enabled;
-	if (server.queued_transaction->disable_animations) {
-		animation_config->enabled = false;
+	// Start the animations for the changes of the transaction, and render
+	// with the initial values. Future frames will be scheduled by the outputs
+	animate_transaction(transaction, group);
+	applying_group = NULL;
+	if (!animation_group_empty(group)) {
+		animation_group_commit(group);
 	}
-	animation_set_positions();
-	animation_begin();
+	animation_group_unref(group);
+	transaction_animate_outputs();
 	cursor_rebase_all();
-	if (!animation_animating()) {
-		transaction_destroy(server.queued_transaction);
-	}
 	server.queued_transaction = NULL;
-	animation_config->enabled = animation_enabled;
-	// If we are animating, pending transactions that only contain client-side
-	// changes must not be committed now, or the animation would stop. 
-	bool defer_pending_transaction = server.pending_transaction &&
-		animation_animating() &&
-		!transaction_has_server_request(server.pending_transaction);
-	if (!server.pending_transaction || defer_pending_transaction) {
+	transaction_unref(transaction);
+	if (!server.pending_transaction) {
 		struct sway_seat *seat = input_manager_get_default_seat();
 		struct sway_node *node = seat_get_focus(seat);
 		if (node && node->type == N_CONTAINER) {
@@ -1555,6 +1488,10 @@ static void transaction_progress(void) {
 	transaction_commit_pending();
 }
 
+static double workspace_state_scale(double scale) {
+	return scale > 0.0 ? scale : 1.0;
+}
+
 static int handle_timeout(void *data) {
 	struct sway_transaction *transaction = data;
 	sway_log(SWAY_DEBUG, "Transaction %p timed out (%zi waiting)",
@@ -1576,7 +1513,9 @@ static bool should_configure(struct sway_node *node,
 		return false;
 	}
 	struct sway_workspace *workspace = node->sway_container->pending.workspace;
-	if (workspace && workspace->animation.s.x0 != workspace->animation.s.x1) {
+	if (workspace &&
+		(workspace_state_scale(workspace->current.scale) != workspace_state_scale(workspace->scale) ||
+			workspace->animation.s.origin != workspace->animation.s.target)) {
 		return true;
 	}
 	struct sway_container_state *cstate = &node->sway_container->current;
@@ -1710,8 +1649,6 @@ static void transaction_commit(struct sway_transaction *transaction) {
 	}
 }
 
-static void save_animation_variables(struct sway_transaction *transaction);
-
 static void transaction_commit_pending(void) {
 	if (server.queued_transaction) {
 		return;
@@ -1719,9 +1656,6 @@ static void transaction_commit_pending(void) {
 	struct sway_transaction *transaction = server.pending_transaction;
 	server.pending_transaction = NULL;
 	server.queued_transaction = transaction;
-	animation_interrupt();
-	save_animation_variables(transaction);
-	animation_set_transaction(transaction);
 	transaction_commit(transaction);
 	transaction_progress();
 }
@@ -1784,27 +1718,58 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 	return false;
 }
 
-static void container_save_animation_variables(struct sway_container *child) {
+/**
+ * Animations
+ *
+ * When a transaction is applied, the animated variables of the nodes get the
+ * state of the nodes as their targets, and those that change start an
+ * animation. The transaction is not needed after that: the animation
+ * manager runs the animations, and the frames of the outputs show them.
+ */
+
+// A container that is closing is kept alive by its fade out animation
+static void container_exit_done(void *data) {
+	struct sway_container *con = data;
+	node_unref(&con->node);
+}
+
+static void container_begin_exit(struct sway_container *con, bool animate) {
+	if (con->exiting) {
+		return;
+	}
+	con->exiting = true;
+	node_ref(&con->node);
+	struct sway_workspace *ws = con->current.workspace;
+	struct sway_animation_group *group = animation_group_create(
+		server.animation_manager, container_exit_done, con);
+	const struct sway_animation_options options = {
+		.spec = animate ? animation_get_spec(ANIMATION_FADE_OUT) : NULL,
+		.group = group,
+		.clock = ws ? output_animation_clock(ws->output) : NULL,
+	};
+	animated_variable_set(&con->animation.a, con->pending.alpha, &options);
+	// If there is nothing to animate, the group is done already
+	animation_group_commit(group);
+	animation_group_unref(group);
+}
+
+// Before applying a transaction: idle variables take the values of the
+// current state of their nodes, which are the origin of the animations.
+static void container_sync_animation_variables(struct sway_container *child,
+		bool animate) {
 	if (!child) {
 		return;
 	}
 	if (child->node.destroying) {
-		animated_variable_set(&child->animation.a, child->pending.alpha,
-			ANIMATION_FADE_OUT);
+		// It is still in the tree for the last time
+		container_begin_exit(child, animate);
 		return;
 	}
-	enum sway_animation_type type = animation_get_pending_type();
 	animated_variable_reset(&child->animation.x, child->current.x);
 	animated_variable_reset(&child->animation.y, child->current.y);
 	animated_variable_reset(&child->animation.w, child->current.width);
 	animated_variable_reset(&child->animation.h, child->current.height);
-	const float alpha = container_state_alpha(&child->pending);
 	animated_variable_reset(&child->animation.a, container_state_alpha(&child->current));
-	animated_variable_set(&child->animation.w, child->pending.width, type);
-	animated_variable_set(&child->animation.h, child->pending.height, type);
-	animated_variable_set(&child->animation.a, alpha,
-		alpha >= container_state_alpha(&child->current) ?
-			ANIMATION_FADE_IN : ANIMATION_FADE_OUT);
 #if WLR_HAS_XWAYLAND
 	if (child->view && child->view->type == SWAY_VIEW_XWAYLAND) {
 		child->old_content.x = child->current.content_x;
@@ -1815,32 +1780,68 @@ static void container_save_animation_variables(struct sway_container *child) {
 #endif
 }
 
-static void children_save_animation_variables(list_t *children) {
+static void children_sync_animation_variables(list_t *children, bool animate) {
 	if (!children) {
 		return;
 	}
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
-		container_save_animation_variables(child);
-		children_save_animation_variables(child->pending.children);
+		container_sync_animation_variables(child, animate);
+		children_sync_animation_variables(child->pending.children, animate);
 	}
 }
 
-static void workspace_save_animation_variables(struct sway_workspace *ws) {
-	enum sway_animation_type type = animation_get_pending_type();
-	animated_variable_reset(&ws->animation.s,
-		ws->current.scale > 0.0 ? ws->current.scale : 1.0);
-	animated_variable_set(&ws->animation.s,
-		ws->scale > 0.0 ? ws->scale : 1.0, type);
-	if (ws->tiling->length == 0 && ws->floating->length == 0) {
+static void sync_animation_variables(bool animate) {
+	if (root->fullscreen_global) {
 		return;
 	}
-	children_save_animation_variables(ws->tiling);
-	children_save_animation_variables(ws->floating);
+	for (int j = 0; j < root->unmapped_views->length; ++j) {
+		struct sway_view *view = root->unmapped_views->items[j];
+		container_sync_animation_variables(view->container, animate);
+	}
+	for (int j = 0; j < root->outputs->length; j++) {
+		struct sway_output *output = root->outputs->items[j];
+		for (int i = 0; i < output->workspaces->length; i++) {
+			struct sway_workspace *ws = output->workspaces->items[i];
+			animated_variable_reset(&ws->animation.s,
+				workspace_state_scale(ws->current.scale));
+			children_sync_animation_variables(ws->tiling, animate);
+			children_sync_animation_variables(ws->floating, animate);
+		}
+	}
 }
 
-static void layer_save_animation_variables(struct wlr_scene_tree *tree) {
-	enum sway_animation_type type = animation_get_pending_type();
+// After applying a transaction: the new state is the target of the variables
+static void container_animate_variables(struct sway_container *child,
+		const struct sway_animation_options *options, bool fade_enabled) {
+	if (!child || child->node.destroying) {
+		return;
+	}
+	animated_variable_set(&child->animation.w, child->current.width, options);
+	animated_variable_set(&child->animation.h, child->current.height, options);
+	const float alpha = container_state_alpha(&child->current);
+	// Opacity uses its own animation independent of the one assigned to the transaction.
+	struct sway_animation_options fade = *options;
+	fade.spec = fade_enabled ? animation_get_spec(
+		alpha >= child->animation.a.value ?
+			ANIMATION_FADE_IN : ANIMATION_FADE_OUT) : NULL;
+	animated_variable_set(&child->animation.a, alpha, &fade);
+}
+
+static void children_animate_variables(list_t *children,
+		const struct sway_animation_options *options, bool fade) {
+	if (!children) {
+		return;
+	}
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *child = children->items[i];
+		container_animate_variables(child, options, fade);
+		children_animate_variables(child->pending.children, options, fade);
+	}
+}
+
+static void layer_animate_variables(struct wlr_scene_tree *tree,
+		const struct sway_animation_options *options) {
 	struct wlr_scene_node *node;
 	wl_list_for_each(node, &tree->children, link) {
 		struct sway_layer_surface *surface = scene_descriptor_try_get(node,
@@ -1856,50 +1857,70 @@ static void layer_save_animation_variables(struct wlr_scene_tree *tree) {
 
 		animated_variable_reset(&surface->animation.x, surface->pending.x);
 		animated_variable_reset(&surface->animation.y, surface->pending.y);
-		animated_variable_set(&surface->animation.w, surface->pending.width, type);
-		animated_variable_set(&surface->animation.h, surface->pending.height, type);
+		animated_variable_set(&surface->animation.w, surface->pending.width, options);
+		animated_variable_set(&surface->animation.h, surface->pending.height, options);
 
 		for (int i = 0; i < surface->layer_popups->length; ++i) {
 			struct sway_layer_popup *popup = surface->layer_popups->items[i];
 			animated_variable_reset(&popup->animation.x, popup->pending.x);
 			animated_variable_reset(&popup->animation.y, popup->pending.y);
-			animated_variable_set(&popup->animation.w, popup->pending.width, type);
-			animated_variable_set(&popup->animation.h, popup->pending.height, type);
+			animated_variable_set(&popup->animation.w, popup->pending.width, options);
+			animated_variable_set(&popup->animation.h, popup->pending.height, options);
 		}
 	}
 }
 
-static void layers_save_animation_variables(struct sway_output *output) {
-	layer_save_animation_variables(output->layers.shell_overlay);
-	layer_save_animation_variables(output->layers.shell_top);
-	layer_save_animation_variables(output->layers.shell_bottom);
-	layer_save_animation_variables(output->layers.shell_background);
+static void output_animate_variables(struct sway_output *output,
+		const struct sway_animation_options *options, bool fade) {
+	layer_animate_variables(output->layers.shell_overlay, options);
+	layer_animate_variables(output->layers.shell_top, options);
+	layer_animate_variables(output->layers.shell_bottom, options);
+	layer_animate_variables(output->layers.shell_background, options);
+
+	for (int i = 0; i < output->workspaces->length; i++) {
+		struct sway_workspace *ws = output->workspaces->items[i];
+		animated_variable_set(&ws->animation.s,
+			workspace_state_scale(ws->scale), options);
+		children_animate_variables(ws->tiling, options, fade);
+		children_animate_variables(ws->floating, options, fade);
+	}
 }
 
-static void save_animation_variables(struct sway_transaction *transaction) {
+// The animations of a transaction ended
+static void transaction_animations_done(void *data) {
+	cursor_rebase_all();
+}
+
+static void animate_transaction(struct sway_transaction *transaction,
+		struct sway_animation_group *group) {
+	struct sway_animation_options options = {
+		.spec = transaction->disable_animations ?
+			NULL : animation_get_spec(transaction->animation),
+		.group = group,
+	};
+
 	struct sway_container *fs = root->fullscreen_global;
-	struct sway_animation_config *anim_config = animation_get_config();
-	const bool enabled = anim_config->enabled;
-	if (transaction->disable_animations) {
-		anim_config->enabled = false;
-	}
-
-	if (!fs) {
-		for (int j = 0; j < root->unmapped_views->length; ++j) {
-			struct sway_view *view = root->unmapped_views->items[j];
-			container_save_animation_variables(view->container);
-		}
-		for (int j = 0; j < root->outputs->length; j++) {
-			struct sway_output *output = root->outputs->items[j];
-			layers_save_animation_variables(output);
-
-			for (int i = 0; i < output->workspaces->length; i++) {
-				struct sway_workspace *child = output->workspaces->items[i];
-				workspace_save_animation_variables(child);
+	if (fs) {
+		set_container_positions(fs, fs->animation.w.target,
+			fs->animation.h.target, &options);
+	} else {
+		for (int i = 0; i < root->outputs->length; ++i) {
+			struct sway_output *output = root->outputs->items[i];
+			options.clock = output_animation_clock(output);
+			output_animate_variables(output, &options,
+				!transaction->disable_animations);
+			if (!output->enabled) {
+				continue;
+			}
+			for (int j = 0; j < output->workspaces->length; ++j) {
+				struct sway_workspace *ws = output->workspaces->items[j];
+				if (ws->node.destroying) {
+					continue;
+				}
+				set_workspace_positions(ws, &options);
 			}
 		}
 	}
-	anim_config->enabled = enabled;
 }
 
 static void overview_recompute_scales() {
@@ -1929,8 +1950,87 @@ static void overview_recompute_scales() {
 	}
 }
 
-static void _transaction_commit_dirty(bool server_request, bool delayed,
-		bool disable_animations) {
+/**
+ * Continuous animations
+ *
+ * While something moves containers following the input (dragging a window,
+ * a scroll gesture), their positions are not animated, they are set by the
+ * caller. The animated variables track them, and when the client untracks them,
+ * the animation that settles the values starts with the cotnainers' velocity.
+ */
+static struct sway_animation_clock *workspace_animation_clock(
+		struct sway_workspace *ws) {
+	return ws ? output_animation_clock(ws->output) : NULL;
+}
+
+void transaction_track_container(struct sway_container *con) {
+	struct sway_animation_clock *clock =
+		workspace_animation_clock(con->pending.workspace);
+	const int64_t now = animation_now();
+	animated_variable_track(&con->animation.x, con->pending.x, now, clock);
+	animated_variable_track(&con->animation.y, con->pending.y, now, clock);
+}
+
+void transaction_untrack_container(struct sway_container *con) {
+	animated_variable_untrack(&con->animation.x);
+	animated_variable_untrack(&con->animation.y);
+}
+
+static void track_children(struct sway_container *parent, list_t *children,
+		enum sway_container_layout layout, int64_t now,
+		struct sway_animation_clock *clock) {
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *child = children->items[i];
+		if (layout == L_VERT) {
+			animated_variable_track(&child->animation.y, child->pending.y, now, clock);
+			if (parent) {
+				animated_variable_inherit(&child->animation.x, &parent->animation.x);
+			}
+		} else {
+			animated_variable_track(&child->animation.x, child->pending.x, now, clock);
+			if (parent) {
+				animated_variable_inherit(&child->animation.y, &parent->animation.y);
+			}
+		}
+		if (!child->view) {
+			track_children(child, child->pending.children,
+				child->pending.layout, now, clock);
+		}
+	}
+}
+
+static void untrack_children(list_t *children) {
+	for (int i = 0; i < children->length; ++i) {
+		struct sway_container *child = children->items[i];
+		transaction_untrack_container(child);
+		if (!child->view) {
+			untrack_children(child->pending.children);
+		}
+	}
+}
+
+void transaction_track_workspace(struct sway_workspace *ws) {
+	if (!ws || ws->fullscreen) {
+		return;
+	}
+	track_children(NULL, ws->tiling, layout_get_type(ws), animation_now(),
+		workspace_animation_clock(ws));
+}
+
+void transaction_untrack_workspace(struct sway_workspace *ws) {
+	if (ws) {
+		untrack_children(ws->tiling);
+	}
+}
+
+// The type of animation for the next transaction
+static enum sway_animation_type next_animation = ANIMATION_DEFAULT;
+
+void transaction_set_animation(enum sway_animation_type type) {
+	next_animation = type;
+}
+
+static void _transaction_commit_dirty(bool server_request, bool disable_animations) {
 	if (!server.dirty_nodes->length) {
 		return;
 	}
@@ -1945,6 +2045,8 @@ static void _transaction_commit_dirty(bool server_request, bool delayed,
 		}
 	}
 	server.pending_transaction->disable_animations = disable_animations;
+	server.pending_transaction->animation = next_animation;
+	next_animation = ANIMATION_DEFAULT;
 
 	for (int i = 0; i < server.dirty_nodes->length; ++i) {
 		struct sway_node *node = server.dirty_nodes->items[i];
@@ -1953,32 +2055,17 @@ static void _transaction_commit_dirty(bool server_request, bool delayed,
 	}
 	server.dirty_nodes->length = 0;
 
-	if (delayed && animation_animating()) {
-		return;
-	}
-
 	transaction_commit_pending();
 }
 
 void transaction_commit_dirty(void) {
-	_transaction_commit_dirty(true, false, false);
+	_transaction_commit_dirty(true, false);
 }
 
 void transaction_commit_dirty_client(void) {
-	_transaction_commit_dirty(false, true, false);
-}
-
-void transaction_commit_dirty_delayed(void) {
-	_transaction_commit_dirty(true, true, false);
-}
-
-void transaction_commit_delayed(void) {
-	if (!server.pending_transaction) {
-		return;
-	}
-	transaction_commit_pending();
+	_transaction_commit_dirty(false, false);
 }
 
 void transaction_commit_dirty_disable_animations() {
-	_transaction_commit_dirty(true, false, true);
+	_transaction_commit_dirty(true, true);
 }

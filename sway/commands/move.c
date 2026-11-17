@@ -22,7 +22,8 @@
 #include "list.h"
 #include "sway/log.h"
 #include "util.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
+#include "sway/desktop/transaction.h"
 
 static const char expected_syntax[] =
 	"Expected 'move <left|right|up|down> <[px] px>' or "
@@ -430,7 +431,7 @@ static struct cmd_results *cmd_move_container(bool no_auto_back_and_forth,
 		}
 		arrange_node(node_get_parent(destination));
 	}
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
@@ -486,7 +487,7 @@ static struct cmd_results *cmd_move_workspace(int argc, char **argv) {
 	seat_set_focus(seat, focus);
 	seat_consider_warp_to_focus(seat);
 
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
@@ -541,7 +542,7 @@ static struct cmd_results *cmd_move_in_direction(
 			return cmd_results_new(CMD_FAILURE, "Invalid direction for floating container");
 		}
 		container_floating_move_to(container, lx, ly, false);
-		animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
+		transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 	struct sway_workspace *old_ws = container->pending.workspace;
@@ -579,7 +580,7 @@ static struct cmd_results *cmd_move_in_direction(
 	struct sway_seat *seat = config->handler_context.seat;
 	seat_consider_warp_to_focus(seat);
 
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
@@ -613,7 +614,7 @@ static struct cmd_results *cmd_move_to_position_pointer(
 
 	/* Actually move the container. */
 	container_floating_move_to(container, lx, ly, false);
-	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
@@ -674,7 +675,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 			ly = ws->y + (ws->height - container->pending.height) / 2;
 		}
 		container_floating_move_to(container, lx, ly, false);
-		animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
+		transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
@@ -761,7 +762,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 		ly.amount += ws->y;
 	}
 	container_floating_move_to(container, lx.amount, ly.amount, false);
-	animation_set_type(ANIMATION_WINDOW_MOVE_FLOAT);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
@@ -793,7 +794,7 @@ static struct cmd_results *cmd_move_to_scratchpad(void) {
 	} else if (con->pending.workspace) {
 		root_scratchpad_hide(con);
 	}
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 

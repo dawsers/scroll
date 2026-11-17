@@ -22,7 +22,7 @@
 #include "sway/server.h"
 #include "sway/swaynag.h"
 #include "sway/desktop/transaction.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/tree/root.h"
 #include "sway/tree/node.h"
 #include "sway/ipc-server.h"
@@ -428,10 +428,13 @@ int main(int argc, char **argv) {
 shutdown:
 	sway_log(SWAY_INFO, "Shutting down scroll");
 
+	// The event loop is destroyed with the server
+	animation_release_loop();
 	server_fini(&server);
-	animation_destroy();
+	animation_stop();
 	root_destroy(root);
 	root = NULL;
+	animation_destroy();
 	node_map_fini();
 
 	free(config_path);

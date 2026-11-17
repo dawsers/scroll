@@ -133,6 +133,13 @@ The following commands may only be used in the configuration file.
 	config. It is the curve used to animate a decrease in opacity, also used
 	when a window is closing.
 
+	*gesture* enabled [duration] [var animation curve] [off animation curve]
+	Default is not defined, so it uses _default_ unless you set one up in your
+	config. It is the animation used when a scrolling gesture (touchpad, or
+	mouse with the middle button) ends, and windows move to their final
+	positions. A _spring_ (see below) continues with the velocity the windows
+	had when the gesture ended.
+
 	Format of an animation curve:
 
 	The first field is _enabled_. It can be _yes_ or _no_. It enables or
@@ -183,6 +190,39 @@ The following commands may only be used in the configuration file.
 	is too big.
 	_order_ and _control_points_ work as in the _var_ case. But this time, the
 	points you will not include are: _(0, 0)_ (first) and _(1, 0)_ (last).
+
+	Other types of animation:
+
+	Instead of a duration and Bezier curves, any of the animations above can
+	be a spring or a decay. They do not have a fixed duration.
+
+	_enabled_ *spring* <response_ms> <damping_ratio>
+
+	The animation moves like a spring attached to the final value.
+	_response_ms_ is roughly the time the spring takes to get there, in
+	milliseconds. _damping_ratio_ says how much it bounces: with _1_ it gets
+	to the final value as fast as possible without going past it, with values
+	lower than _1_ it bounces past it and back, more times the lower the
+	value is, and with values higher than _1_ it approaches it slowly. If the
+	animation interrupts another one, or follows a gesture, a spring starts
+	with the velocity the animation had at that moment, instead of starting from
+	rest like a curve does. For example:
+
+```
+    window_move yes spring 350 0.8
+    gesture yes spring 400 1
+```
+
+	_enabled_ *decay* <rate>
+
+	The animation starts at its fastest and slows down like something
+	stopped by friction: every second, the distance left to the final value is
+	divided by _e_ (2.718...) _rate_ times. The higher the _rate_, the shorter
+	the animation. For example:
+
+```
+    window_size yes decay 12
+```
 
 *bar* [<bar-id>] <bar-subcommands...>
 	For details on bar subcommands, see *scroll-bar*(5).
@@ -235,6 +275,17 @@ The following commands may only be used in the configuration file.
 
 *gesture_scroll_fingers* <number>
 	Default is _3_. Number of fingers assigned to the scrolling gesture.
+
+*gesture_scroll_friction* <number>
+	Default is _0_, which disables it. With a value higher than _0_, a
+	scrolling gesture that ends while it is moving (a flick) continues: the
+	window that gets the focus is chosen from the position where the layout
+	would stop if friction slowed it down, instead of from the position where
+	the gesture left it. The value is the rate of that friction, the same as
+	the _rate_ of a _decay_ animation: the layout would travel its velocity (in
+	pixels per second) divided by this number. Lower values travel further;
+	try values between _3_ and _10_. It works best with a _spring_ for the
+	_gesture_ animation, which continues with the velocity of the flick.
 
 *gesture_scroll_sensitivity* <number>
 	Default is _1.0_. Increase if you want more sensitivity when using a swiping

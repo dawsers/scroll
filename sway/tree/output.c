@@ -3,6 +3,7 @@
 #include <string.h>
 #include <strings.h>
 #include <wlr/types/wlr_ext_workspace_v1.h>
+#include "sway/desktop/animate.h"
 #include "sway/tree/virtual_output.h"
 #include "sway/ipc-server.h"
 #include "sway/layers.h"
@@ -160,6 +161,7 @@ void output_enable(struct sway_output *output) {
 	struct wlr_output *wlr_output = output->wlr_output;
 	output->enabled = true;
 	list_add(root->outputs, output);
+	output_animation_clock_init(output);
 
 	sway_ext_workspace_output_enable(output);
 	restore_workspaces(output);
@@ -270,8 +272,8 @@ void output_destroy(struct sway_output *output) {
 				"Tried to free output which still had a wlr_output")) {
 		return;
 	}
-	if (!sway_assert(output->node.ntxnrefs == 0, "Tried to free output "
-				"which is still referenced by transactions")) {
+	if (!sway_assert(output->node.refs == 0, "Tried to free output "
+				"which is still referenced")) {
 		return;
 	}
 	node_map_remove(&output->node);
@@ -305,7 +307,9 @@ void output_disable(struct sway_output *output) {
 
 	destroy_layers(output);
 	output_evacuate(output);
-	animation_output_gone(output->wlr_output);
+	// The animations happening in this output continue in another output, or
+	// end if there is none left
+	output_animation_clock_finish(output);
 	sway_ext_workspace_output_disable(output);
 }
 

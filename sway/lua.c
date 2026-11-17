@@ -11,7 +11,7 @@
 #include "sway/tree/virtual_output.h"
 #include "sway/tree/node.h"
 #include "sway/output.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/desktop/launcher.h"
 #include "sway/ipc-server.h"
 #include "sway/desktop/transaction.h"
@@ -958,7 +958,7 @@ static int scroll_container_get_opacity(lua_State *L) {
 	}
 	double alpha = container->pending.alpha;
 	if (container->animation.a.animating) {
-		alpha = container->animation.a.xt;
+		alpha = container->animation.a.value;
 	}
 	lua_pushnumber(L, alpha);
 	return 1;
@@ -1103,9 +1103,9 @@ static int scroll_container_get_animated_geometry(lua_State *L) {
 	}
 
 	if (animation_animating()) {
-		lua_pushnumber(L, container->animation.w.xt);
+		lua_pushnumber(L, container->animation.w.value);
 		lua_setfield(L, -2, "width");
-		lua_pushnumber(L, container->animation.h.xt);
+		lua_pushnumber(L, container->animation.h.value);
 		lua_setfield(L, -2, "height");
 	} else {
 		lua_pushnumber(L, container->current.width);
@@ -1128,13 +1128,13 @@ static int scroll_container_get_animated_values(lua_State *L) {
 		return 1;
 	}
 	lua_createtable(L, 0, 4);
-	lua_pushnumber(L, container->animation.x.xt);
+	lua_pushnumber(L, container->animation.x.value);
 	lua_setfield(L, -2, "x");
-	lua_pushnumber(L, container->animation.y.xt);
+	lua_pushnumber(L, container->animation.y.value);
 	lua_setfield(L, -2, "y");
-	lua_pushnumber(L, container->animation.w.xt);
+	lua_pushnumber(L, container->animation.w.value);
 	lua_setfield(L, -2, "width");
-	lua_pushnumber(L, container->animation.h.xt);
+	lua_pushnumber(L, container->animation.h.value);
 	lua_setfield(L, -2, "height");
 	lua_pushboolean(L, container->animation.x.animating ||
 		container->animation.y.animating || container->animation.w.animating ||

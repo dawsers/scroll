@@ -9,7 +9,8 @@
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/tree/layout.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
+#include "sway/desktop/transaction.h"
 
 
 /**
@@ -45,7 +46,7 @@ static struct cmd_results *set_size_floating(enum sway_layout_axis axis, double 
 		current->pending.content_height += grow_height;
 	}
 
-	animation_set_type(ANIMATION_WINDOW_SIZE);
+	transaction_set_animation(ANIMATION_WINDOW_SIZE);
 	arrange_container(current);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
@@ -90,7 +91,7 @@ static struct cmd_results *set_size_tiled(enum sway_layout_axis axis, double fra
 		}
 	}
 
-	animation_set_type(ANIMATION_WINDOW_SIZE);
+	transaction_set_animation(ANIMATION_WINDOW_SIZE);
 	if (current->pending.parent) {
 		arrange_container(current->pending.parent);
 	} else {

@@ -15,7 +15,7 @@
 #include "sway/log.h"
 #include "stringop.h"
 #include "util.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 
 int binding_order = 0;
 

@@ -1752,6 +1752,13 @@ radius of the top title bar borders. Default is 0.
 `gesture_scroll_fingers`: default is `3`. Number of fingers to use for the
 scrolling gesture.
 
+`gesture_scroll_friction`: default is `0` (disabled). With a higher value, a
+scrolling gesture that ends while moving (a flick) continues. The window to
+focus is chosen from where the layout would stop if friction slowed it down.
+The layout would travel its velocity (pixels per second) divided by this
+value. Try values between `3` and `10`. Works best with
+`animations gesture yes spring ...`.
+
 `gesture_scroll_sentitivity`: default is `1.0`. Increase if you want more
 sensitivity for swiping devices.
 
@@ -1809,6 +1816,9 @@ a window.
 `fade_out`: curve to animate a decrease in opacity, for example, when closing
 a window.
 
+`gesture`: animation used when a scrolling gesture (touchpad, or mouse with
+the middle button) ends, and windows move to their final positions.
+
 Format of an animation curve:
 
 - The first field is `enabled`. It can be `yes` or `no`. It enables or
@@ -1846,6 +1856,31 @@ animations {
     window_open yes 300 var 3 [ 0 0 1 1 ]
     window_move yes 300 var 3 [ 0.215 0.61 0.355 1 ] off 0.05 6 [0 0.6 0.4 0 1 0 0.4 -0.6 1 -0.6]
     window_size yes 300 var 3 [ -0.35 0 0 0.5 ]
+}
+```
+
+Instead of a duration and Bezier curves, any of the animations above can be a
+spring or a decay, which do not have a fixed duration:
+
+- `<enabled> spring <response_ms> <damping_ratio>`. The animation moves like a
+  spring attached to the final value. `response_ms` is roughly the time it
+  takes to get there. With a `damping_ratio` of `1` it gets there as fast as
+  possible without going past it, with lower values it bounces, and with
+  higher values it approaches slowly. If the animation interrupts another
+  one, or follows a gesture, a spring starts with the velocity the animation
+  had at that moment, instead of starting from rest like a curve does.
+
+- `<enabled> decay <rate>`. The animation starts at its fastest and slows
+  down like something stopped by friction. The higher the `rate`, the
+  shorter the animation.
+
+Example:
+
+``` config
+animations {
+    window_move yes spring 350 0.8
+    gesture yes spring 400 1
+    window_size yes decay 12
 }
 ```
 
@@ -2175,7 +2210,7 @@ each one of them:
 `align_reset_auto`, `animations`, `cursor_shake_magnify`,
 `cursor_shake_magnify_sensitivity`, `cycle_size_wrap`, `focus_ring_length`,
 `focus_ring_wrap`, `fullscreen_movefocus`,
-`gesture_scroll_enable`, `gesture_scroll_fingers`,
+`gesture_scroll_enable`, `gesture_scroll_fingers`, `gesture_scroll_friction`,
 `gesture_scroll_sensitivity`,  `jump_labels_background`, `jump_labels_color`,
 `jump_labels_keys`, `jump_labels_scale`, `layout_Default_mode`, `layout_default_height`,
 `layout_default_width`, `layout_heights`, `layout_widths`, `maximize_if_single`,

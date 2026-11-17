@@ -20,7 +20,7 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/node.h"
 #include "sway/tree/workspace.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 
 struct wlr_layer_surface_v1 *toplevel_layer_surface_from_surface(
 		struct wlr_surface *surface) {
@@ -158,10 +158,10 @@ static struct wlr_scene_tree *sway_layer_get_scene(struct sway_output *output,
 }
 
 static void layer_surface_init_animation_variables(struct sway_layer_surface *surface) {
-	animated_variable_init(&surface->animation.x, 0.0, ANIMATED_VARIABLE_POSITION);
-	animated_variable_init(&surface->animation.y, 0.0, ANIMATED_VARIABLE_POSITION);
-	animated_variable_init(&surface->animation.w, 0.0, ANIMATED_VARIABLE_SIZE);
-	animated_variable_init(&surface->animation.h, 0.0, ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&surface->animation.x, server.animation_manager, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&surface->animation.y, server.animation_manager, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&surface->animation.w, server.animation_manager, 0.0, ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&surface->animation.h, server.animation_manager, 0.0, ANIMATED_VARIABLE_SIZE);
 }
 
 static void layer_surface_release_animation_variables(struct sway_layer_surface *surface) {
@@ -172,10 +172,10 @@ static void layer_surface_release_animation_variables(struct sway_layer_surface 
 }
 
 static void layer_popup_init_animation_variables(struct sway_layer_popup *popup) {
-	animated_variable_init(&popup->animation.x, 0.0, ANIMATED_VARIABLE_POSITION);
-	animated_variable_init(&popup->animation.y, 0.0, ANIMATED_VARIABLE_POSITION);
-	animated_variable_init(&popup->animation.w, 0.0, ANIMATED_VARIABLE_SIZE);
-	animated_variable_init(&popup->animation.h, 0.0, ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&popup->animation.x, server.animation_manager, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&popup->animation.y, server.animation_manager, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&popup->animation.w, server.animation_manager, 0.0, ANIMATED_VARIABLE_SIZE);
+	animated_variable_init(&popup->animation.h, server.animation_manager, 0.0, ANIMATED_VARIABLE_SIZE);
 }
 
 static void layer_popup_release_animation_variables(struct sway_layer_popup *popup) {
@@ -266,7 +266,7 @@ static bool layer_node_dereference(struct sway_node *node) {
 		node->dirty = false;
 	}
 	node->destroying = true;
-	return node->ntxnrefs == 0;
+	return node->refs == 0;
 }
 
 void layer_surface_destroy(struct sway_layer_surface *surface) {
@@ -274,8 +274,8 @@ void layer_surface_destroy(struct sway_layer_surface *surface) {
 				"Tried to free layer surface which wasn't marked as destroying")) {
 		return;
 	}
-	if (!sway_assert(surface->node.ntxnrefs == 0, "Tried to free layer surface "
-				"which is still referenced by transactions")) {
+	if (!sway_assert(surface->node.refs == 0, "Tried to free layer surface "
+				"which is still referenced")) {
 		return;
 	}
 	free(surface);
@@ -345,7 +345,7 @@ static void handle_surface_commit(struct wl_listener *listener, void *data) {
 			surface->pending.width = layer_surface->current.desired_width;
 			surface->pending.height = layer_surface->current.desired_height;
 			node_set_dirty(&surface->node);
-			animation_set_type(ANIMATION_LAYER_SHELL);
+			transaction_set_animation(ANIMATION_LAYER_SHELL);
 		}
 		arrange_layers(surface->output);
 		if (committed != (committed & WLR_LAYER_SURFACE_V1_STATE_KEYBOARD_INTERACTIVITY) ||
@@ -420,8 +420,8 @@ void layer_popup_destroy(struct sway_layer_popup *popup) {
 				"Tried to free layer popup which wasn't marked as destroying")) {
 		return;
 	}
-	if (!sway_assert(popup->node.ntxnrefs == 0, "Tried to free layer popup "
-				"which is still referenced by transactions")) {
+	if (!sway_assert(popup->node.refs == 0, "Tried to free layer popup "
+				"which is still referenced")) {
 		return;
 	}
 	free(popup);
@@ -467,7 +467,7 @@ static void popup_handle_commit(struct wl_listener *listener, void *data) {
 			popup->pending.height = popup->wlr_popup->pending.geometry.height;
 
 			node_set_dirty(&popup->node);
-			animation_set_type(ANIMATION_LAYER_SHELL);
+			transaction_set_animation(ANIMATION_LAYER_SHELL);
 			transaction_commit_dirty();
 		}
 	}

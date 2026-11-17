@@ -38,7 +38,7 @@
 #include "sway/tree/workspace.h"
 #include "sway/config.h"
 #include "sway/xdg_decoration.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/tree/focus_ring.h"
 
 static void handle_outputs_update(
@@ -1119,7 +1119,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	}
 
 	focus_ring_add_view(root->focus_ring, view);
-	animation_set_type(ANIMATION_WINDOW_OPEN);
+	transaction_set_animation(ANIMATION_WINDOW_OPEN);
 }
 
 void view_unmap(struct sway_view *view) {
@@ -1682,11 +1682,11 @@ static void view_get_animation_sizes(struct sway_view *view, double *wt, double 
 	int border_horiz, border_vert;
 	container_get_borders(con, &border_horiz, &border_vert);
 	if (con->animation.w.animating || con->animation.h.animating) {
-		*wt = fmax(con->animation.w.xt - border_horiz, 0.0);
-		*ht = fmax(con->animation.h.xt - border_vert, 0.0);
+		*wt = fmax(con->animation.w.value - border_horiz, 0.0);
+		*ht = fmax(con->animation.h.value - border_vert, 0.0);
 	} else {
-		*wt = fmax(con->animation.w.x1 - border_horiz, 0.0);
-		*ht = fmax(con->animation.h.x1 - border_vert, 0.0);
+		*wt = fmax(con->animation.w.target - border_horiz, 0.0);
+		*ht = fmax(con->animation.h.target - border_vert, 0.0);
 	}
 }
 
@@ -1697,10 +1697,10 @@ void view_get_animation_scales(struct sway_view *view,
 		struct sway_container *con = view->container;
 		int border_horiz, border_vert;
 		container_get_borders(con, &border_horiz, &border_vert);
-		double w1 = con->animation.w.x1 - border_horiz;
-		double h1 = con->animation.h.x1 - border_vert;
-		double wt = con->animation.w.xt - border_horiz;
-		double ht = con->animation.h.xt - border_vert;
+		double w1 = con->animation.w.target - border_horiz;
+		double h1 = con->animation.h.target - border_vert;
+		double wt = con->animation.w.value - border_horiz;
+		double ht = con->animation.h.value - border_vert;
 		if (w1 > 0.0 && h1 > 0.0) {
 			*wscale = wt > 0.0 ? wt / w1 : 0.0;
 			*hscale = ht > 0.0 ? ht / h1 : 0.0;

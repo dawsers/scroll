@@ -13,7 +13,8 @@
 #include "sway/tree/layout.h"
 #include "sway/log.h"
 #include "util.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
+#include "sway/desktop/transaction.h"
 
 static uint32_t parse_resize_axis(const char *axis) {
 	if (strcasecmp(axis, "width") == 0 || strcasecmp(axis, "horizontal") == 0) {
@@ -266,7 +267,7 @@ static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 
 	// Use the dummy anim_disabled curve to prevent a user keeping the bound key
 	// pressed from spamming the animation system tens of times per second.
-	animation_set_type(ANIMATION_DISABLED);
+	transaction_set_animation(ANIMATION_DISABLED);
 
 	if (current->pending.parent) {
 		arrange_container(current->pending.parent);
@@ -370,7 +371,7 @@ static struct cmd_results *resize_set_tiled(struct sway_container *container,
 		return cmd_results_new(CMD_INVALID, "Invalid size");
 	}
 
-	animation_set_type(ANIMATION_WINDOW_SIZE);
+	transaction_set_animation(ANIMATION_WINDOW_SIZE);
 
 	if (container->pending.parent) {
 		arrange_container(container->pending.parent);

@@ -3,7 +3,8 @@
 #include "sway/tree/arrange.h"
 #include "sway/tree/layout.h"
 #include "sway/tree/workspace.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
+#include "sway/desktop/transaction.h"
 
 /**
  * Implement `layout_transpose` for a tiled workspace.
@@ -40,7 +41,7 @@ struct cmd_results *cmd_layout_transpose(int argc, char **argv) {
 	}
 	arrange_workspace(workspace);
 	workspace_update_representation(workspace);
-	animation_set_type(ANIMATION_WINDOW_MOVE);
+	transaction_set_animation(ANIMATION_WINDOW_MOVE);
 
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

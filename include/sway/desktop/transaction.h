@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <wlr/types/wlr_scene.h>
+#include "sway/desktop/animation.h"
 
 /**
  * Transactions enable us to perform atomic layout updates.
@@ -24,6 +25,8 @@
 struct sway_transaction;
 struct sway_transaction_instruction;
 struct sway_view;
+struct sway_container;
+struct sway_output;
 struct sway_workspace;
 
 /**
@@ -38,23 +41,11 @@ void transaction_commit_dirty(void);
  */
 void transaction_commit_dirty_client(void);
 
-/*
- * Same as transaction_commit_dirty, but signalling this transaction can be
- * delayed until the current animation finishes.
- */
-void transaction_commit_dirty_delayed(void);
-
 /**
- * Notify the transaction system a delayed transaction may be processed.
+ * Set the type of animation for the next transaction. It is
+ * the default animation if not set.
  */
-void transaction_commit_delayed(void);
-
-/**
- * Returns true if this transaction has a node with an animated variable that
- * is still animating. The transaction won't be destroyed until it doesn't have
- * any of such nodes.
- */
-bool transaction_delays_destruction(struct sway_transaction *transaction);
+void transaction_set_animation(enum sway_animation_type type);
 
 /**
  * The same as transaction_commit_dirty(), but disabling all animations for
@@ -88,13 +79,35 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 void arrange_popups(struct wlr_scene_tree *popups);
 
 /**
- * Sets the default animation callbacks
+ * Returns the animation group associated with the transaction that is being
+ * applied, or NULL otherwise.
  */
-void config_default_animation_callbacks();
+struct sway_animation_group *transaction_get_animation_group(void);
 
 /**
- * Destroy transaction
+ * For continuous animations, make the animated positions of a floating
+ * container, or of the tiling containers of a workspace follow their
+ * pending positions instead of animating to them.
+ * Call track for every intermediate transition, and untrack before committing
+ * the transaction that leaves them in their final positions.
  */
-void transaction_destroy(struct sway_transaction *transaction);
+void transaction_track_container(struct sway_container *con);
+void transaction_untrack_container(struct sway_container *con);
+void transaction_track_workspace(struct sway_workspace *ws);
+void transaction_untrack_workspace(struct sway_workspace *ws);
+
+/**
+ * Transactions are reference counted, releasing their nodes when losing their
+ * last reference.
+ */
+struct sway_transaction *transaction_ref(struct sway_transaction *transaction);
+void transaction_unref(struct sway_transaction *transaction);
+
+/**
+ * Render the scebe graph for the current values of the animated variables of
+ * the nodes of an output, or for every output.
+ */
+void transaction_animate_output(struct sway_output *output);
+void transaction_animate_outputs(void);
 
 #endif

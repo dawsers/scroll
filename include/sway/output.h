@@ -1,5 +1,6 @@
 #ifndef _SWAY_OUTPUT_H
 #define _SWAY_OUTPUT_H
+#include "sway/desktop/animation.h"
 #include <time.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
@@ -91,7 +92,7 @@ struct sway_output {
 	struct wl_event_source *repaint_timer;
 
 	struct sway_scroller_output_options scroller_options;
-	uint32_t animation_id;  // id of animation for this output, 0 if none
+	struct sway_animation_clock animation_clock;
 
 	bool allow_tearing;
 	bool hdr;

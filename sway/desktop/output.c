@@ -20,7 +20,7 @@
 #include <wlr/util/transform.h>
 #include "sway/log.h"
 #include "sway/config.h"
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
@@ -500,6 +500,11 @@ static void handle_present(struct wl_listener *listener, void *data) {
 
 	output->last_presentation = output_event->when;
 	output->refresh_nsec = output_event->refresh;
+	if (output->animation_clock.manager) {
+		animation_clock_presented(&output->animation_clock,
+			output_event->when.tv_sec * 1000000000LL + output_event->when.tv_nsec,
+			output_event->refresh);
+	}
 }
 
 static void handle_request_state(struct wl_listener *listener, void *data) {
