@@ -134,6 +134,7 @@ sway_cmd cmd_default_border;
 sway_cmd cmd_default_decoration;
 sway_cmd cmd_default_floating_border;
 sway_cmd cmd_default_orientation;
+sway_cmd cmd_drag_edge_scroll;
 sway_cmd cmd_exec;
 sway_cmd cmd_exec_always;
 sway_cmd cmd_exit;

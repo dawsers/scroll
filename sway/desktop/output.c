@@ -341,6 +341,12 @@ static void handle_frame(struct wl_listener *listener, void *user_data) {
 		return;
 	}
 
+	// Advance any scrolling caused by dragging to the edges of the output
+	struct sway_seat *seat;
+	wl_list_for_each(seat, &server.input->seats, link) {
+		seat_drag_edge_scroll_frame(seat, output);
+	}
+
 	// Compute predicted milliseconds until the next refresh. It's used for
 	// delaying both output rendering and surface frame callbacks.
 	int msec_until_refresh = 0;

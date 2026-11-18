@@ -68,6 +68,7 @@ sway_sources = files(
 	'commands/default_border.c',
 	'commands/default_floating_border.c',
 	'commands/default_orientation.c',
+	'commands/drag_edge_scroll.c',
 	'commands/exit.c',
 	'commands/exec.c',
 	'commands/exec_always.c',

@@ -739,6 +739,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	}
 
 	drag_icons_update_position(seat);
+	seat_drag_edge_scroll_motion(seat);
 
 	e->previous_node = node;
 }

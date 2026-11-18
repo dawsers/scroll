@@ -572,6 +572,9 @@ struct sway_config {
 
 	bool tiling_drag;
 	int tiling_drag_threshold;
+	bool drag_edge_scroll;
+	int drag_edge_scroll_zone; // px
+	int drag_edge_scroll_speed; // px/s
 
 	enum smart_gaps_mode smart_gaps;
 	int gaps_inner;

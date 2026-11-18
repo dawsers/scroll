@@ -2977,7 +2977,9 @@ static void layout_scroll_float_pinned_container(struct sway_workspace *workspac
 	transaction_commit_dirty();
 }
 
-static void layout_scroll_unfloat_pinned_container(struct sway_workspace *workspace) {
+// If focus is false, the focus doesn't change. Use it when the workspace may
+// not be the one the seat is in.
+static void layout_scroll_unfloat_pinned_container(struct sway_workspace *workspace, bool focus) {
 	struct sway_container *pin = workspace->gesture.pin;
 	int fidx = list_find(workspace->floating, pin);
 	if (fidx < 0) {
@@ -3001,10 +3003,14 @@ static void layout_scroll_unfloat_pinned_container(struct sway_workspace *worksp
 			if (cx1 > p) {
 				if (cm > p) {
 					list_insert(workspace->tiling, i, pin);
-					seat_set_focus_container(seat, pos == PIN_BEGINNING ? con : pin);
+					if (focus) {
+						seat_set_focus_container(seat, pos == PIN_BEGINNING ? con : pin);
+					}
 				} else {
 					list_insert(workspace->tiling, i + 1, pin);
-					seat_set_focus_container(seat, pos == PIN_BEGINNING ? pin : con);
+					if (focus) {
+						seat_set_focus_container(seat, pos == PIN_BEGINNING ? pin : con);
+					}
 				}
 				inserted = true;
 				break;
@@ -3021,10 +3027,14 @@ static void layout_scroll_unfloat_pinned_container(struct sway_workspace *worksp
 			if (cy1 > p) {
 				if (cm > p) {
 					list_insert(workspace->tiling, i, pin);
-					seat_set_focus_container(seat, pos == PIN_BEGINNING ? con : pin);
+					if (focus) {
+						seat_set_focus_container(seat, pos == PIN_BEGINNING ? con : pin);
+					}
 				} else {
 					list_insert(workspace->tiling, i + 1, pin);
-					seat_set_focus_container(seat, pos == PIN_BEGINNING ? pin : con);
+					if (focus) {
+						seat_set_focus_container(seat, pos == PIN_BEGINNING ? pin : con);
+					}
 				}
 				inserted = true;
 				break;
@@ -3033,7 +3043,9 @@ static void layout_scroll_unfloat_pinned_container(struct sway_workspace *worksp
 	}
 	if (!inserted) {
 		list_add(workspace->tiling, pin);
-		seat_set_focus_container(seat, pin);
+		if (focus) {
+			seat_set_focus_container(seat, pin);
+		}
 	}
 	list_del(workspace->floating, fidx);
 	layout_pin_set(workspace, pin, pos);
@@ -3101,9 +3113,13 @@ void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float se
 	workspace->gesture.dy += dy;
 	if (layout_get_type(workspace) == L_HORIZ) {
 		scroll_container(get_mouse_container(seat), 0.0, dy);
+		// The transaction above used the pending animation type
+		animation_set_type(ANIMATION_DISABLED);
 		scroll_workspace(workspace, dx, 0.0);
 	} else {
 		scroll_container(get_mouse_container(seat), dx, 0.0);
+		// The transaction above used the pending animation type
+		animation_set_type(ANIMATION_DISABLED);
 		scroll_workspace(workspace, 0.0, dy);
 	}
 	// The containers follow the gesture. This also keeps their velocity for
@@ -3269,7 +3285,7 @@ bool layout_scroll_end(struct sway_seat *seat) {
 	}
 
 	if (workspace->gesture.pin) {
-		layout_scroll_unfloat_pinned_container(workspace);
+		layout_scroll_unfloat_pinned_container(workspace, true);
 		if (scrolling_in_pin_direction(layout, scrolling_direction)) {
 			// Scrolling ended: arrange for the pin
 			arrange_workspace(workspace);
@@ -3310,6 +3326,19 @@ bool layout_scroll_end(struct sway_seat *seat) {
 	transaction_set_animation(ANIMATION_GESTURE);
 	transaction_commit_dirty();
 	return true;
+}
+
+void layout_scroll_cancel(struct sway_workspace *workspace) {
+	animation_set_type(ANIMATION_DEFAULT);
+	if (!workspace->gesture.scrolling) {
+		return;
+	}
+	if (workspace->gesture.pin) {
+		layout_scroll_unfloat_pinned_container(workspace, false);
+	}
+	workspace->gesture.scrolling = false;
+	arrange_workspace(workspace);
+	transaction_commit_dirty();
 }
 
 bool layout_pin_enabled(struct sway_workspace *workspace) {
