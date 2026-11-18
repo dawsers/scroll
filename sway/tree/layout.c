@@ -3970,12 +3970,18 @@ static void apply_container_sizes(struct sway_container *container,
 	bool single = container->pending.parent ?
 		container->pending.parent->toggle_size.single : container->toggle_size.single;
 
+	enum sway_toggle_size_state state = container->toggle_size.state;
+
 	if (op == OPERATION_RESIZE && mode == TOGGLE_SIZE_NONE && !single) {
 		set_sizes(container, new_width, new_height);
+		if (state == TOGGLE_STATE_TOGGLED || state == TOGGLE_STATE_TOGGLED_FORCED) {
+			// Toggled with "toggle_size this", the resize overrides the size
+			// saved when toggling, and disables toggle_size this mode
+			container->toggle_size.state = TOGGLE_STATE_NONE;
+		}
 		return;
 	}
 
-	enum sway_toggle_size_state state = container->toggle_size.state;
 	enum sway_toggle_size_state ns;
 	switch (mode) {
 	case TOGGLE_SIZE_NONE:
@@ -4263,6 +4269,38 @@ static void apply_container_and_children_sizes(struct sway_container *container,
 	}
 }
 
+static void toggle_size_clear_resized(struct sway_container *container) {
+	if (container->toggle_size.state == TOGGLE_STATE_NONE_FORCED) {
+		container->toggle_size.state = TOGGLE_STATE_NONE;
+	}
+}
+
+// A container resized while a toggle_size mode is on keeps its size as long
+// as the mode lasts. Call when turning a mode on or off: the sizes stay, but
+// the containers are affected by the next mode like any other.
+static void toggle_size_clear_resized_workspace(struct sway_workspace *workspace) {
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *con = workspace->tiling->items[i];
+		toggle_size_clear_resized(con);
+		for (int j = 0; j < con->pending.children->length; ++j) {
+			toggle_size_clear_resized(con->pending.children->items[j]);
+		}
+	}
+	for (int i = 0; i < workspace->floating->length; ++i) {
+		toggle_size_clear_resized(workspace->floating->items[i]);
+	}
+}
+
+// Turning a mode on applies its fractions to containers toggled manually
+// (toggle_size this) too. They keep the sizes they saved then.
+static void toggle_size_mode_override(struct sway_container *container,
+		double width_fraction, double height_fraction) {
+	if (container && container->toggle_size.state == TOGGLE_STATE_TOGGLED_FORCED) {
+		set_sizes(container, width_fraction, height_fraction);
+		container->toggle_size.state = TOGGLE_STATE_TOGGLED;
+	}
+}
+
 void layout_toggle_size(struct sway_workspace *workspace,
 		struct sway_container *container, enum sway_toggle_size mode,
 		double width_fraction, double height_fraction) {
@@ -4275,14 +4313,31 @@ void layout_toggle_size(struct sway_workspace *workspace,
 	workspace->layout.toggle_size.width = width_fraction;
 	workspace->layout.toggle_size.height = height_fraction;
 
+	if (mode != TOGGLE_SIZE_NONE) {
+		toggle_size_clear_resized_workspace(workspace);
+	}
 	if (mode == TOGGLE_SIZE_ACTIVE) {
+		if (container) {
+			toggle_size_mode_override(container->pending.parent, width_fraction, height_fraction);
+			toggle_size_mode_override(container, width_fraction, height_fraction);
+		}
 		apply_container_and_parent_sizes(container, width_fraction, height_fraction, OPERATION_FOCUS);
 		fit_arrange_fractions_with_parent(container);
 	} else {
 		for (int i = 0; i < workspace->tiling->length; ++i) {
 			struct sway_container *con = workspace->tiling->items[i];
+			if (mode == TOGGLE_SIZE_ALL) {
+				toggle_size_mode_override(con, width_fraction, height_fraction);
+				for (int j = 0; j < con->pending.children->length; ++j) {
+					toggle_size_mode_override(con->pending.children->items[j],
+						width_fraction, height_fraction);
+				}
+			}
 			apply_container_and_children_sizes(con, width_fraction, height_fraction, OPERATION_FOCUS);
 		}
+	}
+	if (mode == TOGGLE_SIZE_NONE) {
+		toggle_size_clear_resized_workspace(workspace);
 	}
 	arrange_workspace(workspace);
 	node_set_dirty(&workspace->node);
@@ -4292,13 +4347,17 @@ void layout_tiling_resize_callback(struct sway_container *container) {
 	apply_container_sizes(container, container->width_fraction,
 		container->height_fraction, OPERATION_RESIZE);
 
-	if (!container->pending.parent) {
+	struct sway_container *parent = container->pending.parent;
+	if (!parent) {
 		// If it is a top level container, propagate
 		for (int i = 0; i < container->pending.children->length; ++i) {
 			struct sway_container *child = container->pending.children->items[i];
 			apply_container_sizes(child, child->width_fraction,
 				child->height_fraction, OPERATION_RESIZE);
 		}
+	} else if (!parent->toggle_size.single) {
+		apply_container_sizes(parent, parent->width_fraction,
+			parent->height_fraction, OPERATION_RESIZE);
 	}
 
 	// TODO: add a Lua callback

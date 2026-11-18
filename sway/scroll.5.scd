@@ -1160,6 +1160,10 @@ set|plus|minus|toggle <amount>
 	*toggle_size* saves the sizes of the affected windows when you call the
 	command so you can go back to them when toggling to normal mode again.
 
+	If you resize any window while in *toggle_size* mode, the new size will
+	stay when you leave the mode. Toggling *toggle_size* back on will re-apply
+	the requested sizes.
+
 *trail* new|prev|next|delete|clear|to_selection|number
 	Manages trails. A _trail_ is a path of trailmarks. A _trailmark_ is an
 	anonymous mark. You can create as many trailmarks as you want in a trail,
