@@ -530,7 +530,7 @@ void virtual_output_toggle_maximize(struct sway_output *output) {
 		struct sway_workspace *ws = output->workspaces->items[i];
 		if (ws->ext_workspace) {
 			wlr_ext_workspace_handle_v1_set_active(ws->ext_workspace,
-					workspace_is_visible(ws));
+					workspace_is_visible_settled(ws));
 		}
 	}
 }

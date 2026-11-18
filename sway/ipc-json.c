@@ -614,10 +614,15 @@ static void ipc_json_describe_view(struct sway_container *c, json_object *object
 		c->view->ext_foreign_toplevel ?
 			json_object_new_string(c->view->ext_foreign_toplevel->identifier) : NULL);
 
-	bool visible = view_is_visible(c->view);
+	// Make sure the workspace switch animation doesn't interfere
+	struct sway_workspace *ws = c->pending.workspace;
+	bool settled = !ws || container_is_sticky_or_child(c) ||
+		workspace_is_visible_settled(ws);
+
+	bool visible = settled && view_is_visible(c->view);
 	json_object_object_add(object, "visible", json_object_new_boolean(visible));
 
-	bool fully_visible = view_is_fully_visible(c->view);
+	bool fully_visible = settled && view_is_fully_visible(c->view);
 	json_object_object_add(object, "fully_visible", json_object_new_boolean(fully_visible));
 
 	bool has_titlebar = c->title_bar.tree->node.enabled;

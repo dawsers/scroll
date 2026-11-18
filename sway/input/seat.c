@@ -1260,11 +1260,11 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 
 	if (last_workspace && last_workspace != new_workspace) {
 		wlr_ext_workspace_handle_v1_set_active(last_workspace->ext_workspace,
-			workspace_is_visible(last_workspace));
+			workspace_is_visible_settled(last_workspace));
 	}
 	if (new_workspace) {
 		wlr_ext_workspace_handle_v1_set_active(new_workspace->ext_workspace,
-			workspace_is_visible(new_workspace));
+			workspace_is_visible_settled(new_workspace));
 	}
 
 	// Move sticky containers to new workspace

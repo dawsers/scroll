@@ -621,7 +621,7 @@ static void ipc_get_workspaces_callback(struct sway_workspace *workspace,
 	json_object_array_add((json_object *)data, workspace_json);
 
 	json_object_object_add(workspace_json, "visible",
-			json_object_new_boolean(workspace_is_visible(workspace)));
+			json_object_new_boolean(workspace_is_visible_settled(workspace)));
 }
 
 static void ipc_get_marks_callback(struct sway_container *con, void *data) {

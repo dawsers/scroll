@@ -114,6 +114,10 @@ struct sway_workspace *workspace_prev(struct sway_workspace *current);
 
 bool workspace_is_visible(struct sway_workspace *ws);
 
+// Like workspace_is_visible(), but ignoring workspace switch animations.
+// Used to report workspace visible state to clients (IPC, ext-workspace).
+bool workspace_is_visible_settled(struct sway_workspace *ws);
+
 /**
  * Is this workspace taking part in a switch animation right now?
  */

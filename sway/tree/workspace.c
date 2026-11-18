@@ -281,7 +281,7 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 			ws->output->ext_workspace_group);
 	}
 	wlr_ext_workspace_handle_v1_set_active(ws->ext_workspace,
-		workspace_is_visible(ws));
+		workspace_is_visible_settled(ws));
 	ipc_event_workspace(NULL, ws, "init");
 	wl_signal_emit_mutable(&root->events.new_node, &ws->node);
 
@@ -989,6 +989,14 @@ bool workspace_switch(struct sway_workspace *workspace) {
 	return true;
 }
 
+static bool workspace_is_active_on_output(struct sway_workspace *ws) {
+	if (ws->virtual_output) {
+		return virtual_output_is_visible(ws->virtual_output) &&
+			virtual_output_get_active_workspace(ws->virtual_output) == ws;
+	}
+	return ws->output && output_get_active_workspace(ws->output) == ws;
+}
+
 bool workspace_is_visible(struct sway_workspace *ws) {
 	if (ws->node.destroying) {
 		return false;
@@ -996,11 +1004,17 @@ bool workspace_is_visible(struct sway_workspace *ws) {
 	if (layout_overview_workspaces_enabled() || workspace_is_panning(ws)) {
 		return true;
 	}
-	if (ws->virtual_output) {
-		return virtual_output_is_visible(ws->virtual_output) &&
-			virtual_output_get_active_workspace(ws->virtual_output) == ws;
+	return workspace_is_active_on_output(ws);
+}
+
+bool workspace_is_visible_settled(struct sway_workspace *ws) {
+	if (ws->node.destroying) {
+		return false;
 	}
-	return ws->output && output_get_active_workspace(ws->output) == ws;
+	if (layout_overview_workspaces_enabled()) {
+		return true;
+	}
+	return workspace_is_active_on_output(ws);
 }
 
 bool workspace_is_empty(struct sway_workspace *ws) {
