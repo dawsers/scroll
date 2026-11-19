@@ -278,7 +278,7 @@ The following commands may only be used in the configuration file.
 
 *gesture_scroll_friction* <number>
 	Default is _0_, which disables it. With a value higher than _0_, a
-	scrolling gesture that ends while it is moving (a flick) continues: the
+	scrolling gesture that ends while it is moving (a flick) continues and the
 	window that gets the focus is chosen from the position where the layout
 	would stop if friction slowed it down, instead of from the position where
 	the gesture left it. The value is the rate of that friction, the same as

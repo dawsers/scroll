@@ -25,6 +25,13 @@ struct sway_workspace_state {
 	bool focused;
 };
 
+// Axis chosen to pan the scrolling gesture
+enum sway_scroll_axis {
+	SCROLL_AXIS_NONE, // not chosen yet
+	SCROLL_AXIS_HORIZONTAL,
+	SCROLL_AXIS_VERTICAL,
+};
+
 struct sway_workspace {
 	struct sway_node node;
 
@@ -66,6 +73,8 @@ struct sway_workspace {
 
 	struct {
 		double x, y, dx, dy; // in layout coordinates (position and displacement)
+		double raw_x, raw_y; // movement before choosing an axis in scrolling gestures
+		enum sway_scroll_axis axis; // axis chosen to pan a scrolling gesture
 	} pan;
 
 	struct {

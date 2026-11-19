@@ -1142,11 +1142,11 @@ the current workspace, or *all* of them. See the manual for details.
 The default for scrolling is swiping with three fingers to scroll left, right,
 up or down.
 
-The gesture pans the viewport, in any direction: every tiled window of the
-workspace moves with it, and floating windows stay where they are. When the
-gesture ends, *scroll* focuses a window the gesture left in view and arranges
-the workspace for it with the `gesture` animation, so every column shows its
-active window again.
+The gesture pans the viewport, along the dominant axis of the swipe. Every
+tiled window of the workspace moves with it, and floating windows stay where
+they are. When the gesture ends, *scroll* focuses the farthest window the
+gesture left in view, and arranges the workspace with a `gesture` animation,
+so every column shows its active window again.
 
 You can also use the mouse (Mod + dragging with the center button pressed) to
 scroll.

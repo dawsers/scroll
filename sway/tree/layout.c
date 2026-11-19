@@ -2857,7 +2857,10 @@ static struct sway_container *scroll_pointer_container(struct sway_seat *seat,
 	return workspace->current.focused_inactive_child;
 }
 
-// The first sibling after the active one (before it, if the content moved
+// Fraction of the workspace size the container needs to enter to be picked
+#define SCROLL_PICK_FRACTION 0.01
+
+// The farthest sibling after the active one (before it, if the content moved
 // toward the end) that the gesture left with its nearest edge in view
 static struct sway_container *scroll_pick(struct sway_workspace *workspace,
 		list_t *children, struct sway_container *active, bool horizontal) {
@@ -2866,43 +2869,45 @@ static struct sway_container *scroll_pick(struct sway_workspace *workspace,
 	const double moved = horizontal ? workspace->pan.dx : workspace->pan.dy;
 	struct wlr_fbox vp;
 	layout_vp_box(workspace, &vp);
-	const double beg = horizontal ? vp.x : vp.y;
-	const double end = beg + (horizontal ? vp.width : vp.height);
 	const int active_idx = max(list_find(children, active), 0);
-	struct sway_container *pick = NULL;
 	if (moved < 0.0) {
-		for (int i = active_idx + 1; i < children->length; ++i) {
+		for (int i = children->length - 1; i > active_idx; i--) {
 			struct sway_container *con = children->items[i];
-			pick = con;
-			const double edge = (horizontal ? con->pending.x : con->pending.y) + pan;
-			if (edge > beg && edge < end) {
-				break;
+			if (horizontal) {
+				if (pan + con->pending.x < vp.x + (1.0 - SCROLL_PICK_FRACTION) * vp.width) {
+					return con;
+				}
+			} else {
+				if (pan + con->pending.y < vp.y + (1.0 - SCROLL_PICK_FRACTION) * vp.height) {
+					return con;
+				}
 			}
 		}
 	} else if (moved > 0.0) {
-		for (int i = active_idx - 1; i >= 0; i--) {
+		for (int i = 0; i < active_idx; ++i) {
 			struct sway_container *con = children->items[i];
-			pick = con;
-			const double edge = pan + (horizontal ?
-				con->pending.x + con->pending.width :
-				con->pending.y + con->pending.height);
-			if (edge > beg && edge < end) {
-				break;
+			if (horizontal) {
+				if (pan + con->pending.x + con->pending.width > vp.x + SCROLL_PICK_FRACTION * vp.width) {
+					return con;
+				}
+			} else {
+				if (pan + con->pending.y + con->pending.height > vp.y + SCROLL_PICK_FRACTION * vp.height) {
+					return con;
+				}
 			}
 		}
 	}
-	return pick;
+	return NULL;
 }
 
 // Select a window, NULL if none
 static struct sway_container *scroll_selection(struct sway_seat *seat,
 		struct sway_workspace *workspace) {
-	if (workspace->tiling->length == 0 ||
-			(workspace->pan.dx == 0.0 && workspace->pan.dy == 0.0)) {
+	if (workspace->tiling->length == 0 || workspace->pan.axis == SCROLL_AXIS_NONE) {
 		return NULL;
 	}
 	// The gesture selects along the axis it moved most
-	const bool horizontal = fabs(workspace->pan.dx) > fabs(workspace->pan.dy);
+	const bool horizontal = workspace->pan.axis == SCROLL_AXIS_HORIZONTAL;
 	struct sway_container *pick;
 	if (horizontal == (layout_get_type(workspace) == L_HORIZ)) {
 		pick = scroll_pick(workspace, workspace->tiling,
@@ -2995,19 +3000,40 @@ bool layout_scroll_begin(struct sway_seat *seat) {
 	workspace->pan.x = workspace->animation.pan_x.value;
 	workspace->pan.y = workspace->animation.pan_y.value;
 	workspace->pan.dx = workspace->pan.dy = 0.0;
+	workspace->pan.raw_x = workspace->pan.raw_y = 0.0;
+	workspace->pan.axis = SCROLL_AXIS_NONE;
 	scroll_track(workspace);
 	return true;
 }
+
+// Minimum distance in layout units for a gesture to decide the scrolling axis
+#define SCROLL_AXIS_THRESHOLD 16.0
 
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity) {
 	struct sway_workspace *workspace = seat_scroll_workspace(seat);
 	if (!workspace || workspace->tiling->length == 0) {
 		return;
 	}
-	workspace->pan.x += sensitivity * dx;
-	workspace->pan.y += sensitivity * dy;
-	workspace->pan.dx += sensitivity * dx;
-	workspace->pan.dy += sensitivity * dy;
+	if (workspace->pan.axis == SCROLL_AXIS_NONE) {
+		workspace->pan.raw_x += dx;
+		workspace->pan.raw_y += dy;
+		dx = workspace->pan.raw_x;
+		dy = workspace->pan.raw_y;
+		if (sqrt(dx * dx + dy * dy) < SCROLL_AXIS_THRESHOLD) {
+			return;
+		}
+		// Then it catches up with what it moved along that axis
+		workspace->pan.axis = fabs(dx) > fabs(dy) ?
+			SCROLL_AXIS_HORIZONTAL : SCROLL_AXIS_VERTICAL;
+	}
+	// The gesture only pans along its axis until it ends
+	if (workspace->pan.axis == SCROLL_AXIS_HORIZONTAL) {
+		workspace->pan.x += sensitivity * dx;
+		workspace->pan.dx += sensitivity * dx;
+	} else {
+		workspace->pan.y += sensitivity * dy;
+		workspace->pan.dy += sensitivity * dy;
+	}
 	scroll_track(workspace);
 }
 
