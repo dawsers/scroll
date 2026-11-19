@@ -87,8 +87,7 @@ void arrange_popups(struct wlr_scene_tree *popups);
 
 /**
  * For continuous animations, make the animated positions of a floating
- * container, or of the tiling containers of a workspace follow their
- * pending positions instead of animating to them.
+ * container follow its pending position instead of animating to it.
  * Call track for every intermediate transition, and untrack before committing
  * the transaction that leaves them in their final positions.
  * Untrack needs to be called for those positions to be released for animation
@@ -96,8 +95,6 @@ void arrange_popups(struct wlr_scene_tree *popups);
  */
 void transaction_track_container(struct sway_container *con);
 void transaction_untrack_container(struct sway_container *con);
-void transaction_track_workspace(struct sway_workspace *ws);
-void transaction_untrack_workspace(struct sway_workspace *ws);
 
 /**
  * Update the scene graph with the current values of the animated variables of

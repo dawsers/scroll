@@ -660,7 +660,7 @@ static void arrange_children_positions(struct sway_workspace *workspace,
 	}
 
 	double offset;
-	if (workspace->gesture.scrolling ||	layout_modifiers_get_reorder(workspace) == REORDER_LAZY || jumping) {
+	if (layout_modifiers_get_reorder(workspace) == REORDER_LAZY || jumping) {
 		offset = layout == L_HORIZ ? active->pending.x : active->pending.y;
 	} else {
 		uint32_t aligned = layout_alignment_axis(workspace, active, workspace_layout, layout);

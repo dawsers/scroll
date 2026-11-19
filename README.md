@@ -1142,9 +1142,11 @@ the current workspace, or *all* of them. See the manual for details.
 The default for scrolling is swiping with three fingers to scroll left, right,
 up or down.
 
-When swiping vertically (a column), *scroll* will scroll the column
-that contains the mouse pointer. This allows you to scroll columns that are
-not the active one if your configuration is set to focus following the mouse.
+The gesture pans the viewport, in any direction: every tiled window of the
+workspace moves with it, and floating windows stay where they are. When the
+gesture ends, *scroll* focuses a window the gesture left in view and arranges
+the workspace for it with the `gesture` animation, so every column shows its
+active window again.
 
 You can also use the mouse (Mod + dragging with the center button pressed) to
 scroll.
@@ -1327,6 +1329,9 @@ logic is as follows when you call `pin`:
    the other position.
 2. If the current container is not pinned yet: it will replace the pinned
    container, if any.
+
+During a scrolling gesture (touchpad or mouse), the pinned container moves
+with the rest of the layout. It goes back to its edge when the gesture ends.
 
 ### Window Selection/Moving
 

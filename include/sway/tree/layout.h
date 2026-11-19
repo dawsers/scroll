@@ -260,8 +260,7 @@ bool layout_scroll_begin(struct sway_seat *seat);
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity);
 // Finish scrolling swipe and return true if scrolling, else false
 bool layout_scroll_end(struct sway_seat *seat);
-// Interrupt scrolling. It does nothing if the seat is not scrolling, otherwise
-// rearanges the workspace from the event loop.
+// Interrupt scrolling and reset viewport. Does nothing if the seat is not scrolling
 void layout_scroll_cancel(struct sway_seat *seat);
 
 // Pin
@@ -272,8 +271,6 @@ void layout_scroll_cancel(struct sway_seat *seat);
 // very few places we need to check.
 bool layout_pin_enabled(struct sway_workspace *workspace);
 void layout_pin_set(struct sway_workspace *workspace, struct sway_container *container, enum sway_layout_pin pos);
-// Remove a pin if it exists for the container, otherwise do nothing
-void layout_pin_remove(struct sway_workspace *workspace, struct sway_container *container);
 struct sway_container *layout_pin_get_container(struct sway_workspace *workspace);
 enum sway_layout_pin layout_pin_get_position(struct sway_workspace *workspace);
 
@@ -358,8 +355,8 @@ void layout_fit_set_fraction(struct sway_container *container,
 //
 //           screen = A + s * (layout - C)
 //
-// We keep A and C separate instead of simplifying, so in the future we can
-// add viewport panning.
+// We keep A and C separate instead of simplifying, so we can easily do
+// viewport panning (scrolling gestures, etc.)
 struct sway_layout_transform {
 	double scale;
 	double x, y;
@@ -375,7 +372,11 @@ double layout_transform_container_scale(struct sway_container *container,
 void layout_transform_workspace_get(struct sway_workspace *workspace,
 		bool animated, struct sway_layout_transform *transform);
 
-// Identity if it is full screen or it has no workspace/output
+// Does the pan of a scroll gesture move the container? Only tiled ones move
+bool layout_container_pans(struct sway_container *container);
+
+// Identity if it is full screen or it has no workspace/output. Includes
+// workspace pan
 void layout_transform_container_get(struct sway_container *container,
 		bool animated, struct sway_layout_transform *transform);
 

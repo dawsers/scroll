@@ -574,9 +574,6 @@ static void container_dereference_from_layouts(struct sway_container *con) {
 			if (workspace->layout.toggle_size.container == con) {
 				workspace->layout.toggle_size.container = NULL;
 			}
-			if (workspace->gesture.pin == con) {
-				workspace->gesture.pin = NULL;
-			}
 		}
 	}
 }

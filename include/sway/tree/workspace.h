@@ -65,16 +65,13 @@ struct sway_workspace {
 	} jump;
 
 	struct {
-		bool scrolling;
-		bool settle; // cancelled, see layout_scroll_cancel()
-		double dx, dy;
-		struct sway_container *pin; // the pinned container while it floats
-		enum sway_layout_pin pin_position;
-	} gesture;
+		double x, y, dx, dy; // in layout coordinates (position and displacement)
+	} pan;
 
 	struct {
 		struct sway_animated_variable s; // scale for overview/zoom
 		struct sway_animated_variable off; // offset during a workspace switch
+		struct sway_animated_variable pan_x, pan_y; // pan on screen
 	} animation;
 
 	struct sway_workspace_state current;

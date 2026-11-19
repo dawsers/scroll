@@ -77,9 +77,6 @@ void animation_manager_variable_started(struct sway_animation_manager *manager,
 // A variable stopped running
 void animation_manager_variable_stopped(struct sway_animation_manager *manager,
 	struct sway_animated_variable *av);
-// The clock (every clock if NULL) needs a frame to show new values
-void animation_manager_damage(struct sway_animation_manager *manager,
-	struct sway_animation_clock *clock);
 
 // Sample a running variable at `time`. Returns false if its animation ended.
 bool animated_variable_advance(struct sway_animated_variable *av, int64_t time);

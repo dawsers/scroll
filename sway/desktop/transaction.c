@@ -774,8 +774,10 @@ static void workspace_place_layers(struct sway_workspace *ws) {
 	struct wlr_box *area = workspace_get_output_usable_area(ws);
 	struct side_gaps *gaps = &ws->current_gaps;
 	const double pan = workspace_switch_offset(ws);
+	const double scale = layout_transform_workspace_scale(ws, true);
 	wlr_scene_node_set_position(&ws->layers.tiling->node,
-		gaps->left + area->x, gaps->top + area->y + pan);
+		gaps->left + area->x + scale * ws->animation.pan_x.value,
+		gaps->top + area->y + pan + scale * ws->animation.pan_y.value);
 	wlr_scene_node_set_position(&ws->layers.fullscreen->node, 0.0, pan);
 }
 
@@ -1857,6 +1859,9 @@ static void output_animate_variables(struct sway_output *output,
 		struct sway_workspace *ws = output->workspaces->items[i];
 		animated_variable_set(&ws->animation.s,
 			workspace_state_scale(ws->scale), options);
+		// Update workspace pan
+		animated_variable_set(&ws->animation.pan_x, ws->pan.x, options);
+		animated_variable_set(&ws->animation.pan_y, ws->pan.y, options);
 		children_animate_variables(ws->tiling, options, fade);
 		children_animate_variables(ws->floating, options, fade);
 	}
@@ -1929,14 +1934,13 @@ static void overview_recompute_scales() {
 /**
  * Continuous animations
  *
- * While something moves containers following the input (dragging a window,
- * a scroll gesture), their positions are not animated, they are set by the
- * caller. The animated variables track them, and when the caller untracks
- * them, the animation that settles the values starts with the containers'
- * velocity.
+ * While something moves a container following the input (dragging a window),
+ * its position is not animated, it is set by the caller. The animated
+ * variables track it, and when the caller untracks them, the animation that
+ * settles the values starts with the container's velocity.
  *
- * The container, or the workspace, owns the tracking. Untracking it stops
- * every variable that was tracked for it.
+ * The container owns the tracking: untracking it stops every variable that
+ * was tracked for it.
  */
 static struct sway_animation_clock *workspace_animation_clock(
 		struct sway_workspace *ws) {
@@ -1952,41 +1956,6 @@ void transaction_track_container(struct sway_container *con) {
 
 void transaction_untrack_container(struct sway_container *con) {
 	animation_manager_untrack(server.animation_manager, con);
-}
-
-static void track_children(struct sway_workspace *ws,
-		struct sway_container *parent, list_t *children,
-		enum sway_container_layout layout, struct sway_animation_clock *clock) {
-	for (int i = 0; i < children->length; ++i) {
-		struct sway_container *child = children->items[i];
-		if (layout == L_VERT) {
-			animated_variable_track(&child->animation.y, child->pending.y, clock, ws);
-			if (parent) {
-				animated_variable_inherit(&child->animation.x, &parent->animation.x);
-			}
-		} else {
-			animated_variable_track(&child->animation.x, child->pending.x, clock, ws);
-			if (parent) {
-				animated_variable_inherit(&child->animation.y, &parent->animation.y);
-			}
-		}
-		if (!child->view) {
-			track_children(ws, child, child->pending.children,
-				child->pending.layout, clock);
-		}
-	}
-}
-
-void transaction_track_workspace(struct sway_workspace *ws) {
-	if (ws->fullscreen) {
-		return;
-	}
-	track_children(ws, NULL, ws->tiling, layout_get_type(ws),
-		workspace_animation_clock(ws));
-}
-
-void transaction_untrack_workspace(struct sway_workspace *ws) {
-	animation_manager_untrack(server.animation_manager, ws);
 }
 
 // The type of animation for the next commit

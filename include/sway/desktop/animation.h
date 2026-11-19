@@ -241,6 +241,13 @@ void animation_manager_untrack(struct sway_animation_manager *manager,
 	const void *owner);
 
 /**
+ * The clock (every clock if NULL) needs a frame to show new values.
+ * Used for variables that changed without an animation.
+ */
+void animation_manager_damage(struct sway_animation_manager *manager,
+	struct sway_animation_clock *clock);
+
+/**
  * The velocity of the variable now, in units per second.
  */
 double animated_variable_get_velocity(struct sway_animated_variable *av);

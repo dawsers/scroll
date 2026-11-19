@@ -2825,258 +2825,116 @@ void layout_jump_workspaces() {
 	override_input(true, jump_handle_keyboard_key, jump_data, jump_workspaces_handle_button, jump_data);
 }
 
-// Offsets may not be valid to check cursor or bounds, so we re-compute them
-// using the active offset as the only ground truth, with everything else
-// relative to it.
+// Scroll gesture
+//
+// The gesture pans the viewport of the workspace, and the tiled containers
+// are drawn displaced by the pan. The layout is the same as before the
+// gesture until it ends. Then, the gesture selects the window to focus.
+// When applying the transaction, the pan resets, passing its value to the
+// containers. A cancelled gesture simply resets the pan.
+//
+// Pinned and columns move rigidly with the pan, but they recover their
+// correct positions when the transaction rearranges the layout.
 
-static struct sway_container *get_mouse_container(struct sway_seat *seat,
+// The top level container under the pointer, the active one if there is none
+static struct sway_container *scroll_pointer_container(struct sway_seat *seat,
 		struct sway_workspace *workspace) {
-	double cursor_x = seat->cursor->cursor->x, cursor_y = seat->cursor->cursor->y;
+	double x = seat->cursor->cursor->x, y = seat->cursor->cursor->y;
 	struct sway_layout_transform transform;
-	layout_transform_workspace_get(workspace, true, &transform);
-	layout_transform_point_inv(&transform, &cursor_x, &cursor_y);
-
-	// If there is a pinned container, check it before anything else
-	struct sway_container *pin = workspace->gesture.pin;
-	if (workspace->gesture.pin) {
-		if (cursor_x >= pin->pending.x - workspace->gaps_inner &&
-			cursor_x < pin->pending.x + (pin->pending.width + workspace->gaps_inner)) {
-			return pin;
+	layout_transform_workspace_get(workspace, false, &transform);
+	layout_transform_point_inv(&transform, &x, &y);
+	const bool horizontal = layout_get_type(workspace) == L_HORIZ;
+	const double gaps = workspace->gaps_inner;
+	const double p = horizontal ? x - workspace->pan.x : y - workspace->pan.y;
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *con = workspace->tiling->items[i];
+		const double beg = (horizontal ? con->pending.x : con->pending.y) - gaps;
+		const double size = horizontal ? con->pending.width : con->pending.height;
+		if (p >= beg && p < beg + size + 2.0 * gaps) {
+			return con;
 		}
 	}
-
-	struct sway_container *container = workspace->current.focused_inactive_child;
-	enum sway_container_layout layout = layout_get_type(workspace);
-	int active_idx = list_find(workspace->tiling, container);
-	if (layout == L_HORIZ) {
-		double offset = container->pending.x;
-		for (int i = active_idx; i < workspace->tiling->length; ++i) {
-			struct sway_container *con = workspace->tiling->items[i];
-			double x0 = offset - workspace->gaps_inner;
-			double x1 = x0 + (con->pending.width + 2.0 * workspace->gaps_inner);
-			if (cursor_x >= x0 && cursor_x < x1) {
-				return con;
-			}
-			offset = x1;
-		}
-		offset = container->pending.x;
-		for (int i = active_idx - 1; i >= 0; i--) {
-			struct sway_container *con = workspace->tiling->items[i];
-			double x1 = offset - workspace->gaps_inner;
-			double x0 = x1 - (con->pending.width + 2.0 * workspace->gaps_inner);
-			if (cursor_x >= x0 && cursor_x < x1) {
-				return con;
-			}
-			offset = x0;
-		}
-	} else {
-		double offset = container->pending.y;
-		for (int i = active_idx; i < workspace->tiling->length; ++i) {
-			struct sway_container *con = workspace->tiling->items[i];
-			double y0 = offset - workspace->gaps_inner;
-			double y1 = y0 + (con->pending.height + 2.0 * workspace->gaps_inner);
-			if (cursor_y >= y0 && cursor_y < y1) {
-				return con;
-			}
-			offset = y1;
-		}
-		offset = container->pending.y;
-		for (int i = active_idx - 1; i >= 0; i--) {
-			struct sway_container *con = workspace->tiling->items[i];
-			double y1 = offset - workspace->gaps_inner;
-			double y0 = y1 - (con->pending.height + 2.0 * workspace->gaps_inner);
-			if (cursor_y >= y0 && cursor_y < y1) {
-				return con;
-			}
-			offset = y0;
-		}
-	}
-	return container;
+	return workspace->current.focused_inactive_child;
 }
 
-static void scroll_workspace(struct sway_workspace *workspace, double dx, double dy) {
-	if (layout_get_type(workspace) == L_HORIZ) {
-		for (int i = 0; i < workspace->tiling->length; ++i) {
-			struct sway_container *con = workspace->tiling->items[i];
-			con->pending.x += dx;
-		}
-	} else {
-		for (int i = 0; i < workspace->tiling->length; ++i) {
-			struct sway_container *con = workspace->tiling->items[i];
-			con->pending.y += dy;
-		}
-	}
-	node_set_dirty(&workspace->node);
-	arrange_workspace(workspace);
-	transaction_commit_dirty();
-}
-
-static void scroll_container(struct sway_container *container, double dx, double dy) {
-	if (container->pending.layout == L_HORIZ) {
-		list_t *children = container->pending.children;
-		for (int i = 0; i < children->length; ++i) {
+// The first sibling after the active one (before it, if the content moved
+// toward the end) that the gesture left with its nearest edge in view
+static struct sway_container *scroll_pick(struct sway_workspace *workspace,
+		list_t *children, struct sway_container *active, bool horizontal) {
+	const double pan = horizontal ? workspace->pan.x : workspace->pan.y;
+	// The pan may come from a gesture before this one
+	const double moved = horizontal ? workspace->pan.dx : workspace->pan.dy;
+	struct wlr_fbox vp;
+	layout_vp_box(workspace, &vp);
+	const double beg = horizontal ? vp.x : vp.y;
+	const double end = beg + (horizontal ? vp.width : vp.height);
+	const int active_idx = max(list_find(children, active), 0);
+	struct sway_container *pick = NULL;
+	if (moved < 0.0) {
+		for (int i = active_idx + 1; i < children->length; ++i) {
 			struct sway_container *con = children->items[i];
-			con->current.x += dx;
-			con->pending.x += dx;
-		}
-	} else {
-		list_t *children = container->pending.children;
-		for (int i = 0; i < children->length; ++i) {
-			struct sway_container *con = children->items[i];
-			con->current.y += dy;
-			con->pending.y += dy;
-		}
-	}
-	node_set_dirty(&container->node);
-	arrange_container(container);
-	transaction_commit_dirty();
-}
-
-static void layout_scroll_float_pinned_container(struct sway_workspace *workspace) {
-	struct sway_container *pin = workspace->gesture.pin;
-	int pidx = list_find(workspace->tiling, pin);
-	if (pidx < 0) {
-		return;
-	}
-	// Move windows that are outside of the viewport on the pin side to be
-	// adjacent to the rest
-	enum sway_layout_pin pos = workspace->gesture.pin_position;
-	enum sway_container_layout layout = layout_get_type(workspace);
-	if (layout == L_HORIZ) {
-		const double move = 2.0 * workspace->gaps_inner + pin->pending.width;
-		if (pos == PIN_BEGINNING) {
-			for (int i = 0; i < pidx; i++) {
-				struct sway_container *con = workspace->tiling->items[i];
-				con->pending.x += move;
-			}
-		} else {
-			for (int i = pidx + 1; i < workspace->tiling->length; i++) {
-				struct sway_container *con = workspace->tiling->items[i];
-				con->pending.x -= move;
-			}
-		}
-	} else {
-		const double move = 2.0 * workspace->gaps_inner + pin->pending.height;
-		if (pos == PIN_BEGINNING) {
-			for (int i = 0; i < pidx; i++) {
-				struct sway_container *con = workspace->tiling->items[i];
-				con->pending.y += move;
-			}
-		} else {
-			for (int i = pidx + 1; i < workspace->tiling->length; i++) {
-				struct sway_container *con = workspace->tiling->items[i];
-				con->pending.y -= move;
-			}
-		}
-	}
-	// Float the pin
-	list_del(workspace->tiling, pidx);
-	list_add(workspace->floating, pin);
-	node_set_dirty(&workspace->node);
-	//node_set_dirty(&pin->node);
-	arrange_workspace(workspace);
-	transaction_set_animation(ANIMATION_DISABLED);
-	transaction_commit_dirty();
-}
-
-static void layout_scroll_unfloat_pinned_container(struct sway_workspace *workspace,
-		struct sway_seat *seat) {
-	struct sway_container *pin = workspace->gesture.pin;
-	int fidx = list_find(workspace->floating, pin);
-	if (fidx < 0) {
-		return;
-	}
-	enum sway_layout_pin pos = workspace->gesture.pin_position;
-	enum sway_container_layout layout = layout_get_type(workspace);
-	// There will be one container that overlaps the inner edge of the pin.
-	// That container's center point will give the future location of the
-	// container with respect to the pin.
-	bool inserted = false;
-	struct sway_container *focus = NULL;
-	if (layout == L_HORIZ) {
-		const double px0 = pin->pending.x;
-		const double px1 = pin->pending.x + pin->pending.width;
-		const double p = pos == PIN_BEGINNING ? px1 : px0;
-		for (int i = 0; i < workspace->tiling->length; ++i) {
-			struct sway_container *con = workspace->tiling->items[i];
-			const double cx1 = con->pending.x + con->pending.width;
-			const double cm = con->pending.x + 0.5 * con->pending.width;
-			if (cx1 > p) {
-				if (cm > p) {
-					list_insert(workspace->tiling, i, pin);
-					focus = pos == PIN_BEGINNING ? con : pin;
-				} else {
-					list_insert(workspace->tiling, i + 1, pin);
-					focus = pos == PIN_BEGINNING ? pin : con;
-				}
-				inserted = true;
+			pick = con;
+			const double edge = (horizontal ? con->pending.x : con->pending.y) + pan;
+			if (edge > beg && edge < end) {
 				break;
 			}
 		}
-	} else {
-		const double py0 = pin->pending.y;
-		const double py1 = pin->pending.y + pin->pending.height;
-		const double p = pos == PIN_BEGINNING ? py1 : py0;
-		for (int i = 0; i < workspace->tiling->length; ++i) {
-			struct sway_container *con = workspace->tiling->items[i];
-			const double cy1 = con->pending.y + con->pending.height;
-			const double cm = con->pending.y + 0.5 * con->pending.height;
-			if (cy1 > p) {
-				if (cm > p) {
-					list_insert(workspace->tiling, i, pin);
-					focus = pos == PIN_BEGINNING ? con : pin;
-				} else {
-					list_insert(workspace->tiling, i + 1, pin);
-					focus = pos == PIN_BEGINNING ? pin : con;
-				}
-				inserted = true;
+	} else if (moved > 0.0) {
+		for (int i = active_idx - 1; i >= 0; i--) {
+			struct sway_container *con = children->items[i];
+			pick = con;
+			const double edge = pan + (horizontal ?
+				con->pending.x + con->pending.width :
+				con->pending.y + con->pending.height);
+			if (edge > beg && edge < end) {
 				break;
 			}
 		}
 	}
-	if (!inserted) {
-		list_add(workspace->tiling, pin);
-		focus = pin;
-	}
-	list_del(workspace->floating, fidx);
-	if (seat) {
-		seat_set_focus_container(seat, focus);
-	}
-	layout_pin_set(workspace, pin, pos);
-	node_set_dirty(&workspace->node);
-	node_set_dirty(&pin->node);
-	arrange_workspace(workspace);
-	transaction_commit_dirty();
+	return pick;
 }
 
-// Gestures
-
-// A cancelled gesture doesn't clean up like when naturally ending, so make
-// sure to settle the workspace from the event loop
-static struct wl_event_source *scroll_settle_idle = NULL;
-
-static void scroll_settle(struct sway_workspace *workspace) {
-	workspace->gesture.settle = false;
-	if (workspace->gesture.pin) {
-		layout_scroll_unfloat_pinned_container(workspace, NULL);
-		workspace->gesture.pin = NULL;
+// Select a window, NULL if none
+static struct sway_container *scroll_selection(struct sway_seat *seat,
+		struct sway_workspace *workspace) {
+	if (workspace->tiling->length == 0 ||
+			(workspace->pan.dx == 0.0 && workspace->pan.dy == 0.0)) {
+		return NULL;
 	}
-	arrange_workspace(workspace);
-	transaction_set_animation(ANIMATION_GESTURE);
-	transaction_commit_dirty();
+	// The gesture selects along the axis it moved most
+	const bool horizontal = fabs(workspace->pan.dx) > fabs(workspace->pan.dy);
+	struct sway_container *pick;
+	if (horizontal == (layout_get_type(workspace) == L_HORIZ)) {
+		pick = scroll_pick(workspace, workspace->tiling,
+			workspace->current.focused_inactive_child, horizontal);
+	} else {
+		// Inside the column (or row) under the pointer
+		struct sway_container *container = scroll_pointer_container(seat, workspace);
+		if (!container || !container->pending.children) {
+			return NULL;
+		}
+		pick = scroll_pick(workspace, container->pending.children,
+			container->current.focused_inactive_child, horizontal);
+	}
+	if (pick && pick->pending.children && pick->current.focused_inactive_child) {
+		pick = pick->current.focused_inactive_child;
+	}
+	// The current state may still have a window that is closing
+	return pick && !pick->node.destroying ? pick : NULL;
 }
 
-static void scroll_settle_workspace(struct sway_workspace *workspace, void *data) {
-	// If scrolling, the gesture will end, skip
-	if (workspace->gesture.settle && !workspace->gesture.scrolling &&
-			!workspace->node.destroying) {
-		scroll_settle(workspace);
-	}
+// The animated pan follows the gesture. This also keeps its velocity for the
+// animation that starts when the gesture ends
+static void scroll_track(struct sway_workspace *workspace) {
+	struct sway_animation_clock *clock = output_animation_clock(workspace->output);
+	animated_variable_track(&workspace->animation.pan_x, workspace->pan.x,
+		clock, workspace);
+	animated_variable_track(&workspace->animation.pan_y, workspace->pan.y,
+		clock, workspace);
 }
 
-static void handle_scroll_settle(void *data) {
-	scroll_settle_idle = NULL;
-	root_for_each_workspace(scroll_settle_workspace, NULL);
+static void scroll_untrack(struct sway_workspace *workspace) {
+	animation_manager_untrack(server.animation_manager, workspace);
 }
 
 void layout_scroll_cancel(struct sway_seat *seat) {
@@ -3085,13 +2943,17 @@ void layout_scroll_cancel(struct sway_seat *seat) {
 		return;
 	}
 	seat->scroll_workspace = NULL;
-	transaction_untrack_workspace(workspace);
-	workspace->gesture.scrolling = false;
-	workspace->gesture.settle = true;
-	if (!scroll_settle_idle) {
-		scroll_settle_idle = wl_event_loop_add_idle(server.wl_event_loop,
-			handle_scroll_settle, NULL);
-	}
+	workspace->pan.x = workspace->pan.y = 0.0;
+	scroll_untrack(workspace);
+	// The layout did not change, so there is nothing to arrange or commit:
+	// only the viewport resets
+	const struct sway_animation_options options = {
+		.spec = animation_get_spec(ANIMATION_GESTURE),
+		.clock = output_animation_clock(workspace->output),
+	};
+	animated_variable_set(&workspace->animation.pan_x, 0.0, &options);
+	animated_variable_set(&workspace->animation.pan_y, 0.0, &options);
+	animation_manager_damage(server.animation_manager, options.clock);
 }
 
 // The scrolling workspace, NULL if none
@@ -3110,10 +2972,6 @@ bool layout_scroll_begin(struct sway_seat *seat) {
 	if (!workspace) {
 		return false;
 	}
-	if (workspace->gesture.settle) {
-		// The one that was cancelled ends before this one begins
-		scroll_settle(workspace);
-	}
 	// Check if we can scroll
 	double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
 	double total_width = 0.0, max_height = 0.0;
@@ -3130,28 +2988,14 @@ bool layout_scroll_begin(struct sway_seat *seat) {
 			max_height = total_height;
 		}
 	}
-	bool can_scroll_x = total_width > workspace->width;
-	bool can_scroll_y = max_height > workspace->height;
-	if (!can_scroll_x && !can_scroll_y) {
+	if (total_width <= workspace->width && max_height <= workspace->height) {
 		return false;
 	}
-
 	seat->scroll_workspace = workspace;
-	workspace->gesture.scrolling = true;
-	workspace->gesture.dx = 0.0;
-	workspace->gesture.dy = 0.0;
-
-	// If there is a pinned container, float it.
-	struct sway_container *pin = layout_pin_enabled(workspace) ? layout_pin_get_container(workspace) : NULL;
-	workspace->gesture.pin = pin;
-	enum sway_container_layout layout = layout_get_type(workspace);
-	if (pin &&
-		((layout == L_HORIZ && can_scroll_x) ||
-		 (layout == L_VERT && can_scroll_y))) {
-		workspace->gesture.pin_position = layout_pin_get_position(workspace);
-		layout_pin_remove(workspace, pin);
-		layout_scroll_float_pinned_container(workspace);
-	}
+	workspace->pan.x = workspace->animation.pan_x.value;
+	workspace->pan.y = workspace->animation.pan_y.value;
+	workspace->pan.dx = workspace->pan.dy = 0.0;
+	scroll_track(workspace);
 	return true;
 }
 
@@ -3160,213 +3004,80 @@ void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float se
 	if (!workspace || workspace->tiling->length == 0) {
 		return;
 	}
-	transaction_set_animation(ANIMATION_DISABLED);
-	dx *= sensitivity;
-	dy *= sensitivity;
-
-	workspace->gesture.dx += dx;
-	workspace->gesture.dy += dy;
-	if (layout_get_type(workspace) == L_HORIZ) {
-		scroll_container(get_mouse_container(seat, workspace), 0.0, dy);
-		scroll_workspace(workspace, dx, 0.0);
-	} else {
-		scroll_container(get_mouse_container(seat, workspace), dx, 0.0);
-		scroll_workspace(workspace, 0.0, dy);
-	}
-	// The containers follow the gesture until it ends or it is cancelled.
-	// This also keeps their velocity for the animation that starts then.
-	transaction_track_workspace(workspace);
+	workspace->pan.x += sensitivity * dx;
+	workspace->pan.y += sensitivity * dy;
+	workspace->pan.dx += sensitivity * dx;
+	workspace->pan.dy += sensitivity * dy;
+	scroll_track(workspace);
 }
 
-static void scroll_end_horizontal(struct sway_seat *seat, list_t *children, int active_idx,
-		enum sway_layout_direction scrolling_direction) {
-	struct sway_container *active = children->items[active_idx];
-	struct sway_workspace *workspace = active->pending.workspace;
-	struct wlr_fbox vp;
-	layout_vp_box(workspace, &vp);
-	if (scrolling_direction == DIR_LEFT) {
-		struct sway_container *new_active = children->items[children->length - 1];
-		double offset = active->pending.x + (active->pending.width + 2.0 * workspace->gaps_inner);
-		// Take the first after active that has its left edge in the viewport
-		for (int i = active_idx + 1; i < children->length; ++i) {
-			struct sway_container *con = children->items[i];
-			if (offset > vp.x && offset < vp.x + vp.width) {
-				new_active = con;
-				break;
-			}
-			offset += con->pending.width + 2.0 * workspace->gaps_inner;
-		}
-		if (new_active->pending.children) {
-			new_active = new_active->current.focused_inactive_child;
-		}
-		seat_set_focus_container(seat, new_active);
-    } else if (scrolling_direction == DIR_RIGHT) {
-		struct sway_container *new_active = children->items[0];
-		double offset = active->pending.x - 2.0 * workspace->gaps_inner;
-		// Take the first before active that has its right edge in the viewport
-		for (int i = active_idx - 1; i >= 0; i--) {
-			struct sway_container *con = children->items[i];
-			if (offset > vp.x && offset < vp.x + vp.width) {
-				new_active = con;
-				break;
-			}
-			offset -= con->pending.width + 2.0 * workspace->gaps_inner;
-		}
-		if (new_active->pending.children) {
-			new_active = new_active->current.focused_inactive_child;
-		}
-		seat_set_focus_container(seat, new_active);
-	}
-}
-
-static void scroll_end_vertical(struct sway_seat *seat, list_t *children, int active_idx,
-		enum sway_layout_direction scrolling_direction) {
-	struct sway_container *active = children->items[active_idx];
-	struct sway_workspace *workspace = active->pending.workspace;
-	struct wlr_fbox vp;
-	layout_vp_box(workspace, &vp);
-	if (scrolling_direction == DIR_UP) {
-		struct sway_container *new_active = children->items[children->length - 1];
-		double offset = active->pending.y + (active->pending.height + 2.0 * workspace->gaps_inner);
-		// Take the first after active that has its top edge in the viewport
-		for (int i = active_idx + 1; i < children->length; ++i) {
-			struct sway_container *con = children->items[i];
-			if (offset > vp.y && offset < vp.y + vp.height) {
-				new_active = con;
-				break;
-			}
-			offset += con->pending.height + 2.0 * workspace->gaps_inner;
-		}
-		if (new_active->pending.children) {
-			new_active = new_active->current.focused_inactive_child;
-		}
-		seat_set_focus_container(seat, new_active);
-    } else if (scrolling_direction == DIR_DOWN) {
-		struct sway_container *new_active = children->items[0];
-		double offset = active->pending.y - 2.0 * workspace->gaps_inner;
-		// Take the first before active that has its bottom edge in the viewport
-		for (int i = active_idx - 1; i >= 0; i--) {
-			struct sway_container *con = children->items[i];
-			if (offset > vp.y && offset < vp.y + vp.height) {
-				new_active = con;
-				break;
-			}
-			offset -= con->pending.height + 2.0 * workspace->gaps_inner;
-		}
-		if (new_active->pending.children) {
-			new_active = new_active->current.focused_inactive_child;
-		}
-		seat_set_focus_container(seat, new_active);
-	}
-}
-
-static double scroll_project(list_t *children, bool horizontal) {
+// Project where friction would stop the movement given the panning velocity
+static void scroll_project(struct sway_workspace *workspace) {
 	const double friction = config->gesture_scroll_friction;
-	if (friction <= 0.0 || children->length == 0) {
-		return 0.0;
+	if (friction <= 0.0) {
+		return;
 	}
-	struct sway_container *first = children->items[0];
-	const double velocity = animated_variable_get_velocity(
-		horizontal ? &first->animation.x : &first->animation.y);
-	const double distance = velocity / friction;
-	if (fabs(distance) < 1.0) {
-		return 0.0;
+	const double dx = animated_variable_get_velocity(&workspace->animation.pan_x) / friction;
+	const double dy = animated_variable_get_velocity(&workspace->animation.pan_y) / friction;
+	if (fabs(dx) >= 1.0) {
+		workspace->pan.x += dx;
+		workspace->pan.dx += dx;
 	}
-	for (int i = 0; i < children->length; ++i) {
-		struct sway_container *con = children->items[i];
+	if (fabs(dy) >= 1.0) {
+		workspace->pan.y += dy;
+		workspace->pan.dy += dy;
+	}
+}
+
+// Transfer the workspace pan to the tiling containers before committing the
+// transaction
+static void scroll_update_containers(struct sway_workspace *workspace,
+		struct sway_container *column) {
+	const bool horizontal = layout_get_type(workspace) == L_HORIZ;
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *con = workspace->tiling->items[i];
+		if (!layout_container_pans(con)) {
+			continue;
+		}
+		const double x = horizontal || con == column ? workspace->pan.x : 0.0;
+		const double y = !horizontal || con == column ? workspace->pan.y : 0.0;
 		if (horizontal) {
-			con->pending.x += distance;
+			con->pending.x += x;
 		} else {
-			con->pending.y += distance;
+			con->pending.y += y;
+		}
+		node_set_dirty(&con->node);
+		if (!con->pending.children) {
+			continue;
+		}
+		for (int j = 0; j < con->pending.children->length; ++j) {
+			struct sway_container *child = con->pending.children->items[j];
+			child->pending.x += x;
+			child->pending.y += y;
+			node_set_dirty(&child->node);
 		}
 	}
-	return distance;
+	node_set_dirty(&workspace->node);
 }
 
-static void scroll_project_gesture(struct sway_seat *seat,
-		struct sway_workspace *workspace) {
-	if (config->gesture_scroll_friction <= 0.0 || workspace->tiling->length == 0) {
-		return;
-	}
-	const bool horizontal =
-		fabs(workspace->gesture.dx) > fabs(workspace->gesture.dy);
-	list_t *children = workspace->tiling;
-	if (horizontal != (layout_get_type(workspace) == L_HORIZ)) {
-		// Scrolling inside a column (or row)
-		struct sway_container *container = get_mouse_container(seat, workspace);
-		if (!container || !container->pending.children) {
-			return;
-		}
-		children = container->pending.children;
-	}
-	const double distance = scroll_project(children, horizontal);
-	if (horizontal) {
-		workspace->gesture.dx += distance;
-	} else {
-		workspace->gesture.dy += distance;
-	}
-}
-
-static bool scrolling_in_pin_direction(enum sway_container_layout layout,
-		enum sway_layout_direction dir) {
-	if ((layout == L_HORIZ && (dir == DIR_LEFT || dir == DIR_RIGHT)) ||
-		(layout == L_VERT && (dir == DIR_UP || dir == DIR_DOWN))) {
-		return true;
-	}
-	return false;
-}
-
-// The gesture of the seat ended: focus what it left in view, and arrange
+// Gesture ended. Refocus and arrange
 static void scroll_end(struct sway_seat *seat, struct sway_workspace *workspace) {
-	transaction_set_animation(ANIMATION_DEFAULT);
-	scroll_project_gesture(seat, workspace);
-	transaction_untrack_workspace(workspace);
+	scroll_project(workspace);
+	scroll_untrack(workspace);
 
-	enum sway_layout_direction scrolling_direction;
-	enum sway_container_layout layout = layout_get_type(workspace);
-	if (fabs(workspace->gesture.dx) > fabs(workspace->gesture.dy)) {
-		scrolling_direction = workspace->gesture.dx > 0.0 ? DIR_RIGHT : DIR_LEFT;
-	} else {
-		scrolling_direction = workspace->gesture.dy > 0.0 ? DIR_DOWN : DIR_UP;
+	struct sway_container *focus = scroll_selection(seat, workspace);
+	struct sway_container *column = focus ? focus :
+		seat_get_focus_inactive_tiling(seat, workspace);
+	while (column && column->pending.parent) {
+		column = column->pending.parent;
 	}
+	scroll_update_containers(workspace, column);
+	// Reset viewport
+	workspace->pan.x = workspace->pan.y = 0.0;
 
-	const bool pinned = workspace->gesture.pin != NULL;
-	if (pinned) {
-		layout_scroll_unfloat_pinned_container(workspace, seat);
-	}
-	workspace->gesture.scrolling = false;
-	if (pinned && scrolling_in_pin_direction(layout, scrolling_direction)) {
-		// Scrolling ended: arrange for the pin
-		arrange_workspace(workspace);
-		transaction_set_animation(ANIMATION_GESTURE);
-		transaction_commit_dirty();
-		return;
-	}
-	if (workspace->tiling->length == 0) {
-		return;
-	}
-	if (scrolling_direction == DIR_LEFT || scrolling_direction == DIR_RIGHT) {
-		if (layout == L_HORIZ) {
-			struct sway_container *active = workspace->current.focused_inactive_child;
-			int active_idx = max(list_find(workspace->tiling, active), 0);
-			scroll_end_horizontal(seat, workspace->tiling, active_idx, scrolling_direction);
-		} else {
-			struct sway_container *container = get_mouse_container(seat, workspace);
-			struct sway_container *active = container->current.focused_inactive_child;
-			int active_idx = max(list_find(container->pending.children, active), 0);
-			scroll_end_horizontal(seat, container->pending.children, active_idx, scrolling_direction);			
-		}
-	} else {
-		if (layout == L_HORIZ) {
-			struct sway_container *container = get_mouse_container(seat, workspace);
-			struct sway_container *active = container->current.focused_inactive_child;
-			int active_idx = max(list_find(container->pending.children, active), 0);
-			scroll_end_vertical(seat, container->pending.children, active_idx, scrolling_direction);			
-		} else {
-			struct sway_container *active = workspace->current.focused_inactive_child;
-			int active_idx = max(list_find(workspace->tiling, active), 0);
-			scroll_end_vertical(seat, workspace->tiling, active_idx, scrolling_direction);
-		}
+	transaction_set_animation(ANIMATION_GESTURE);
+	if (focus) {
+		seat_set_focus_container(seat, focus);
 	}
 	arrange_workspace(workspace);
 	transaction_set_animation(ANIMATION_GESTURE);
@@ -3380,7 +3091,6 @@ bool layout_scroll_end(struct sway_seat *seat) {
 	}
 	seat->scroll_workspace = NULL;
 	scroll_end(seat, workspace);
-	workspace->gesture.pin = NULL;
 	return true;
 }
 
@@ -3420,12 +3130,6 @@ void layout_pin_set(struct sway_workspace *workspace, struct sway_container *con
 		workspace->layout.pin.pos = pos;
 	}
 	arrange_workspace(workspace);
-}
-
-void layout_pin_remove(struct sway_workspace *workspace, struct sway_container *container) {
-	if (workspace->layout.pin.container == container) {
-		workspace->layout.pin.container = NULL;
-	}
 }
 
 struct sway_container *layout_pin_get_container(struct sway_workspace *workspace) {
@@ -5034,12 +4738,17 @@ void layout_transform_workspace_get(struct sway_workspace *workspace,
 	double ax, ay;
 	transform_anchor(workspace, &ax, &ay);
 	// The camera center C: the layout point shown at the anchor. Panning
-	// would offset it from the anchor.
+	// offsets it from the anchor
 	const double cx = ax, cy = ay;
 	// screen = A + scale * (layout - C)
 	transform->scale = scale;
 	transform->x = ax - scale * cx;
 	transform->y = ay - scale * cy;
+}
+
+bool layout_container_pans(struct sway_container *container) {
+	return container->pending.workspace && container_transformed(container) &&
+		!container_is_floating_or_child(container);
 }
 
 void layout_transform_container_get(struct sway_container *container,
@@ -5048,7 +4757,14 @@ void layout_transform_container_get(struct sway_container *container,
 		*transform = (struct sway_layout_transform){ .scale = 1.0 };
 		return;
 	}
-	layout_transform_workspace_get(container->pending.workspace, animated, transform);
+	struct sway_workspace *workspace = container->pending.workspace;
+	layout_transform_workspace_get(workspace, animated, transform);
+	if (animated && layout_container_pans(container)) {
+		// What is on screen is panned: the camera center is A - pan. See
+		// layout_scroll_begin()
+		transform->x += transform->scale * workspace->animation.pan_x.value;
+		transform->y += transform->scale * workspace->animation.pan_y.value;
+	}
 }
 
 void layout_vp_box(struct sway_workspace *workspace, struct wlr_fbox *box) {

@@ -206,6 +206,8 @@ struct sway_workspace *workspace_create(struct sway_output *output,
 	node_init(&ws->node, N_WORKSPACE, ws);
 	animated_variable_init(&ws->animation.s, server.animation_manager, 1.0, ANIMATED_VARIABLE_NONE);
 	animated_variable_init(&ws->animation.off, server.animation_manager, 0.0, ANIMATED_VARIABLE_NONE);
+	animated_variable_init(&ws->animation.pan_x, server.animation_manager, 0.0, ANIMATED_VARIABLE_POSITION);
+	animated_variable_init(&ws->animation.pan_y, server.animation_manager, 0.0, ANIMATED_VARIABLE_POSITION);
 
 	bool failed = false;
 	ws->layers.tiling = alloc_scene_tree(root->staging, &failed);
@@ -309,6 +311,8 @@ void workspace_destroy(struct sway_workspace *workspace) {
 	}
 	animated_variable_release(&workspace->animation.s);
 	animated_variable_release(&workspace->animation.off);
+	animated_variable_release(&workspace->animation.pan_x);
+	animated_variable_release(&workspace->animation.pan_y);
 	node_map_remove(&workspace->node);
 
 	scene_node_disown_children(workspace->layers.tiling);

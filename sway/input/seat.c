@@ -1778,7 +1778,11 @@ void seatop_swipe_end(struct sway_seat *seat,
 		struct wlr_pointer_swipe_end_event *event) {
 	if (seat->swipe_scrolling) {
 		seat->swipe_scrolling = false;
-		layout_scroll_end(seat);
+		if (event->cancelled) {
+			layout_scroll_cancel(seat);
+		} else {
+			layout_scroll_end(seat);
+		}
 		return;
 	}
 	if (seat->seatop_impl->swipe_end) {

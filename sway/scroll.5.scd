@@ -843,6 +843,10 @@ set|plus|minus|toggle <amount>
 	2. If the current container is not pinned yet: it will replace the pinned
 	container, if any.
 
+	During a scrolling gesture (touchpad or mouse), the pinned container moves
+	with the rest of the layout. It goes back to its position when the gesture
+	ends.
+
 *reload*
 	Reloads the scroll config file and applies any changes. The config file is
 	located at path specified by the command line arguments when started,
