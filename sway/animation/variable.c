@@ -20,11 +20,11 @@
 #define TRACKER_WINDOW (100 * NSEC_PER_MSEC)
 // Without samples for this long, the variable is not moving
 #define TRACKER_STALE (60 * NSEC_PER_MSEC)
-// Without samples for this long, whoever was tracking is considered gone, and
-// the variable can be animated by others again.
-#define TRACKER_EXPIRED (250 * NSEC_PER_MSEC)
 
 struct sway_animation_tracker {
+	const void *owner;
+	struct sway_animated_variable *variable;
+	struct wl_list link; // sway_animation_manager.tracking
 	int64_t time[TRACKER_SAMPLES];
 	double value[TRACKER_SAMPLES];
 	int count;
@@ -62,11 +62,6 @@ static double tracker_velocity(struct sway_animation_tracker *tracker, int64_t n
 		return 0.0;
 	}
 	return (tracker->value[last] - tracker->value[first]) / (dt / NSEC_PER_SEC);
-}
-
-static bool tracker_expired(struct sway_animation_tracker *tracker, int64_t now) {
-	const int last = (tracker->next + TRACKER_SAMPLES - 1) % TRACKER_SAMPLES;
-	return tracker->count == 0 || now - tracker->time[last] > TRACKER_EXPIRED;
 }
 
 static double change_epsilon(const struct sway_animated_variable *av) {
@@ -112,27 +107,37 @@ static double variable_sample_value(const struct sway_animated_variable *av,
 	return value;
 }
 
+// A variable is running an animation while it has a spec, and it is tracking
+// while it has a tracker. It never does both.
+static void variable_update_animating(struct sway_animated_variable *av) {
+	av->animating = av->spec || av->tracker;
+}
+
+static struct sway_animation_clock *live_clock(struct sway_animation_clock *clock) {
+	return clock && clock->manager ? clock : NULL;
+}
+
+static bool variable_linked(const struct sway_animated_variable *av) {
+	return !wl_list_empty(&av->link);
+}
+
+// Add a running variable to the list of the clock that samples it
 static void variable_link(struct sway_animated_variable *av,
 		struct sway_animation_clock *clock) {
-	if (av->running) {
+	clock = live_clock(clock);
+	if (variable_linked(av)) {
 		if (av->clock == clock) {
 			return;
 		}
 		animation_manager_variable_stopped(av->manager, av);
 	}
-	if (clock && !clock->manager) {
-		// The clock is gone
-		clock = NULL;
-	}
 	av->clock = clock;
-	av->running = true;
 	animation_manager_variable_started(av->manager, av);
 }
 
 static void variable_unlink(struct sway_animated_variable *av) {
-	if (av->running) {
+	if (variable_linked(av)) {
 		animation_manager_variable_stopped(av->manager, av);
-		av->running = false;
 	}
 	av->clock = NULL;
 }
@@ -140,16 +145,21 @@ static void variable_unlink(struct sway_animated_variable *av) {
 // End the animation of the variable, leaving its value where it is
 static void variable_stop(struct sway_animated_variable *av) {
 	variable_unlink(av);
-	if (av->spec) {
-		animation_spec_unref(av->spec);
-		av->spec = NULL;
-	}
+	animation_spec_unref(av->spec);
+	av->spec = NULL;
 	struct sway_animation_group *group = av->group;
 	av->group = NULL;
 	if (group) {
 		animation_group_leave(group);
 	}
-	av->animating = av->tracking;
+	variable_update_animating(av);
+}
+
+// Move the variable to `value` now, ending its animation if it has one
+static void variable_jump(struct sway_animated_variable *av, double value) {
+	variable_stop(av);
+	variable_settle(av, value);
+	av->velocity = 0.0;
 }
 
 void animated_variable_init(struct sway_animated_variable *av,
@@ -162,11 +172,23 @@ void animated_variable_init(struct sway_animated_variable *av,
 	wl_list_init(&av->link);
 }
 
-void animated_variable_release(struct sway_animated_variable *av) {
-	variable_stop(av);
+// Stop tracking, with no velocity to hand over
+static void variable_drop_tracker(struct sway_animated_variable *av) {
+	if (!av->tracker) {
+		return;
+	}
+	wl_list_remove(&av->tracker->link);
 	free(av->tracker);
 	av->tracker = NULL;
-	av->tracking = av->animating = false;
+}
+
+void animated_variable_release(struct sway_animated_variable *av) {
+	if (!av->manager) {
+		// It was never initialized
+		return;
+	}
+	variable_drop_tracker(av);
+	variable_stop(av);
 }
 
 void animated_variable_reset(struct sway_animated_variable *av, double value) {
@@ -176,20 +198,10 @@ void animated_variable_reset(struct sway_animated_variable *av, double value) {
 	variable_settle(av, value);
 }
 
-void animated_variable_jump(struct sway_animated_variable *av, double value) {
-	variable_stop(av);
-	variable_settle(av, value);
-	av->velocity = 0.0;
-}
-
 void animated_variable_finish(struct sway_animated_variable *av) {
-	if (!av->running) {
-		return;
+	if (av->spec) {
+		variable_jump(av, av->target);
 	}
-	const double target = av->target;
-	variable_stop(av);
-	variable_settle(av, target);
-	av->velocity = 0.0;
 }
 
 static void variable_sample(const struct sway_animated_variable *av,
@@ -203,9 +215,7 @@ bool animated_variable_advance(struct sway_animated_variable *av, int64_t time) 
 	variable_sample(av, time, &sample);
 	av->sampled_at = time;
 	if (sample.done) {
-		variable_stop(av);
-		variable_settle(av, sample.value);
-		av->velocity = 0.0;
+		variable_jump(av, sample.value);
 		return false;
 	}
 	av->value = variable_sample_value(av, &sample);
@@ -213,21 +223,11 @@ bool animated_variable_advance(struct sway_animated_variable *av, int64_t time) 
 	return true;
 }
 
-double animated_variable_sample_at(const struct sway_animated_variable *av,
-		int64_t time) {
-	if (!av->running) {
-		return av->value;
-	}
-	struct sway_animation_sample sample;
-	variable_sample(av, time, &sample);
-	return variable_sample_value(av, &sample);
-}
-
 double animated_variable_get_velocity(struct sway_animated_variable *av) {
-	if (av->tracking) {
+	if (av->tracker) {
 		return tracker_velocity(av->tracker, animation_manager_now(av->manager));
 	}
-	if (!av->running) {
+	if (!av->spec) {
 		return av->velocity;
 	}
 	// The slope of the animation at the time of its current value
@@ -244,33 +244,28 @@ double animated_variable_get_velocity(struct sway_animated_variable *av) {
 	return (s1.value - s0.value) / (dt / NSEC_PER_SEC);
 }
 
-void animated_variable_untrack(struct sway_animated_variable *av);
-
 // The velocity carried from tracking is only good for a while
 #define VELOCITY_VALID (100 * NSEC_PER_MSEC)
 
 bool animated_variable_set(struct sway_animated_variable *av, double value,
 		const struct sway_animation_options *options) {
-	if (av->tracking) {
-		if (!tracker_expired(av->tracker, animation_manager_now(av->manager))) {
-			av->target = value;
-			return true;
-		}
-		animated_variable_untrack(av);
+	if (av->tracker) {
+		// Its owner moves it: this is where it goes when tracking ends
+		av->target = value;
+		return true;
 	}
 	const double epsilon = change_epsilon(av);
 	struct sway_animation_clock *clock = options ? options->clock : NULL;
-	if (av->running && fabs(value - av->target) <= epsilon) {
+	if (av->spec && fabs(value - av->target) <= epsilon) {
 		// This running variable doesn't change enough, so it keeps its animation
 		// for its remaining duration
 		variable_link(av, clock);
 		return true;
 	}
 	struct sway_animation_spec *spec = options ? options->spec : NULL;
-	if (!spec || !spec->enabled || av->manager->stopped ||
-			fabs(value - av->value) <= epsilon) {
-		// Not animated or not movingo; move to the final value now
-		animated_variable_jump(av, value);
+	if (!spec || av->manager->stopped || fabs(value - av->value) <= epsilon) {
+		// Not animated or not moving: move to the final value now
+		variable_jump(av, value);
 		return false;
 	}
 
@@ -279,7 +274,7 @@ bool animated_variable_set(struct sway_animated_variable *av, double value,
 		options->group->start : animation_manager_now(av->manager);
 	double velocity = 0.0;
 	int64_t t0 = now;
-	if (av->running) {
+	if (av->spec) {
 		if (spec->impl->uses_velocity) {
 			velocity = animated_variable_get_velocity(av);
 		}
@@ -308,53 +303,66 @@ bool animated_variable_set(struct sway_animated_variable *av, double value,
 		.position = av->type == ANIMATED_VARIABLE_POSITION,
 		.epsilon = settle_epsilon(av),
 	};
-	if (spec->impl->start) {
-		spec->impl->start(&av->state, spec);
-	}
+	spec->impl->start(&av->state, spec);
 	if (options->group) {
 		av->group = options->group;
 		animation_group_join(av->group);
 	}
-	av->animating = true;
+	variable_update_animating(av);
 	variable_link(av, clock);
 	return true;
 }
 
 void animated_variable_track(struct sway_animated_variable *av, double value,
-		int64_t time, struct sway_animation_clock *clock) {
-	if (!av->tracker) {
+		struct sway_animation_clock *clock, const void *owner) {
+	if (!av->tracker && !av->manager->stopped) {
 		av->tracker = calloc(1, sizeof(struct sway_animation_tracker));
-		if (!av->tracker) {
-			animated_variable_jump(av, value);
-			return;
+		if (av->tracker) {
+			av->tracker->variable = av;
+			wl_list_insert(&av->manager->tracking, &av->tracker->link);
 		}
 	}
-	av->tracking = true;
+	if (!av->tracker) {
+		variable_jump(av, value);
+		return;
+	}
+	av->tracker->owner = owner;
 	variable_stop(av);
-	tracker_add(av->tracker, value, time);
+	const int64_t now = animation_manager_now(av->manager);
+	tracker_add(av->tracker, value, now);
 	// The target is still where the variable will rest when tracking ends
 	const double target = av->target;
 	variable_settle(av, value);
 	av->target = target;
 	av->velocity = 0.0;
-	av->sampled_at = time;
-	if (clock && !clock->manager) {
-		clock = NULL;
-	}
-	animation_manager_damage(av->manager, clock);
+	av->sampled_at = now;
+	animation_manager_damage(av->manager, live_clock(clock));
 }
 
-void animated_variable_untrack(struct sway_animated_variable *av) {
-	if (!av->tracking) {
-		return;
-	}
+static void variable_untrack(struct sway_animated_variable *av) {
 	const int64_t now = animation_manager_now(av->manager);
 	av->velocity = tracker_velocity(av->tracker, now);
 	av->sampled_at = now;
-	free(av->tracker);
-	av->tracker = NULL;
-	av->tracking = false;
-	av->animating = av->running;
+	variable_drop_tracker(av);
+	variable_update_animating(av);
+}
+
+void animation_manager_untrack(struct sway_animation_manager *manager,
+		const void *owner) {
+	struct sway_animation_tracker *tracker, *tmp;
+	wl_list_for_each_safe(tracker, tmp, &manager->tracking, link) {
+		if (tracker->owner == owner) {
+			variable_untrack(tracker->variable);
+		}
+	}
+}
+
+void animation_manager_untrack_all(struct sway_animation_manager *manager) {
+	while (!wl_list_empty(&manager->tracking)) {
+		struct sway_animation_tracker *tracker =
+			wl_container_of(manager->tracking.next, tracker, link);
+		variable_untrack(tracker->variable);
+	}
 }
 
 void animated_variable_inherit(struct sway_animated_variable *child,
@@ -386,17 +394,13 @@ void animated_variable_inherit(struct sway_animated_variable *child,
 	if (group) {
 		animation_group_leave(group);
 	}
-	if (child->tracking) {
-		free(child->tracker);
-		child->tracker = NULL;
-		child->tracking = false;
-	}
-	if (parent->running) {
+	variable_drop_tracker(child);
+	if (child->spec) {
 		variable_link(child, parent->clock);
 	} else {
 		variable_unlink(child);
 	}
-	child->animating = parent->running;
+	variable_update_animating(child);
 }
 
 void animated_variable_set_span(struct sway_animated_variable *av, double span) {

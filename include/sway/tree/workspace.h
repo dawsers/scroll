@@ -66,8 +66,9 @@ struct sway_workspace {
 
 	struct {
 		bool scrolling;
+		bool settle; // cancelled, see layout_scroll_cancel()
 		double dx, dy;
-		struct sway_container *pin;
+		struct sway_container *pin; // the pinned container while it floats
 		enum sway_layout_pin pin_position;
 	} gesture;
 
@@ -126,9 +127,12 @@ bool workspace_is_panning(struct sway_workspace *ws);
 /**
  * Start the animation of a workspace switch. Called at transaction time, so any
  * number of switches in the same transaction are condensed into one animation.
+ * `spec` is the animation to use, NULL for none, and `group` the animation
+ * group of the transaction.
  */
 void workspace_switch_animate(struct sway_output *output,
-		struct sway_workspace *from, struct sway_workspace *to);
+		struct sway_workspace *from, struct sway_workspace *to,
+		struct sway_animation_spec *spec, struct sway_animation_group *group);
 
 /**
  * Returns the animated offset for the workspace during a workspace switch

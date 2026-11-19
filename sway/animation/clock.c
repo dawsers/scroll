@@ -5,7 +5,7 @@
  * Clocks
  *
  * A clock predicts when the frame that is going to be rendered for an output
- * will be visualized, using the presentation feedback of previous frames.
+ * will be displayed, using the presentation feedback of previous frames.
  * Animations are sampled at that time, instead of the time the frame is
  * rendered, so every output shows the animation as it has to be at the
  * moment its frame reaches the screen, regardless of its refresh rate.
@@ -22,7 +22,6 @@ void animation_clock_init(struct sway_animation_clock *clock,
 	clock->data = data;
 	wl_list_init(&clock->running);
 	wl_list_insert(manager->clocks.prev, &clock->link);
-	clock->last_tick = animation_manager_now(manager);
 }
 
 void animation_clock_finish(struct sway_animation_clock *clock) {
@@ -46,20 +45,12 @@ void animation_clock_finish(struct sway_animation_clock *clock) {
 		// Nobody is left to animate anything
 		animation_manager_finish_all(manager);
 	} else if (had_running) {
-		manager->unbound_tick = animation_manager_now(manager);
 		animation_manager_damage(manager, NULL);
 	}
 }
 
 void animation_clock_presented(struct sway_animation_clock *clock,
 		int64_t when, int64_t refresh) {
-	if (clock->frame_wall != 0 && when >= clock->frame_wall &&
-			when - clock->frame_wall < NSEC_PER_SEC) {
-		const int64_t latency = when - clock->frame_wall;
-		clock->latency = clock->latency ?
-			(clock->latency * 7 + latency) / 8 : latency;
-	}
-	clock->presented = true;
 	clock->last_present = when;
 	clock->refresh = refresh > 0 ? refresh : 0;
 }
@@ -67,24 +58,23 @@ void animation_clock_presented(struct sway_animation_clock *clock,
 int64_t animation_clock_begin_frame(struct sway_animation_clock *clock) {
 	const int64_t now = animation_manager_now(clock->manager);
 	int64_t time;
-	if (clock->presented && clock->refresh > 0 && now >= clock->last_present &&
+	if (clock->refresh == 0) {
+		// We don't know the refresh rate, use current time
+		time = now;
+	} else if (now >= clock->last_present &&
 			now - clock->last_present < NSEC_PER_SEC) {
 		// The first refresh after now
 		const int64_t n = (now - clock->last_present) / clock->refresh + 1;
 		time = clock->last_present + n * clock->refresh;
-	} else if (clock->presented && clock->refresh > 0) {
+	} else {
 		// The phase of the refresh is not known
 		time = now + clock->refresh;
-	} else {
-		// Unknown or variable refresh rate: the usual delay
-		time = now + clock->latency;
 	}
 	// A frame is never presented before the previous one
 	if (time <= clock->frame_time) {
 		time = clock->frame_time + (clock->refresh > 0 ? clock->refresh : 1);
 	}
 	clock->frame_time = time;
-	clock->frame_wall = now;
 	return time;
 }
 

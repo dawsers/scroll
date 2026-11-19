@@ -507,6 +507,8 @@ enum xwayland_mode {
 	XWAYLAND_MODE_IMMEDIATE,
 };
 
+struct sway_animation_config;
+
 /**
  * The configuration struct. The result of loading a config file.
  */
@@ -653,6 +655,7 @@ struct sway_config {
 	float gesture_scroll_sentitivity;
 	float gesture_scroll_sentitivity_mouse;
 	float gesture_scroll_friction;
+	struct sway_animation_config *animations;
 	struct {
 		int border_radius;
 		bool dim;

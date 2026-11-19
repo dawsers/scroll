@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <wlr/types/wlr_scene.h>
-#include "sway/desktop/animation.h"
+#include "sway/desktop/animate.h"
 
 /**
  * Transactions enable us to perform atomic layout updates.
@@ -42,16 +42,23 @@ void transaction_commit_dirty(void);
 void transaction_commit_dirty_client(void);
 
 /**
- * Set the type of animation for the next transaction. It is
- * the default animation if not set.
+ * Set the type of animation for the next transaction commit. It is the default
+ * animation if not set.
+ *
+ * A commit may be added to a transaction that is waiting to be committed.
+ * That transaction then takes the type, unless it is the default one: the
+ * last commit that asks for a type decides.
+ *
+ * ANIMATION_DISABLED stops the animation of the geometry, and leaves the
+ * fades running. transaction_disable_animations() stops both.
  */
 void transaction_set_animation(enum sway_animation_type type);
 
 /**
- * The same as transaction_commit_dirty(), but disabling all animations for
- * the transaction
+ * If `disable` is true, no commit is animated until called again with
+ * `disable` false
  */
-void transaction_commit_dirty_disable_animations(void);
+void transaction_disable_animations(bool disable);
 
 /**
  * Notify the transaction system that a view is ready for the new layout.
@@ -79,17 +86,13 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 void arrange_popups(struct wlr_scene_tree *popups);
 
 /**
- * Returns the animation group associated with the transaction that is being
- * applied, or NULL otherwise.
- */
-struct sway_animation_group *transaction_get_animation_group(void);
-
-/**
  * For continuous animations, make the animated positions of a floating
  * container, or of the tiling containers of a workspace follow their
  * pending positions instead of animating to them.
  * Call track for every intermediate transition, and untrack before committing
  * the transaction that leaves them in their final positions.
+ * Untrack needs to be called for those positions to be released for animation
+ * again.
  */
 void transaction_track_container(struct sway_container *con);
 void transaction_untrack_container(struct sway_container *con);
@@ -97,14 +100,7 @@ void transaction_track_workspace(struct sway_workspace *ws);
 void transaction_untrack_workspace(struct sway_workspace *ws);
 
 /**
- * Transactions are reference counted, releasing their nodes when losing their
- * last reference.
- */
-struct sway_transaction *transaction_ref(struct sway_transaction *transaction);
-void transaction_unref(struct sway_transaction *transaction);
-
-/**
- * Render the scebe graph for the current values of the animated variables of
+ * Update the scene graph with the current values of the animated variables of
  * the nodes of an output, or for every output.
  */
 void transaction_animate_output(struct sway_output *output);

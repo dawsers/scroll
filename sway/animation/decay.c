@@ -8,10 +8,9 @@
  *
  *   x(t) = x1 + (x0 - x1) exp(-rate t)
  *
- * Something moving at v0 from x0 stops at x0 + v0 / rate, see
- * animation_decay_rest(). Animating a variable to that target gives it the
- * initial velocity v0, so the same animator is used for a free decay (a
- * flick) and for a decay towards a given target.
+ * Something moving at v0 from x0 stops at x0 + v0 / rate. Animating a variable
+ * to that target gives it the initial velocity v0, so the same animator is
+ * used for a free decay (a flick) and for a decay towards a given target.
  */
 
 #define NSEC_PER_SEC 1000000000.0
@@ -54,27 +53,17 @@ static void decay_sample(const struct sway_animator_state *state,
 }
 
 const struct sway_animator_impl animator_decay = {
-	.name = "decay",
 	.uses_velocity = false,
 	.start = decay_start,
 	.sample = decay_sample,
 };
 
-struct sway_animation_spec *animation_spec_create_decay(bool enabled,
-		double rate) {
+struct sway_animation_spec *animation_spec_create_decay(double rate) {
 	struct decay_spec *decay = calloc(1, sizeof(struct decay_spec));
 	if (!decay) {
 		return NULL;
 	}
-	animation_spec_init(&decay->base, &animator_decay, enabled);
+	animation_spec_init(&decay->base, &animator_decay);
 	decay->rate = rate > 0.01 ? rate : 0.01;
 	return &decay->base;
-}
-
-double animation_decay_rest(const struct sway_animation_spec *spec,
-		double value, double velocity) {
-	if (!spec || spec->impl != &animator_decay) {
-		return value;
-	}
-	return value + velocity / decay_rate(spec);
 }

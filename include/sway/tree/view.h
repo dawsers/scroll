@@ -83,6 +83,10 @@ struct sway_view {
 	struct wlr_ext_image_capture_source_v1 *image_capture_source;
 
 	struct sway_container *container; // NULL if unmapped and transactions finished
+	// Number of containers that point to the view. Its current container, and
+	// the ones it had before mapping again that are not destroyed yet.
+	// The view is not freed while there is one.
+	int ncontainers;
 	struct wlr_surface *surface; // NULL for unmapped views
 	struct sway_xdg_decoration *xdg_decoration;
 

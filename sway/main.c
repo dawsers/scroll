@@ -428,8 +428,6 @@ int main(int argc, char **argv) {
 shutdown:
 	sway_log(SWAY_INFO, "Shutting down scroll");
 
-	// The event loop is destroyed with the server
-	animation_release_loop();
 	server_fini(&server);
 	animation_stop();
 	root_destroy(root);

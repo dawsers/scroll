@@ -252,12 +252,17 @@ void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply
 
 // Gestures
 // Begin scrolling swipe gesture. Return true if scrolling, false if there are
-// no conditions to scroll (total width of windows is smaller than viewport)
+// no conditions to scroll (total width of windows is smaller than viewport).
+// The gesture scrolls the workspace of the seat until layout_scroll_end() or
+// layout_scroll_cancel().
 bool layout_scroll_begin(struct sway_seat *seat);
 // Update scrolling swipe gesture
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity);
 // Finish scrolling swipe and return true if scrolling, else false
 bool layout_scroll_end(struct sway_seat *seat);
+// Interrupt scrolling. It does nothing if the seat is not scrolling, otherwise
+// rearanges the workspace from the event loop.
+void layout_scroll_cancel(struct sway_seat *seat);
 
 // Pin
 

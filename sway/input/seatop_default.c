@@ -1143,6 +1143,9 @@ static void handle_swipe_begin(struct sway_seat *seat,
 	} else {
 		if (config->gesture_scroll_enable && event->fingers == config->gesture_scroll_fingers) {
 			if (layout_scroll_begin(seat)) {
+				// We own the swipe until it ends
+				seat->swipe_scrolling = true;
+				seat->swipe_device = device;
 				return;
 			}
 		}
@@ -1163,7 +1166,7 @@ static void handle_swipe_update(struct sway_seat *seat,
 		gesture_tracker_update(&seatop->gestures,
 			event->dx, event->dy, NAN, NAN);
 	} else {
-		if (config->gesture_scroll_enable && event->fingers == config->gesture_scroll_fingers) {
+		if (seat->swipe_scrolling) {
 			layout_scroll_update(seat, event->dx, event->dy, config->gesture_scroll_sentitivity);
 			return;
 		}
@@ -1177,11 +1180,6 @@ static void handle_swipe_update(struct sway_seat *seat,
 
 static void handle_swipe_end(struct sway_seat *seat,
 		struct wlr_pointer_swipe_end_event *event) {
-	if (config->gesture_scroll_enable) {
-		if (layout_scroll_end(seat)) {
-			return;
-		}
-	}
 	// Ensure gesture is being tracked and was not cancelled
 	struct seatop_default_event *seatop = seat->seatop_data;
 	if (!gesture_tracker_check(&seatop->gestures, GESTURE_TYPE_SWIPE)) {

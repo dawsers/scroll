@@ -147,20 +147,18 @@ static void create_lookup_length(struct bezier_curve *curve) {
 }
 
 struct sway_animation_path {
-	bool enabled;
 	list_t *curves;	// struct sway_animation_curve
 };
 
-struct sway_animation_path *animation_path_create(bool enabled) {
+struct sway_animation_path *animation_path_create(void) {
 	struct sway_animation_path *path = malloc(sizeof(struct sway_animation_path));
-	path->enabled = enabled;
 	path->curves = create_list();
 	return path;
 }
 
 static void destroy_animation_curve(struct sway_animation_curve *curve);
 
-void animation_path_destroy(struct sway_animation_path *path) {
+static void animation_path_destroy(struct sway_animation_path *path) {
 	if (path) {
 		for (int i = 0; i < path->curves->length; ++i) {
 			struct sway_animation_curve *curve = path->curves->items[i];
@@ -336,8 +334,7 @@ static void bezier_destroy(struct sway_animation_spec *spec) {
 	animation_path_destroy(bezier_path(spec));
 }
 
-const struct sway_animator_impl animator_bezier = {
-	.name = "bezier",
+static const struct sway_animator_impl animator_bezier = {
 	.uses_velocity = false,
 	.start = bezier_start,
 	.sample = bezier_sample,
@@ -348,9 +345,10 @@ struct sway_animation_spec *animation_spec_create_path(
 		struct sway_animation_path *path) {
 	struct bezier_spec *bezier = calloc(1, sizeof(struct bezier_spec));
 	if (!bezier) {
+		animation_path_destroy(path);
 		return NULL;
 	}
-	animation_spec_init(&bezier->base, &animator_bezier, path->enabled);
+	animation_spec_init(&bezier->base, &animator_bezier);
 	bezier->path = path;
 	return &bezier->base;
 }

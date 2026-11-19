@@ -133,6 +133,9 @@ struct sway_container *container_create(struct sway_view *view) {
 
 	c->pending.layout = L_NONE;
 	c->view = view;
+	if (view) {
+		++view->ncontainers;
+	}
 	c->current.alpha = c->pending.alpha = 1.0f;
 	container_init_animation_variables(c);
 	c->marks = create_list();
@@ -538,10 +541,17 @@ void container_destroy(struct sway_container *con) {
 
 	list_free_items_and_destroy(con->marks);
 
-	if (con->view && con->view->container == con) {
-		con->view->container = NULL;
-		if (con->view->destroying) {
-			view_destroy(con->view);
+	struct sway_view *view = con->view;
+	if (view) {
+		if (view->container == con) {
+			view->container = NULL;
+			if (!view->destroying && view->saved_surface_tree) {
+				// The view was unmapped, not destroyed, remove fade buffer
+				view_remove_saved_buffer(view);
+			}
+		}
+		if (--view->ncontainers == 0 && view->destroying) {
+			view_destroy(view);
 		}
 	}
 
@@ -563,6 +573,9 @@ static void container_dereference_from_layouts(struct sway_container *con) {
 			}
 			if (workspace->layout.toggle_size.container == con) {
 				workspace->layout.toggle_size.container = NULL;
+			}
+			if (workspace->gesture.pin == con) {
+				workspace->gesture.pin = NULL;
 			}
 		}
 	}
@@ -1568,7 +1581,6 @@ static void container_fullscreen_workspace(struct sway_container *con) {
 				"Expected a non-fullscreen container")) {
 		return;
 	}
-	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	con->pending.fullscreen_mode = FULLSCREEN_WORKSPACE;
 	con->fullscreen = true;
@@ -1597,6 +1609,7 @@ static void container_fullscreen_workspace(struct sway_container *con) {
 
 	container_end_mouse_operation(con);
 	ipc_event_window(con, "fullscreen_mode");
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 }
 
 static void container_fullscreen_global(struct sway_container *con) {
@@ -1604,7 +1617,6 @@ static void container_fullscreen_global(struct sway_container *con) {
 				"Expected a non-fullscreen container")) {
 		return;
 	}
-	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	root->fullscreen_global = con;
 	con->saved_x = con->pending.x;
@@ -1623,6 +1635,7 @@ static void container_fullscreen_global(struct sway_container *con) {
 	con->pending.fullscreen_mode = FULLSCREEN_GLOBAL;
 	container_end_mouse_operation(con);
 	ipc_event_window(con, "fullscreen_mode");
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 }
 
 void container_fullscreen_disable(struct sway_container *con) {
@@ -1630,7 +1643,6 @@ void container_fullscreen_disable(struct sway_container *con) {
 				"Expected a fullscreen container")) {
 		return;
 	}
-	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	con->pending.x = con->saved_x;
 	con->pending.y = con->saved_y;
@@ -1679,6 +1691,7 @@ void container_fullscreen_disable(struct sway_container *con) {
 			}
 		}
 	}
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 }
 
 void container_set_fullscreen(struct sway_container *con,
@@ -1790,7 +1803,6 @@ void container_set_fullscreen_layout(struct sway_container *con,
 	if (layout_scale_enabled(workspace)) {
 		return;
 	}
-	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 
 	container_set_fullscreen_application(con, mode);
 	con->pending.fullscreen_layout = mode;
@@ -1805,6 +1817,7 @@ void container_set_fullscreen_layout(struct sway_container *con,
 	arrange_workspace(workspace);
 	node_set_dirty(&workspace->node);
 	node_set_dirty(&con->node);
+	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 }
 
 void container_handle_fullscreen_request(struct sway_container *con, bool enable) {

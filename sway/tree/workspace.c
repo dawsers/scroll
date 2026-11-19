@@ -862,14 +862,15 @@ static void workspace_visible_extent(struct sway_workspace *workspace,
 // Set ws's offset from origin to destination. If already animating, keep
 // current offset and set the new destination.
 static void workspace_switch_set_offset(struct sway_workspace *ws, double origin,
-		double destination) {
+		double destination, struct sway_animation_spec *spec,
+		struct sway_animation_group *group) {
 	if (!ws || ws->node.destroying) {
 		return;
 	}
 	animated_variable_reset(&ws->animation.off, origin);
 	const struct sway_animation_options options = {
-		.spec = animation_get_spec(ANIMATION_WORKSPACE_SWITCH),
-		.group = transaction_get_animation_group(),
+		.spec = spec,
+		.group = group,
 		.clock = output_animation_clock(ws->output),
 	};
 	animated_variable_set(&ws->animation.off, destination, &options);
@@ -898,7 +899,8 @@ static bool workspace_switch_down(struct sway_output *output,
 }
 
 void workspace_switch_animate(struct sway_output *output,
-		struct sway_workspace *from, struct sway_workspace *to) {
+		struct sway_workspace *from, struct sway_workspace *to,
+		struct sway_animation_spec *spec, struct sway_animation_group *group) {
 	if (!from || !to || to == from || to->node.destroying ||
 			to->output != output) {
 		return;
@@ -934,8 +936,8 @@ void workspace_switch_animate(struct sway_output *output,
 
 	// The incoming workspace slides from delta into its final position, and
 	// the outgoing one slides to -delta.
-	workspace_switch_set_offset(to, delta, 0.0);
-	workspace_switch_set_offset(from, 0.0, -delta);
+	workspace_switch_set_offset(to, delta, 0.0, spec, group);
+	workspace_switch_set_offset(from, 0.0, -delta, spec, group);
 }
 
 static void workspace_consider_destroy_iter(struct sway_workspace *workspace,
@@ -971,7 +973,7 @@ bool workspace_switch(struct sway_workspace *workspace) {
 		(old_ws->output && !workspace->output) ||
 		(!old_ws->output && workspace->output)) &&
 		(!old_vo || old_vo == workspace->virtual_output) &&
-		animation_enabled() && animation_path_enabled(ANIMATION_WORKSPACE_SWITCH)) {
+		animation_enabled() && animation_type_enabled(ANIMATION_WORKSPACE_SWITCH)) {
 		transaction_set_animation(ANIMATION_WORKSPACE_SWITCH);
 		if (workspace->output) {
 			workspace->output->workspace_switch_animated = true;

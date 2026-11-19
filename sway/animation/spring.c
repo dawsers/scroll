@@ -117,20 +117,19 @@ static void spring_sample(const struct sway_animator_state *state,
 	sample->done = false;
 }
 
-const struct sway_animator_impl animator_spring = {
-	.name = "spring",
+static const struct sway_animator_impl animator_spring = {
 	.uses_velocity = true,
 	.start = spring_start,
 	.sample = spring_sample,
 };
 
-struct sway_animation_spec *animation_spec_create_spring(bool enabled,
-		double response_ms, double damping_ratio) {
+struct sway_animation_spec *animation_spec_create_spring(double response_ms,
+		double damping_ratio) {
 	struct spring_spec *spring = calloc(1, sizeof(struct spring_spec));
 	if (!spring) {
 		return NULL;
 	}
-	animation_spec_init(&spring->base, &animator_spring, enabled);
+	animation_spec_init(&spring->base, &animator_spring);
 	if (response_ms < 1.0) {
 		response_ms = 1.0;
 	}

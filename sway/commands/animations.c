@@ -1,8 +1,6 @@
 #include <strings.h>
 #include "sway/desktop/animate.h"
-#include "sway/desktop/transaction.h"
 #include "sway/commands.h"
-#include "sway/server.h"
 #include "sway/log.h"
 #include "util.h"
 
@@ -64,9 +62,7 @@ struct cmd_results *animations_cmd_style(int argc, char **argv) {
 
 // Parse an animation description, and assign it to an animation type
 static struct cmd_results *parse_animation_spec(int argc, char **argv,
-		enum sway_animation_type type) {
-	struct sway_animation_manager *manager = server.animation_manager;
-	bool enabled = parse_boolean(argv[0], true);
+		struct sway_animation_spec **spec) {
 	if (argc >= 2 && strcasecmp(argv[1], "spring") == 0) {
 		if (argc < 4) {
 			return cmd_results_new(CMD_INVALID,
@@ -78,9 +74,8 @@ static struct cmd_results *parse_animation_spec(int argc, char **argv,
 			return cmd_results_new(CMD_INVALID,
 				"The response and the damping ratio of a spring must be positive");
 		}
-		animation_manager_set_spec(manager, type,
-			animation_spec_create_spring(enabled, response, damping));
-		return cmd_results_new(CMD_SUCCESS, NULL);
+		*spec = animation_spec_create_spring(response, damping);
+		return NULL;
 	}
 	if (argc >= 2 && strcasecmp(argv[1], "decay") == 0) {
 		if (argc < 3) {
@@ -92,20 +87,12 @@ static struct cmd_results *parse_animation_spec(int argc, char **argv,
 			return cmd_results_new(CMD_INVALID,
 				"The rate of a decay must be positive");
 		}
-		animation_manager_set_spec(manager, type,
-			animation_spec_create_decay(enabled, rate));
-		return cmd_results_new(CMD_SUCCESS, NULL);
+		*spec = animation_spec_create_decay(rate);
+		return NULL;
 	}
 
-	struct sway_animation_path *path = NULL;
-	if (argc == 1) {
-		path = animation_path_create(enabled);
-		struct sway_animation_curve *curve = create_animation_curve(0, 0, NULL, false, 0.0, 0, NULL);
-		animation_path_add_curve(path, curve);
-		animation_manager_set_spec(manager, type, animation_spec_create_path(path));
-		return cmd_results_new(CMD_SUCCESS, NULL);
-	}
-	uint32_t duration = strtol(argv[1], NULL, 10);
+	// A duration and Bezier curves, all of them optional
+	uint32_t duration = argc >= 2 ? strtol(argv[1], NULL, 10) : 0;
 	int arg = 2;
 	uint32_t var_order = 0, off_order = 0;
 	list_t *var_list = NULL, *off_list = NULL;
@@ -155,19 +142,33 @@ static struct cmd_results *parse_animation_spec(int argc, char **argv,
 	} else {
 		curve = create_animation_curve(duration, 0, NULL, false, 0.0, 0, NULL);
 	}
-	path = animation_path_create(enabled);
+	struct sway_animation_path *path = animation_path_create();
 	animation_path_add_curve(path, curve);
-	animation_manager_set_spec(manager, type, animation_spec_create_path(path));
-	return cmd_results_new(CMD_SUCCESS, NULL);
+	*spec = animation_spec_create_path(path);
+	return NULL;
 }
 
+// Assign an animation description to an animation type
 static struct cmd_results *animations_cmd_type(int argc, char **argv,
 		const char *name, enum sway_animation_type type) {
 	struct cmd_results *error;
 	if ((error = checkarg(argc, name, EXPECTED_AT_LEAST, 1))) {
 		return error;
 	}
-	return parse_animation_spec(argc, argv, type);
+	struct sway_animation_spec *spec = NULL;
+	if ((error = parse_animation_spec(argc, argv, &spec))) {
+		return error;
+	}
+	if (!spec) {
+		return cmd_results_new(CMD_FAILURE, "Unable to create the animation");
+	}
+	if (!parse_boolean(argv[0], true)) {
+		// The type is not animated
+		animation_spec_unref(spec);
+		spec = NULL;
+	}
+	animation_set_spec(type, spec);
+	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
 struct cmd_results *animations_cmd_default(int argc, char **argv) {

@@ -15,7 +15,6 @@
 #include "sway/log.h"
 #include "stringop.h"
 #include "util.h"
-#include "sway/desktop/animate.h"
 
 int binding_order = 0;
 
@@ -635,6 +634,11 @@ void seat_execute_command(struct sway_seat *seat, struct sway_binding *binding) 
 		}
 	}
 
+	const bool no_animations = binding->flags & BINDING_NOANIMATIONS;
+	if (no_animations) {
+		transaction_disable_animations(true);
+	}
+
 	list_t *res_list = execute_command(binding->command, seat, con);
 	bool success = true;
 	for (int i = 0; i < res_list->length; ++i) {
@@ -651,11 +655,9 @@ void seat_execute_command(struct sway_seat *seat, struct sway_binding *binding) 
 		ipc_event_binding(binding);
 	}
 
-	struct sway_animation_config *animation_config = animation_get_config();
-	if (binding->flags & BINDING_NOANIMATIONS && animation_config->enabled) {
-		transaction_commit_dirty_disable_animations();
-	} else {
-		transaction_commit_dirty();
+	transaction_commit_dirty();
+	if (no_animations) {
+		transaction_disable_animations(false);
 	}
 }
 

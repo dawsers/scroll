@@ -174,7 +174,7 @@ void view_begin_destroy(struct sway_view *view) {
 	view->destroying = true;
 	wl_list_remove(&view->outputs_update.link);
 
-	if (!view->container) {
+	if (view->ncontainers == 0) {
 		view_destroy(view);
 	}
 }

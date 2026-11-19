@@ -4,6 +4,11 @@
 
 #define NSEC_PER_SEC 1000000000LL
 
+// An animation that should have ended this long ago did not have frames to
+// end it (its output is off, for example). The watchdog ends it.
+#define ANIMATION_OVERDUE_NSEC 500000000LL
+#define ANIMATION_WATCHDOG_MSEC 250
+
 int64_t animation_manager_now(struct sway_animation_manager *manager) {
 	if (manager->impl && manager->impl->now) {
 		return manager->impl->now(manager->data);
@@ -13,20 +18,27 @@ int64_t animation_manager_now(struct sway_animation_manager *manager) {
 	return now.tv_sec * NSEC_PER_SEC + now.tv_nsec;
 }
 
-static struct sway_animation_spec *create_default_spec(void) {
-	double points[] = { 0.215, 0.61, 0.355, 1.0 };
-	list_t *default_points = create_list();
-	for (uint32_t i = 0; i < sizeof(points) / sizeof(double); ++i) {
-		double *val = malloc(sizeof(double));
-		*val = points[i];
-		list_add(default_points, val);
+static void release_loop(struct sway_animation_manager *manager) {
+	if (!manager->loop) {
+		return;
 	}
-	struct sway_animation_curve *curve = create_animation_curve(300, 3,
-		default_points, false, 0.0, 0, NULL);
-	struct sway_animation_path *path = animation_path_create(true);
-	animation_path_add_curve(path, curve);
-	list_free_items_and_destroy(default_points);
-	return animation_spec_create_path(path);
+	if (manager->idle) {
+		wl_event_source_remove(manager->idle);
+		manager->idle = NULL;
+	}
+	if (manager->watchdog) {
+		wl_event_source_remove(manager->watchdog);
+		manager->watchdog = NULL;
+	}
+	manager->watchdog_armed = false;
+	wl_list_remove(&manager->loop_destroy.link);
+	manager->loop = NULL;
+}
+
+static void handle_loop_destroy(struct wl_listener *listener, void *data) {
+	struct sway_animation_manager *manager =
+		wl_container_of(listener, manager, loop_destroy);
+	release_loop(manager);
 }
 
 struct sway_animation_manager *animation_manager_create(
@@ -39,34 +51,24 @@ struct sway_animation_manager *animation_manager_create(
 	}
 	manager->impl = impl;
 	manager->data = data;
-	manager->loop = loop;
 	wl_list_init(&manager->clocks);
 	wl_list_init(&manager->unbound);
+	wl_list_init(&manager->tracking);
 	wl_list_init(&manager->finished);
-	manager->config.enabled = true;
-	manager->config.style = ANIM_STYLE_SCALE;
-	manager->config.specs[ANIMATION_DEFAULT] = create_default_spec();
+	if (loop) {
+		manager->loop = loop;
+		manager->loop_destroy.notify = handle_loop_destroy;
+		wl_event_loop_add_destroy_listener(loop, &manager->loop_destroy);
+	}
 	return manager;
 }
 
 void animation_manager_stop(struct sway_animation_manager *manager) {
 	manager->stopped = true;
+	animation_manager_untrack_all(manager);
 	animation_manager_finish_all(manager);
 	manager->needs_apply = false;
 	animation_manager_dispatch(manager);
-}
-
-void animation_manager_release_loop(struct sway_animation_manager *manager) {
-	if (manager->idle) {
-		wl_event_source_remove(manager->idle);
-		manager->idle = NULL;
-	}
-	if (manager->watchdog) {
-		wl_event_source_remove(manager->watchdog);
-		manager->watchdog = NULL;
-	}
-	manager->watchdog_armed = false;
-	manager->loop = NULL;
 }
 
 void animation_manager_destroy(struct sway_animation_manager *manager) {
@@ -74,74 +76,20 @@ void animation_manager_destroy(struct sway_animation_manager *manager) {
 		return;
 	}
 	animation_manager_stop(manager);
-	animation_manager_release_loop(manager);
+	release_loop(manager);
 	struct sway_animation_clock *clock, *tmp;
 	wl_list_for_each_safe(clock, tmp, &manager->clocks, link) {
 		clock->manager = NULL;
 		wl_list_remove(&clock->link);
 		wl_list_init(&clock->link);
 	}
-	for (int i = 0; i < ANIMATION_TYPE_COUNT; ++i) {
-		animation_spec_unref(manager->config.specs[i]);
-	}
 	free(manager);
 }
 
-struct sway_animation_config *animation_manager_get_config(
-		struct sway_animation_manager *manager) {
-	return &manager->config;
-}
-
-void animation_manager_set_spec(struct sway_animation_manager *manager,
-		enum sway_animation_type type, struct sway_animation_spec *spec) {
-	animation_spec_unref(manager->config.specs[type]);
-	manager->config.specs[type] = spec;
-}
-
-struct sway_animation_spec *animation_manager_get_spec(
-		struct sway_animation_manager *manager, enum sway_animation_type type) {
-	if (!manager->config.enabled || manager->stopped ||
-			type == ANIMATION_DISABLED) {
-		return NULL;
-	}
-	struct sway_animation_spec *spec = manager->config.specs[type];
-	if (!spec) {
-		spec = manager->config.specs[ANIMATION_DEFAULT];
-	}
-	return spec && spec->enabled ? spec : NULL;
-}
-
 void animation_spec_init(struct sway_animation_spec *spec,
-		const struct sway_animator_impl *impl, bool enabled) {
+		const struct sway_animator_impl *impl) {
 	spec->refs = 1;
-	spec->enabled = enabled;
 	spec->impl = impl;
-}
-
-// The spec of an animator provided by the caller
-struct custom_spec {
-	struct sway_animation_spec base;
-	void *data;
-};
-
-struct sway_animation_spec *animation_spec_create_custom(
-		const struct sway_animator_impl *impl, void *data) {
-	struct custom_spec *custom = calloc(1, sizeof(struct custom_spec));
-	if (!custom) {
-		return NULL;
-	}
-	animation_spec_init(&custom->base, impl, true);
-	custom->data = data;
-	return &custom->base;
-}
-
-void *animation_spec_get_data(const struct sway_animation_spec *spec) {
-	if (!spec || spec->impl == &animator_bezier ||
-			spec->impl == &animator_spring || spec->impl == &animator_decay) {
-		return NULL;
-	}
-	const struct custom_spec *custom = wl_container_of(spec, custom, base);
-	return custom->data;
 }
 
 struct sway_animation_spec *animation_spec_ref(struct sway_animation_spec *spec) {
@@ -218,7 +166,7 @@ void animation_manager_damage(struct sway_animation_manager *manager,
 
 static int handle_watchdog(void *data) {
 	struct sway_animation_manager *manager = data;
-	animation_manager_check_stalled(manager);
+	animation_manager_check_expired(manager);
 	if (manager->running > 0) {
 		wl_event_source_timer_update(manager->watchdog, ANIMATION_WATCHDOG_MSEC);
 	} else {
@@ -247,15 +195,9 @@ void animation_manager_variable_started(struct sway_animation_manager *manager,
 	++manager->running;
 	struct sway_animation_clock *clock = av->clock;
 	if (clock) {
-		if (wl_list_empty(&clock->running)) {
-			clock->last_tick = animation_manager_now(manager);
-		}
 		wl_list_insert(&clock->running, &av->link);
 		schedule_frame(clock);
 	} else {
-		if (wl_list_empty(&manager->unbound)) {
-			manager->unbound_tick = animation_manager_now(manager);
-		}
 		wl_list_insert(&manager->unbound, &av->link);
 		wl_list_for_each(clock, &manager->clocks, link) {
 			schedule_frame(clock);
@@ -274,9 +216,6 @@ void animation_manager_variable_stopped(struct sway_animation_manager *manager,
 bool animation_manager_advance(struct sway_animation_manager *manager,
 		struct sway_animation_clock *clock) {
 	const int64_t time = clock->frame_time;
-	const int64_t now = animation_manager_now(manager);
-	clock->last_tick = now;
-	manager->unbound_tick = now;
 	clock->dirty = false;
 
 	bool sampled = false;
@@ -305,57 +244,45 @@ bool animation_manager_advance(struct sway_animation_manager *manager,
 	return sampled;
 }
 
-static bool finish_list(struct wl_list *list) {
-	bool finished = false;
-	while (!wl_list_empty(list)) {
-		struct sway_animated_variable *av = wl_container_of(list->next, av, link);
-		animated_variable_finish(av);
-		finished = true;
-	}
-	return finished;
-}
-
 static void values_changed(struct sway_animation_manager *manager) {
 	manager->needs_apply = true;
 	animation_manager_schedule_flush(manager);
 }
 
-void animation_manager_check_stalled(struct sway_animation_manager *manager) {
-	const int64_t now = animation_manager_now(manager);
+// End the animations of the list that had to end before `time`. Returns true
+// if any ended.
+static bool finish_list(struct wl_list *list, int64_t time) {
 	bool finished = false;
-	int64_t last_tick = manager->unbound_tick;
-	struct sway_animation_clock *clock;
-	wl_list_for_each(clock, &manager->clocks, link) {
-		if (now - clock->last_tick > ANIMATION_STALL_NSEC) {
-			finished |= finish_list(&clock->running);
-		}
-		if (clock->last_tick > last_tick) {
-			last_tick = clock->last_tick;
+	struct sway_animated_variable *av, *tmp;
+	wl_list_for_each_safe(av, tmp, list, link) {
+		if (av->t0 + av->state.duration < time) {
+			animated_variable_finish(av);
+			finished = true;
 		}
 	}
-	if (now - last_tick > ANIMATION_STALL_NSEC) {
-		finished |= finish_list(&manager->unbound);
+	return finished;
+}
+
+static void finish_before(struct sway_animation_manager *manager, int64_t time) {
+	bool finished = finish_list(&manager->unbound, time);
+	struct sway_animation_clock *clock;
+	wl_list_for_each(clock, &manager->clocks, link) {
+		finished |= finish_list(&clock->running, time);
 	}
 	if (finished) {
 		values_changed(manager);
 	}
+}
+
+void animation_manager_check_expired(struct sway_animation_manager *manager) {
+	finish_before(manager,
+		animation_manager_now(manager) - ANIMATION_OVERDUE_NSEC);
+}
+
+void animation_manager_finish_all(struct sway_animation_manager *manager) {
+	finish_before(manager, INT64_MAX);
 }
 
 bool animation_manager_active(struct sway_animation_manager *manager) {
 	return manager->running > 0;
-}
-
-size_t animation_manager_count(struct sway_animation_manager *manager) {
-	return manager->running;
-}
-
-void animation_manager_finish_all(struct sway_animation_manager *manager) {
-	bool finished = finish_list(&manager->unbound);
-	struct sway_animation_clock *clock;
-	wl_list_for_each(clock, &manager->clocks, link) {
-		finished |= finish_list(&clock->running);
-	}
-	if (finished) {
-		values_changed(manager);
-	}
 }

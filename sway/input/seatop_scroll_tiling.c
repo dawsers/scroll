@@ -36,6 +36,11 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	e->y = cursor->y;
 }
 
+static void handle_end(struct sway_seat *seat) {
+	// The operation may end prematurely (for example, the container closes)
+	layout_scroll_cancel(seat);
+}
+
 static void handle_unref(struct sway_seat *seat, struct sway_container *con) {
 	struct seatop_scroll_tiling_event *e = seat->seatop_data;
 	if (e->con == con) {
@@ -46,11 +51,15 @@ static void handle_unref(struct sway_seat *seat, struct sway_container *con) {
 static const struct sway_seatop_impl seatop_impl = {
 	.button = handle_button,
 	.pointer_motion = handle_pointer_motion,
+	.end = handle_end,
 	.unref = handle_unref,
 };
 
 void seatop_begin_scroll_tiling(struct sway_seat *seat,
 		struct sway_container *con) {
+	if (seat->swipe_scrolling) {
+		return;
+	}
 	seatop_end(seat);
 
 	struct sway_cursor *cursor = seat->cursor;

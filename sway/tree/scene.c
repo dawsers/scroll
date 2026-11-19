@@ -220,20 +220,24 @@ static double scene_view_content_scale(struct wlr_surface *surface) {
 static bool scene_layer_surface_data(struct wlr_layer_surface_v1 *layer_surface,
 		struct wlr_scene_layer_surface_data *data) {
 	struct sway_layer_surface *surface = layer_surface->data;
-	if (surface && (surface->animation.w.animating ||
-			surface->animation.h.animating)) {
+	if (!surface) {
+		data->x = data->y = 0.0;
+		data->width = layer_surface->current.desired_width;
+		data->height = layer_surface->current.desired_height;
+		return false;
+	}
+	if (surface->animation.w.animating || surface->animation.h.animating) {
 		data->x = surface->animation.x.value;
 		data->y = surface->animation.y.value;
 		data->width = surface->animation.w.value;
 		data->height = surface->animation.h.value;
 		return true;
-	} else {
-		data->x = surface->pending.x;
-		data->y = surface->pending.y;
-		data->width = surface->pending.width;
-		data->height = surface->pending.height;
-		return false;
 	}
+	data->x = surface->pending.x;
+	data->y = surface->pending.y;
+	data->width = surface->pending.width;
+	data->height = surface->pending.height;
+	return false;
 }
 
 static void animate(struct wlr_output *output) {

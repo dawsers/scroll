@@ -105,6 +105,12 @@ struct sway_seat {
 	struct sway_workspace *workspace;
 	char *prev_workspace_name; // for workspace back_and_forth
 
+	// The workspace the seat is scrolling with a gesture, or NULL
+	struct sway_workspace *scroll_workspace;
+	// The swipe in progress scrolls a workspace.
+	bool swipe_scrolling;
+	struct sway_input_device *swipe_device; // of that swipe, if known
+
 	struct wlr_layer_surface_v1 *focused_layer;
 	// If the exclusive layer is set, views cannot receive keyboard focus
 	bool has_exclusive_layer;

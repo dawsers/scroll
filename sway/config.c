@@ -21,6 +21,7 @@
 #include "sway/commands.h"
 #include "sway/config.h"
 #include "sway/criteria.h"
+#include "sway/desktop/animate.h"
 #include "sway/server.h"
 #include "sway/swaynag.h"
 #include "sway/tree/arrange.h"
@@ -188,6 +189,7 @@ void free_config(struct sway_config *config) {
 	list_free(config->no_focus);
 	list_free(config->active_bar_modifiers);
 	list_free_items_and_destroy(config->config_chain);
+	animation_config_destroy(config->animations);
 	free(config->floating_scroll_up_cmd);
 	free(config->floating_scroll_down_cmd);
 	free(config->floating_scroll_left_cmd);
@@ -238,6 +240,7 @@ static void config_defaults(struct sway_config *config) {
 	if (!(config->modes = create_list())) goto cleanup;
 	if (!(config->bars = create_list())) goto cleanup;
 	if (!(config->workspace_configs = create_list())) goto cleanup;
+	if (!(config->animations = animation_config_create())) goto cleanup;
 	if (!(config->criteria = create_list())) goto cleanup;
 	if (!(config->no_focus = create_list())) goto cleanup;
 	if (!(config->seat_configs = create_list())) goto cleanup;

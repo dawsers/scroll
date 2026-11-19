@@ -31,6 +31,7 @@
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
 #include "sway/tree/container.h"
+#include "sway/tree/layout.h"
 #include "sway/tree/root.h"
 #include "sway/tree/virtual_output.h"
 #include "sway/tree/view.h"
@@ -46,6 +47,12 @@ static void seat_device_destroy(struct sway_seat_device *seat_device) {
 	sway_tablet_destroy(seat_device->tablet);
 	sway_tablet_pad_destroy(seat_device->tablet_pad);
 	sway_switch_destroy(seat_device->switch_device);
+	struct sway_seat *seat = seat_device->sway_seat;
+	if (seat->swipe_scrolling && seat->swipe_device == seat_device->input_device) {
+		// Cancel any ongoing scrolling workspaces
+		seat->swipe_scrolling = false;
+		layout_scroll_cancel(seat);
+	}
 	wlr_cursor_detach_input_device(seat_device->sway_seat->cursor->cursor,
 		seat_device->input_device->wlr_device);
 	wl_list_remove(&seat_device->link);
@@ -89,6 +96,9 @@ static void handle_seat_destroy(struct wl_listener *listener, void *data) {
 	}
 	sway_input_method_relay_finish(&seat->im_relay);
 	sway_cursor_destroy(seat->cursor);
+	// Make sure any ongoing activities end
+	seatop_end(seat);
+	layout_scroll_cancel(seat);
 	wl_list_remove(&seat->new_node.link);
 	wl_list_remove(&seat->request_start_drag.link);
 	wl_list_remove(&seat->start_drag.link);
@@ -243,6 +253,9 @@ static void handle_seat_node_destroy(struct wl_listener *listener, void *data) {
 
 	if (node->type == N_WORKSPACE) {
 		seat_node_destroy(seat_node);
+		if (seat->scroll_workspace == node->sway_workspace) {
+			layout_scroll_cancel(seat);
+		}
 		// If an unmanaged or layer surface is focused when an output gets
 		// disabled and an empty workspace on the output was focused by the
 		// seat, the seat needs to refocus its focus inactive to update the
@@ -1745,6 +1758,10 @@ void seatop_pinch_end(struct sway_seat *seat,
 
 void seatop_swipe_begin(struct sway_seat *seat,
 		struct wlr_pointer_swipe_begin_event *event) {
+	if (seat->swipe_scrolling) {
+		seat->swipe_scrolling = false;
+		layout_scroll_cancel(seat);
+	}
 	if (seat->seatop_impl->swipe_begin) {
 		seat->seatop_impl->swipe_begin(seat, event);
 	}
@@ -1759,6 +1776,11 @@ void seatop_swipe_update(struct sway_seat *seat,
 
 void seatop_swipe_end(struct sway_seat *seat,
 		struct wlr_pointer_swipe_end_event *event) {
+	if (seat->swipe_scrolling) {
+		seat->swipe_scrolling = false;
+		layout_scroll_end(seat);
+		return;
+	}
 	if (seat->seatop_impl->swipe_end) {
 		seat->seatop_impl->swipe_end(seat, event);
 	}

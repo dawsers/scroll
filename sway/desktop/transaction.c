@@ -34,7 +34,6 @@ struct sway_transaction {
 	size_t num_waiting;
 	size_t num_configures;
 	struct timespec commit_time;
-	int refs;
 	enum sway_animation_type animation;
 	bool disable_animations;
 };
@@ -61,7 +60,6 @@ static struct sway_transaction *transaction_create(void) {
 	}
 	transaction->instructions = create_list();
 	transaction->workspaces = create_list();
-	transaction->refs = 1;
 	transaction->animation = ANIMATION_DEFAULT;
 	return transaction;
 }
@@ -89,20 +87,6 @@ static void transaction_destroy(struct sway_transaction *transaction) {
 		wl_event_source_remove(transaction->timer);
 	}
 	free(transaction);
-}
-
-struct sway_transaction *transaction_ref(struct sway_transaction *transaction) {
-	++transaction->refs;
-	return transaction;
-}
-
-void transaction_unref(struct sway_transaction *transaction) {
-	if (!transaction) {
-		return;
-	}
-	if (--transaction->refs == 0) {
-		transaction_destroy(transaction);
-	}
 }
 
 static void copy_output_state(struct sway_output *output,
@@ -305,16 +289,11 @@ static void apply_container_state(struct sway_container *container,
 	state->formatted_title = NULL;
 
 	if (view) {
-		if (view->saved_surface_tree) {
-			// Keep the last frame of a closing view, so the fade out
-			// animation has something to fade. It is destroyed together
-			// with the view when the animation ends.
-			const bool closing = container->node.destroying &&
-				list_find(root->unmapped_views, view) >= 0;
-			if (!closing && (!container->node.destroying ||
-					container->node.refs == 1)) {
-				view_remove_saved_buffer(view);
-			}
+		// Keep the last frame of a closing view, so the fade out
+		// animation has something to fade. It is destroyed together
+		// with the container or when the view is mapped again.
+		if (view->saved_surface_tree && !container->node.destroying) {
+			view_remove_saved_buffer(view);
 		}
 
 		// If the view hasn't responded to the configure, center it within
@@ -1319,9 +1298,11 @@ void transaction_animate_outputs(void) {
 }
 
 /**
- * Apply a transaction to the "current" state of the tree.
+ * Apply a transaction to the "current" state of the tree. Its animations
+ * join `group`.
  */
-static void transaction_apply(struct sway_transaction *transaction) {
+static void transaction_apply(struct sway_transaction *transaction,
+		struct sway_animation_group *group) {
 	sway_log(SWAY_DEBUG, "Applying transaction %p", transaction);
 	if (debug.txn_timings) {
 		struct timespec now;
@@ -1376,7 +1357,9 @@ static void transaction_apply(struct sway_transaction *transaction) {
 	for (int i = 0; i < switches->length; i += 2) {
 		struct sway_output *output = switches->items[i];
 		struct sway_workspace *from = switches->items[i + 1];
-		workspace_switch_animate(output, from, output->current.active_workspace);
+		workspace_switch_animate(output, from, output->current.active_workspace,
+			transaction->disable_animations ? NULL :
+				animation_get_spec(ANIMATION_WORKSPACE_SWITCH), group);
 	}
 	list_free(switches);
 }
@@ -1429,13 +1412,6 @@ static void animate_transaction(struct sway_transaction *transaction,
 	struct sway_animation_group *group);
 static void transaction_animations_done(void *data);
 
-// The group of the animations for the transaction being applied
-static struct sway_animation_group *applying_group = NULL;
-
-struct sway_animation_group *transaction_get_animation_group(void) {
-	return applying_group;
-}
-
 static void transaction_progress(void) {
 	if (!server.queued_transaction) {
 		return;
@@ -1447,15 +1423,13 @@ static void transaction_progress(void) {
 	// The group tells when every animation started by the transaction is over
 	struct sway_animation_group *group = animation_group_create(
 		server.animation_manager, transaction_animations_done, NULL);
-	applying_group = group;
 	// Variables that are not animating start from where their nodes are
 	sync_animation_variables(!transaction->disable_animations);
-	transaction_apply(transaction);
+	transaction_apply(transaction, group);
 	scene_arrange_root(root);
 	// Start the animations for the changes of the transaction, and render
 	// with the initial values. Future frames will be scheduled by the outputs
 	animate_transaction(transaction, group);
-	applying_group = NULL;
 	if (!animation_group_empty(group)) {
 		animation_group_commit(group);
 	}
@@ -1463,7 +1437,7 @@ static void transaction_progress(void) {
 	transaction_animate_outputs();
 	cursor_rebase_all();
 	server.queued_transaction = NULL;
-	transaction_unref(transaction);
+	transaction_destroy(transaction);
 	if (!server.pending_transaction) {
 		struct sway_seat *seat = input_manager_get_default_seat();
 		struct sway_node *node = seat_get_focus(seat);
@@ -1640,7 +1614,9 @@ static void transaction_commit(struct sway_transaction *transaction) {
 			continue;
 		}
 		struct sway_view *view = node->sway_container->view;
-		if (view->saved_surface_tree) {
+		if (view->saved_surface_tree || view->container != node->sway_container) {
+			// It already has it, or the view was mapped again and belongs to
+			// a different container
 			continue;
 		}
 		if (node->destroying || (waiting && view_is_visible(view))) {
@@ -1955,8 +1931,12 @@ static void overview_recompute_scales() {
  *
  * While something moves containers following the input (dragging a window,
  * a scroll gesture), their positions are not animated, they are set by the
- * caller. The animated variables track them, and when the client untracks them,
- * the animation that settles the values starts with the cotnainers' velocity.
+ * caller. The animated variables track them, and when the caller untracks
+ * them, the animation that settles the values starts with the containers'
+ * velocity.
+ *
+ * The container, or the workspace, owns the tracking. Untracking it stops
+ * every variable that was tracked for it.
  */
 static struct sway_animation_clock *workspace_animation_clock(
 		struct sway_workspace *ws) {
@@ -1966,71 +1946,66 @@ static struct sway_animation_clock *workspace_animation_clock(
 void transaction_track_container(struct sway_container *con) {
 	struct sway_animation_clock *clock =
 		workspace_animation_clock(con->pending.workspace);
-	const int64_t now = animation_now();
-	animated_variable_track(&con->animation.x, con->pending.x, now, clock);
-	animated_variable_track(&con->animation.y, con->pending.y, now, clock);
+	animated_variable_track(&con->animation.x, con->pending.x, clock, con);
+	animated_variable_track(&con->animation.y, con->pending.y, clock, con);
 }
 
 void transaction_untrack_container(struct sway_container *con) {
-	animated_variable_untrack(&con->animation.x);
-	animated_variable_untrack(&con->animation.y);
+	animation_manager_untrack(server.animation_manager, con);
 }
 
-static void track_children(struct sway_container *parent, list_t *children,
-		enum sway_container_layout layout, int64_t now,
-		struct sway_animation_clock *clock) {
+static void track_children(struct sway_workspace *ws,
+		struct sway_container *parent, list_t *children,
+		enum sway_container_layout layout, struct sway_animation_clock *clock) {
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
 		if (layout == L_VERT) {
-			animated_variable_track(&child->animation.y, child->pending.y, now, clock);
+			animated_variable_track(&child->animation.y, child->pending.y, clock, ws);
 			if (parent) {
 				animated_variable_inherit(&child->animation.x, &parent->animation.x);
 			}
 		} else {
-			animated_variable_track(&child->animation.x, child->pending.x, now, clock);
+			animated_variable_track(&child->animation.x, child->pending.x, clock, ws);
 			if (parent) {
 				animated_variable_inherit(&child->animation.y, &parent->animation.y);
 			}
 		}
 		if (!child->view) {
-			track_children(child, child->pending.children,
-				child->pending.layout, now, clock);
-		}
-	}
-}
-
-static void untrack_children(list_t *children) {
-	for (int i = 0; i < children->length; ++i) {
-		struct sway_container *child = children->items[i];
-		transaction_untrack_container(child);
-		if (!child->view) {
-			untrack_children(child->pending.children);
+			track_children(ws, child, child->pending.children,
+				child->pending.layout, clock);
 		}
 	}
 }
 
 void transaction_track_workspace(struct sway_workspace *ws) {
-	if (!ws || ws->fullscreen) {
+	if (ws->fullscreen) {
 		return;
 	}
-	track_children(NULL, ws->tiling, layout_get_type(ws), animation_now(),
+	track_children(ws, NULL, ws->tiling, layout_get_type(ws),
 		workspace_animation_clock(ws));
 }
 
 void transaction_untrack_workspace(struct sway_workspace *ws) {
-	if (ws) {
-		untrack_children(ws->tiling);
-	}
+	animation_manager_untrack(server.animation_manager, ws);
 }
 
-// The type of animation for the next transaction
+// The type of animation for the next commit
 static enum sway_animation_type next_animation = ANIMATION_DEFAULT;
 
 void transaction_set_animation(enum sway_animation_type type) {
 	next_animation = type;
 }
 
-static void _transaction_commit_dirty(bool server_request, bool disable_animations) {
+// While it is not zero, no commit is animated
+static int animations_disabled = 0;
+
+void transaction_disable_animations(bool disable) {
+	animations_disabled += disable ? 1 : -1;
+}
+
+static void _transaction_commit_dirty(bool server_request) {
+	const enum sway_animation_type animation = next_animation;
+	next_animation = ANIMATION_DEFAULT;
 	if (!server.dirty_nodes->length) {
 		return;
 	}
@@ -2044,9 +2019,12 @@ static void _transaction_commit_dirty(bool server_request, bool disable_animatio
 			return;
 		}
 	}
-	server.pending_transaction->disable_animations = disable_animations;
-	server.pending_transaction->animation = next_animation;
-	next_animation = ANIMATION_DEFAULT;
+	struct sway_transaction *transaction = server.pending_transaction;
+	if (animation != ANIMATION_DEFAULT) {
+		// Override the animation type unless it is not specified
+		transaction->animation = animation;
+	}
+	transaction->disable_animations |= animations_disabled > 0;
 
 	for (int i = 0; i < server.dirty_nodes->length; ++i) {
 		struct sway_node *node = server.dirty_nodes->items[i];
@@ -2059,13 +2037,9 @@ static void _transaction_commit_dirty(bool server_request, bool disable_animatio
 }
 
 void transaction_commit_dirty(void) {
-	_transaction_commit_dirty(true, false);
+	_transaction_commit_dirty(true);
 }
 
 void transaction_commit_dirty_client(void) {
-	_transaction_commit_dirty(false, false);
-}
-
-void transaction_commit_dirty_disable_animations() {
-	_transaction_commit_dirty(true, true);
+	_transaction_commit_dirty(false);
 }
