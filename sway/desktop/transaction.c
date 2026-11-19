@@ -1708,7 +1708,12 @@ bool transaction_notify_view_ready_by_geometry(struct sway_view *view,
 // A container that is closing is kept alive by its fade out animation
 static void container_exit_done(void *data) {
 	struct sway_container *con = data;
+	struct sway_container *parent = con->exiting_parent;
+	con->exiting_parent = NULL;
 	node_unref(&con->node);
+	if (parent) {
+		node_unref(&parent->node);
+	}
 }
 
 static void container_begin_exit(struct sway_container *con, bool animate) {
@@ -1717,6 +1722,12 @@ static void container_begin_exit(struct sway_container *con, bool animate) {
 	}
 	con->exiting = true;
 	node_ref(&con->node);
+	// The scene tree of the container is in its parent's. Destroying the parent
+	// would move the container's scene tree out of the graph
+	con->exiting_parent = con->current.parent;
+	if (con->exiting_parent) {
+		node_ref(&con->exiting_parent->node);
+	}
 	struct sway_workspace *ws = con->current.workspace;
 	struct sway_animation_group *group = animation_group_create(
 		server.animation_manager, container_exit_done, con);

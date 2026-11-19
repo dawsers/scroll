@@ -191,6 +191,9 @@ struct sway_container {
 
 	// The container is closing and kept alive by its last animation
 	bool exiting;
+	// The scene tree of the container is in the parent's scene tree, so it
+	// would be freed when the parent is destroyed.
+	struct sway_container *exiting_parent;
 
 	// Stores last output size and position for adjusting coordinates of
 	// scratchpad windows.
