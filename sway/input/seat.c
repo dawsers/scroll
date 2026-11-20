@@ -1074,6 +1074,24 @@ void seat_configure_xcursor(struct sway_seat *seat) {
 		wlr_cursor_warp(seat->cursor->cursor, NULL, seat->cursor->cursor->x,
 			seat->cursor->cursor->y);
 	}
+
+	// Preload the high resolution theme used by the magnified cursor, to avoid
+	// a delay the first time the pointer is shaken. This runs every time the
+	// outputs are configured (no outputs exist yet when the config is first
+	// loaded), but themes that are already loaded aren't loaded again.
+	if (config->cursor_shake_magnify && seat->cursor->xcursor_manager) {
+		for (int i = 0; i < root->outputs->length; ++i) {
+			struct sway_output *sway_output = root->outputs->items[i];
+			struct wlr_output *output = sway_output->wlr_output;
+			float magnified_scale = output->scale * SWAY_CURSOR_SHAKE_MAGNIFY_SCALE;
+			if (!wlr_xcursor_manager_load(seat->cursor->xcursor_manager,
+					magnified_scale)) {
+				sway_log(SWAY_ERROR,
+					"Cannot load xcursor theme for output '%s' with scale %f",
+					output->name, magnified_scale);
+			}
+		}
+	}
 }
 
 bool seat_is_input_allowed(struct sway_seat *seat,

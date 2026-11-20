@@ -352,13 +352,17 @@ static bool output_cursor_attempt_hardware(struct wlr_output_cursor *cursor) {
 	return ok;
 }
 
-bool wlr_output_cursor_set_buffer(struct wlr_output_cursor *cursor,
-		struct wlr_buffer *buffer, int32_t hotspot_x, int32_t hotspot_y) {
+bool output_cursor_set_buffer_scaled(struct wlr_output_cursor *cursor,
+		struct wlr_buffer *buffer, int32_t hotspot_x, int32_t hotspot_y,
+		float image_scale) {
 	struct wlr_renderer *renderer = cursor->output->renderer;
 	assert(renderer != NULL);
 
 	struct wlr_texture *texture = NULL;
 	struct wlr_fbox src_box = {0};
+	// The buffer has image_scale times the resolution of a buffer for the
+	// output scale, so its logical size and hotspot are reduced accordingly
+	double scale = cursor->output->scale * image_scale;
 	double dst_width = 0, dst_height = 0;
 	if (buffer != NULL) {
 		texture = wlr_texture_from_buffer(renderer, buffer);
@@ -371,16 +375,21 @@ bool wlr_output_cursor_set_buffer(struct wlr_output_cursor *cursor,
 			.height = texture->height,
 		};
 
-		dst_width = (double)texture->width / cursor->output->scale;
-		dst_height = (double)texture->height / cursor->output->scale;
+		dst_width = (double)texture->width / scale;
+		dst_height = (double)texture->height / scale;
 	}
 
-	double dst_hotspot_x = (double)hotspot_x / cursor->output->scale;
-	double dst_hotspot_y = (double)hotspot_y / cursor->output->scale;
+	double dst_hotspot_x = (double)hotspot_x / scale;
+	double dst_hotspot_y = (double)hotspot_y / scale;
 
 	return output_cursor_set_texture(cursor, texture, true, &src_box,
 		dst_width, dst_height, WL_OUTPUT_TRANSFORM_NORMAL, dst_hotspot_x, dst_hotspot_y,
 		NULL, 0);
+}
+
+bool wlr_output_cursor_set_buffer(struct wlr_output_cursor *cursor,
+		struct wlr_buffer *buffer, int32_t hotspot_x, int32_t hotspot_y) {
+	return output_cursor_set_buffer_scaled(cursor, buffer, hotspot_x, hotspot_y, 1.0f);
 }
 
 static void output_cursor_handle_renderer_destroy(struct wl_listener *listener,

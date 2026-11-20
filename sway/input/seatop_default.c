@@ -717,7 +717,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 		static bool shaking = false;
 		if (cursor_detect_shake(cursor, time_msec)) {
 			if (!shaking) {
-				wlr_cursor_set_scale(cursor->cursor, 4.0f);
+				wlr_cursor_set_scale(cursor->cursor, SWAY_CURSOR_SHAKE_MAGNIFY_SCALE);
 			}
 			shaking = true;
 		} else {

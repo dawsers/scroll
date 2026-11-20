@@ -23,6 +23,10 @@ bool output_cursor_set_texture(struct wlr_output_cursor *cursor,
 	double hotspot_x, double hotspot_y, struct wlr_drm_syncobj_timeline *wait_timeline,
 	uint64_t wait_point);
 
+bool output_cursor_set_buffer_scaled(struct wlr_output_cursor *cursor,
+	struct wlr_buffer *buffer, int32_t hotspot_x, int32_t hotspot_y,
+	float image_scale);
+
 bool output_cursor_refresh_color_transform(struct wlr_output_cursor *cursor,
 	const struct wlr_output_image_description *img_desc);
 

@@ -68,6 +68,7 @@ struct wlr_cursor_output_cursor {
 	struct wlr_xcursor *xcursor;
 	size_t xcursor_index;
 	struct wl_event_source *xcursor_timer;
+	float xcursor_scale;
 };
 
 struct wlr_cursor_state {
@@ -456,6 +457,7 @@ void wlr_cursor_move(struct wlr_cursor *cur, struct wlr_input_device *dev,
 static void cursor_output_cursor_reset_image(struct wlr_cursor_output_cursor *output_cursor) {
 	output_cursor->xcursor = NULL;
 	output_cursor->xcursor_index = 0;
+	output_cursor->xcursor_scale = 1.0f;
 	if (output_cursor->xcursor_timer != NULL) {
 		wl_event_source_remove(output_cursor->xcursor_timer);
 	}
@@ -503,7 +505,8 @@ static void output_cursor_set_xcursor_image(struct wlr_cursor_output_cursor *out
 	struct wlr_xcursor_image *image = output_cursor->xcursor->images[i];
 
 	struct wlr_buffer *buffer = wlr_xcursor_image_get_buffer(image);
-	wlr_output_cursor_set_buffer(output_cursor->output_cursor, buffer, image->hotspot_x, image->hotspot_y);
+	output_cursor_set_buffer_scaled(output_cursor->output_cursor, buffer,
+		image->hotspot_x, image->hotspot_y, output_cursor->xcursor_scale);
 
 	output_cursor->xcursor_index = i;
 
@@ -621,6 +624,23 @@ static void cursor_output_cursor_update(struct wlr_cursor_output_cursor *output_
 				wlr_log(WLR_DEBUG, "XCursor theme is missing a 'default' cursor");
 				wlr_output_cursor_set_buffer(output_cursor->output_cursor, NULL, 0, 0);
 				return;
+			}
+		}
+
+		// When the cursor is magnified, use the theme's higher resolution
+		// images, if it has any, instead of zooming in
+		float cursor_scale = output_cursor->output_cursor->scale;
+		if (cursor_scale > 1.0f) {
+			float hires_scale = scale * cursor_scale;
+			if (wlr_xcursor_manager_load(manager, hires_scale)) {
+				struct wlr_xcursor *hires = wlr_xcursor_manager_get_xcursor(manager,
+					xcursor->name, hires_scale);
+				if (hires != NULL && hires->image_count > 0 && xcursor->image_count > 0 &&
+						hires->images[0]->width > xcursor->images[0]->width) {
+					output_cursor->xcursor_scale =
+						(float)hires->images[0]->width / xcursor->images[0]->width;
+					xcursor = hires;
+				}
 			}
 		}
 
@@ -1164,6 +1184,7 @@ static void layout_add(struct wlr_cursor_state *state,
 		return;
 	}
 	output_cursor->cursor = &state->cursor;
+	output_cursor->xcursor_scale = 1.0f;
 
 	output_cursor->output_cursor = wlr_output_cursor_create(l_output->output);
 	if (output_cursor->output_cursor == NULL) {
