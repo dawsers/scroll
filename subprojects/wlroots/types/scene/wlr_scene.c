@@ -235,6 +235,20 @@ static bool scene_node_get_bounding_box(struct wlr_scene_node *node,
 	return true;
 }
 
+// Converts a fractional box to the smallest integer box that contains it
+static void scene_fbox_round_out(struct wlr_box *dest, const struct wlr_fbox *box) {
+	double x1 = floor(box->x);
+	double y1 = floor(box->y);
+	double x2 = ceil(box->x + box->width);
+	double y2 = ceil(box->y + box->height);
+	*dest = (struct wlr_box){
+		.x = x1,
+		.y = y1,
+		.width = x2 - x1,
+		.height = y2 - y1,
+	};
+}
+
 bool scene_node_get_extents(struct wlr_scene_node *node, struct wlr_box *box) {
 	*box = (struct wlr_box){0};
 	double lx, ly;
@@ -246,16 +260,9 @@ bool scene_node_get_extents(struct wlr_scene_node *node, struct wlr_box *box) {
 		return false;
 	}
 	// Round outwards, so the integer box covers all of the fractional one
-	double x1 = floor(lx + fbox.x);
-	double y1 = floor(ly + fbox.y);
-	double x2 = ceil(lx + fbox.x + fbox.width);
-	double y2 = ceil(ly + fbox.y + fbox.height);
-	*box = (struct wlr_box){
-		.x = x1,
-		.y = y1,
-		.width = x2 - x1,
-		.height = y2 - y1,
-	};
+	fbox.x += lx;
+	fbox.y += ly;
+	scene_fbox_round_out(box, &fbox);
 	return !wlr_box_empty(box);
 }
 
@@ -413,9 +420,6 @@ struct wlr_scene_tree *wlr_scene_tree_create(struct wlr_scene_tree *parent) {
 	return tree;
 }
 
-typedef bool (*scene_node_box_iterator_func_t)(struct wlr_scene_node *node,
-	double sx, double sy, void *data);
-
 static bool _scene_nodes_in_box(struct wlr_scene_node *node, struct wlr_box *box,
 		scene_node_box_iterator_func_t iterator, void *user_data, double lx, double ly) {
 	if (!node->enabled) {
@@ -424,6 +428,21 @@ static bool _scene_nodes_in_box(struct wlr_scene_node *node, struct wlr_box *box
 
 	switch (node->type) {
 	case WLR_SCENE_NODE_TREE:;
+		// Skip the whole subtree early if its bounding box doesn't intersect.
+		// The bounding box is rounded outwards, so it always contains the
+		// rounded boxes of its leaves checked below.
+		struct wlr_fbox bounding_fbox;
+		if (!scene_node_get_bounding_box(node, &bounding_fbox)) {
+			return false;
+		}
+		bounding_fbox.x += lx;
+		bounding_fbox.y += ly;
+		struct wlr_box bounding_box;
+		scene_fbox_round_out(&bounding_box, &bounding_fbox);
+		if (!wlr_box_intersects(&bounding_box, box)) {
+			return false;
+		}
+
 		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *child;
 		wl_list_for_each_reverse(child, &scene_tree->children, link) {
@@ -455,7 +474,7 @@ static bool _scene_nodes_in_box(struct wlr_scene_node *node, struct wlr_box *box
 	return false;
 }
 
-static bool scene_nodes_in_box(struct wlr_scene_node *node, struct wlr_box *box,
+bool scene_nodes_in_box(struct wlr_scene_node *node, struct wlr_box *box,
 		scene_node_box_iterator_func_t iterator, void *user_data) {
 	double x, y;
 	wlr_scene_node_coords(node, &x, &y);
