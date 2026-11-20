@@ -62,6 +62,15 @@ bool wlr_box_intersection(struct wlr_box *dest, const struct wlr_box *box_a,
 	const struct wlr_box *box_b);
 
 /**
+ * Gives the minimum bounding box that contains the two boxes.
+ *
+ * An empty box does not contribute to the bounding box. Returns an empty box if
+ * both boxes are empty.
+ */
+bool wlr_box_bounds(struct wlr_box *dest, const struct wlr_box *box_a,
+	const struct wlr_box *box_b);
+
+/**
  * Verifies if a point is contained within the bounds of a given struct wlr_box.
  *
  * For example:

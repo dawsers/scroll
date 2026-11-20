@@ -82,6 +82,37 @@ bool wlr_box_intersection(struct wlr_box *dest, const struct wlr_box *box_a,
 	return true;
 }
 
+bool wlr_box_bounds(struct wlr_box *dest, const struct wlr_box *box_a,
+		const struct wlr_box *box_b) {
+	bool a_empty = wlr_box_empty(box_a);
+	bool b_empty = wlr_box_empty(box_b);
+
+	if (a_empty && b_empty) {
+		*dest = (struct wlr_box){0};
+		return false;
+	}
+	if (a_empty) {
+		*dest = *box_b;
+		return true;
+	}
+	if (b_empty) {
+		*dest = *box_a;
+		return true;
+	}
+
+	int x_min = min(box_a->x, box_b->x);
+	int y_min = min(box_a->y, box_b->y);
+	int x_max = max(box_a->x + box_a->width, box_b->x + box_b->width);
+	int y_max = max(box_a->y + box_a->height, box_b->y + box_b->height);
+	*dest = (struct wlr_box){
+		.x = x_min,
+		.y = y_min,
+		.width = x_max - x_min,
+		.height = y_max - y_min,
+	};
+	return true;
+}
+
 bool wlr_box_contains_point(const struct wlr_box *box, double x, double y) {
 	if (wlr_box_empty(box)) {
 		return false;

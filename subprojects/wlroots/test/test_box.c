@@ -134,6 +134,37 @@ static void test_box_contains_box(void) {
 	assert(!wlr_box_contains_box(NULL, &outer));
 }
 
+static void test_box_bounds(void) {
+	struct wlr_box dest;
+
+	struct wlr_box a = { .x = 10, .y = 10, .width = 20, .height = 20 };
+	struct wlr_box b = { .x = 50, .y = 40, .width = 10, .height = 30 };
+	struct wlr_box empty = { .x = 0, .y = 0, .width = 0, .height = 0 };
+
+	// Both empty
+	assert(!wlr_box_bounds(&dest, &empty, &empty));
+	assert(wlr_box_empty(&dest));
+
+	// a empty
+	assert(wlr_box_bounds(&dest, &empty, &b));
+	assert(dest.x == b.x && dest.y == b.y &&
+		dest.width == b.width && dest.height == b.height);
+
+	// b empty
+	assert(wlr_box_bounds(&dest, &a, &empty));
+	assert(dest.x == a.x && dest.y == a.y &&
+		dest.width == a.width && dest.height == a.height);
+
+	// Non-intersecting
+	assert(wlr_box_bounds(&dest, &a, &b));
+	assert(dest.x == 10 && dest.y == 10 && dest.width == 50 && dest.height == 60);
+
+	// Intersecting
+	struct wlr_box c = { .x = 20, .y = 20, .width = 20, .height = 20 };
+	assert(wlr_box_bounds(&dest, &a, &c));
+	assert(dest.x == 10 && dest.y == 10 && dest.width == 30 && dest.height == 30);
+}
+
 int main(void) {
 #ifdef NDEBUG
 	fprintf(stderr, "NDEBUG must be disabled for tests\n");
@@ -145,5 +176,6 @@ int main(void) {
 	test_box_intersects_box();
 	test_box_contains_point();
 	test_box_contains_box();
+	test_box_bounds();
 	return 0;
 }
