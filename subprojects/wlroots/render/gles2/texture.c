@@ -254,6 +254,7 @@ static bool gles2_texture_read_pixels(struct wlr_texture *wlr_texture,
 		}
 	}
 
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	wlr_egl_restore_context(&prev_ctx);
 	pop_gles2_debug(texture->renderer);
 
