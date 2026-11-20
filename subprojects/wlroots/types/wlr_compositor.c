@@ -1486,9 +1486,9 @@ error_cached:;
 error_pending:
 	surface_state_remove_synced(&surface->pending, synced);
 error_init:
-	if (synced->impl->finish_state) {
-		synced->impl->finish_state(pending);
-		synced->impl->finish_state(current);
+	if (impl->finish_state) {
+		impl->finish_state(pending);
+		impl->finish_state(current);
 	}
 	return false;
 }
