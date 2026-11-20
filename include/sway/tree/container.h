@@ -180,6 +180,7 @@ struct sway_container {
 
 	struct {
 		struct sway_animated_variable x, y, w, h, a;
+		struct sway_animated_variable crossfade;  // opacity of the old buffer
 	} animation;
 
 	bool selected;	// for selection/cut/move

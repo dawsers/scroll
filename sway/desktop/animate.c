@@ -34,6 +34,7 @@ struct sway_animation_config *animation_config_create(void) {
 		return NULL;
 	}
 	animations->enabled = true;
+	animations->crossfade = true;
 	animations->style = ANIM_STYLE_SCALE;
 	animations->types[ANIMATION_DEFAULT].spec = create_default_spec();
 	return animations;

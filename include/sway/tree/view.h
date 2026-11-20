@@ -12,6 +12,7 @@
 #include "sway/input/input-manager.h"
 #include "sway/input/seat.h"
 
+struct sway_animation_spec;
 struct sway_container;
 struct sway_xdg_decoration;
 
@@ -75,6 +76,7 @@ struct sway_view {
 	struct wlr_scene_tree *scene_tree;
 	struct wlr_scene_tree *content_tree;
 	struct wlr_scene_tree *saved_surface_tree;
+	struct wlr_scene_tree *crossfade_tree; // old content of the view 
 	struct wlr_scene_buffer *output_handler;
 
 	struct wl_listener outputs_update;
@@ -414,5 +416,12 @@ void view_get_animation_scales(struct sway_view *view, double *wscale, double *h
 double view_get_total_scale(struct sway_view *view);
 
 bool view_can_minimize_to_scratchpad(struct sway_view *view);
+
+/*
+ * Crossfade functions
+ */
+void view_begin_crossfade(struct sway_view *view, struct sway_animation_spec *spec);
+
+void view_end_crossfade(struct sway_view *view);
 
 #endif

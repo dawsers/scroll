@@ -274,8 +274,12 @@ static void apply_workspace_state(struct sway_workspace *ws,
 }
 
 static void apply_container_state(struct sway_container *container,
-		struct sway_container_state *state) {
+		struct sway_container_state *state, struct sway_animation_spec *crossfade) {
 	struct sway_view *view = container->view;
+	// The view has been on screen with content of a different size
+	const bool resized = view && container->current.workspace &&
+		(state->content_width != container->current.content_width ||
+			state->content_height != container->current.content_height);
 	// There are separate children lists for each instruction state, the
 	// container's current state and the container's pending state
 	// (ie. con->children). The list itself needs to be freed here.
@@ -293,7 +297,11 @@ static void apply_container_state(struct sway_container *container,
 		// animation has something to fade. It is destroyed together
 		// with the container or when the view is mapped again.
 		if (view->saved_surface_tree && !container->node.destroying) {
-			view_remove_saved_buffer(view);
+			if (crossfade && resized) {
+				view_begin_crossfade(view, crossfade);
+			} else {
+				view_remove_saved_buffer(view);
+			}
 		}
 
 		// If the view hasn't responded to the configure, center it within
@@ -1319,6 +1327,11 @@ static void transaction_apply(struct sway_transaction *transaction,
 	// Outputs that animate a workspace switch, each followed by "from" workspace
 	list_t *switches = create_list();
 
+	// Use the transaction's animation for the crossfade, so they match better
+	struct sway_animation_spec *crossfade =
+		transaction->disable_animations || !animation_get_config()->crossfade ?
+			NULL : animation_get_spec(transaction->animation);
+
 	// Apply the instruction state to the node's current state
 	for (int i = 0; i < transaction->instructions->length; ++i) {
 		struct sway_transaction_instruction *instruction =
@@ -1341,7 +1354,7 @@ static void transaction_apply(struct sway_transaction *transaction,
 			break;
 		case N_CONTAINER:
 			apply_container_state(node->sway_container,
-					&instruction->container_state);
+					&instruction->container_state, crossfade);
 			break;
 		case N_LAYER_SURFACE:
 			apply_layer_surface_state(node->sway_layer_surface,

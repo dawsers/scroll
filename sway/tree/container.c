@@ -60,6 +60,8 @@ static void container_init_animation_variables(struct sway_container *con) {
 		ANIMATED_VARIABLE_SIZE);
 	animated_variable_init(&con->animation.a, server.animation_manager, con->current.alpha,
 		ANIMATED_VARIABLE_FADE);
+	animated_variable_init(&con->animation.crossfade, server.animation_manager, 0.0,
+		ANIMATED_VARIABLE_FADE);
 }
 
 static void container_release_animation_variables(struct sway_container *con) {
@@ -68,6 +70,7 @@ static void container_release_animation_variables(struct sway_container *con) {
 	animated_variable_release(&con->animation.w);
 	animated_variable_release(&con->animation.h);
 	animated_variable_release(&con->animation.a);
+	animated_variable_release(&con->animation.crossfade);
 }
 
 struct sway_container *container_create(struct sway_view *view) {

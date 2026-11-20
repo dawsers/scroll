@@ -15,6 +15,7 @@
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 #include <wlr/types/wlr_session_lock_v1.h>
+#include <wlr/util/transform.h>
 #if WLR_HAS_XWAYLAND
 #include <wlr/xwayland.h>
 #endif
@@ -931,6 +932,7 @@ void view_map(struct sway_view *view, struct wlr_surface *wlr_surface,
 	if (view->saved_surface_tree) {
 		view_remove_saved_buffer(view);
 	}
+	view_end_crossfade(view);
 	view->container = container_create(view);
 
 	if (view->ctx == NULL) {
@@ -1460,6 +1462,22 @@ void view_remove_saved_buffer(struct sway_view *view) {
 	wlr_scene_node_set_enabled(&view->content_tree->node, true);
 }
 
+static void view_get_animation_sizes(struct sway_view *view,
+	const struct sway_container_state *state, double *wt, double *ht);
+
+struct sway_saved_buffer {
+	struct wlr_fbox box; // in view's surface coordinates
+	struct wlr_fbox src_box;
+	double content_width, content_height; // view's surface coordinates
+	struct wl_listener destroy;
+};
+
+static void saved_buffer_handle_destroy(struct wl_listener *listener, void *data) {
+	struct sway_saved_buffer *saved = wl_container_of(listener, saved, destroy);
+	wl_list_remove(&saved->destroy.link);
+	free(saved);
+}
+
 static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 		int sx, int sy, void *data) {
 	struct sway_view *view = data;
@@ -1471,6 +1489,14 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 		return;
 	}
 
+	// Position of a view's node is in surface coordinates
+	const double scale = view_get_total_scale(view);
+	const struct wlr_fbox box = {
+		.x = sx / scale,
+		.y = sy / scale,
+		.width = buffer->dst_width / scale,
+		.height = buffer->dst_height / scale,
+	};
 	wlr_scene_buffer_set_dest_size(sbuf,
 		buffer->dst_width, buffer->dst_height);
 	wlr_scene_buffer_set_radius(sbuf, buffer->radius_top, buffer->radius_bottom);
@@ -1480,9 +1506,24 @@ static void view_save_buffer_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_buffer_set_transfer_function(sbuf, buffer->transfer_function);
 	wlr_scene_buffer_set_primaries(sbuf, buffer->primaries);
 	wlr_scene_buffer_set_source_box(sbuf, &buffer->src_box);
-	wlr_scene_node_set_position(&sbuf->node, sx, sy);
+	wlr_scene_node_set_position(&sbuf->node, box.x, box.y);
 	wlr_scene_buffer_set_transform(sbuf, buffer->transform);
 	wlr_scene_buffer_set_buffer(sbuf, buffer->buffer);
+
+	struct sway_saved_buffer *saved = calloc(1, sizeof(struct sway_saved_buffer));
+	if (!saved) {
+		return;
+	}
+	saved->box = box;
+	saved->src_box = buffer->src_box;
+	const double content_scale = view_is_content_scaled(view) ?	view_get_content_scale(view) : 1.0;
+	view_get_animation_sizes(view, &view->container->current,
+		&saved->content_width, &saved->content_height);
+	saved->content_width /= content_scale;
+	saved->content_height /= content_scale;
+	saved->destroy.notify = saved_buffer_handle_destroy;
+	wl_signal_add(&sbuf->node.events.destroy, &saved->destroy);
+	sbuf->node.data = saved;
 }
 
 void view_save_buffer(struct sway_view *view) {
@@ -1496,10 +1537,13 @@ void view_save_buffer(struct sway_view *view) {
 		return;
 	}
 
-	// Make sure the output handler is placed above the saved surface so we don't send
-	// spurious events to the foreign toplevel handler. Also, make the saved surface tree
-	// is disabled until it is ready to replace the real surface.
-	wlr_scene_node_place_below(&view->saved_surface_tree->node, &view->output_handler->node);
+	// Place the saved surface right above the real one, which it replaces.
+	// That is below the content that is fading out in a crossfade, if there
+	// is any, and below the output handler, which is always above the real
+	// surface, so we don't send spurious events to the foreign toplevel
+	// handler. Also, the saved surface tree is disabled until it is ready to
+	// replace the real surface.
+	wlr_scene_node_place_above(&view->saved_surface_tree->node, &view->content_tree->node);
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, false);
 
 	wlr_scene_node_for_each_buffer(&view->content_tree->node,
@@ -1507,6 +1551,57 @@ void view_save_buffer(struct sway_view *view) {
 
 	wlr_scene_node_set_enabled(&view->content_tree->node, false);
 	wlr_scene_node_set_enabled(&view->saved_surface_tree->node, true);
+}
+
+void view_end_crossfade(struct sway_view *view) {
+	if (view->crossfade_tree) {
+		wlr_scene_node_destroy(&view->crossfade_tree->node);
+		view->crossfade_tree = NULL;
+	}
+}
+
+// The crossfade of the container ended, or it started another one
+static void crossfade_done(void *data) {
+	struct sway_container *con = data;
+	struct sway_view *view = con->view;
+	if (view->container == con && !con->animation.crossfade.animating) {
+		view_end_crossfade(view);
+	}
+	node_unref(&con->node);
+}
+
+void view_begin_crossfade(struct sway_view *view,
+		struct sway_animation_spec *spec) {
+	struct sway_container *con = view->container;
+	sway_log(SWAY_DEBUG, "Container %p: crossfade to its new content", con);
+	view_end_crossfade(view);
+
+	view->crossfade_tree = view->saved_surface_tree;
+	view->saved_surface_tree = NULL;
+	wlr_scene_node_set_enabled(&view->content_tree->node, true);
+
+	// The input goes to the surface that is below
+	struct wlr_scene_node *node;
+	wl_list_for_each(node, &view->crossfade_tree->children, link) {
+		wlr_scene_buffer_from_node(node)->point_accepts_input =	handle_point_accepts_input;
+	}
+
+	// Its opacity goes from 1 to 0. The container cannot be destroyed before the
+	// animation is over.
+	node_ref(&con->node);
+	struct sway_workspace *ws = con->current.workspace;
+	struct sway_animation_group *group = animation_group_create(
+		server.animation_manager, crossfade_done, con);
+	const struct sway_animation_options options = {
+		.spec = spec,
+		.group = group,
+		.clock = ws ? output_animation_clock(ws->output) : NULL,
+	};
+	// Set origin (1.0) and target (0.0)
+	animated_variable_set(&con->animation.crossfade, 1.0, NULL);
+	animated_variable_set(&con->animation.crossfade, 0.0, &options);
+	animation_group_commit(group);
+	animation_group_unref(group);
 }
 
 bool view_is_transient_for(struct sway_view *child,
@@ -1660,27 +1755,30 @@ bool view_is_content_scaled(struct sway_view *view) {
 	return view_get_content_scale(view) > 0.0f;
 }
 
-static void container_get_borders(struct sway_container *container, int *border_horiz, int *border_vert) {
-	if (container->pending.border == B_NONE ||
-		container->pending.fullscreen_mode != FULLSCREEN_NONE||
-		container->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
+static void container_get_borders(const struct sway_container_state *state,
+		int *border_horiz, int *border_vert) {
+	if (state->border == B_NONE ||
+		state->fullscreen_mode != FULLSCREEN_NONE||
+		state->fullscreen_layout == FULLSCREEN_ENABLED) {
 		*border_horiz = *border_vert = 0;
 		return;
 	}
-	const int thickness = container->pending.border_thickness;
-	*border_horiz = container->pending.border_left * thickness
-		+ container->pending.border_right * thickness;
-	*border_vert = container->pending.border_bottom * thickness;
-	if (container->pending.border == B_NORMAL) {
+	const int thickness = state->border_thickness;
+	*border_horiz = state->border_left * thickness
+		+ state->border_right * thickness;
+	*border_vert = state->border_bottom * thickness;
+	if (state->border == B_NORMAL) {
 		*border_vert += container_titlebar_height();
 	}
-	*border_vert += container->pending.border_top * thickness;
+	*border_vert += state->border_top * thickness;
 }
 
-static void view_get_animation_sizes(struct sway_view *view, double *wt, double *ht) {
+// The view's content size while animated, with the borders in `state`
+static void view_get_animation_sizes(struct sway_view *view,
+		const struct sway_container_state *state, double *wt, double *ht) {
 	struct sway_container *con = view->container;
 	int border_horiz, border_vert;
-	container_get_borders(con, &border_horiz, &border_vert);
+	container_get_borders(state, &border_horiz, &border_vert);
 	if (con->animation.w.animating || con->animation.h.animating) {
 		*wt = fmax(con->animation.w.value - border_horiz, 0.0);
 		*ht = fmax(con->animation.h.value - border_vert, 0.0);
@@ -1696,7 +1794,7 @@ void view_get_animation_scales(struct sway_view *view,
 		animation_get_config()->style == ANIM_STYLE_SCALE) {
 		struct sway_container *con = view->container;
 		int border_horiz, border_vert;
-		container_get_borders(con, &border_horiz, &border_vert);
+		container_get_borders(&con->pending, &border_horiz, &border_vert);
 		double w1 = con->animation.w.target - border_horiz;
 		double h1 = con->animation.h.target - border_vert;
 		double wt = con->animation.w.value - border_horiz;
@@ -1722,7 +1820,7 @@ static void clip_view(struct sway_view *view) {
 
 	if (animation_enabled() && animation_get_config()->style == ANIM_STYLE_CLIP) {
 		double wt, ht;
-		view_get_animation_sizes(view, &wt, &ht);
+		view_get_animation_sizes(view, &view->container->pending, &wt, &ht);
 		double content_scale = view_is_content_scaled(view) ?
 			view_get_content_scale(view) : 1.0;
 		// clip == {0) means no clipping, so use at least 1
@@ -1757,6 +1855,89 @@ static void view_reconfigure_iterator(struct wlr_scene_buffer *buffer,
 	wlr_scene_surface_reconfigure(scene_surface);
 }
 
+// The old content of the view is still on top of the new one, fading out. It
+// also follows the animation of the container's size, either scaled to its
+// new size, or clipped by it.
+static void view_reconfigure_crossfade(struct sway_view *view) {
+	struct sway_container *con = view->container;
+	if (!view->crossfade_tree || !con) {
+		return;
+	}
+	// The old content fades out over the new one, which is opaque. When the
+	// container is translucent, the new content needs to fade in at the same
+	// time, so the opacity of both together is always the one of the container.
+	const struct sway_animated_variable *a = &con->animation.a;
+	const double alpha = a->origin != a->target ? a->value : con->pending.alpha;
+	const double fade = con->animation.crossfade.value;
+	if (alpha < 1.0) {
+		output_configure_scene(NULL, &view->scene_tree->node,
+			alpha * (1.0 - fade) / (1.0 - alpha * fade));
+	}
+	output_configure_scene(NULL, &view->crossfade_tree->node, alpha * fade);
+
+	if (con->node.destroying) {
+		// A view that is closing does not change size anymore
+		return;
+	}
+	const double scale = view_get_total_scale(view);
+	const double content_scale = view_is_content_scaled(view) ?
+		view_get_content_scale(view) : 1.0;
+	// The size of the content in this frame, in surface coordinates
+	double width, height;
+	view_get_animation_sizes(view, &con->pending, &width, &height);
+	width /= content_scale;
+	height /= content_scale;
+	const bool scaled = animation_get_config()->style == ANIM_STYLE_SCALE;
+
+	struct wlr_scene_node *node;
+	wl_list_for_each(node, &view->crossfade_tree->children, link) {
+		const struct sway_saved_buffer *saved = node->data;
+		struct wlr_scene_buffer *buffer = wlr_scene_buffer_from_node(node);
+		if (!saved || !buffer->buffer) {
+			continue;
+		}
+		struct wlr_fbox box = saved->box;
+		if (scaled) {
+			const double wscale = saved->content_width > 0.0 ?
+				width / saved->content_width : 1.0;
+			const double hscale = saved->content_height > 0.0 ?
+				height / saved->content_height : 1.0;
+			box.x *= wscale;
+			box.y *= hscale;
+			box.width *= wscale;
+			box.height *= hscale;
+		}
+		// Only the part inside the view's content is displayed
+		const struct wlr_fbox full = box;
+		box.width = fmin(box.width, width - box.x);
+		box.height = fmin(box.height, height - box.y);
+		const bool visible = box.width * scale >= 1.0 && box.height * scale >= 1.0;
+		wlr_scene_node_set_enabled(node, visible);
+		if (!visible) {
+			continue;
+		}
+		struct wlr_fbox src_box = saved->src_box;
+		if (box.width < full.width || box.height < full.height) {
+			// The source box is in buffer coordinates, and the part to keep
+			// (top left), is in those of the surface
+			int buffer_width = buffer->buffer->width;
+			int buffer_height = buffer->buffer->height;
+			wlr_fbox_transform(&src_box, &src_box, buffer->transform,
+				buffer_width, buffer_height);
+			wlr_output_transform_coords(buffer->transform,
+				&buffer_width, &buffer_height);
+			src_box.width *= box.width / full.width;
+			src_box.height *= box.height / full.height;
+			wlr_fbox_transform(&src_box, &src_box,
+				wlr_output_transform_invert(buffer->transform),
+				buffer_width, buffer_height);
+		}
+		wlr_scene_buffer_set_source_box(buffer, &src_box);
+		wlr_scene_node_set_position(node, box.x, box.y);
+		wlr_scene_buffer_set_dest_size(buffer, box.width * scale, box.height * scale);
+	}
+}
+
 void view_reconfigure(struct sway_view *view) {
 	if (!view) {
 		return;
@@ -1765,6 +1946,7 @@ void view_reconfigure(struct sway_view *view) {
 		view_reconfigure_iterator, NULL);
 
 	clip_view(view);
+	view_reconfigure_crossfade(view);
 }
 
 double view_get_total_scale(struct sway_view *view) {

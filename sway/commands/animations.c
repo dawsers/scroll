@@ -6,6 +6,7 @@
 
 // must be in order for the bsearch
 static const struct cmd_handler animations_config_handlers[] = {
+	{ "crossfade", animations_cmd_crossfade },
 	{ "default", animations_cmd_default },
 	{ "enabled", animations_cmd_enabled },
 	{ "fade_in", animations_cmd_fade_in },
@@ -40,6 +41,16 @@ struct cmd_results *animations_cmd_enabled(int argc, char **argv) {
 	}
 	struct sway_animation_config *config = animation_get_config();
 	config->enabled = parse_boolean(argv[0], config->enabled);
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+struct cmd_results *animations_cmd_crossfade(int argc, char **argv) {
+	struct cmd_results *error = NULL;
+	if ((error = checkarg(argc, "crossfade", EXPECTED_AT_LEAST, 1))) {
+		return error;
+	}
+	struct sway_animation_config *config = animation_get_config();
+	config->crossfade = parse_boolean(argv[0], config->crossfade);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 

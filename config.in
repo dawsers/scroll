@@ -113,6 +113,7 @@ layout_heights [0.33333333 0.5 0.666666667 1.0]
 # Animations
 animations {
     enabled yes
+    crossfade yes
     default yes 300 var 3 [ 0.215 0.61 0.355 1 ]
     window_open yes 300 var 3 [ 0 0 1 1 ]
     window_move yes 300 var 3 [ 0.215 0.61 0.355 1 ] off 0.05 6 [0 0.6 0.4 0 1 0 0.4 -0.6 1 -0.6]

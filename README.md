@@ -1779,7 +1779,13 @@ called `animations`. Within that block there are several options allowed:
 
 `enabled`: (boolean) default is `yes`. Enables/disables animations globally.
 
-`style <clip|scale>`: Default is `clip`. `clip` keeps the resolution of
+`crossfade`: (boolean) default is `yes`. When a window changes size, its client
+sends new content for it. If `yes`, the content the window had fades into the
+new one while the window animates to its new. *scroll* needs to keep the old
+content of the window until the animation ends. If `no`, the old content is
+discarded as soon as the new one arrives.
+
+`style <clip|scale>`: Default is `scale`. `clip` keeps the resolution of
 the client and clips the container while animating. This leads to a part
 of the container showing the background when resizing containers to a
 smaller size, but at the same time, the content is always the same, making it

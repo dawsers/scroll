@@ -40,6 +40,7 @@ enum sway_animation_type {
  */
 struct sway_animation_config {
 	bool enabled;
+	bool crossfade;
 	enum sway_animation_style style;
 	struct {
 		struct sway_animation_spec *spec;

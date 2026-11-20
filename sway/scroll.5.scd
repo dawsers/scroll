@@ -72,6 +72,13 @@ The following commands may only be used in the configuration file.
 	Default value is _yes_. Enables/disables animations globally. See the
 	*animations_enable* command to enable/disable animations at run-time.
 
+	*crossfade* <yes|no>
+	Default value is _yes_. When a window changes size, its client sends new
+	content for it. If _yes_, the old content of the window fades into the new
+	one while the window is animated to its new size. It needs to keep the old
+	content of the window until the animation ends. If _no_, the old content
+	is discarded as soon as the new one arrives.
+
 	*style* <clip|scale>
 	Default is _scale_. _clip_ keeps the resolution of the client and clips the
 	container while animating. This leads to a part of the container showing the
