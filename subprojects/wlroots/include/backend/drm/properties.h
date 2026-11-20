@@ -79,8 +79,8 @@ enum wlr_drm_color_encoding {
 
 // Equivalent to wlr_drm_color_range defined in the kernel (but not exported)
 enum wlr_drm_color_range {
-	WLR_DRM_COLOR_YCBCR_FULL_RANGE,
 	WLR_DRM_COLOR_YCBCR_LIMITED_RANGE,
+	WLR_DRM_COLOR_YCBCR_FULL_RANGE,
 };
 
 bool get_drm_connector_props(int fd, uint32_t id,
