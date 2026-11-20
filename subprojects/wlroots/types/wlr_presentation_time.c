@@ -40,8 +40,13 @@ static void feedback_resource_send_presented(
 	uint32_t tv_sec_lo = event->tv_sec & 0xFFFFFFFF;
 	uint32_t seq_hi = event->seq >> 32;
 	uint32_t seq_lo = event->seq & 0xFFFFFFFF;
+	uint32_t refresh = event->refresh;
+	if (wl_resource_get_version(feedback_resource) == 1 &&
+			event->output->adaptive_sync_status == WLR_OUTPUT_ADAPTIVE_SYNC_ENABLED) {
+		refresh = 0;
+	}
 	wp_presentation_feedback_send_presented(feedback_resource,
-		tv_sec_hi, tv_sec_lo, event->tv_nsec, event->refresh,
+		tv_sec_hi, tv_sec_lo, event->tv_nsec, refresh,
 		seq_hi, seq_lo, event->flags);
 
 	wl_resource_destroy(feedback_resource);
@@ -288,11 +293,6 @@ static void feedback_handle_output_present(struct wl_listener *listener,
 	if (output_event->presented) {
 		struct wlr_presentation_event event = {0};
 		wlr_presentation_event_from_output(&event, output_event);
-		struct wl_resource *resource = wl_resource_from_link(feedback->resources.next);
-		if (wl_resource_get_version(resource) == 1 &&
-				event.output->adaptive_sync_status == WLR_OUTPUT_ADAPTIVE_SYNC_ENABLED) {
-			event.refresh = 0;
-		}
 		if (!feedback->zero_copy) {
 			event.flags &= ~WP_PRESENTATION_FEEDBACK_KIND_ZERO_COPY;
 		}
