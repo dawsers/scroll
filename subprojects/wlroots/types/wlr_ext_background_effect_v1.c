@@ -9,7 +9,6 @@
 
 struct wlr_ext_background_effect_surface_v1 {
 	struct wl_resource *resource;
-	struct wlr_surface *surface;
 	struct wlr_addon addon;
 	struct wlr_surface_synced synced;
 	struct wlr_ext_background_effect_surface_v1_state pending, current;
@@ -160,7 +159,6 @@ static void manager_handle_get_background_effect(struct wl_client *client,
 	wl_resource_set_implementation(surface->resource, &surface_impl, surface,
 		surface_handle_resource_destroy);
 
-	surface->surface = wlr_surface;
 	wlr_addon_init(&surface->addon, &wlr_surface->addons, NULL, &surface_addon_impl);
 }
 
