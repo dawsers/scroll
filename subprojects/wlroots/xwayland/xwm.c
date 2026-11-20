@@ -1347,6 +1347,14 @@ static void xwayland_surface_associate(struct wlr_xwm *xwm,
 	}
 
 	wl_signal_emit_mutable(&xsurface->events.associate, NULL);
+
+	// Wlroots communicates with Xwayland over both an X11 socket and a Wayland
+	// socket with no synchronization between the two. There is no guarantee that
+	// e.g. the WL_SURFACE_SERIAL X11 client message will be received on the X11
+	// socket before the first buffer attach/commit on the Wayland socket.
+	if (wlr_surface_has_buffer(surface)) {
+		wlr_surface_map(surface);
+	}
 }
 
 static void xwm_handle_create_notify(struct wlr_xwm *xwm,
