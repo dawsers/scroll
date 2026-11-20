@@ -19,8 +19,8 @@ bool output_ensure_buffer(struct wlr_output *output,
 
 bool output_cursor_set_texture(struct wlr_output_cursor *cursor,
 	struct wlr_texture *texture, bool own_texture, const struct wlr_fbox *src_box,
-	int dst_width, int dst_height, enum wl_output_transform transform,
-	int32_t hotspot_x, int32_t hotspot_y, struct wlr_drm_syncobj_timeline *wait_timeline,
+	double dst_width, double dst_height, enum wl_output_transform transform,
+	double hotspot_x, double hotspot_y, struct wlr_drm_syncobj_timeline *wait_timeline,
 	uint64_t wait_point);
 
 bool output_cursor_refresh_color_transform(struct wlr_output_cursor *cursor,
