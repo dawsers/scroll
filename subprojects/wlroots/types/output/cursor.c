@@ -181,6 +181,32 @@ static bool output_pick_cursor_format(struct wlr_output *output,
 	return output_pick_format(output, display_formats, format, DRM_FORMAT_ARGB8888);
 }
 
+/**
+ * Converts between wlr_output_cursor's orientation and the orientation of the
+ * buffer passed to output->impl->set_cursor.
+ *
+ * The conversion is the same in both directions.
+ */
+static void output_cursor_transform_coords(const struct wlr_output_cursor *cursor,
+		int *width, int *height) {
+	wlr_output_transform_coords(cursor->output->transform, width, height);
+}
+
+/**
+ * Converts from wlr_output_cursor's hotspot/width/height coordinate space to
+ * the coordinate space of the buffer passed to output->impl->set_cursor.
+ */
+static void output_cursor_to_hardware_buffer_coords(const struct wlr_output_cursor *cursor,
+		const struct wlr_buffer *hardware_buffer, struct wlr_box *box) {
+	int width = hardware_buffer->width;
+	int height = hardware_buffer->height;
+	// wlr_box_transform expects pre-transform dimensions
+	output_cursor_transform_coords(cursor, &width, &height);
+
+	wlr_box_transform(box, box, wlr_output_transform_invert(cursor->output->transform),
+		width, height);
+}
+
 static struct wlr_buffer *render_cursor_buffer(struct wlr_output_cursor *cursor) {
 	struct wlr_output *output = cursor->output;
 
@@ -193,8 +219,11 @@ static struct wlr_buffer *render_cursor_buffer(struct wlr_output_cursor *cursor)
 	struct wlr_renderer *renderer = output->renderer;
 	assert(allocator != NULL && renderer != NULL);
 
+	// buffer dimensions
 	int width = cursor->width;
 	int height = cursor->height;
+	output_cursor_transform_coords(cursor, &width, &height);
+
 	if (output->impl->get_cursor_sizes) {
 		// Apply hardware limitations on buffer size
 		size_t sizes_len = 0;
@@ -251,8 +280,7 @@ static struct wlr_buffer *render_cursor_buffer(struct wlr_output_cursor *cursor)
 		.width = cursor->width,
 		.height = cursor->height,
 	};
-	wlr_box_transform(&dst_box, &dst_box, wlr_output_transform_invert(output->transform),
-		buffer->width, buffer->height);
+	output_cursor_to_hardware_buffer_coords(cursor, buffer, &dst_box);
 
 	struct wlr_buffer_pass_options options = {
 		.color_transform = cursor->color_transform,
@@ -309,13 +337,12 @@ static bool output_cursor_attempt_hardware(struct wlr_output_cursor *cursor) {
 		}
 	}
 
-	struct wlr_box hotspot = {
-		.x = cursor->hotspot_x,
-		.y = cursor->hotspot_y,
-	};
-	wlr_box_transform(&hotspot, &hotspot,
-		wlr_output_transform_invert(output->transform),
-		buffer ? buffer->width : 0, buffer ? buffer->height : 0);
+	struct wlr_box hotspot = {0};
+	if (buffer != NULL) {
+		hotspot.x = cursor->hotspot_x;
+		hotspot.y = cursor->hotspot_y;
+		output_cursor_to_hardware_buffer_coords(cursor, buffer, &hotspot);
+	}
 
 	bool ok = output_set_hardware_cursor(output, buffer, hotspot.x, hotspot.y);
 	wlr_buffer_unlock(buffer);
