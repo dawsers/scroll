@@ -270,8 +270,8 @@ static void pointer_constraint_create(struct wl_client *client,
 	if (region_resource) {
 		pixman_region32_copy(&constraint->current.region,
 			wlr_region_from_resource(region_resource));
-		update_region(constraint);
 	}
+	update_region(constraint);
 
 	constraint->surface_destroy.notify = handle_surface_destroy;
 	wl_signal_add(&surface->events.destroy, &constraint->surface_destroy);
