@@ -378,7 +378,8 @@ static bool add_connector(drmModeAtomicReq *req,
 	return ok;
 }
 
-static void connector_update_layers_feedback(const struct wlr_drm_connector_state *state) {
+static void connector_update_layers_feedback(const struct wlr_drm_connector_state *state,
+		bool test_only) {
 	struct wlr_drm_backend *drm = state->connector->backend;
 
 	if (!(state->base->committed & WLR_OUTPUT_STATE_LAYERS)) {
@@ -390,7 +391,9 @@ static void connector_update_layers_feedback(const struct wlr_drm_connector_stat
 		struct wlr_drm_layer *layer = get_drm_layer(drm, layer_state->layer);
 		layer_state->accepted =
 			!liftoff_layer_needs_composition(layer->liftoff);
-		if (!layer_state->accepted) {
+		// Only send feedback for real commits, test commits may try out
+		// configurations which will never be committed
+		if (!layer_state->accepted && !test_only) {
 			update_layer_feedback(drm, layer);
 		}
 	}
@@ -470,9 +473,13 @@ out:
 		struct wlr_drm_connector_state *conn_state = &state->connectors[i];
 		if (ok && !test_only) {
 			drm_atomic_connector_apply_commit(conn_state);
-			connector_update_layers_feedback(conn_state);
 		} else {
 			drm_atomic_connector_rollback_commit(conn_state);
+		}
+		// Test commits need the accepted flags too: that's how compositors
+		// find out which layers can be scanned out.
+		if (ok) {
+			connector_update_layers_feedback(conn_state, test_only);
 		}
 	}
 
