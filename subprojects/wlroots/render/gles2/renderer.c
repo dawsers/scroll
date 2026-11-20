@@ -570,9 +570,6 @@ struct wlr_renderer *wlr_gles2_renderer_create(struct wlr_egl *egl) {
 		return NULL;
 	}
 
-	renderer->exts.EXT_read_format_bgra =
-		check_gl_ext(exts_str, "GL_EXT_read_format_bgra");
-
 	renderer->exts.EXT_texture_type_2_10_10_10_REV =
 		check_gl_ext(exts_str, "GL_EXT_texture_type_2_10_10_10_REV");
 

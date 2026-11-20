@@ -185,12 +185,6 @@ static bool gles2_texture_read_pixels(struct wlr_texture *wlr_texture,
 		return false;
 	}
 
-	if (fmt->gl_format == GL_BGRA_EXT && !texture->renderer->exts.EXT_read_format_bgra) {
-		wlr_log(WLR_ERROR,
-			"Cannot read pixels: missing GL_EXT_read_format_bgra extension");
-		return false;
-	}
-
 	const struct wlr_pixel_format_info *drm_fmt =
 		drm_get_pixel_format_info(fmt->drm_format);
 	assert(drm_fmt);
@@ -292,10 +286,7 @@ static uint32_t gles2_texture_preferred_read_format(struct wlr_texture *wlr_text
 		goto out;
 	}
 
-	if (texture->renderer->exts.EXT_read_format_bgra) {
-		fmt = DRM_FORMAT_XRGB8888;
-		goto out;
-	}
+	fmt = DRM_FORMAT_ABGR8888; // GL_RGBA, GL_UNSIGNED_BYTE
 
 out:
 	wlr_egl_restore_context(&prev_ctx);
