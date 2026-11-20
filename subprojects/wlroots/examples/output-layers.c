@@ -13,6 +13,7 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layer.h>
+#include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/log.h>
 
@@ -307,6 +308,7 @@ int main(int argc, char *argv[]) {
 		wlr_compositor_create(server.wl_display, 5, server.renderer);
 
 	wlr_xdg_shell_create(server.wl_display, 1);
+	wlr_subcompositor_create(server.wl_display);
 
 	wl_list_init(&server.outputs);
 
