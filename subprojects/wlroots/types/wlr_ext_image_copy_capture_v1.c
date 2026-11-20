@@ -574,7 +574,7 @@ static void cursor_session_update(
 	cursor_session->prev.entered = cursor_source->entered;
 	cursor_session->prev.x = cursor_source->x;
 	cursor_session->prev.y = cursor_source->y;
-	cursor_session->prev.hotspot.y = cursor_source->hotspot.y;
+	cursor_session->prev.hotspot.x = cursor_source->hotspot.x;
 	cursor_session->prev.hotspot.y = cursor_source->hotspot.y;
 }
 
