@@ -199,28 +199,30 @@ static bool gles2_texture_read_pixels(struct wlr_texture *wlr_texture,
 		return false;
 	}
 
+	bool ok = false;
+
 	if (!gles2_texture_bind(texture)) {
-		return false;
+		goto out;
 	}
 
 	if (options->wait_timeline != NULL) {
 		int sync_file_fd =
 			wlr_drm_syncobj_timeline_export_sync_file(options->wait_timeline, options->wait_point);
 		if (sync_file_fd < 0) {
-			return false;
+			goto out;
 		}
 
 		struct wlr_gles2_renderer *renderer = texture->renderer;
 		EGLSyncKHR sync = wlr_egl_create_sync(renderer->egl, sync_file_fd);
 		close(sync_file_fd);
 		if (sync == EGL_NO_SYNC_KHR) {
-			return false;
+			goto out;
 		}
 
-		bool ok = wlr_egl_wait_sync(renderer->egl, sync);
+		bool wait_ok = wlr_egl_wait_sync(renderer->egl, sync);
 		wlr_egl_destroy_sync(renderer->egl, sync);
-		if (!ok) {
-			return false;
+		if (!wait_ok) {
+			goto out;
 		}
 	}
 
@@ -248,11 +250,14 @@ static bool gles2_texture_read_pixels(struct wlr_texture *wlr_texture,
 		}
 	}
 
+	ok = glGetError() == GL_NO_ERROR;
+
+out:
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	wlr_egl_restore_context(&prev_ctx);
 	pop_gles2_debug(texture->renderer);
 
-	return glGetError() == GL_NO_ERROR;
+	return ok;
 }
 
 static uint32_t gles2_texture_preferred_read_format(struct wlr_texture *wlr_texture) {
