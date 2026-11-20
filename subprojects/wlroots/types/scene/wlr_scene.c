@@ -957,7 +957,7 @@ static void scene_node_visibility(struct wlr_scene_node *node,
 	pixman_region32_union(visible, visible, &node->visible);
 }
 
-static void scene_node_bounds(struct wlr_scene_node *node,
+static void scene_node_boundary_region(struct wlr_scene_node *node,
 		double x, double y, pixman_region32_t *visible) {
 	if (!node->enabled) {
 		return;
@@ -967,7 +967,7 @@ static void scene_node_bounds(struct wlr_scene_node *node,
 		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
 		struct wlr_scene_node *child;
 		wl_list_for_each(child, &scene_tree->children, link) {
-			scene_node_bounds(child, x + child->x, y + child->y, visible);
+			scene_node_boundary_region(child, x + child->x, y + child->y, visible);
 		}
 		return;
 	}
@@ -1079,7 +1079,7 @@ static void scene_node_update(struct wlr_scene_node *node,
 	pixman_region32_t update_region;
 	pixman_region32_init(&update_region);
 	pixman_region32_copy(&update_region, damage);
-	scene_node_bounds(node, x, y, &update_region);
+	scene_node_boundary_region(node, x, y, &update_region);
 
 	scene_update_region(scene, &update_region);
 	pixman_region32_fini(&update_region);
@@ -1640,7 +1640,7 @@ void wlr_scene_buffer_set_opaque_region(struct wlr_scene_buffer *scene_buffer,
 
 	pixman_region32_t update_region;
 	pixman_region32_init(&update_region);
-	scene_node_bounds(&scene_buffer->node, x, y, &update_region);
+	scene_node_boundary_region(&scene_buffer->node, x, y, &update_region);
 	scene_update_region(scene_node_get_root(&scene_buffer->node), &update_region);
 	pixman_region32_fini(&update_region);
 }
