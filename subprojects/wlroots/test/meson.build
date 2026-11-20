@@ -25,6 +25,17 @@ if features.get('vulkan-renderer')
 	)
 endif
 
+test(
+	'scene',
+	executable(
+		'test-scene',
+		'test_scene.c',
+		link_with: lib_wlr_internal,
+		dependencies: wlr_deps,
+		include_directories: wlr_inc,
+	),
+)
+
 benchmark(
 	'scene',
 	executable('bench-scene', 'bench_scene.c', dependencies: wlroots),

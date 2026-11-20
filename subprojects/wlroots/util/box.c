@@ -197,6 +197,37 @@ bool wlr_fbox_empty(const struct wlr_fbox *box) {
 	return box == NULL || box->width <= 0 || box->height <= 0;
 }
 
+bool wlr_fbox_bounds(struct wlr_fbox *dest, const struct wlr_fbox *box_a,
+		const struct wlr_fbox *box_b) {
+	bool a_empty = wlr_fbox_empty(box_a);
+	bool b_empty = wlr_fbox_empty(box_b);
+
+	if (a_empty && b_empty) {
+		*dest = (struct wlr_fbox){0};
+		return false;
+	}
+	if (a_empty) {
+		*dest = *box_b;
+		return true;
+	}
+	if (b_empty) {
+		*dest = *box_a;
+		return true;
+	}
+
+	double x_min = fmin(box_a->x, box_b->x);
+	double y_min = fmin(box_a->y, box_b->y);
+	double x_max = fmax(box_a->x + box_a->width, box_b->x + box_b->width);
+	double y_max = fmax(box_a->y + box_a->height, box_b->y + box_b->height);
+	*dest = (struct wlr_fbox){
+		.x = x_min,
+		.y = y_min,
+		.width = x_max - x_min,
+		.height = y_max - y_min,
+	};
+	return true;
+}
+
 void wlr_fbox_transform(struct wlr_fbox *dest, const struct wlr_fbox *box,
 		enum wl_output_transform transform, double width, double height) {
 	struct wlr_fbox src = {0};
