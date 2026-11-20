@@ -441,9 +441,25 @@ struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
 struct wlr_output *wlr_scene_node_info_get_output(struct wlr_scene_node *node);
 
 /**
+ * Set the output that owns this node and will clip this node and its descendants
+ * Use this function instead of assigning the field directly to compute damage
+ * correctly.
+ */
+void wlr_scene_node_info_set_output(struct wlr_scene_node *node,
+	struct wlr_output *wlr_output);
+
+/**
  * Return the workspace box info from this node (NULL if it doesn't have one)
 */
-struct wlr_box *wlr_scene_node_info_get_workspace_box(struct wlr_scene_node *node);
+struct wlr_box *wlr_scene_node_info_get_output_box(struct wlr_scene_node *node);
+
+/**
+ * Set the box this node and its descendants are clipped against. Use this function
+ * instead of assigning the field directly, so it damages the region the node
+ * used to cover and recomputes its visibility.
+ */
+void wlr_scene_node_info_set_output_box(struct wlr_scene_node *node,
+	struct wlr_box *box);
 
 /**
  * Create a new scene-graph.

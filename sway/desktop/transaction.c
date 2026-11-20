@@ -872,9 +872,9 @@ static void animate_workspace_floating(struct sway_workspace *ws) {
 		// If the workspaces overview is enabled, make sure floating windows only
 		// show in the output corresponding to their workspace.
 		if (layout_overview_workspaces_enabled()) {
-			child->scene_tree->node.info.wlr_output = ws->output->wlr_output;
+			wlr_scene_node_info_set_output(&child->scene_tree->node, ws->output->wlr_output);
 		} else {
-			child->scene_tree->node.info.wlr_output = NULL;
+			wlr_scene_node_info_set_output(&child->scene_tree->node, NULL);
 		}
 		animation_update_container(child);
 		floating_set_position(ws, child);

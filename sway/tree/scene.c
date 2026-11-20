@@ -31,7 +31,7 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 	if (workspace && data->data && workspace != data->data) {
 		return false;
 	}
-	struct wlr_box *box = wlr_scene_node_info_get_workspace_box(node);
+	struct wlr_box *box = wlr_scene_node_info_get_output_box(node);
 	if (box) {
 		if (data->lx < box->x || data->lx >= box->x + box->width ||
 			data->ly < box->y || data->ly >= box->y + box->height) {

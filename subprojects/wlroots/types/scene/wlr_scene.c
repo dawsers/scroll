@@ -727,7 +727,7 @@ static bool scene_node_get_background(struct wlr_scene_node *node) {
 	return false;
 }
 
-struct wlr_box *wlr_scene_node_info_get_workspace_box(struct wlr_scene_node *node) {
+struct wlr_box *wlr_scene_node_info_get_output_box(struct wlr_scene_node *node) {
 	struct wlr_scene_tree *tree;
 	if (node->type == WLR_SCENE_NODE_TREE) {
 		tree = wlr_scene_tree_from_node(node);
@@ -770,7 +770,7 @@ static void scene_node_apply_tiling_visibility(struct wlr_scene_node *node,
 }
 
 static void scene_node_apply_workspace_visibility(struct wlr_scene_node *node) {
-	struct wlr_box *box = wlr_scene_node_info_get_workspace_box(node);
+	struct wlr_box *box = wlr_scene_node_info_get_output_box(node);
 	if (box) {
 		pixman_region32_intersect_rect(&node->visible, &node->visible, box->x, box->y, box->width, box->height);
 	}
@@ -964,6 +964,44 @@ static void scene_node_update(struct wlr_scene_node *node,
 	scene_node_visibility(node, damage);
 	scene_damage_outputs(scene, damage);
 	pixman_region32_fini(damage);
+}
+
+static void scene_node_update_info(struct wlr_scene_node *node,
+		void (*apply)(struct wlr_scene_node *node, void *data), void *data) {
+	double x, y;
+	pixman_region32_t visible;
+	pixman_region32_init(&visible);
+	if (wlr_scene_node_coords(node, &x, &y)) {
+		scene_node_visibility(node, &visible);
+	}
+
+	apply(node, data);
+
+	scene_node_update(node, &visible);
+}
+
+static void apply_info_output(struct wlr_scene_node *node, void *data) {
+	node->info.wlr_output = data;
+}
+
+void wlr_scene_node_info_set_output(struct wlr_scene_node *node,
+		struct wlr_output *wlr_output) {
+	if (node->info.wlr_output == wlr_output) {
+		return;
+	}
+	scene_node_update_info(node, apply_info_output, wlr_output);
+}
+
+static void apply_info_output_box(struct wlr_scene_node *node, void *data) {
+	node->info.output_box = data;
+}
+
+void wlr_scene_node_info_set_output_box(struct wlr_scene_node *node,
+		struct wlr_box *box) {
+	if (node->info.output_box == box) {
+		return;
+	}
+	scene_node_update_info(node, apply_info_output_box, box);
 }
 
 struct wlr_scene_rect *wlr_scene_rect_create(struct wlr_scene_tree *parent,
