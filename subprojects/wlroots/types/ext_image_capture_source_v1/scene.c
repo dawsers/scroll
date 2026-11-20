@@ -1,4 +1,3 @@
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <wlr/backend/interface.h>
@@ -34,60 +33,11 @@ struct scene_node_source_frame_event {
 
 static size_t last_output_num = 0;
 
-static void _get_scene_node_extents(struct wlr_scene_node *node, int lx, int ly,
-		int *x_min, int *y_min, int *x_max, int *y_max) {
-	switch (node->type) {
-	case WLR_SCENE_NODE_TREE:;
-		struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
-		struct wlr_scene_node *child;
-		wl_list_for_each(child, &scene_tree->children, link) {
-			_get_scene_node_extents(child, lx + child->x, ly + child->y, x_min, y_min, x_max, y_max);
-		}
-		break;
-	case WLR_SCENE_NODE_RECT:
-	case WLR_SCENE_NODE_BUFFER:
-	case WLR_SCENE_NODE_DECORATION:
-	case WLR_SCENE_NODE_SHADOW:;
-		double width, height;
-		scene_node_get_size(node, &width, &height);
-		struct wlr_box node_box = {
-			.x = round(lx),
-			.y = round(ly),
-			.width = round(lx + width) - round(lx),
-			.height = round(ly + height) - round(ly)
-		};
-
-		if (node_box.x < *x_min) {
-			*x_min = node_box.x;
-		}
-		if (node_box.y < *y_min) {
-			*y_min = node_box.y;
-		}
-		if (node_box.x + node_box.width > *x_max) {
-			*x_max = node_box.x + node_box.width;
-		}
-		if (node_box.y + node_box.height > *y_max) {
-			*y_max = node_box.y + node_box.height;
-		}
-		break;
-	}
-}
-
-static void get_scene_node_extents(struct wlr_scene_node *node, struct wlr_box *box) {
-	double lx = 0, ly = 0;
-	wlr_scene_node_coords(node, &lx, &ly);
-	*box = (struct wlr_box){ .x = INT_MAX, .y = INT_MAX };
-	int x_max = INT_MIN, y_max = INT_MIN;
-	_get_scene_node_extents(node, lx, ly, &box->x, &box->y, &x_max, &y_max);
-	box->width = x_max - box->x;
-	box->height = y_max - box->y;
-}
-
 static void source_render(struct scene_node_source *source) {
 	struct wlr_scene_output *scene_output = source->scene_output;
 
 	struct wlr_box extents;
-	get_scene_node_extents(source->node, &extents);
+	scene_node_get_extents(source->node, &extents);
 
 	if (extents.width == 0 || extents.height == 0) {
 		return;
