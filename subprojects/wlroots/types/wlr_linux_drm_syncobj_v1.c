@@ -166,13 +166,12 @@ static void surface_synced_finish_state(void *_state) {
 
 static void surface_synced_move_state(void *_dst, void *_src) {
 	struct wlr_linux_drm_syncobj_surface_v1_state *dst = _dst, *src = _src;
-	if (src->acquire_timeline == NULL) {
+	if (!src->committed) {
 		// ignore commits that did not attach a buffer
 		return;
 	}
 	surface_synced_finish_state(dst);
 	*dst = *src;
-	dst->committed = true;
 	*src = (struct wlr_linux_drm_syncobj_surface_v1_state){0};
 }
 
@@ -183,8 +182,10 @@ static void surface_synced_commit(struct wlr_surface_synced *synced) {
 		return;
 	}
 
-	surface->current.release_merger = wlr_drm_syncobj_merger_create(
-		surface->current.release_timeline, surface->current.release_point);
+if (surface->current.release_timeline != NULL) {
+		surface->current.release_merger = wlr_drm_syncobj_merger_create(
+			surface->current.release_timeline, surface->current.release_point);
+	}
 	surface->current.committed = false;
 }
 
@@ -312,6 +313,9 @@ static void surface_handle_client_commit(struct wl_listener *listener,
 			"Acquire and release points conflict");
 		return;
 	}
+
+	surface->pending.committed =
+		surface->surface->pending.committed & WLR_SURFACE_STATE_BUFFER;
 
 	if (surface->pending.acquire_timeline != NULL && !lock_surface_commit(
 			surface, surface->pending.acquire_timeline, surface->pending.acquire_point)) {
