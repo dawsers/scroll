@@ -663,6 +663,59 @@ function scroll.output_get_virtual_outputs(output) end
 function scroll.root_get_outputs() end
 
 ---
+--- Returns an array with all the spaces' names.
+---
+--- @return integer[]
+function scroll.root_get_spaces() end
+
+---
+-- Returns a table describing the space `name`, as returned by
+-- `root_get_spaces()`, or nil if it doesn't exist.
+-- The table contains the same data as each space in the reply of the
+-- IPC GET_SPACES message (see *scroll-ipc*(7)):
+--
+-- name: the name of the space
+-- layout: the original layout of the space
+-- tiling: an array with the space's tiling containers
+-- floating: an array with the space's floating containers
+--
+-- Each space container is a table with these keys and values:
+--
+-- layout: "horizontal", "vertical" or "none"
+-- x, y, width, height: the saved geometry. For tiling containers,
+--     in layout coordinates. For floating containers, as fractions of the
+--     output's size, relative to the output's origin
+-- width_fraction, height_fraction: the fraction of the viewport size
+--     used by the container
+-- focused: true if this is the container that was focused when the space
+--     was saved
+-- focused_inactive: true if this is the focused inactive child of its
+--     parent container
+-- children: if the container has children, an array with them
+-- view: if the container is a leaf, a table describing its view, with
+--     keys:
+--         con_id (the ID of the view's container, nil if the view was
+--             unmapped after saving the space)
+--         app_id (Wayland) or class (XWayland)
+--         title
+--         content_scale
+---
+--- @param name string
+---
+--- @return table|nil
+function scroll.space_get(name) end
+
+---
+--- Returns a string with the JSON description of the space `name`, or nil
+--- if it doesn't exist. See `space_get(name)` or `man 5 scroll` for a description
+--- of the data.
+---
+--- @param name string
+---
+--- @return string
+function scroll.space_get_json(name) end
+
+---
 --- Returns an array with all the containers in the scratchpad.
 ---
 --- @return integer[]
