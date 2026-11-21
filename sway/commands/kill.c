@@ -44,8 +44,8 @@ struct cmd_results *cmd_kill(int argc, char **argv) {
 		} else if (strcasecmp(argv[0], "all") == 0) {
 			for (int i = 0; i < root->outputs->length; ++i) {
 				struct sway_output *output = root->outputs->items[i];
-				for (int j = 0; j < output->current.workspaces->length; ++j) {
-					struct sway_workspace *ws = output->current.workspaces->items[j];
+				for (int j = 0; j < output->workspaces->length; ++j) {
+					struct sway_workspace *ws = output->workspaces->items[j];
 					workspace_for_each_container(ws, close_container_iterator, NULL);
 				}
 			}

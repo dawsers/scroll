@@ -486,6 +486,13 @@ void layout_overview_workspaces_recompute_scale() {
 	}
 }
 
+// Make a copy of the output's workspaces for loops that may destroy some of them
+static list_t *output_workspaces_copy(struct sway_output *output) {
+	list_t *workspaces = create_list();
+	list_cat(workspaces, output->workspaces);
+	return workspaces;
+}
+
 void layout_overview_workspaces(bool on) {
 	if ((root->overview && on) || (!root->overview && !on)) {
 		return;
@@ -496,8 +503,12 @@ void layout_overview_workspaces(bool on) {
 		if (layout_overview_workspaces_enabled()) {
 			overview_workspaces_recompute_scale(output);
 		} else {
-			for (int j = 0; j < output->current.workspaces->length; ++j) {
-				struct sway_workspace *child = output->current.workspaces->items[j];
+			list_t *workspaces = output_workspaces_copy(output);
+			for (int j = 0; j < workspaces->length; ++j) {
+				struct sway_workspace *child = workspaces->items[j];
+				if (child->node.destroying) {
+					continue;
+				}
 				workspace_name_decoration(child, false);
 				wlr_scene_node_reparent(&child->jump.text_tree->node, root->staging);
 				wlr_scene_node_reparent(&child->jump.name_tree->node, root->staging);
@@ -514,6 +525,7 @@ void layout_overview_workspaces(bool on) {
 				// Clean-up empty, non-active workspaces when we exit workspaces overview mode
 				workspace_consider_destroy(child);
 			}
+			list_free(workspaces);
 			output_damage_whole(output);
 		}
 	}
@@ -2728,17 +2740,21 @@ static void workspace_toggle_jump_decoration(struct sway_workspace *ws, char *te
 static void jump_workspaces_handle_keyboard_key_end(void *data) {
 	struct jump_data *jump_data = data;
 
+	struct sway_workspace *target = NULL;
 	uint32_t n = 0;
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
-		for (int j = 0; j < output->current.workspaces->length; ++j) {
-			struct sway_workspace *child = output->current.workspaces->items[j];
+		for (int j = 0; j < output->workspaces->length; ++j) {
+			struct sway_workspace *child = output->workspaces->items[j];
 			if (jump_data->focus && n == jump_data->window_number) {
-				switch_workspace(child);
+				target = child;
 			}
 			++n;
 			workspace_toggle_jump_decoration(child, NULL);
 		}
+	}
+	if (target) {
+		switch_workspace(target);
 	}
 	if (!jump_data->focus && jump_data->old_focus) {
 		struct sway_container *old_focus = container_get_by_id(jump_data->old_focus_id);
@@ -2767,8 +2783,8 @@ static bool jump_workspaces_handle_button(struct sway_seat *seat, uint32_t time_
 			const double oscale = output->wlr_output->scale;
 			const double x = oscale * (seat->cursor->cursor->x - output->lx);
 			const double y = oscale * (seat->cursor->cursor->y - output->ly);
-			for (int j = 0; j < output->current.workspaces->length; ++j) {
-				struct sway_workspace *child = output->current.workspaces->items[j];
+			for (int j = 0; j < output->workspaces->length; ++j) {
+				struct sway_workspace *child = output->workspaces->items[j];
 				// If this workspace is the one under the cursor, set focused
 				// and jump_data->window_number to n
 				if (x >= child->jump.x &&
@@ -2800,7 +2816,7 @@ void layout_jump_workspaces() {
 	uint32_t nworkspaces = 0;
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
-		nworkspaces += output->current.workspaces->length;
+		nworkspaces += output->workspaces->length;
 	}
 	if (nworkspaces == 0) {
 		free(jump_data);
@@ -2818,8 +2834,8 @@ void layout_jump_workspaces() {
 
 	for (int i = 0, n = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
-		for (int j = 0; j < output->current.workspaces->length; ++j) {
-			struct sway_workspace *child = output->current.workspaces->items[j];
+		for (int j = 0; j < output->workspaces->length; ++j) {
+			struct sway_workspace *child = output->workspaces->items[j];
 			char *label = generate_label(n++, config->jump_labels_keys_text, nkeys);
 			workspace_toggle_jump_decoration(child, label);
 			free(label);
@@ -3211,9 +3227,9 @@ void layout_selection_workspace(struct sway_workspace *workspace) {
 void layout_selection_reset() {
 	for (int o = 0; o < root->outputs->length; ++o) {
 		struct sway_output *output = root->outputs->items[o];
-		for (int w = 0; w < output->current.workspaces->length; ++w) {
+		for (int w = 0; w < output->workspaces->length; ++w) {
 			bool selected = false;
-			struct sway_workspace *workspace = output->current.workspaces->items[w];
+			struct sway_workspace *workspace = output->workspaces->items[w];
 			for (int i = 0; i < workspace->floating->length; ++i) {
 				struct sway_container *con = workspace->floating->items[i];
 				if (con->selected) {
@@ -3342,9 +3358,13 @@ bool layout_selection_move(struct sway_workspace *new_workspace) {
 	list_t *floating_selection = create_list();
 	for (int o = 0; o < root->outputs->length; ++o) {
 		struct sway_output *output = root->outputs->items[o];
-		for (int w = 0; w < output->current.workspaces->length; ++w) {
+		list_t *workspaces = output_workspaces_copy(output);
+		for (int w = 0; w < workspaces->length; ++w) {
 			int selected = tiling_selection->length + floating_selection->length;
-			struct sway_workspace *workspace = output->current.workspaces->items[w];
+			struct sway_workspace *workspace = workspaces->items[w];
+			if (workspace->node.destroying) {
+				continue;
+			}
 			list_t *to_delete_floating = create_list();
 			for (int i = 0; i < workspace->floating->length; ++i) {
 				struct sway_container *con = workspace->floating->items[i];
@@ -3397,6 +3417,7 @@ bool layout_selection_move(struct sway_workspace *new_workspace) {
 			list_free(to_delete_floating);
 			list_free(to_delete_tiling);
 		}
+		list_free(workspaces);
 	}
 	bool changed = tiling_selection->length + floating_selection->length > 0;
 	struct sway_container *focus = NULL;
@@ -3457,8 +3478,8 @@ void layout_selection_to_trail() {
 	layout_trail_new();
 	for (int o = 0; o < root->outputs->length; ++o) {
 		struct sway_output *output = root->outputs->items[o];
-		for (int w = 0; w < output->current.workspaces->length; ++w) {
-			struct sway_workspace *workspace = output->current.workspaces->items[w];
+		for (int w = 0; w < output->workspaces->length; ++w) {
+			struct sway_workspace *workspace = output->workspaces->items[w];
 			for (int i = 0; i < workspace->floating->length; ++i) {
 				struct sway_container *con = workspace->floating->items[i];
 				bool selected = con->selected;
