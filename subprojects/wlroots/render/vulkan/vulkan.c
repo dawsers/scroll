@@ -196,6 +196,20 @@ struct wlr_vk_instance *vulkan_instance_create(bool debug) {
 		}
 	}
 
+	ini->api.vkGetPhysicalDeviceProperties2KHR = (PFN_vkGetPhysicalDeviceProperties2KHR)
+		vkGetInstanceProcAddr(ini->instance, "vkGetPhysicalDeviceProperties2KHR");
+	if (!ini->api.vkGetPhysicalDeviceProperties2KHR) {
+		wlr_log(WLR_ERROR, "vkGetPhysicalDeviceProperties2KHR not found");
+		goto error;
+	}
+
+	ini->api.vkGetPhysicalDeviceFeatures2KHR = (PFN_vkGetPhysicalDeviceFeatures2KHR)
+		vkGetInstanceProcAddr(ini->instance, "vkGetPhysicalDeviceFeatures2KHR");
+	if (!ini->api.vkGetPhysicalDeviceFeatures2KHR) {
+		wlr_log(WLR_ERROR, "vkGetPhysicalDeviceFeatures2KHR not found");
+		goto error;
+	}
+
 	return ini;
 
 error:
@@ -328,7 +342,7 @@ VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd) 
 			props.pNext = &driver_props;
 		}
 
-		vkGetPhysicalDeviceProperties2(phdev, &props);
+		ini->api.vkGetPhysicalDeviceProperties2KHR(phdev, &props);
 
 		if (has_driver_props) {
 			wlr_log(WLR_INFO, "  Driver name: %s (%s)", driver_props.driverName, driver_props.driverInfo);
@@ -419,7 +433,7 @@ VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd) 
 	return VK_NULL_HANDLE;
 }
 
-int vulkan_open_phdev_drm_fd(VkPhysicalDevice phdev) {
+int vulkan_open_phdev_drm_fd(struct wlr_vk_instance *ini, VkPhysicalDevice phdev) {
 	// vulkan_find_drm_phdev() already checks that VK_EXT_physical_device_drm
 	// is supported
 	VkPhysicalDeviceDrmPropertiesEXT drm_props = {
@@ -429,7 +443,7 @@ int vulkan_open_phdev_drm_fd(VkPhysicalDevice phdev) {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
 		.pNext = &drm_props,
 	};
-	vkGetPhysicalDeviceProperties2(phdev, &props);
+	ini->api.vkGetPhysicalDeviceProperties2KHR(phdev, &props);
 
 	dev_t devid;
 	if (drm_props.hasRender) {
@@ -610,7 +624,7 @@ struct wlr_vk_device *vulkan_device_create(struct wlr_vk_instance *ini,
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
 		.pNext = &phdev_sampler_ycbcr_features,
 	};
-	vkGetPhysicalDeviceFeatures2(phdev, &phdev_features);
+	ini->api.vkGetPhysicalDeviceFeatures2KHR(phdev, &phdev_features);
 
 	dev->sampler_ycbcr_conversion = phdev_sampler_ycbcr_features.samplerYcbcrConversion;
 	wlr_log(WLR_DEBUG, "Sampler YCbCr conversion %s",

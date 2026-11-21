@@ -23,6 +23,8 @@ struct wlr_vk_instance {
 	struct {
 		PFN_vkCreateDebugUtilsMessengerEXT createDebugUtilsMessengerEXT;
 		PFN_vkDestroyDebugUtilsMessengerEXT destroyDebugUtilsMessengerEXT;
+		PFN_vkGetPhysicalDeviceProperties2KHR vkGetPhysicalDeviceProperties2KHR;
+		PFN_vkGetPhysicalDeviceFeatures2KHR vkGetPhysicalDeviceFeatures2KHR;
 	} api;
 };
 
@@ -75,7 +77,7 @@ struct wlr_vk_device {
 // Tries to find the VkPhysicalDevice for the given drm fd.
 // Might find none and return VK_NULL_HANDLE.
 VkPhysicalDevice vulkan_find_drm_phdev(struct wlr_vk_instance *ini, int drm_fd);
-int vulkan_open_phdev_drm_fd(VkPhysicalDevice phdev);
+int vulkan_open_phdev_drm_fd(struct wlr_vk_instance *ini, VkPhysicalDevice phdev);
 
 // Creates a device for the given instance and physical device.
 struct wlr_vk_device *vulkan_device_create(struct wlr_vk_instance *ini,

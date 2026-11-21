@@ -3098,7 +3098,7 @@ struct wlr_renderer *wlr_vk_renderer_create_with_drm_fd(int drm_fd) {
 
 	// Do not use the drm_fd that was passed in: we should prefer the render
 	// node even if a primary node was provided
-	dev->drm_fd = vulkan_open_phdev_drm_fd(phdev);
+	dev->drm_fd = vulkan_open_phdev_drm_fd(ini, phdev);
 
 	return vulkan_renderer_create_for_device(dev);
 
