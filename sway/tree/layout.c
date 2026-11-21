@@ -434,7 +434,7 @@ static void overview_virtual_output_recompute_scale(struct sway_virtual_output *
 			wlr_scene_node_reparent(&child->jump.name_tree->node, output->layers.shell_overlay);
 			// Only save fullscreen state when entering overview, not on a
 			// recompute (it has already been disabled)
-			if (child->layers.tiling->node.info.workspace != child) {
+			if (wlr_scene_node_info_get_workspace(&child->layers.tiling->node) != child) {
 				child->layout.fullscreen = child->fullscreen;
 			}
 			child->jump.x = round(left + gapx + c * (scale * width + gapx));
@@ -442,7 +442,7 @@ static void overview_virtual_output_recompute_scale(struct sway_virtual_output *
 			child->jump.width = ceil(scale * width);
 			child->jump.height = ceil(scale * height);
 			child->jump.scale = scale;
-			child->layers.tiling->node.info.workspace = child;
+			wlr_scene_node_info_set_workspace(&child->layers.tiling->node, child);
 			node_set_dirty(&child->node);
 			if (child->fullscreen) {
 				container_set_fullscreen(child->fullscreen, FULLSCREEN_NONE);
@@ -451,7 +451,7 @@ static void overview_virtual_output_recompute_scale(struct sway_virtual_output *
 			workspace_name_decoration(child, true);
 			for (int f = 0; f < child->floating->length; ++f) {
 				struct sway_container *con = child->floating->items[f];
-				con->scene_tree->node.info.workspace = child;
+				wlr_scene_node_info_set_workspace(&con->scene_tree->node, child);
 			}
 		}
 	}
@@ -501,7 +501,7 @@ void layout_overview_workspaces(bool on) {
 				workspace_name_decoration(child, false);
 				wlr_scene_node_reparent(&child->jump.text_tree->node, root->staging);
 				wlr_scene_node_reparent(&child->jump.name_tree->node, root->staging);
-				child->layers.tiling->node.info.workspace = NULL;
+				wlr_scene_node_info_set_workspace(&child->layers.tiling->node, NULL);
 				node_set_dirty(&child->node);
 				if (child->layout.fullscreen) {
 					container_set_fullscreen(child->layout.fullscreen, FULLSCREEN_WORKSPACE);
@@ -509,7 +509,7 @@ void layout_overview_workspaces(bool on) {
 				}
 				for (int f = 0; f < child->floating->length; ++f) {
 					struct sway_container *con = child->floating->items[f];
-					con->scene_tree->node.info.workspace = NULL;
+					wlr_scene_node_info_set_workspace(&con->scene_tree->node, NULL);
 				}
 				// Clean-up empty, non-active workspaces when we exit workspaces overview mode
 				workspace_consider_destroy(child);

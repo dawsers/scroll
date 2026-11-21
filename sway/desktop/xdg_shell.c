@@ -51,8 +51,8 @@ static void popup_unconstrain(struct sway_xdg_popup *popup) {
 		// is null if in the scratchpad
 		return;
 	}
-	popup->scene_tree->node.info.workspace =
-		layout_overview_workspaces_enabled() ? workspace : NULL;
+	wlr_scene_node_info_set_workspace(&popup->scene_tree->node,
+		layout_overview_workspaces_enabled() ? workspace : NULL);
 
 	struct sway_layout_transform transform;
 	layout_transform_container_get(view->container, false, &transform);

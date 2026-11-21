@@ -1072,7 +1072,7 @@ void container_set_floating(struct sway_container *container, bool enable) {
 		container->toggle_size.height = container->pending.height;
 
 		if (layout_overview_workspaces_enabled()) {
-			container->scene_tree->node.info.workspace = workspace;
+			wlr_scene_node_info_set_workspace(&container->scene_tree->node, workspace);
 		}
 
 		if (old_parent) {
@@ -1090,7 +1090,7 @@ void container_set_floating(struct sway_container *container, bool enable) {
 			container->view->natural_height = container->pending.content_height;
 		}
 		if (layout_overview_workspaces_enabled()) {
-			container->scene_tree->node.info.workspace = NULL;
+			wlr_scene_node_info_set_workspace(&container->scene_tree->node, NULL);
 		}
 		if (container->scratchpad) {
 			root_scratchpad_remove_container(container);

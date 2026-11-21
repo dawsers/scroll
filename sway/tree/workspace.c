@@ -314,6 +314,7 @@ void workspace_destroy(struct sway_workspace *workspace) {
 	animated_variable_release(&workspace->animation.pan_x);
 	animated_variable_release(&workspace->animation.pan_y);
 	node_map_remove(&workspace->node);
+	wlr_scene_node_info_reset_workspace(&root->root_scene->tree.node, workspace);
 
 	scene_node_disown_children(workspace->layers.tiling);
 	scene_node_disown_children(workspace->layers.fullscreen);
@@ -1209,9 +1210,8 @@ void workspace_add_floating(struct sway_workspace *workspace,
 	}
 	list_add(workspace->floating, con);
 	con->pending.workspace = workspace;
-	if (layout_overview_workspaces_enabled()) {
-		con->scene_tree->node.info.workspace = workspace;
-	}
+	wlr_scene_node_info_set_workspace(&con->scene_tree->node,
+		layout_overview_workspaces_enabled() ? workspace : NULL);
 	container_for_each_child(con, set_workspace, NULL);
 	container_handle_fullscreen_reparent(con);
 	node_set_dirty(&workspace->node);

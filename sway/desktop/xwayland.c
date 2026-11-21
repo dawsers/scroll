@@ -139,8 +139,8 @@ static void unmanaged_handle_map(struct wl_listener *listener, void *data) {
 		struct sway_workspace *workspace =
 			view && view->container && view->container->pending.workspace ?
 			view->container->pending.workspace : NULL;
-		surface->surface_scene->buffer->node.info.workspace =
-			layout_overview_workspaces_enabled() ? workspace : NULL;
+		wlr_scene_node_info_set_workspace(&surface->surface_scene->buffer->node,
+			layout_overview_workspaces_enabled() ? workspace : NULL);
 
 		wlr_scene_node_set_position(&surface->surface_scene->buffer->node,
 			round(x), round(y));

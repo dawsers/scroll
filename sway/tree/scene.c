@@ -107,15 +107,17 @@ static void *scene_node_get_workspace(struct wlr_scene_node *node) {
 	if (node->type == WLR_SCENE_NODE_TREE) {
 		tree = wlr_scene_tree_from_node(node);
 	} else {
-		if (node->info.workspace != NULL) {
-			return node->info.workspace;
+		void *workspace =wlr_scene_node_info_get_workspace(node);
+		if (workspace != NULL) {
+			return workspace;
 		}
 		tree = node->parent;
 	}
 
 	while (tree != NULL) {
-		if (tree->node.info.workspace != NULL) {
-			return tree->node.info.workspace;
+		void *workspace =wlr_scene_node_info_get_workspace(&tree->node);
+		if (workspace != NULL) {
+			return workspace;
 		}
 		tree = tree->node.parent;
 	}

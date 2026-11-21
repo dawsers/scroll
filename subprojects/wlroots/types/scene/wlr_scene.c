@@ -816,6 +816,29 @@ static void restack_xwayland_surface(struct wlr_scene_node *node,
 }
 #endif
 
+void *wlr_scene_node_info_get_workspace(struct wlr_scene_node *node) {
+	return node->info.workspace;
+}
+
+void wlr_scene_node_info_set_workspace(struct wlr_scene_node *node,
+		void *workspace) {
+	node->info.workspace = workspace;
+}
+
+void wlr_scene_node_info_reset_workspace(struct wlr_scene_node *node,
+		void *workspace) {
+	if (node->info.workspace == workspace) {
+		node->info.workspace = NULL;
+	}
+	if (node->type == WLR_SCENE_NODE_TREE) {
+		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
+		struct wlr_scene_node *child;
+		wl_list_for_each(child, &tree->children, link) {
+			wlr_scene_node_info_reset_workspace(child, workspace);
+		}
+	}
+}
+
 struct wlr_output *wlr_scene_node_info_get_output(struct wlr_scene_node *node) {
 	struct wlr_scene_tree *tree;
 	if (node->type == WLR_SCENE_NODE_TREE) {

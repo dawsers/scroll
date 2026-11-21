@@ -467,6 +467,24 @@ void wlr_scene_node_info_set_output_box(struct wlr_scene_node *node,
 	struct wlr_box *box);
 
 /**
+ * Return the workspace that owns this node.
+*/
+void *wlr_scene_node_info_get_workspace(struct wlr_scene_node *node);
+
+/**
+ * Set the workspace that owns this node.
+ */
+void wlr_scene_node_info_set_workspace(struct wlr_scene_node *node,
+	void *workspace);
+
+/**
+ * Reset the workspace that owns this node and its children. Called when
+ * the workspace pointer is about to be released.
+ */
+void wlr_scene_node_info_reset_workspace(struct wlr_scene_node *node,
+	void *workspace);
+
+/**
  * Create a new scene-graph.
  *
  * The graph is also a struct wlr_scene_node. Associated resources can be
