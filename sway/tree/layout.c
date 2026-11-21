@@ -3202,8 +3202,8 @@ enum sway_layout_pin layout_pin_get_position(struct sway_workspace *workspace) {
 // Toggle a selection: depending on mode, chooses a top level or view container
 void layout_selection_toggle(struct sway_container *container) {
 	struct sway_workspace *workspace = container->pending.workspace;
-	if (layout_get_type(workspace) == layout_modifiers_get_mode(workspace) &&
-		container->pending.parent) {
+	if (workspace && container->pending.parent &&
+			layout_get_type(workspace) == layout_modifiers_get_mode(workspace)) {
 		container = container->pending.parent;
 	}
 	container->selected = !container->selected;
