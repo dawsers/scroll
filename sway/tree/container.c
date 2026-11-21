@@ -1623,6 +1623,8 @@ static void container_fullscreen_global(struct sway_container *con) {
 	con->saved_y = con->pending.y;
 	con->saved_width = con->pending.width;
 	con->saved_height = con->pending.height;
+	con->pending.fullscreen_mode = FULLSCREEN_GLOBAL;
+	con->fullscreen = false;
 
 	struct sway_seat *seat;
 	wl_list_for_each(seat, &server.input->seats, link) {
@@ -1632,7 +1634,6 @@ static void container_fullscreen_global(struct sway_container *con) {
 		}
 	}
 
-	con->pending.fullscreen_mode = FULLSCREEN_GLOBAL;
 	container_end_mouse_operation(con);
 	ipc_event_window(con, "fullscreen_mode");
 	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
@@ -1727,6 +1728,9 @@ void container_set_fullscreen(struct sway_container *con,
 			}
 			if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
 				container_fullscreen_disable(con);
+			}
+			if (workspace->fullscreen) {
+				container_fullscreen_disable(workspace->fullscreen);
 			}
 			container_fullscreen_global(con);
 		}
