@@ -33,6 +33,7 @@ static void layer_surface_configure_destroy(
 static void layer_surface_reset(struct wlr_layer_surface_v1 *surface) {
 	surface->configured = false;
 	surface->initialized = false;
+	surface->scheduled.width = surface->scheduled.height = 0;
 
 	struct wlr_xdg_popup *popup, *popup_tmp;
 	wl_list_for_each_safe(popup, popup_tmp, &surface->popups, link) {
