@@ -1607,6 +1607,9 @@ An array of space objects, each containing the following properties:
 |- name
 :  string
 :  Name of the space
+|- layout
+:  string
+:  Original layout of the space: _horizontal_, _vertical_ or _none_
 |- tiling
 :  array
 :  Array of tiling space container objects
@@ -1619,6 +1622,35 @@ Each space container object has the following properties:
 [- *PROPERTY*
 :- *DATA TYPE*
 :- *DESCRIPTION*
+|- layout
+:  string
+:  Original layout of the container: _horizontal_, _vertical_ or _none_
+|- x
+:  number
+:  Saved x position. For tiling containers, in layout coordinates. For
+   floating containers, a fraction of the output's width, relative to the
+   output's origin
+|- y
+:  number
+:  Saved y position, in the same units as _x_
+|- width
+:  number
+:  Saved width. For floating containers, a fraction of the output's width
+|- height
+:  number
+:  Saved height. For floating containers, a fraction of the output's height
+|- width_fraction
+:  number
+:  Fraction of the viewport width the container occupies
+|- height_fraction
+:  number
+:  Fraction of the viewport height the container occupies
+|- focused
+:  boolean
+:  Whether this container was focused when the space was saved
+|- focused_inactive
+:  boolean
+:  Whether this container is the focused inactive child of its parent
 |- children
 :  array
 :  If it has children, an array with its space containers
@@ -1633,45 +1665,66 @@ A space view object has the following properties:
 :- *DESCRIPTION*
 |- con_id
 :  integer
-:  Container id of the view
+:  Container id of the view, or _null_ if the view was unmapped after the
+   space was saved
 |- app_id or class
 :  string
 :  If a Wayland app, its app_id, if XWayland, its class
 |- title
 :  string
 :  Title of the window
+|- content_scale
+:  number
+:  Saved content scale of the view
 
 *Example Reply:*
 ```
 [
   {
     "name": "1",
+	"layout": "horizontal",
     "tiling": [
       {
+        "layout": "vertical",
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1280.0,
+        "height": 1440.0,
+        "width_fraction": 0.5,
+        "height_fraction": 1.0,
+        "focused": false,
+        "focused_inactive": false,
         "children": [
           {
+            "layout": "none",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1280.0,
+            "height": 720.0,
+            "width_fraction": 0.5,
+            "height_fraction": 0.5,
+            "focused": true,
+            "focused_inactive": true,
             "view": {
               "con_id": 6,
               "app_id": "kitty",
-              "title": "~\/work"
-            }
-          }
-        ]
-      },
-      {
-        "children": [
-          {
-            "view": {
-              "con_id": 8,
-              "app_id": "kitty",
-              "title": "top"
+              "title": "~\/work",
+              "content_scale": 1.0
             }
           },
           {
+            "layout": "none",
+            "x": 0.0,
+            "y": 720.0,
+            "width": 1280.0,
+            "height": 720.0,
+            "width_fraction": 0.5,
+            "height_fraction": 0.5,
+            "focused": false,
+            "focused_inactive": false,
             "view": {
-              "con_id": 10,
-              "app_id": "kitty",
-              "title": "\/"
+              "con_id": null,
+              "content_scale": 1.0
             }
           }
         ]
@@ -1679,17 +1732,20 @@ A space view object has the following properties:
     ],
     "floating": [
       {
-        "view": {
-          "con_id": 11,
-          "app_id": "kitty",
-          "title": "nvim"
-        }
-      },
-      {
+        "layout": "none",
+        "x": 0.25,
+        "y": 0.25,
+        "width": 0.5,
+        "height": 0.5,
+        "width_fraction": 0.5,
+        "height_fraction": 0.5,
+        "focused": false,
+        "focused_inactive": false,
         "view": {
           "con_id": 13,
           "app_id": "firefox",
-          "title": ""
+          "title": "",
+          "content_scale": 1.0
         }
       }
     ]

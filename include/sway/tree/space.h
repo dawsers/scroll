@@ -10,17 +10,17 @@ enum sway_space_restore {
 };
 
 struct sway_space_view {
-    struct sway_view *view;
-    struct wl_listener view_unmap;
-    struct sway_space_container *container;
+	struct sway_view *view;
+	struct wl_listener view_unmap;
+	struct sway_space_container *container;
 	float content_scale;
 };
 
 struct sway_space_container {
-    list_t *children; // struct sway_space_container
-    struct sway_space_view *view;
+	list_t *children; // struct sway_space_container
+	struct sway_space_view *view;
 
-    struct sway_space_container *focused_inactive; // focused inactive child
+	struct sway_space_container *focused_inactive; // focused inactive child
 	// Fraction of the viewport size this container occupies
 	double width_fraction;
 	double height_fraction;
@@ -30,11 +30,15 @@ struct sway_space_container {
 };
 
 struct sway_space {
-    char *name;
-    list_t *tiling; // struct sway_space_container *
-    list_t *floating;
-    struct sway_space_container *focused;
+	char *name;
+	enum sway_container_layout layout;
+	list_t *tiling; // struct sway_space_container *
+	list_t *floating;
+	struct sway_space_container *focused;
 };
+
+// Return the space with name, or NULL if it doesn't exist
+struct sway_space *space_find(const char *name);
 
 // Save the current workspace configuration into a space with name
 void space_save(struct sway_workspace *workspace, const char *name);
@@ -44,7 +48,8 @@ void space_save(struct sway_workspace *workspace, const char *name);
 // If it is SPACE_RESTORE_CLOSE, close any views not belonging to the space.
 // If it is SPACE_RESTORE_HIDE, hide any views not belonging to the space in the
 // scratchpad.
-void space_load(struct sway_workspace *workspace, const char *name, enum sway_space_restore restore);
+void space_load(
+		struct sway_workspace *workspace, const char *name, enum sway_space_restore restore);
 
 // Delete a space if it exists
 void space_delete(const char *name);

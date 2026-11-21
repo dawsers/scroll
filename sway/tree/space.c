@@ -21,13 +21,30 @@ static void detach_container(struct sway_container *container) {
 	}
 }
 
-static void fill_container(struct sway_space_container *space_container,
-		struct sway_container *container) {
+static enum sway_container_layout container_layout(struct sway_space *space,
+		struct sway_workspace *workspace, struct sway_space_container *container) {
+	if (!workspace || space->layout == workspace->layout.type) {
+		return container->layout;
+	} else {
+		switch (container->layout) {
+		case L_NONE:
+		default:
+			return L_NONE;
+		case L_HORIZ:
+			return L_VERT;
+		case L_VERT:
+			return L_HORIZ;
+		}
+	}
+}
+
+static void fill_container(struct sway_space *space, struct sway_workspace *workspace,
+		struct sway_space_container *space_container, struct sway_container *container) {
 	container->width_fraction = space_container->width_fraction;
 	container->height_fraction = space_container->height_fraction;
-	container->pending.layout = space_container->layout;
-	if (container_is_floating(container) && container->pending.workspace) {
-		struct sway_output *output = container->pending.workspace->output;
+	container->pending.layout = container_layout(space, workspace, space_container);
+	if (container_is_floating(container) && workspace) {
+		struct sway_output *output = workspace->output;
 		container->pending.x = output->width * space_container->x + output->lx;
 		container->pending.y = output->height * space_container->y + output->ly;
 		container->pending.width = space_container->width * output->width;
@@ -58,20 +75,20 @@ static void space_restored_add(list_t *restored,
 	list_add(restored, item);
 }
 
-static struct sway_container *layout_space_container_restore_tiling(struct sway_workspace *workspace,
-		struct sway_space_container *space_container,
+static struct sway_container *layout_space_container_restore_tiling(struct sway_space *space,
+		struct sway_workspace *workspace, struct sway_space_container *space_container,
 		struct sway_space_container *focused, struct sway_container *parent,
 		list_t *view_float, list_t *restored) {
 	if (space_container->children) {
 		struct sway_container *parent = container_create(NULL);
 		parent->pending.workspace = workspace;
-		parent->pending.layout = space_container->layout;
+		parent->pending.layout = container_layout(space, workspace, space_container);
 		parent->pending.focused_inactive_child = NULL;
 		bool has_children = false;
 		for (int i = 0; i < space_container->children->length; ++i) {
 			struct sway_space_container *space_con = space_container->children->items[i];
-			struct sway_container *child = layout_space_container_restore_tiling(workspace,
-				space_con, focused, parent, view_float, restored);
+			struct sway_container *child = layout_space_container_restore_tiling(space,
+				workspace, space_con, focused, parent, view_float, restored);
 			if (child) {
 				has_children = true;
 			}
@@ -80,7 +97,7 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 			}
 		}
 		if (has_children) {
-			fill_container(space_container, parent);
+			fill_container(space, workspace, space_container, parent);
 			space_restored_add(restored, space_container, parent);
 			container_update_representation(parent);
 			node_set_dirty(&parent->node);
@@ -114,7 +131,7 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 			arrange_container(container);
 			node_set_dirty(&container->node);
 			list_add(parent->pending.children, container);
-			fill_container(space_container, container);
+			fill_container(space, workspace, space_container, container);
 			space_restored_add(restored, space_container, container);
 			container_update_representation(container);
 			node_set_dirty(&parent->node);
@@ -132,7 +149,8 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 	return NULL;
 }
 
-static void layout_space_container_restore_floating(struct sway_workspace *workspace,
+static void layout_space_container_restore_floating(struct sway_space *space,
+		struct sway_workspace *workspace,
 		struct sway_space_container *space_container,
 		struct sway_space_container *focused, list_t *view_float) {
 	if (space_container->view) {
@@ -159,7 +177,7 @@ static void layout_space_container_restore_floating(struct sway_workspace *works
 			arrange_container(container);
 			node_set_dirty(&container->node);
 			list_add(workspace->floating, container);
-			fill_container(space_container, container);
+			fill_container(space, workspace, space_container, container);
 			container_update_representation(container);
 		}
 		if (space_container == focused) {
@@ -252,11 +270,11 @@ void layout_space_restore(struct sway_space *space, struct sway_workspace *works
 	list_t *restored = create_list();
 	for (int i = 0; i < space->tiling->length; ++i) {
 		struct sway_space_container *container = space->tiling->items[i];
-		layout_space_container_restore_tiling(workspace, container, space->focused, NULL, view_float, restored);
+		layout_space_container_restore_tiling(space, workspace, container, space->focused, NULL, view_float, restored);
 	}
 	for (int i = 0; i < space->floating->length; ++i) {
 		struct sway_space_container *container = space->floating->items[i];
-		layout_space_container_restore_floating(workspace, container, space->focused, view_float);
+		layout_space_container_restore_floating(space, workspace, container, space->focused, view_float);
 	}
 	// The workspace may have been arranged while it was being restored (when
 	// setting focus, for example), moving the containers restored until then.
@@ -315,6 +333,7 @@ static struct sway_space_container *space_container_create(struct sway_container
 		}
 	} else {
 		space_container->children = NULL;
+		space_container->focused_inactive = NULL;
 	}
 	if (container->view) {
 		space_container->view = space_view_create(container->view, space_container,
@@ -354,11 +373,13 @@ static void space_container_destroy(struct sway_space_container *container) {
 	free(container);
 }
 
-static struct sway_space *space_create(const char *name) {
+static struct sway_space *space_create(const char *name, struct sway_workspace *workspace) {
 	struct sway_space *space = malloc(sizeof(struct sway_space));
 	space->name = strdup(name);
+	space->layout = workspace->layout.type;
 	space->tiling = create_list();
 	space->floating = create_list();
+	space->focused = NULL;
 	list_add(root->spaces, space);
 	return space;
 }
@@ -382,7 +403,7 @@ static void space_destroy(struct sway_space *space) {
 	free(space);
 }
 
-static struct sway_space *find_space(const char *name) {
+struct sway_space *space_find(const char *name) {
 	for (int i = 0; i < root->spaces->length; ++i) {
 		struct sway_space *space = root->spaces->items[i];
 		if (strcmp(space->name, name) == 0) {
@@ -394,11 +415,11 @@ static struct sway_space *find_space(const char *name) {
 
 // Save the current workspace configuration into a space with name
 void space_save(struct sway_workspace *workspace, const char *name) {
-	struct sway_space *space = find_space(name);
+	struct sway_space *space = space_find(name);
 	if (space) {
 		space_destroy(space);
 	}
-	space = space_create(name);
+	space = space_create(name, workspace);
 
 	struct sway_seat *seat = input_manager_current_seat();
 	struct sway_container *focused = seat_get_focused_container(seat);
@@ -427,7 +448,7 @@ void space_save(struct sway_workspace *workspace, const char *name) {
 // If it is SPACE_RESTORE_HIDE, hide any views not belonging to the space in the
 // scratchpad.
 void space_load(struct sway_workspace *workspace, const char *name, enum sway_space_restore restore) {
-	struct sway_space *space = find_space(name);
+	struct sway_space *space = space_find(name);
 	if (!space) {
 		return;
 	}
@@ -435,7 +456,7 @@ void space_load(struct sway_workspace *workspace, const char *name, enum sway_sp
 }
 
 void space_delete(const char *name) {
-	struct sway_space *space = find_space(name);
+	struct sway_space *space = space_find(name);
 	if (space) {
 		space_destroy(space);
 	}

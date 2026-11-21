@@ -2593,6 +2593,53 @@ local process_data = scroll.exec_process("kitty")
 *root_get_outputs()*
 	Returns an array with all the outputs (displays).
 
+*root_get_spaces()*
+	Returns an array with the names of all the existing spaces.
+
+*space_get(name)*
+	Returns a table describing the space _name_, as returned by
+	_root_get_spaces()_, or nil if it doesn't exist. The table contains the
+	same data as each space in the reply of the IPC _GET_SPACES_ message (see
+	*scroll-ipc*(7)):
+
+	_name_: the name of the space
+
+	_layout_: the original layout of the space
+
+	_tiling_: an array with the space's tiling containers
+
+	_floating_: an array with the space's floating containers
+
+	Each space container is a table with these keys and values:
+
+	_layout_: "horizontal", "vertical" or "none"
+
+	_x_, _y_, _width_, _height_: the saved geometry. For tiling containers,
+	in layout coordinates. For floating containers, as fractions of the
+	output's size, relative to the output's origin
+
+	_width_fraction_, _height_fraction_: the fraction of the viewport size
+	the container occupies
+
+	_focused_: true if this is the container that was focused when the space
+	was saved
+
+	_focused_inactive_: true if this is the focused inactive child of its
+	parent container
+
+	_children_: if the container has children, an array with them
+
+	_view_: if the container is a leaf, a table describing its view, with
+	keys _con_id_ (the ID of the view's container, nil if the view was
+	unmapped after saving the space), _app_id_ (Wayland) or _class_
+	(XWayland), _title_ and _content_scale_
+
+*space_get_json(name)*
+	Returns a string with the JSON description of the space _name_, the same
+	object returned for it by the IPC _GET_SPACES_ message and described in
+	_space_get(name)_, or nil if it doesn't exist. Unlike _space_get(name)_,
+	unmapped views have an explicit _"con_id": null_.
+
 *scratchpad_get_containers()*
 	Returns an array with all the containers in the scratchpad.
 

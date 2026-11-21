@@ -14,6 +14,8 @@
 #include "sway/desktop/animate.h"
 #include "sway/desktop/launcher.h"
 #include "sway/ipc-server.h"
+#include "sway/ipc-json.h"
+#include "sway/tree/space.h"
 #include "sway/desktop/transaction.h"
 #include "sway/server.h"
 #include "stringop.h"
@@ -1864,6 +1866,46 @@ static int scroll_root_get_outputs(lua_State *L) {
 	return 1;
 }
 
+static int scroll_root_get_spaces(lua_State *L) {
+	lua_checkstack(L, STACK_MIN);
+	lua_createtable(L, root->spaces->length, 0);
+	for (int i = 0; i < root->spaces->length; ++i) {
+		struct sway_space *space = root->spaces->items[i];
+		lua_pushstring(L, space->name);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+static int scroll_space_get(lua_State *L) {
+	int argc = lua_gettop(L);
+	const char *name = argc > 0 ? lua_tostring(L, -1) : NULL;
+	struct sway_space *space = name ? space_find(name) : NULL;
+	if (!space) {
+		lua_pushnil(L);
+		return 1;
+	}
+	// Use the same description as IPC GET_SPACES, so both always match.
+	json_object *obj = ipc_json_describe_space(space);
+	json_to_lua(L, obj);
+	json_object_put(obj);
+	return 1;
+}
+
+static int scroll_space_get_json(lua_State *L) {
+	int argc = lua_gettop(L);
+	const char *name = argc > 0 ? lua_tostring(L, -1) : NULL;
+	struct sway_space *space = name ? space_find(name) : NULL;
+	if (!space) {
+		lua_pushnil(L);
+		return 1;
+	}
+	json_object *obj = ipc_json_describe_space(space);
+	lua_pushstring(L, json_object_to_json_string(obj));
+	json_object_put(obj);
+	return 1;
+}
+
 // local id = scroll.add_callback(event, on_create, data)
 static int scroll_add_callback(lua_State *L) {
 	int argc = lua_gettop(L);
@@ -2102,6 +2144,9 @@ static luaL_Reg const scroll_lib[] = {
 	{ "output_get_virtual_outputs", scroll_output_get_virtual_outputs },
 	{ "output_get_workspaces", scroll_output_get_workspaces },
 	{ "root_get_outputs", scroll_root_get_outputs },
+	{ "root_get_spaces", scroll_root_get_spaces },
+	{ "space_get", scroll_space_get },
+	{ "space_get_json", scroll_space_get_json },
 	{ "scratchpad_get_containers", scroll_scratchpad_get_containers },
 	{ "scratchpad_show", scroll_scratchpad_show },
 	{ "scratchpad_hide", scroll_scratchpad_hide },
