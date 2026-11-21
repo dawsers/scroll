@@ -11,6 +11,7 @@
 
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_output_layout.h>
+#include <wlr/util/box.h>
 
 struct wlr_input_device;
 struct wlr_surface;
@@ -26,12 +27,7 @@ struct wlr_xcursor_manager;
  * position updates to the hardware cursor, constrain specific input devices to
  * specific outputs or regions of the screen, and so on.
  */
-
-struct wlr_box;
-struct wlr_cursor_state;
-
 struct wlr_cursor {
-	struct wlr_cursor_state *state;
 	double x, y;
 
 	/**
@@ -76,6 +72,37 @@ struct wlr_cursor {
 	} events;
 
 	void *data;
+
+	struct {
+		struct wl_list devices; // wlr_cursor_device.link
+		struct wl_list output_cursors; // wlr_cursor_output_cursor.link
+		struct wlr_output_layout *layout;
+		struct wlr_output *mapped_output;
+		struct wlr_box mapped_box; // empty if unset
+
+		struct wl_listener layout_add;
+		struct wl_listener layout_change;
+		struct wl_listener layout_destroy;
+
+		// only when using a buffer as the cursor image
+		struct wlr_buffer *buffer;
+		struct {
+			int32_t x, y;
+		} buffer_hotspot;
+		float buffer_scale;
+
+		// only when using a surface as the cursor image
+		struct wlr_surface *surface;
+		struct {
+			int32_t x, y;
+		} surface_hotspot;
+		struct wl_listener surface_commit;
+		struct wl_listener surface_destroy;
+
+		// only when using an XCursor as the cursor image
+		struct wlr_xcursor_manager *xcursor_manager;
+		char *xcursor_name;
+	} WLR_PRIVATE;
 };
 
 struct wlr_cursor *wlr_cursor_create(void);

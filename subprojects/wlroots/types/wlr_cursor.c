@@ -71,51 +71,15 @@ struct wlr_cursor_output_cursor {
 	float xcursor_scale;
 };
 
-struct wlr_cursor_state {
-	struct wlr_cursor cursor;
-
-	struct wl_list devices; // wlr_cursor_device.link
-	struct wl_list output_cursors; // wlr_cursor_output_cursor.link
-	struct wlr_output_layout *layout;
-	struct wlr_output *mapped_output;
-	struct wlr_box mapped_box; // empty if unset
-
-	struct wl_listener layout_add;
-	struct wl_listener layout_change;
-	struct wl_listener layout_destroy;
-
-	// only when using a buffer as the cursor image
-	struct wlr_buffer *buffer;
-	struct {
-		int32_t x, y;
-	} buffer_hotspot;
-	float buffer_scale;
-
-	// only when using a surface as the cursor image
-	struct wlr_surface *surface;
-	struct {
-		int32_t x, y;
-	} surface_hotspot;
-	struct wl_listener surface_commit;
-	struct wl_listener surface_destroy;
-
-	// only when using an XCursor as the cursor image
-	struct wlr_xcursor_manager *xcursor_manager;
-	char *xcursor_name;
-};
-
 struct wlr_cursor *wlr_cursor_create(void) {
-	struct wlr_cursor_state *state = calloc(1, sizeof(*state));
-	if (!state) {
-		wlr_log(WLR_ERROR, "Failed to allocate wlr_cursor_state");
+	struct wlr_cursor *cur = calloc(1, sizeof(*cur));
+	if (!cur) {
+		wlr_log(WLR_ERROR, "Failed to allocate wlr_cursor");
 		return NULL;
 	}
-	struct wlr_cursor *cur = &state->cursor;
 
-	cur->state = state;
-
-	wl_list_init(&cur->state->devices);
-	wl_list_init(&cur->state->output_cursors);
+	wl_list_init(&cur->devices);
+	wl_list_init(&cur->output_cursors);
 
 	// pointer signals
 	wl_signal_init(&cur->events.motion);
@@ -145,8 +109,8 @@ struct wlr_cursor *wlr_cursor_create(void) {
 	wl_signal_init(&cur->events.tablet_tool_button);
 	wl_signal_init(&cur->events.tablet_tool_proximity);
 
-	wl_list_init(&cur->state->surface_destroy.link);
-	wl_list_init(&cur->state->surface_commit.link);
+	wl_list_init(&cur->surface_destroy.link);
+	wl_list_init(&cur->surface_commit.link);
 
 	cur->x = 100;
 	cur->y = 100;
@@ -166,21 +130,21 @@ static void output_cursor_destroy(struct wlr_cursor_output_cursor *output_cursor
 }
 
 static void cursor_detach_output_layout(struct wlr_cursor *cur) {
-	if (!cur->state->layout) {
+	if (!cur->layout) {
 		return;
 	}
 
 	struct wlr_cursor_output_cursor *output_cursor, *tmp;
-	wl_list_for_each_safe(output_cursor, tmp, &cur->state->output_cursors,
+	wl_list_for_each_safe(output_cursor, tmp, &cur->output_cursors,
 			link) {
 		output_cursor_destroy(output_cursor);
 	}
 
-	wl_list_remove(&cur->state->layout_destroy.link);
-	wl_list_remove(&cur->state->layout_change.link);
-	wl_list_remove(&cur->state->layout_add.link);
+	wl_list_remove(&cur->layout_destroy.link);
+	wl_list_remove(&cur->layout_change.link);
+	wl_list_remove(&cur->layout_add.link);
 
-	cur->state->layout = NULL;
+	cur->layout = NULL;
 }
 
 static void cursor_device_destroy(struct wlr_cursor_device *c_device) {
@@ -224,26 +188,26 @@ static void cursor_device_destroy(struct wlr_cursor_device *c_device) {
 }
 
 static void cursor_reset_image(struct wlr_cursor *cur) {
-	wlr_buffer_unlock(cur->state->buffer);
-	cur->state->buffer = NULL;
+	wlr_buffer_unlock(cur->buffer);
+	cur->buffer = NULL;
 
-	if (cur->state->surface != NULL) {
+	if (cur->surface != NULL) {
 		struct wlr_cursor_output_cursor *output_cursor;
-		wl_list_for_each(output_cursor, &cur->state->output_cursors, link) {
-			wlr_surface_send_leave(cur->state->surface,
+		wl_list_for_each(output_cursor, &cur->output_cursors, link) {
+			wlr_surface_send_leave(cur->surface,
 				output_cursor->output_cursor->output);
 		}
 	}
 
-	wl_list_remove(&cur->state->surface_destroy.link);
-	wl_list_remove(&cur->state->surface_commit.link);
-	wl_list_init(&cur->state->surface_destroy.link);
-	wl_list_init(&cur->state->surface_commit.link);
-	cur->state->surface = NULL;
+	wl_list_remove(&cur->surface_destroy.link);
+	wl_list_remove(&cur->surface_commit.link);
+	wl_list_init(&cur->surface_destroy.link);
+	wl_list_init(&cur->surface_commit.link);
+	cur->surface = NULL;
 
-	cur->state->xcursor_manager = NULL;
-	free(cur->state->xcursor_name);
-	cur->state->xcursor_name = NULL;
+	cur->xcursor_manager = NULL;
+	free(cur->xcursor_name);
+	cur->xcursor_name = NULL;
 }
 
 void wlr_cursor_destroy(struct wlr_cursor *cur) {
@@ -283,17 +247,17 @@ void wlr_cursor_destroy(struct wlr_cursor *cur) {
 	cursor_detach_output_layout(cur);
 
 	struct wlr_cursor_device *device, *device_tmp = NULL;
-	wl_list_for_each_safe(device, device_tmp, &cur->state->devices, link) {
+	wl_list_for_each_safe(device, device_tmp, &cur->devices, link) {
 		cursor_device_destroy(device);
 	}
 
-	free(cur->state);
+	free(cur);
 }
 
 static struct wlr_cursor_device *get_cursor_device(struct wlr_cursor *cur,
 		struct wlr_input_device *device) {
 	struct wlr_cursor_device *c_device, *ret = NULL;
-	wl_list_for_each(c_device, &cur->state->devices, link) {
+	wl_list_for_each(c_device, &cur->devices, link) {
 		if (c_device->device == device) {
 			ret = c_device;
 			break;
@@ -307,7 +271,7 @@ static void output_cursor_move(struct wlr_cursor_output_cursor *output_cursor) {
 	struct wlr_cursor *cur = output_cursor->cursor;
 
 	double output_x = cur->x, output_y = cur->y;
-	wlr_output_layout_output_coords(cur->state->layout,
+	wlr_output_layout_output_coords(cur->layout,
 		output_cursor->output_cursor->output, &output_x, &output_y);
 	wlr_output_cursor_move(output_cursor->output_cursor,
 		output_x, output_y);
@@ -315,7 +279,7 @@ static void output_cursor_move(struct wlr_cursor_output_cursor *output_cursor) {
 
 static void cursor_warp_unchecked(struct wlr_cursor *cur,
 		double lx, double ly) {
-	assert(cur->state->layout);
+	assert(cur->layout);
 	if (!isfinite(lx) || !isfinite(ly)) {
 		assert(false);
 		return;
@@ -325,7 +289,7 @@ static void cursor_warp_unchecked(struct wlr_cursor *cur,
 	cur->y = ly;
 
 	struct wlr_cursor_output_cursor *output_cursor;
-	wl_list_for_each(output_cursor, &cur->state->output_cursors, link) {
+	wl_list_for_each(output_cursor, &cur->output_cursors, link) {
 		output_cursor_move(output_cursor);
 	}
 }
@@ -346,7 +310,7 @@ static void cursor_warp_unchecked(struct wlr_cursor *cur,
  */
 static void get_mapping(struct wlr_cursor *cur,
 		struct wlr_input_device *dev, struct wlr_box *box) {
-	assert(cur->state->layout);
+	assert(cur->layout);
 
 	*box = (struct wlr_box){0};
 
@@ -357,26 +321,26 @@ static void get_mapping(struct wlr_cursor *cur,
 			return;
 		}
 		if (c_device->mapped_output) {
-			wlr_output_layout_get_box(cur->state->layout,
+			wlr_output_layout_get_box(cur->layout,
 				c_device->mapped_output, box);
 			return;
 		}
 	}
 
-	if (!wlr_box_empty(&cur->state->mapped_box)) {
-		*box = cur->state->mapped_box;
+	if (!wlr_box_empty(&cur->mapped_box)) {
+		*box = cur->mapped_box;
 		return;
 	}
-	if (cur->state->mapped_output) {
-		wlr_output_layout_get_box(cur->state->layout,
-			cur->state->mapped_output, box);
+	if (cur->mapped_output) {
+		wlr_output_layout_get_box(cur->layout,
+			cur->mapped_output, box);
 		return;
 	}
 }
 
 bool wlr_cursor_warp(struct wlr_cursor *cur, struct wlr_input_device *dev,
 		double lx, double ly) {
-	assert(cur->state->layout);
+	assert(cur->layout);
 
 	bool result = false;
 	struct wlr_box mapping;
@@ -384,7 +348,7 @@ bool wlr_cursor_warp(struct wlr_cursor *cur, struct wlr_input_device *dev,
 	if (!wlr_box_empty(&mapping)) {
 		result = wlr_box_contains_point(&mapping, lx, ly);
 	} else {
-		result = wlr_output_layout_contains_point(cur->state->layout, NULL,
+		result = wlr_output_layout_contains_point(cur->layout, NULL,
 			lx, ly);
 	}
 
@@ -401,8 +365,8 @@ void wlr_cursor_warp_closest(struct wlr_cursor *cur,
 	get_mapping(cur, dev, &mapping);
 	if (!wlr_box_empty(&mapping)) {
 		wlr_box_closest_point(&mapping, lx, ly, &lx, &ly);
-	} else if (!wl_list_empty(&cur->state->layout->outputs)) {
-		wlr_output_layout_closest_point(cur->state->layout, NULL, lx, ly,
+	} else if (!wl_list_empty(&cur->layout->outputs)) {
+		wlr_output_layout_closest_point(cur->layout, NULL, lx, ly,
 			&lx, &ly);
 	} else {
 		/*
@@ -422,12 +386,12 @@ void wlr_cursor_warp_closest(struct wlr_cursor *cur,
 void wlr_cursor_absolute_to_layout_coords(struct wlr_cursor *cur,
 		struct wlr_input_device *dev, double x, double y,
 		double *lx, double *ly) {
-	assert(cur->state->layout);
+	assert(cur->layout);
 
 	struct wlr_box mapping;
 	get_mapping(cur, dev, &mapping);
 	if (wlr_box_empty(&mapping)) {
-		wlr_output_layout_get_box(cur->state->layout, NULL, &mapping);
+		wlr_output_layout_get_box(cur->layout, NULL, &mapping);
 	}
 
 	*lx = !isnan(x) ? mapping.width * x + mapping.x : cur->x;
@@ -436,7 +400,7 @@ void wlr_cursor_absolute_to_layout_coords(struct wlr_cursor *cur,
 
 void wlr_cursor_warp_absolute(struct wlr_cursor *cur,
 		struct wlr_input_device *dev, double x, double y) {
-	assert(cur->state->layout);
+	assert(cur->layout);
 
 	double lx, ly;
 	wlr_cursor_absolute_to_layout_coords(cur, dev, x, y, &lx, &ly);
@@ -446,7 +410,7 @@ void wlr_cursor_warp_absolute(struct wlr_cursor *cur,
 
 void wlr_cursor_move(struct wlr_cursor *cur, struct wlr_input_device *dev,
 		double delta_x, double delta_y) {
-	assert(cur->state->layout);
+	assert(cur->layout);
 
 	double lx = !isnan(delta_x) ? cur->x + delta_x : cur->x;
 	double ly = !isnan(delta_y) ? cur->y + delta_y : cur->y;
@@ -468,20 +432,20 @@ static void cursor_update_outputs(struct wlr_cursor *cur);
 
 void wlr_cursor_set_buffer(struct wlr_cursor *cur, struct wlr_buffer *buffer,
 		int32_t hotspot_x, int32_t hotspot_y, float scale) {
-	if (buffer == cur->state->buffer &&
-			hotspot_x == cur->state->buffer_hotspot.x &&
-			hotspot_y == cur->state->buffer_hotspot.y &&
-			scale == cur->state->buffer_scale) {
+	if (buffer == cur->buffer &&
+			hotspot_x == cur->buffer_hotspot.x &&
+			hotspot_y == cur->buffer_hotspot.y &&
+			scale == cur->buffer_scale) {
 		return;
 	}
 
 	cursor_reset_image(cur);
 
 	if (buffer != NULL) {
-		cur->state->buffer = wlr_buffer_lock(buffer);
-		cur->state->buffer_hotspot.x = hotspot_x;
-		cur->state->buffer_hotspot.y = hotspot_y;
-		cur->state->buffer_scale = scale;
+		cur->buffer = wlr_buffer_lock(buffer);
+		cur->buffer_hotspot.x = hotspot_x;
+		cur->buffer_hotspot.y = hotspot_y;
+		cur->buffer_scale = scale;
 	}
 
 	cursor_update_outputs(cur);
@@ -533,18 +497,18 @@ static void cursor_output_cursor_update(struct wlr_cursor_output_cursor *output_
 
 	cursor_output_cursor_reset_image(output_cursor);
 
-	if (cur->state->buffer != NULL) {
+	if (cur->buffer != NULL) {
 		struct wlr_renderer *renderer = output->renderer;
 		assert(renderer != NULL);
 
-		struct wlr_buffer *buffer = cur->state->buffer;
-		int32_t hotspot_x = cur->state->buffer_hotspot.x;
-		int32_t hotspot_y = cur->state->buffer_hotspot.y;
-		float scale = cur->state->buffer_scale;
+		struct wlr_buffer *buffer = cur->buffer;
+		int32_t hotspot_x = cur->buffer_hotspot.x;
+		int32_t hotspot_y = cur->buffer_hotspot.y;
+		float scale = cur->buffer_scale;
 
 		struct wlr_texture *texture = NULL;
 		struct wlr_fbox src_box = {0};
-		int dst_width = 0, dst_height = 0;
+		double dst_width = 0, dst_height = 0;
 		if (buffer != NULL) {
 			texture = wlr_texture_from_buffer(renderer, buffer);
 			if (texture) {
@@ -553,20 +517,20 @@ static void cursor_output_cursor_update(struct wlr_cursor_output_cursor *output_
 					.height = texture->height,
 				};
 
-				dst_width = texture->width / scale;
-				dst_height = texture->height / scale;
+				dst_width = (double)texture->width / scale;
+				dst_height = (double)texture->height / scale;
 			}
 		}
 
 		output_cursor_set_texture(output_cursor->output_cursor, texture, true,
 			&src_box, dst_width, dst_height, WL_OUTPUT_TRANSFORM_NORMAL,
 			hotspot_x, hotspot_y, NULL, 0);
-	} else if (cur->state->surface != NULL) {
-		struct wlr_surface *surface = cur->state->surface;
+	} else if (cur->surface != NULL) {
+		struct wlr_surface *surface = cur->surface;
 
 		struct wlr_texture *texture = wlr_surface_get_texture(surface);
-		int32_t hotspot_x = cur->state->surface_hotspot.x;
-		int32_t hotspot_y = cur->state->surface_hotspot.y;
+		int32_t hotspot_x = cur->surface_hotspot.x;
+		int32_t hotspot_y = cur->surface_hotspot.y;
 
 		struct wlr_fbox src_box;
 		wlr_surface_get_buffer_source_box(surface, &src_box);
@@ -608,9 +572,9 @@ static void cursor_output_cursor_update(struct wlr_cursor_output_cursor *output_
 		}
 		wlr_fractional_scale_v1_notify_scale(surface, scale);
 		wlr_surface_set_preferred_buffer_scale(surface, ceil(scale));
-	} else if (cur->state->xcursor_name != NULL) {
-		struct wlr_xcursor_manager *manager = cur->state->xcursor_manager;
-		const char *name = cur->state->xcursor_name;
+	} else if (cur->xcursor_name != NULL) {
+		struct wlr_xcursor_manager *manager = cur->xcursor_manager;
+		const char *name = cur->xcursor_name;
 
 		float scale = output->scale;
 		wlr_xcursor_manager_load(manager, scale);
@@ -662,7 +626,7 @@ static void output_cursor_output_handle_output_commit(
 		cursor_output_cursor_update(output_cursor);
 	}
 
-	struct wlr_surface *surface = output_cursor->cursor->state->surface;
+	struct wlr_surface *surface = output_cursor->cursor->surface;
 	if (surface && output_cursor->output_cursor->visible &&
 			(event->state->committed & WLR_OUTPUT_STATE_BUFFER)) {
 		wlr_surface_send_frame_done(surface, &event->when);
@@ -671,16 +635,16 @@ static void output_cursor_output_handle_output_commit(
 
 static void cursor_update_outputs(struct wlr_cursor *cur) {
 	struct wlr_cursor_output_cursor *output_cursor;
-	wl_list_for_each(output_cursor, &cur->state->output_cursors, link) {
+	wl_list_for_each(output_cursor, &cur->output_cursors, link) {
 		cursor_output_cursor_update(output_cursor);
 	}
 }
 
 void wlr_cursor_set_scale(struct wlr_cursor *cur, float scale) {
-	assert(cur->state->layout);
+	assert(cur->layout);
 
 	struct wlr_cursor_output_cursor *output_cursor;
-	wl_list_for_each(output_cursor, &cur->state->output_cursors, link) {
+	wl_list_for_each(output_cursor, &cur->output_cursors, link) {
 		wlr_output_cursor_set_scale(output_cursor->output_cursor, scale);
 	}
 	cursor_update_outputs(cur);
@@ -688,34 +652,34 @@ void wlr_cursor_set_scale(struct wlr_cursor *cur, float scale) {
 
 void wlr_cursor_set_xcursor(struct wlr_cursor *cur,
 		struct wlr_xcursor_manager *manager, const char *name) {
-	if (manager == cur->state->xcursor_manager &&
-			cur->state->xcursor_name != NULL &&
-			strcmp(name, cur->state->xcursor_name) == 0) {
+	if (manager == cur->xcursor_manager &&
+			cur->xcursor_name != NULL &&
+			strcmp(name, cur->xcursor_name) == 0) {
 		return;
 	}
 
 	cursor_reset_image(cur);
 
-	cur->state->xcursor_manager = manager;
-	cur->state->xcursor_name = strdup(name);
+	cur->xcursor_manager = manager;
+	cur->xcursor_name = strdup(name);
 
 	cursor_update_outputs(cur);
 }
 
 static void cursor_handle_surface_destroy(struct wl_listener *listener, void *data) {
-	struct wlr_cursor_state *state = wl_container_of(listener, state, surface_destroy);
-	assert(state->surface != NULL);
-	wlr_cursor_unset_image(&state->cursor);
+	struct wlr_cursor *cursor = wl_container_of(listener, cursor, surface_destroy);
+	assert(cursor->surface != NULL);
+	wlr_cursor_unset_image(cursor);
 }
 
 static void cursor_handle_surface_commit(struct wl_listener *listener, void *data) {
-	struct wlr_cursor_state *state = wl_container_of(listener, state, surface_commit);
-	struct wlr_surface *surface = state->surface;
+	struct wlr_cursor *cursor = wl_container_of(listener, cursor, surface_commit);
+	struct wlr_surface *surface = cursor->surface;
 
-	state->surface_hotspot.x -= surface->current.dx;
-	state->surface_hotspot.y -= surface->current.dy;
+	cursor->surface_hotspot.x -= surface->current.dx;
+	cursor->surface_hotspot.y -= surface->current.dy;
 
-	cursor_update_outputs(&state->cursor);
+	cursor_update_outputs(cursor);
 }
 
 void wlr_cursor_set_surface(struct wlr_cursor *cur, struct wlr_surface *surface,
@@ -725,26 +689,26 @@ void wlr_cursor_set_surface(struct wlr_cursor *cur, struct wlr_surface *surface,
 		return;
 	}
 
-	if (surface == cur->state->surface &&
-			hotspot_x == cur->state->surface_hotspot.x &&
-			hotspot_y == cur->state->surface_hotspot.y) {
+	if (surface == cur->surface &&
+			hotspot_x == cur->surface_hotspot.x &&
+			hotspot_y == cur->surface_hotspot.y) {
 		return;
 	}
 
-	if (surface != cur->state->surface) {
+	if (surface != cur->surface) {
 		// Only send wl_surface.leave if the surface changes
 		cursor_reset_image(cur);
 
-		cur->state->surface = surface;
+		cur->surface = surface;
 
-		wl_signal_add(&surface->events.destroy, &cur->state->surface_destroy);
-		cur->state->surface_destroy.notify = cursor_handle_surface_destroy;
-		wl_signal_add(&surface->events.commit, &cur->state->surface_commit);
-		cur->state->surface_commit.notify = cursor_handle_surface_commit;
+		wl_signal_add(&surface->events.destroy, &cur->surface_destroy);
+		cur->surface_destroy.notify = cursor_handle_surface_destroy;
+		wl_signal_add(&surface->events.commit, &cur->surface_commit);
+		cur->surface_commit.notify = cursor_handle_surface_commit;
 	}
 
-	cur->state->surface_hotspot.x = hotspot_x;
-	cur->state->surface_hotspot.y = hotspot_y;
+	cur->surface_hotspot.x = hotspot_x;
+	cur->surface_hotspot.y = hotspot_y;
 
 	cursor_update_outputs(cur);
 }
@@ -807,8 +771,8 @@ static struct wlr_output *get_mapped_output(struct wlr_cursor_device *cursor_dev
 
 	struct wlr_cursor *cursor = cursor_device->cursor;
 	assert(cursor);
-	if (cursor->state->mapped_output) {
-		return cursor->state->mapped_output;
+	if (cursor->mapped_output) {
+		return cursor->mapped_output;
 	}
 	return NULL;
 }
@@ -1117,7 +1081,7 @@ static struct wlr_cursor_device *cursor_device_create(
 		abort(); // unreachable
 	}
 
-	wl_list_insert(&cursor->state->devices, &c_device->link);
+	wl_list_insert(&cursor->devices, &c_device->link);
 
 	return c_device;
 }
@@ -1137,7 +1101,7 @@ void wlr_cursor_attach_input_device(struct wlr_cursor *cur,
 
 	// make sure it is not already attached
 	struct wlr_cursor_device *_dev;
-	wl_list_for_each(_dev, &cur->state->devices, link) {
+	wl_list_for_each(_dev, &cur->devices, link) {
 		if (_dev->device == dev) {
 			return;
 		}
@@ -1149,7 +1113,7 @@ void wlr_cursor_attach_input_device(struct wlr_cursor *cur,
 void wlr_cursor_detach_input_device(struct wlr_cursor *cur,
 		struct wlr_input_device *dev) {
 	struct wlr_cursor_device *c_device, *tmp = NULL;
-	wl_list_for_each_safe(c_device, tmp, &cur->state->devices, link) {
+	wl_list_for_each_safe(c_device, tmp, &cur->devices, link) {
 		if (c_device->device == dev) {
 			cursor_device_destroy(c_device);
 		}
@@ -1157,9 +1121,9 @@ void wlr_cursor_detach_input_device(struct wlr_cursor *cur,
 }
 
 static void handle_layout_destroy(struct wl_listener *listener, void *data) {
-	struct wlr_cursor_state *state =
-		wl_container_of(listener, state, layout_destroy);
-	cursor_detach_output_layout(&state->cursor);
+	struct wlr_cursor *cursor =
+		wl_container_of(listener, cursor, layout_destroy);
+	cursor_detach_output_layout(cursor);
 }
 
 static void handle_layout_output_destroy(struct wl_listener *listener,
@@ -1169,10 +1133,10 @@ static void handle_layout_output_destroy(struct wl_listener *listener,
 	output_cursor_destroy(output_cursor);
 }
 
-static void layout_add(struct wlr_cursor_state *state,
+static void layout_add(struct wlr_cursor *cursor,
 		struct wlr_output_layout_output *l_output) {
 	struct wlr_cursor_output_cursor *output_cursor;
-	wl_list_for_each(output_cursor, &state->output_cursors, link) {
+	wl_list_for_each(output_cursor, &cursor->output_cursors, link) {
 		if (output_cursor->output_cursor->output == l_output->output) {
 			return; // already added
 		}
@@ -1183,7 +1147,7 @@ static void layout_add(struct wlr_cursor_state *state,
 		wlr_log(WLR_ERROR, "Failed to allocate wlr_cursor_output_cursor");
 		return;
 	}
-	output_cursor->cursor = &state->cursor;
+	output_cursor->cursor = cursor;
 	output_cursor->xcursor_scale = 1.0f;
 
 	output_cursor->output_cursor = wlr_output_cursor_create(l_output->output);
@@ -1197,7 +1161,7 @@ static void layout_add(struct wlr_cursor_state *state,
 	wl_signal_add(&l_output->events.destroy,
 		&output_cursor->layout_output_destroy);
 
-	wl_list_insert(&state->output_cursors, &output_cursor->link);
+	wl_list_insert(&cursor->output_cursors, &output_cursor->link);
 
 	wl_signal_add(&output_cursor->output_cursor->output->events.commit,
 		&output_cursor->output_commit);
@@ -1208,26 +1172,26 @@ static void layout_add(struct wlr_cursor_state *state,
 }
 
 static void handle_layout_add(struct wl_listener *listener, void *data) {
-	struct wlr_cursor_state *state =
-		wl_container_of(listener, state, layout_add);
+	struct wlr_cursor *cursor =
+		wl_container_of(listener, cursor, layout_add);
 	struct wlr_output_layout_output *l_output = data;
-	layout_add(state, l_output);
+	layout_add(cursor, l_output);
 }
 
 static void handle_layout_change(struct wl_listener *listener, void *data) {
-	struct wlr_cursor_state *state =
-		wl_container_of(listener, state, layout_change);
-	struct wlr_output_layout *layout = state->layout;
+	struct wlr_cursor *cursor =
+		wl_container_of(listener, cursor, layout_change);
+	struct wlr_output_layout *layout = cursor->layout;
 
-	if (!wlr_output_layout_contains_point(layout, NULL, state->cursor.x,
-			state->cursor.y) && !wl_list_empty(&layout->outputs)) {
+	if (!wlr_output_layout_contains_point(layout, NULL, cursor->x,
+			cursor->y) && !wl_list_empty(&layout->outputs)) {
 		// the output we were on has gone away so go to the closest boundary
 		// point (unless the layout is empty; compare warp_closest())
 		double x, y;
-		wlr_output_layout_closest_point(layout, NULL, state->cursor.x,
-			state->cursor.y, &x, &y);
+		wlr_output_layout_closest_point(layout, NULL, cursor->x,
+			cursor->y, &x, &y);
 
-		cursor_warp_unchecked(&state->cursor, x, y);
+		cursor_warp_unchecked(cursor, x, y);
 	}
 }
 
@@ -1239,24 +1203,24 @@ void wlr_cursor_attach_output_layout(struct wlr_cursor *cur,
 		return;
 	}
 
-	wl_signal_add(&l->events.add, &cur->state->layout_add);
-	cur->state->layout_add.notify = handle_layout_add;
-	wl_signal_add(&l->events.change, &cur->state->layout_change);
-	cur->state->layout_change.notify = handle_layout_change;
-	wl_signal_add(&l->events.destroy, &cur->state->layout_destroy);
-	cur->state->layout_destroy.notify = handle_layout_destroy;
+	wl_signal_add(&l->events.add, &cur->layout_add);
+	cur->layout_add.notify = handle_layout_add;
+	wl_signal_add(&l->events.change, &cur->layout_change);
+	cur->layout_change.notify = handle_layout_change;
+	wl_signal_add(&l->events.destroy, &cur->layout_destroy);
+	cur->layout_destroy.notify = handle_layout_destroy;
 
-	cur->state->layout = l;
+	cur->layout = l;
 
 	struct wlr_output_layout_output *l_output;
 	wl_list_for_each(l_output, &l->outputs, link) {
-		layout_add(cur->state, l_output);
+		layout_add(cur, l_output);
 	}
 }
 
 void wlr_cursor_map_to_output(struct wlr_cursor *cur,
 		struct wlr_output *output) {
-	cur->state->mapped_output = output;
+	cur->mapped_output = output;
 }
 
 void wlr_cursor_map_input_to_output(struct wlr_cursor *cur,
@@ -1273,7 +1237,7 @@ void wlr_cursor_map_input_to_output(struct wlr_cursor *cur,
 
 void wlr_cursor_map_to_region(struct wlr_cursor *cur,
 		const struct wlr_box *box) {
-	cur->state->mapped_box = wlr_box_empty(box) ? (struct wlr_box){0} : *box;
+	cur->mapped_box = wlr_box_empty(box) ? (struct wlr_box){0} : *box;
 }
 
 void wlr_cursor_map_input_to_region(struct wlr_cursor *cur,
