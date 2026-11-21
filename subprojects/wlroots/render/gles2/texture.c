@@ -82,6 +82,7 @@ static bool gles2_texture_update_from_buffer(struct wlr_texture *wlr_texture,
 
 
 	push_gles2_debug(texture->renderer);
+	glGetError(); // Clear the error flag
 
 	glBindTexture(GL_TEXTURE_2D, texture->tex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -102,6 +103,8 @@ static bool gles2_texture_update_from_buffer(struct wlr_texture *wlr_texture,
 			fmt->gl_format, fmt->gl_type, data);
 	}
 
+	bool ok = glGetError() == GL_NO_ERROR;
+
 	glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
 	glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
 	glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
@@ -114,7 +117,7 @@ static bool gles2_texture_update_from_buffer(struct wlr_texture *wlr_texture,
 
 	wlr_buffer_end_data_ptr_access(buffer);
 
-	return true;
+	return ok;
 }
 
 void gles2_texture_destroy(struct wlr_gles2_texture *texture) {
@@ -384,6 +387,7 @@ static struct wlr_texture *gles2_texture_from_pixels(
 	}
 
 	push_gles2_debug(renderer);
+	glGetError(); // Clear the error flag
 
 	glGenTextures(1, &texture->tex);
 	glBindTexture(GL_TEXTURE_2D, texture->tex);
@@ -398,10 +402,15 @@ static struct wlr_texture *gles2_texture_from_pixels(
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
+	bool ok = glGetError() == GL_NO_ERROR;
 	pop_gles2_debug(renderer);
 
 	wlr_egl_restore_context(&prev_ctx);
 
+	if (!ok) {
+		wlr_texture_destroy(&texture->wlr_texture);
+		return NULL;
+	}
 	return &texture->wlr_texture;
 }
 
@@ -435,6 +444,7 @@ static struct wlr_texture *gles2_texture_from_dmabuf(
 	}
 
 	push_gles2_debug(texture->renderer);
+	glGetError(); // Clear the error flag
 
 	bool invalid;
 	if (!buffer->tex) {
@@ -453,11 +463,17 @@ static struct wlr_texture *gles2_texture_from_dmabuf(
 		glBindTexture(texture->target, 0);
 	}
 
+	bool ok = glGetError() == GL_NO_ERROR;
 	pop_gles2_debug(texture->renderer);
 	wlr_egl_restore_context(&prev_ctx);
 
 	texture->tex = buffer->tex;
 	wlr_buffer_lock(texture->buffer->buffer);
+
+	if (!ok) {
+		wlr_texture_destroy(&texture->wlr_texture);
+		return NULL;
+	}
 	return &texture->wlr_texture;
 }
 
