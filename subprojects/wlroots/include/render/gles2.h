@@ -21,6 +21,10 @@
 // https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/23144
 typedef void (GL_APIENTRYP PFNGLGETINTEGER64VEXTPROC) (GLenum pname, GLint64 *data);
 
+// libglvnd ships old GL headers that don't include this constant:
+// https://gitlab.freedesktop.org/glvnd/libglvnd/-/merge_requests/299
+#define GL_PACK_ROW_LENGTH_NV 0x0D02
+
 struct wlr_gles2_pixel_format {
 	uint32_t drm_format;
 	// optional field, if empty then internalformat = format
@@ -60,6 +64,7 @@ struct wlr_gles2_renderer {
 		bool OES_texture_half_float_linear;
 		bool EXT_texture_norm16;
 		bool EXT_disjoint_timer_query;
+		bool NV_pack_subimage;
 	} exts;
 
 	struct {

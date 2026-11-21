@@ -234,21 +234,30 @@ static bool gles2_texture_read_pixels(struct wlr_texture *wlr_texture,
 
 	unsigned char *p = wlr_texture_read_pixel_options_get_data(options);
 
+	bool use_pack_row_length = texture->renderer->exts.NV_pack_subimage && options->stride % drm_fmt->bytes_per_block == 0;
+	if (use_pack_row_length) {
+		glPixelStorei(GL_PACK_ROW_LENGTH_NV, options->stride / drm_fmt->bytes_per_block);
+	}
+
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	uint32_t pack_stride = pixel_format_info_min_stride(drm_fmt, src.width);
-	if (pack_stride == options->stride && options->dst_x == 0) {
+	if ((pack_stride == options->stride && options->dst_x == 0) || use_pack_row_length) {
 		// Under these particular conditions, we can read the pixels with only
 		// one glReadPixels call
 
 		glReadPixels(src.x, src.y, src.width, src.height, fmt->gl_format, fmt->gl_type, p);
 	} else {
-		// Unfortunately GLES2 doesn't support GL_PACK_ROW_LENGTH, so we have to read
-		// the lines out row by row
+		// Unfortunately bare GLES2 doesn't support GL_PACK_ROW_LENGTH, so we
+		// have to read the lines out row by row
 		for (int32_t i = 0; i < src.height; ++i) {
 			uint32_t y = src.y + i;
 			glReadPixels(src.x, y, src.width, 1, fmt->gl_format,
 				fmt->gl_type, p + i * options->stride);
 		}
+	}
+
+	if (use_pack_row_length) {
+		glPixelStorei(GL_PACK_ROW_LENGTH_NV, 0);
 	}
 
 	ok = glGetError() == GL_NO_ERROR;
