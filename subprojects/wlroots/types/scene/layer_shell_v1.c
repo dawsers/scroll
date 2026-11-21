@@ -129,7 +129,10 @@ void wlr_scene_layer_surface_v1_configure(
 		usable_area, data.width, data.height, &box);
 
 	wlr_scene_node_set_position(&scene_layer_surface->tree->node, box.x, box.y);
-	wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
+	if (box.width != (int)layer_surface->scheduled.width ||
+			box.height != (int)layer_surface->scheduled.height) {
+		wlr_layer_surface_v1_configure(layer_surface, box.width, box.height);
+	}
 }
 
 struct wlr_scene_layer_surface_v1 *wlr_scene_layer_surface_v1_create(
