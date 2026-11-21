@@ -3269,191 +3269,151 @@ void layout_selection_reset() {
 	}
 }
 
-static struct sway_container *wrap_children_into_container(struct sway_workspace *new_workspace,
-		list_t *children, struct sway_container *old_parent, enum sway_container_layout layout) {
-	struct sway_container *cont = container_create(NULL);
-	cont->current.width = old_parent->current.width;
-	cont->current.height = old_parent->current.height;
-	cont->pending.width = old_parent->pending.width;
-	cont->pending.height = old_parent->pending.height;
-	cont->width_fraction = old_parent->width_fraction;
-	cont->height_fraction = old_parent->height_fraction;
-	cont->current.x = old_parent->current.x;
-	cont->current.y = old_parent->current.y;
-	cont->pending.x = old_parent->pending.x;
-	cont->pending.y = old_parent->pending.y;
-	cont->pending.layout = layout;
-
-	cont->pending.children = children;
-	cont->current.fullscreen_layout = FULLSCREEN_DISABLED;
-	cont->pending.fullscreen_layout = FULLSCREEN_DISABLED;
-	for (int i = 0; i < children->length; ++i) {
-		struct sway_container *child = children->items[i];
-		child->pending.parent = cont;
-		child->pending.workspace = new_workspace;
-		if (child->current.fullscreen_layout == FULLSCREEN_ENABLED) {
-			cont->current.fullscreen_layout = FULLSCREEN_ENABLED;
+// Adds container to the selection list if it has to be moved.
+// A container with every child selected is selected as a whole.
+// The children of a selected container move with it.
+static void selection_add(struct sway_container *container, void *data) {
+	list_t *selection = data;
+	list_t *children = container->pending.children;
+	if (children && children->length > 0) {
+		bool selected = true;
+		for (int i = 0; i < children->length; ++i) {
+			struct sway_container *child = children->items[i];
+			selected = selected && child->selected;
 		}
-		if (child->pending.fullscreen_layout == FULLSCREEN_ENABLED) {
-			cont->pending.fullscreen_layout = FULLSCREEN_ENABLED;
+		if (selected) {
+			layout_selection_set(container, true);
 		}
 	}
-	cont->pending.workspace = new_workspace;
-	container_update_representation(cont);
-	container_update_representation(old_parent);
-	node_set_dirty(&cont->node);
-	return cont;
+	struct sway_container *parent = container->pending.parent;
+	if (container->selected && !(parent && parent->selected)) {
+		list_add(selection, container);
+	}
 }
 
-static bool add_selected_children(struct sway_workspace *workspace, list_t *list,
-		struct sway_container *container, enum sway_container_layout layout) {
-	if (container->selected) {
-		// Move floating containers to a position in the new workspace
-		if (container->view) {
-			double dx = workspace->x - container->pending.workspace->x;
-			double dy = workspace->y - container->pending.workspace->y;
-			container->pending.x += dx;
-			container->pending.y += dy;
-		}
-		container->pending.workspace = workspace;
-		container->pending.layout = layout;
-		container->selected = false;
-		list_add(list, container);
-		return true;
+static void selection_release(struct sway_container *container, void *data) {
+	struct sway_workspace *workspace = data;
+	layout_selection_set(container, false);
+	if (container->pending.fullscreen_mode != FULLSCREEN_NONE &&
+			container->pending.workspace != workspace) {
+		container_fullscreen_disable(container);
 	}
-	if (container->pending.children) {
-		list_t *selection = create_list();
-		int i = 0;
-		while (i < container->pending.children->length) {
-			struct sway_container *child = container->pending.children->items[i];
-			if (child->selected) {
-				child->selected = false;
-				list_del(container->pending.children, i);
-				list_add(selection, child);
-			} else {
-				++i;
-			}
-		}
-		if (selection->length > 0) {
-			struct sway_container *new_parent = wrap_children_into_container(workspace, selection, container, layout);
-			list_add(list, new_parent);
-			if (container->pending.children->length == 0) {
-				return true;
-			}
-		} else {
-			list_free(selection);
-		}
+}
+
+static void selection_moved(struct sway_container *container, void *data) {
+	if (container->view) {
+		ipc_event_window(container, "move");
 	}
-	return false;
+}
+
+static void selection_move_floating(struct sway_container *container,
+		struct sway_workspace *workspace) {
+	if (container_is_scratchpad_hidden(container)) {
+		root_scratchpad_show(container);
+	}
+	struct sway_workspace *old_workspace = container->pending.workspace;
+	if (!old_workspace || old_workspace == workspace) {
+		return;
+	}
+	struct wlr_fbox old_vp, vp;
+	layout_vp_box(old_workspace, &old_vp);
+	layout_vp_box(workspace, &vp);
+	workspace_add_floating(workspace, container);
+	floating_fix_coordinates(container, &old_vp, &vp);
+	if (container->scratchpad && workspace->output) {
+		output_get_box(workspace->output, &container->transform);
+	}
 }
 
 // Move the selection to workspace, with a location given by the current mode modifier
 bool layout_selection_move(struct sway_workspace *new_workspace) {
-	// All the selected top level containers will be added to a list. In that list
-	// there will also be new top level containers for selected non-top level containers.
-	// The containers in the list will get their final location and container type
-	// depending on the insertion modifier and the target workspace layout type.
-	enum sway_container_layout layout = layout_get_type(new_workspace) == L_HORIZ ? L_VERT : L_HORIZ;
-	list_t *tiling_selection = create_list();
-	list_t *floating_selection = create_list();
-	for (int o = 0; o < root->outputs->length; ++o) {
-		struct sway_output *output = root->outputs->items[o];
-		list_t *workspaces = output_workspaces_copy(output);
-		for (int w = 0; w < workspaces->length; ++w) {
-			int selected = tiling_selection->length + floating_selection->length;
-			struct sway_workspace *workspace = workspaces->items[w];
-			if (workspace->node.destroying) {
-				continue;
-			}
-			list_t *to_delete_floating = create_list();
-			for (int i = 0; i < workspace->floating->length; ++i) {
-				struct sway_container *con = workspace->floating->items[i];
-				if (add_selected_children(new_workspace, floating_selection, con, layout)) {
-					list_add(to_delete_floating, con);
-				} else {
-					arrange_container(con);
-					node_set_dirty(&con->node);
-				}
-			}
-			list_t *to_delete_tiling = create_list();
-			for (int i = 0; i < workspace->tiling->length; ++i) {
-				struct sway_container *con = workspace->tiling->items[i];
-				if (add_selected_children(new_workspace, tiling_selection, con, layout)) {
-					list_add(to_delete_tiling, con);
-				} else {
-					arrange_container(con);
-					node_set_dirty(&con->node);
-				}
-			}
-			// Remove containers from the workspace lists
-			for (int i = 0; i < to_delete_floating->length; ++i) {
-				struct sway_container *con = to_delete_floating->items[i];
-				list_del(workspace->floating, list_find(workspace->floating, con));
-			}
-			for (int i = 0; i < to_delete_tiling->length; ++i) {
-				struct sway_container *con = to_delete_tiling->items[i];
-				list_del(workspace->tiling, list_find(workspace->tiling, con));
-			}
-			// If there was a selection, re-arrange the workspace
-			if (tiling_selection->length + floating_selection->length > selected) {
-				arrange_workspace(workspace);
-				workspace_update_representation(workspace);
-				workspace_consider_destroy(workspace);
-				node_set_dirty(&workspace->node);
-			}
-			// Now finally remove the containers (and possibly the workspace)
-			for (int i = 0; i < to_delete_floating->length; ++i) {
-				struct sway_container *con = to_delete_floating->items[i];
-				if (con->pending.children &&con->pending.children->length == 0) {
-					container_reap_empty(con);
-				}
-			}
-			for (int i = 0; i < to_delete_tiling->length; ++i) {
-				struct sway_container *con = to_delete_tiling->items[i];
-				if (con->pending.children && con->pending.children->length == 0) {
-					container_reap_empty(con);
-				}
-			}
-			list_free(to_delete_floating);
-			list_free(to_delete_tiling);
-		}
-		list_free(workspaces);
+	list_t *selection = create_list();
+	root_for_each_container(selection_add, selection);
+	if (selection->length == 0) {
+		list_free(selection);
+		return false;
 	}
-	bool changed = tiling_selection->length + floating_selection->length > 0;
+	for (int i = 0; i < selection->length; ++i) {
+		struct sway_container *con = selection->items[i];
+		selection_release(con, new_workspace);
+		container_for_each_child(con, selection_release, new_workspace);
+	}
+
+	// Switch to the new workspace before moving anything
+	struct sway_seat *seat = input_manager_current_seat();
+	if (seat_get_focused_workspace(seat) != new_workspace) {
+		switch_workspace(new_workspace);
+	}
+
+	enum sway_container_layout layout =
+		layout_get_type(new_workspace) == L_HORIZ ? L_VERT : L_HORIZ;
+	int index = layout_insert_compute_index(new_workspace->tiling,
+		workspace_get_active(new_workspace),
+		layout_modifiers_get_insert(new_workspace));
 	struct sway_container *focus = NULL;
-	if (tiling_selection->length > 0) {
-		focus = tiling_selection->items[0];
-	} else if (floating_selection->length > 0) {
-		focus = floating_selection->items[0];
-	}
-	// Insert tiled containers
-	struct sway_container *active = workspace_get_active(new_workspace);
-	int index = layout_insert_compute_index(new_workspace->tiling, active, layout_modifiers_get_insert(new_workspace));
-	for (int i = tiling_selection->length - 1; i >= 0; i--) {
-		struct sway_container *con = tiling_selection->items[i];
-		workspace_insert_tiling_direct(new_workspace, con, index);
-	}
-	list_free(tiling_selection);
-	// Insert floating containers
-	for (int i = 0; i < floating_selection->length; ++i) {
-		struct sway_container *con = floating_selection->items[i];
-		workspace_add_floating(new_workspace, con);
-	}
-	list_free(floating_selection);
-	// Set focus
-	if (changed) {
-		arrange_workspace(new_workspace);
-		struct sway_seat *seat = input_manager_current_seat();
-		bool should_focus = layout_modifiers_get_focus(new_workspace);
-		if (should_focus) {
-			struct sway_view *view = container_get_active_view(focus);
-			seat_set_focus_container(seat, view ? view->container : focus);
+	struct sway_container *old_parent = NULL, *new_parent = NULL;
+
+	for (int i = 0; i < selection->length; ++i) {
+		struct sway_container *con = selection->items[i];
+		struct sway_workspace *workspace = con->pending.workspace;
+		if (container_is_floating(con)) {
+			selection_move_floating(con, new_workspace);
+		} else if (!con->pending.parent) {
+			// Detaching a container of the workspace located before the
+			// insertion point moves the insertion point.
+			int old_index = list_find(new_workspace->tiling, con);
+			if (old_index >= 0 && old_index < index) {
+				--index;
+			}
+			container_detach(con);
+			if (con->pending.layout != layout) {
+				con->pending.layout = layout;
+				container_update_representation(con);
+			}
+			workspace_insert_tiling_direct(new_workspace, con, index++);
+		} else if (con->pending.parent != old_parent) {
+			old_parent = con->pending.parent;
+			container_detach(con);
+			new_parent = layout_wrap_into_container(con, layout);
+			workspace_insert_tiling_direct(new_workspace, new_parent, index++);
 		} else {
-			switch_workspace(new_workspace);
+			container_add_child(new_parent, con);
 		}
-		seat_consider_warp_to_focus(seat);
+		if (!focus && !container_is_floating(con)) {
+			focus = con;
+		}
+		selection_moved(con, NULL);
+		container_for_each_child(con, selection_moved, NULL);
+
+		if (workspace && workspace != new_workspace) {
+			// The old workspace may be empty
+			workspace_consider_destroy(workspace);
+			if (!workspace->node.destroying) {
+				layout_maximize_if_single(workspace);
+				arrange_workspace(workspace);
+				workspace_detect_urgent(workspace);
+			}
+		}
 	}
-	return changed;
+	if (!focus) {
+		focus = selection->items[0];
+	}
+	list_free(selection);
+
+	layout_maximize_if_single(new_workspace);
+	arrange_workspace(new_workspace);
+	workspace_detect_urgent(new_workspace);
+
+	// Set focus
+	if (layout_modifiers_get_focus(new_workspace)) {
+		struct sway_view *view = container_get_active_view(focus);
+		seat_set_focus_container(seat, view ? view->container : focus);
+		seat_consider_warp_to_focus(seat);
+	} else {
+		// Needed if the workspace was empty
+		switch_workspace(new_workspace);
+	}
+	return true;
 }
 
 bool layout_selection_enabled(struct sway_container *container) {
