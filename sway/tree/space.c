@@ -113,6 +113,9 @@ static struct sway_container *layout_space_container_restore_tiling(struct sway_
 		struct sway_view *view = space_container->view->view;
 		struct sway_container *container = view ? view->container : NULL;
 		if (container) {
+			if (container->pending.fullscreen_mode != FULLSCREEN_NONE) {
+				container_fullscreen_disable(container);
+			}
 			detach_container(container);
 			if (container->scratchpad) {
 				root_scratchpad_show(container);
@@ -158,6 +161,9 @@ static void layout_space_container_restore_floating(struct sway_space *space,
 		struct sway_view *view = space_container->view->view;
 		struct sway_container *container = view ? view->container : NULL;
 		if (container) {
+			if (container->pending.fullscreen_mode != FULLSCREEN_NONE) {
+				container_fullscreen_disable(container);
+			}
 			detach_container(container);
 			if (container->scratchpad) {
 				root_scratchpad_show(container);
