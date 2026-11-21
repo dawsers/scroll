@@ -1037,6 +1037,21 @@ static struct sway_container *layout_wrap_into_container(struct sway_container *
 	return cont;
 }
 
+// Get the active top level container for workspace
+static struct sway_container *workspace_get_active(struct sway_workspace *workspace) {
+	struct sway_container *active = workspace->current.focused_inactive_child;
+	if (active && !active->node.destroying &&
+			list_find(workspace->tiling, active) >= 0) {
+		return active;
+	}
+	struct sway_seat *seat = input_manager_current_seat();
+	active = seat_get_focus_inactive_tiling(seat, workspace);
+	while (active && active->pending.parent) {
+		active = active->pending.parent;
+	}
+	return active;
+}
+
 static void layout_workspace_add_view(struct sway_workspace *workspace, struct sway_container *active, struct sway_container *view,
 			enum sway_layout_insert pos) {
 	int idx;
@@ -1047,7 +1062,7 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 			// active is in a container, need to insert at the level of its parent
 			active = active->pending.parent;
 		}
-		idx = layout_insert_compute_index(active->pending.workspace->tiling, active, pos);
+		idx = layout_insert_compute_index(workspace->tiling, active, pos);
 	}
 	// Create a container and add view
 	enum sway_container_layout layout = layout_get_type(workspace);
@@ -1114,9 +1129,9 @@ static void layout_workspace_add_container(struct sway_workspace *workspace, str
 		idx = 0;
 	} else if (active->pending.parent) {
 		// active is in a container, need to insert at the level of its parent
-		idx = layout_insert_compute_index(active->pending.workspace->tiling, active->pending.parent, pos);
+		idx = layout_insert_compute_index(workspace->tiling, active->pending.parent, pos);
 	} else {
-		idx = layout_insert_compute_index(active->pending.workspace->tiling, active, pos);
+		idx = layout_insert_compute_index(workspace->tiling, active, pos);
 	}
 	// The container needs to be of the opposite type of the layout type, if not,
 	// flip the container layout
@@ -1134,7 +1149,7 @@ void layout_move_container_to_workspace(struct sway_container *container, struct
 	// otherwise, we extract the view container and add it to the other workspace,
 	// inserting it in the active container (if any), or creating a new one
 	enum sway_container_layout mode = layout_modifiers_get_mode(old_ws);
-	struct sway_container *active = workspace->current.focused_inactive_child;
+	struct sway_container *active = workspace_get_active(workspace);
 	if (layout_get_type(old_ws) == mode) {
 		// Move the whole container
 		struct sway_container *con = container->view ? container->pending.parent : container;
@@ -1194,7 +1209,7 @@ static void drag_parent_container_to_workspace(struct sway_container *container,
 	}
 	// Find insertion point
 	enum sway_layout_insert pos = layout_modifiers_get_insert(workspace);
-	struct sway_container *active = workspace->current.focused_inactive_child;
+	struct sway_container *active = workspace_get_active(workspace);
 	layout_workspace_add_container(workspace, active, container, pos);
 }
 
@@ -3384,8 +3399,14 @@ bool layout_selection_move(struct sway_workspace *new_workspace) {
 		}
 	}
 	bool changed = tiling_selection->length + floating_selection->length > 0;
+	struct sway_container *focus = NULL;
+	if (tiling_selection->length > 0) {
+		focus = tiling_selection->items[0];
+	} else if (floating_selection->length > 0) {
+		focus = floating_selection->items[0];
+	}
 	// Insert tiled containers
-	struct sway_container *active = new_workspace->current.focused_inactive_child;
+	struct sway_container *active = workspace_get_active(new_workspace);
 	int index = layout_insert_compute_index(new_workspace->tiling, active, layout_modifiers_get_insert(new_workspace));
 	for (int i = tiling_selection->length - 1; i >= 0; i--) {
 		struct sway_container *con = tiling_selection->items[i];
@@ -3404,14 +3425,8 @@ bool layout_selection_move(struct sway_workspace *new_workspace) {
 		struct sway_seat *seat = input_manager_current_seat();
 		bool should_focus = layout_modifiers_get_focus(new_workspace);
 		if (should_focus) {
-			struct sway_container *focus;
-			if (new_workspace->tiling->length > 0) {
-				focus = (struct sway_container *) new_workspace->tiling->items[index];
-			} else {
-				focus =  (struct sway_container *) new_workspace->floating->items[0];
-			}
 			struct sway_view *view = container_get_active_view(focus);
-			seat_set_focus_container(seat, view->container);
+			seat_set_focus_container(seat, view ? view->container : focus);
 		} else {
 			switch_workspace(new_workspace);
 		}
