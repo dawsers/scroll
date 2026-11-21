@@ -91,6 +91,11 @@ struct wlr_layer_surface_v1 {
 	bool configured;
 	struct wl_list configure_list;
 
+	// Properties sent to the client in the last configure event
+	struct {
+		uint32_t width, height;
+	} scheduled;
+
 	struct wlr_layer_surface_v1_state current, pending;
 
 	// Whether the surface is ready to receive configure events

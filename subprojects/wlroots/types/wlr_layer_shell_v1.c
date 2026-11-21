@@ -331,6 +331,8 @@ uint32_t wlr_layer_surface_v1_configure(struct wlr_layer_surface_v1 *surface,
 	zwlr_layer_surface_v1_send_configure(surface->resource,
 			configure->serial, configure->width,
 			configure->height);
+	surface->scheduled.width = width;
+	surface->scheduled.height = height;
 	return configure->serial;
 }
 
