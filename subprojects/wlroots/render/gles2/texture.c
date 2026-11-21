@@ -75,7 +75,11 @@ static bool gles2_texture_update_from_buffer(struct wlr_texture *wlr_texture,
 	}
 
 	struct wlr_egl_context prev_ctx;
-	wlr_egl_make_current(texture->renderer->egl, &prev_ctx);
+	if (!wlr_egl_make_current(texture->renderer->egl, &prev_ctx)) {
+		wlr_buffer_end_data_ptr_access(buffer);
+		return false;
+	}
+
 
 	push_gles2_debug(texture->renderer);
 
@@ -374,7 +378,10 @@ static struct wlr_texture *gles2_texture_from_pixels(
 	}
 
 	struct wlr_egl_context prev_ctx;
-	wlr_egl_make_current(renderer->egl, &prev_ctx);
+	if (!wlr_egl_make_current(renderer->egl, &prev_ctx)) {
+		free(texture);
+		return NULL;
+	}
 
 	push_gles2_debug(renderer);
 
@@ -422,7 +429,11 @@ static struct wlr_texture *gles2_texture_from_dmabuf(
 	texture->has_alpha = pixel_format_has_alpha(attribs->format);
 
 	struct wlr_egl_context prev_ctx;
-	wlr_egl_make_current(renderer->egl, &prev_ctx);
+	if (!wlr_egl_make_current(renderer->egl, &prev_ctx)) {
+		free(texture);
+		return NULL;
+	}
+
 	push_gles2_debug(texture->renderer);
 
 	bool invalid;

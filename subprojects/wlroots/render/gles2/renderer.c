@@ -311,7 +311,10 @@ static struct wlr_render_timer *gles2_render_timer_create(struct wlr_renderer *w
 	timer->renderer = renderer;
 
 	struct wlr_egl_context prev_ctx;
-	wlr_egl_make_current(renderer->egl, &prev_ctx);
+	if (!wlr_egl_make_current(renderer->egl, &prev_ctx)) {
+		free(timer);
+		return NULL;
+	}
 	renderer->procs.glGenQueriesEXT(1, &timer->id);
 	wlr_egl_restore_context(&prev_ctx);
 
@@ -323,7 +326,9 @@ static int gles2_get_render_time(struct wlr_render_timer *wlr_timer) {
 	struct wlr_gles2_renderer *renderer = timer->renderer;
 
 	struct wlr_egl_context prev_ctx;
-	wlr_egl_make_current(renderer->egl, &prev_ctx);
+	if (!wlr_egl_make_current(renderer->egl, &prev_ctx)) {
+		return -1;
+	}
 
 	GLint64 disjoint;
 	renderer->procs.glGetInteger64vEXT(GL_GPU_DISJOINT_EXT, &disjoint);
