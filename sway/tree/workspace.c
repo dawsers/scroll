@@ -1167,6 +1167,10 @@ void workspace_detach(struct sway_workspace *workspace) {
 	}
 	workspace->output = NULL;
 
+	// Reparent to avoid destruction when disabling the workspace output
+	wlr_scene_node_reparent(&workspace->jump.text_tree->node, root->staging);
+	wlr_scene_node_reparent(&workspace->jump.name_tree->node, root->staging);
+
 	node_set_dirty(&workspace->node);
 	node_set_dirty(&output->node);
 
