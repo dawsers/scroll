@@ -69,6 +69,10 @@ struct cmd_results *cmd_fullscreen(int argc, char **argv) {
 			container = container->pending.parent;
 		}
 	}
+	container = container_get_fullscreen_target(container);
+	if (!container) {
+		return cmd_results_new(CMD_SUCCESS, NULL);
+	}
 
 	bool global = false;
 	bool layout = false;

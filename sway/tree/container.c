@@ -1695,8 +1695,22 @@ void container_fullscreen_disable(struct sway_container *con) {
 	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 }
 
+struct sway_container *container_get_fullscreen_target(struct sway_container *con) {
+	if (con->view) {
+		return con;
+	}
+	struct sway_view *view = container_get_active_view(con);
+	return view ? view->container : NULL;
+}
+
 void container_set_fullscreen(struct sway_container *con,
 		enum sway_fullscreen_mode mode) {
+	if (mode != FULLSCREEN_NONE) {
+		con = container_get_fullscreen_target(con);
+		if (!con) {
+			return;
+		}
+	}
 	if (con->pending.fullscreen_mode == mode) {
 		return;
 	}
@@ -1741,7 +1755,8 @@ void container_set_fullscreen(struct sway_container *con,
 // This is only called for fullscreen_move_focus true follow, so disable
 // src->fullscreen when needed
 void container_pass_fullscreen(struct sway_container *src, struct sway_container *dst) {
-	if (src->pending.fullscreen_mode == dst->pending.fullscreen_mode) {
+	dst = container_get_fullscreen_target(dst);
+	if (!dst || src->pending.fullscreen_mode == dst->pending.fullscreen_mode) {
 		return;
 	}
 	enum sway_fullscreen_mode mode = src->pending.fullscreen_mode;
@@ -1783,7 +1798,8 @@ void container_set_fullscreen_container(struct sway_container *con,
 
 void container_set_fullscreen_application(struct sway_container *con,
 		enum sway_fullscreen_state mode) {
-	if (con->pending.fullscreen_application == mode) {
+	con = container_get_fullscreen_target(con);
+	if (!con || con->pending.fullscreen_application == mode) {
 		return;
 	}
 	switch (mode) {
@@ -1800,6 +1816,10 @@ void container_set_fullscreen_application(struct sway_container *con,
 
 void container_set_fullscreen_layout(struct sway_container *con,
 		enum sway_fullscreen_state mode) {
+	con = container_get_fullscreen_target(con);
+	if (!con) {
+		return;
+	}
 	struct sway_workspace *workspace = con->pending.workspace;
 	if (!workspace) {
 		return;
