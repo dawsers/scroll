@@ -18,6 +18,7 @@
 #include "sway/output.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
+#include "sway/tree/layout.h"
 #include "sway/tree/node.h"
 #include "sway/tree/workspace.h"
 #include "sway/desktop/animate.h"
@@ -98,6 +99,8 @@ void arrange_layers(struct sway_output *output) {
 		sway_log(SWAY_DEBUG, "Usable area changed, rearranging output");
 		output->usable_area = usable_area;
 		arrange_output(output);
+		// Recompute workspaces overview if it was enabled
+		layout_overview_workspaces_recompute_scale();
 	} else {
 		arrange_popups(root->layers.popup);
 	}
