@@ -179,6 +179,23 @@ void handler(int sig) {
 }
 #endif
 
+// Block the signals handled by the event loop (in init_signals()) before any
+// thread is created. A signal sent to the process goes to any thread that
+// doesn't block it, and a thread inherits the signal mask of its creator. The
+// renderer (e.g. the Vulkan driver) creates threads in server_init(), before
+// the event loop exists: if they don't block SIGTERM, one of them receives it
+// and the default action kills scroll, without a clean shutdown.
+static void block_handled_signals(void) {
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGINT);
+	pthread_sigmask(SIG_BLOCK, &set, NULL);
+
+	// Spawned processes must not inherit the blocked signals
+	pthread_atfork(NULL, NULL, restore_signals);
+}
+
 static void init_signals(void) {
 	wl_event_loop_add_signal(server.wl_event_loop, SIGTERM, term_signal, NULL);
 	wl_event_loop_add_signal(server.wl_event_loop, SIGINT, term_signal, NULL);
@@ -192,8 +209,6 @@ static void init_signals(void) {
 #ifdef INCLUDE_CRASH_HANDLER
 	signal(SIGSEGV, handler);
 #endif
-
-	pthread_atfork(NULL, NULL, restore_signals);
 }
 
 void enable_debug_flag(const char *flag) {
@@ -366,6 +381,8 @@ int main(int argc, char **argv) {
 	increase_nofile_limit();
 
 	sway_log(SWAY_INFO, "Starting scroll version " SWAY_VERSION);
+
+	block_handled_signals();
 
 	if (!server_init(&server)) {
 		return 1;
