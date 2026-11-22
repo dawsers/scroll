@@ -214,6 +214,7 @@ struct sway_container {
 	// For XWayland containers, because they need to be reconfigured when
 	// changing positions, and some containes will change position without
 	// being in the transaction (change of focus, move container, etc.)
+	// It is the content geometry used in the last configure event.
 	struct {
 		double x, y;
 		double width, height;

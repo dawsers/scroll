@@ -349,6 +349,13 @@ struct sway_view *view_from_wlr_xdg_surface(
 #if WLR_HAS_XWAYLAND
 struct sway_view *view_from_wlr_xwayland_surface(
 	struct wlr_xwayland_surface *xsurface);
+
+/**
+ * The position in the X11 screen of a view with its content at lx, ly in
+ * layout coordinates. It is the one used when configuring the view.
+ */
+void view_get_xwayland_position(struct sway_view *view, double lx, double ly,
+	int *x, int *y);
 #endif
 struct sway_view *view_from_wlr_surface(struct wlr_surface *surface);
 

@@ -375,28 +375,15 @@ static void scene_arrange_children(struct sway_workspace *workspace,
 static void map_to_configure(struct sway_view *view, double content_x, double content_y, double content_width,
 		double content_height, int *cx, int *cy, int *cw, int *ch) {
 	// We need to match what we did in view_configure()
+	const double x = round(content_x);
+	const double y = round(content_y);
+	*cx = x;
+	*cy = y;
+	*cw = round(content_x + content_width) - x;
+	*ch = round(content_y + content_height) - y;
 #if WLR_HAS_XWAYLAND
-	// X11 clients are screen position dependent
-	if (view->type == SWAY_VIEW_XWAYLAND && view->container) {
-		struct sway_layout_transform transform;
-		layout_transform_container_get(view->container, false, &transform);
-		layout_transform_point(&transform, &content_x, &content_y);
-	}
-#endif
-	*cx = round(content_x);
-	*cy = round(content_y);
-	int ex = round(content_x + content_width);
-	int ey = round(content_y + content_height);
-	*cw = ex - *cx;
-	*ch = ey - *cy;
-#if WLR_HAS_XWAYLAND
-	if (!config->xwayland_output_scale && view->container && view->container->pending.workspace) {
-		struct sway_output *output = view->container->pending.workspace->output;
-		if (output) {
-			struct wlr_output_layout_output *layout_o = wlr_output_layout_get(root->output_layout, output->wlr_output);
-			*cx = round(layout_o->p_x + (*cx - layout_o->x) * layout_o->output->scale);
-			*cy = round(layout_o->p_y + (*cy - layout_o->y) * layout_o->output->scale);
-		}
+	if (view->type == SWAY_VIEW_XWAYLAND) {
+		view_get_xwayland_position(view, x, y, cx, cy);
 	}
 #endif
 }
@@ -656,6 +643,12 @@ static void animate_view(struct sway_container *con,
 			con->current.content_y = con->pending.content_y;
 			con->current.content_width = con->pending.content_width;
 			con->current.content_height = con->pending.content_height;
+			// Update old_content so we don't re-configure in the next frame:
+			// this function is called for every frame of any animation
+			con->old_content.x = con->pending.content_x;
+			con->old_content.y = con->pending.content_y;
+			con->old_content.width = con->pending.content_width;
+			con->old_content.height = con->pending.content_height;
 		}
 	}
 #endif
@@ -1490,8 +1483,13 @@ static int handle_timeout(void *data) {
 	return 0;
 }
 
+// Returns true if the view needs to be reconfigured, sending position and
+// size to the client. `wait` returns whether we need to wait for the new buffer.
+// The client will only return a new buffer when its size changes, so we only
+// wait in those instances.
 static bool should_configure(struct sway_node *node,
-		struct sway_transaction_instruction *instruction) {
+		struct sway_transaction_instruction *instruction, bool *wait) {
+	*wait = false;
 	if (!node_is_view(node)) {
 		return false;
 	}
@@ -1501,12 +1499,6 @@ static bool should_configure(struct sway_node *node,
 	if (!instruction->server_request) {
 		return false;
 	}
-	struct sway_workspace *workspace = node->sway_container->pending.workspace;
-	if (workspace &&
-		(workspace_state_scale(workspace->current.scale) != workspace_state_scale(workspace->scale) ||
-			workspace->animation.s.origin != workspace->animation.s.target)) {
-		return true;
-	}
 	struct sway_container_state *cstate = &node->sway_container->current;
 	struct sway_container_state *istate = &instruction->container_state;
 #if WLR_HAS_XWAYLAND
@@ -1514,7 +1506,7 @@ static bool should_configure(struct sway_node *node,
 	// when their position changes.
 	// For scroll, they all need to be reconfigured, not just the dirty ones,
 	// because focusing or moving may change their positions, so we do it in
-	// scene_arrange_container(), which goes over every window. We only configure
+	// animate_view(), which goes over every window. We only configure
 	// here those that come in the transaction.
 	if (node->sway_container->view->type == SWAY_VIEW_XWAYLAND) {
 		int cx, cy, cw, ch;
@@ -1524,11 +1516,14 @@ static bool should_configure(struct sway_node *node,
 		map_to_configure(node->sway_container->view, istate->content_x, istate->content_y,
 			istate->content_width, istate->content_height, &ix, &iy, &iw, &ih);
 		if (cx != ix || cy != iy || cw != iw || ch != ih) {
-			// Update old_content so we don't re-configure in scene_arrange_container()
+			// Update old_content so we don't re-configure in animate_view()
 			node->sway_container->old_content.x = istate->content_x;
 			node->sway_container->old_content.y = istate->content_y;
 			node->sway_container->old_content.width = istate->content_width;
 			node->sway_container->old_content.height = istate->content_height;
+			// A Xwayland view that only moves needs to know its new position,
+			// sent by configure, but it won't return a new buffer, so don't wait.
+			*wait = cw != iw || ch != ih;
 			return true;
 		}
 		return false;
@@ -1538,6 +1533,7 @@ static bool should_configure(struct sway_node *node,
 			cstate->content_height == istate->content_height) {
 		return false;
 	}
+	*wait = true;
 	return true;
 }
 
@@ -1569,7 +1565,8 @@ static void transaction_commit(struct sway_transaction *transaction) {
 		struct sway_transaction_instruction *instruction =
 			transaction->instructions->items[i];
 		struct sway_node *node = instruction->node;
-		if (should_configure(node, instruction)) {
+		bool wait;
+		if (should_configure(node, instruction, &wait)) {
 			bool hidden = !node->destroying &&
 				!view_is_visible(node->sway_container->view);
 			set_surface_preferred_buffer_scale(node->sway_container->view);
@@ -1578,7 +1575,7 @@ static void transaction_commit(struct sway_transaction *transaction) {
 					instruction->container_state.content_y,
 					instruction->container_state.content_width,
 					instruction->container_state.content_height);
-			if (!hidden) {
+			if (wait && !hidden) {
 				instruction->waiting = true;
 				++transaction->num_waiting;
 			}
@@ -1772,14 +1769,6 @@ static void container_sync_animation_variables(struct sway_container *child,
 	animated_variable_reset(&child->animation.w, child->current.width);
 	animated_variable_reset(&child->animation.h, child->current.height);
 	animated_variable_reset(&child->animation.a, container_state_alpha(&child->current));
-#if WLR_HAS_XWAYLAND
-	if (child->view && child->view->type == SWAY_VIEW_XWAYLAND) {
-		child->old_content.x = child->current.content_x;
-		child->old_content.y = child->current.content_y;
-		child->old_content.width = child->current.content_width;
-		child->old_content.height = child->current.content_height;
-	}
-#endif
 }
 
 static void children_sync_animation_variables(list_t *children, bool animate) {

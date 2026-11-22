@@ -342,6 +342,28 @@ static uint32_t get_int_prop(struct sway_view *view, enum sway_view_prop prop) {
 	}
 }
 
+void view_get_xwayland_position(struct sway_view *view, double lx, double ly,
+		int *x, int *y) {
+	// X11 clients are screen position dependent
+	if (view->container) {
+		struct sway_layout_transform transform;
+		layout_transform_container_get(view->container, false, &transform);
+		layout_transform_point(&transform, &lx, &ly);
+	}
+	if (!config->xwayland_output_scale) {
+		if (view->container && view->container->pending.workspace) {
+			struct sway_output *output = view->container->pending.workspace->output;
+			if (output) {
+				struct wlr_output_layout_output *layout_o = wlr_output_layout_get(root->output_layout, output->wlr_output);
+				lx = layout_o->p_x + (lx - layout_o->x) * layout_o->output->scale;
+				ly = layout_o->p_y + (ly - layout_o->y) * layout_o->output->scale;
+			}
+		}
+	}
+	*x = round(lx);
+	*y = round(ly);
+}
+
 static uint32_t configure(struct sway_view *view, double lx, double ly, int width,
 		int height) {
 	if (view->destroying) {
@@ -356,22 +378,9 @@ static uint32_t configure(struct sway_view *view, double lx, double ly, int widt
 		return 0;
 	}
 
-	if (view->container) {
-		struct sway_layout_transform transform;
-		layout_transform_container_get(view->container, false, &transform);
-		layout_transform_point(&transform, &lx, &ly);
-	}
-	if (!config->xwayland_output_scale) {
-		if (view->container && view->container->pending.workspace) {
-			struct sway_output *output = view->container->pending.workspace->output;
-			if (output) {
-				struct wlr_output_layout_output *layout_o = wlr_output_layout_get(root->output_layout, output->wlr_output);
-				lx = round(layout_o->p_x + (lx - layout_o->x) * layout_o->output->scale);
-				ly = round(layout_o->p_y + (ly - layout_o->y) * layout_o->output->scale);
-			}
-		}
-	}
-	wlr_xwayland_surface_configure(xsurface, lx, ly, width, height);
+	int x, y;
+	view_get_xwayland_position(view, lx, ly, &x, &y);
+	wlr_xwayland_surface_configure(xsurface, x, y, width, height);
 
 	// xwayland doesn't give us a serial for the configure
 	return 0;
@@ -700,10 +709,10 @@ static void handle_request_configure(struct wl_listener *listener, void *data) {
 		container_floating_resize_and_center(view->container);
 	}
 
-	configure(view, view->container->pending.content_x,
+	view_configure(view, view->container->pending.content_x,
 			view->container->pending.content_y,
-			round(view->container->pending.content_width),
-			round(view->container->pending.content_height));
+			view->container->pending.content_width,
+			view->container->pending.content_height);
 	node_set_dirty(&view->container->node);
 }
 
