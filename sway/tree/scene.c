@@ -18,6 +18,32 @@ static bool scene_overview_workspaces_enabled() {
 
 static void *scene_node_get_workspace(struct wlr_scene_node *node);
 
+// A container that is being destroyed can still be in the scene graph so
+// its fade out renders, but it is not part of the graph for input.
+static bool scene_node_is_destroying(struct wlr_scene_node *node) {
+	while (true) {
+		struct sway_container *con =
+			scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
+		if (con && con->node.destroying) {
+			return true;
+		}
+		struct sway_view *view =
+			scene_descriptor_try_get(node, SWAY_SCENE_DESC_VIEW);
+		if (!view) {
+			struct sway_popup_desc *popup =
+				scene_descriptor_try_get(node, SWAY_SCENE_DESC_POPUP);
+			view = popup ? popup->view : NULL;
+		}
+		if (view && view->container && view->container->node.destroying) {
+			return true;
+		}
+		if (!node->parent) {
+			return false;
+		}
+		node = &node->parent->node;
+	}
+}
+
 static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 		struct wlr_scene_node_at_data *data) {
 	struct wlr_output *wlr_output = wlr_scene_node_info_get_output(node);
@@ -37,6 +63,9 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 			data->ly < box->y || data->ly >= box->y + box->height) {
 			return false;
 		}
+	}
+	if (scene_node_is_destroying(node)) {
+		return false;
 	}
 
 	double rx = data->lx - lx;
