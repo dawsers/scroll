@@ -1184,7 +1184,7 @@ void view_unmap(struct sway_view *view) {
 		if (node->type == N_WORKSPACE) {
 			output_layer_shell_enable(node->sway_workspace->output, LAYER_SHELL_ALL);
 		} else if (node->type == N_CONTAINER) {
-			struct sway_container *con = container_get_fullscreen_target(node->sway_container);
+			struct sway_container *con = container_get_active_container(node->sway_container);
 			if (con && (con->fullscreen || (fullscreen && config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW))) {
 				container_set_fullscreen(con, FULLSCREEN_WORKSPACE);
 				container_set_fullscreen_container(con, FULLSCREEN_ENABLED);

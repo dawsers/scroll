@@ -333,12 +333,6 @@ bool container_has_urgent_child(struct sway_container *container);
  */
 void container_end_mouse_operation(struct sway_container *container);
 
-/**
- * Returns the container that becomes fullscreen when fullscreen is enabled on `con`:
- * `con` if it is a view, otherwise its active view, or NULL if it has none.
- */
-struct sway_container *container_get_fullscreen_target(struct sway_container *con);
-
 void container_set_fullscreen(struct sway_container *con,
 		enum sway_fullscreen_mode mode);
 
@@ -464,6 +458,11 @@ void container_detach_update_parent_fullscreen_layout(struct sway_container *par
 
 struct sway_container *container_get_focused_inactive_child(struct sway_container *container);
 struct sway_view *container_get_active_view(struct sway_container *container);
+
+/**
+ * Returns the container of the active view of `con`, or NULL if it has none
+ */
+struct sway_container *container_get_active_container(struct sway_container *con);
 
 struct sway_container *container_get_by_id(size_t id);
 

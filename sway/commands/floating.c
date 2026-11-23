@@ -26,6 +26,9 @@ struct cmd_results *cmd_floating(int argc, char **argv) {
 	if (node->type == N_WORKSPACE) {
 		container = seat_get_focus_inactive_tiling(config->handler_context.seat, workspace);
 	}
+	if (container) {
+		container = container_get_active_container(container);
+	}
 	if (!container) {
 		return cmd_results_new(CMD_INVALID,
 				"'floating' needs a container");

@@ -515,7 +515,11 @@ static struct cmd_results *cmd_move_in_direction(
 	}
 
 	if (nomode) {
-		container = container_get_active_view(container)->container;
+		container = container_get_active_container(container);
+		if (!container) {
+			return cmd_results_new(CMD_FAILURE,
+					"Cannot find a container to move");
+		}
 	}
 
 	if (container_is_floating(container)) {
@@ -776,6 +780,13 @@ static struct cmd_results *cmd_move_to_scratchpad(void) {
 	}
 	if (node->type == N_WORKSPACE) {
 		con = seat_get_focus_inactive_tiling(config->handler_context.seat, ws);
+	}
+	if (con) {
+		con = container_get_active_container(con);
+	}
+	if (!con) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't find a container to move to the scratchpad");
 	}
 
 	// If the container is in a floating split container,

@@ -1045,7 +1045,7 @@ void container_set_floating(struct sway_container *container, bool enable) {
 
 	if (enable) {
 		struct sway_container *old_parent = container->pending.parent;
-		if (layout_selection_enabled(old_parent)) {
+		if (old_parent && layout_selection_enabled(old_parent)) {
 			layout_selection_set(container, true);
 		}
 		container_detach(container);
@@ -1696,18 +1696,10 @@ void container_fullscreen_disable(struct sway_container *con) {
 	transaction_set_animation(ANIMATION_WINDOW_FULLSCREEN);
 }
 
-struct sway_container *container_get_fullscreen_target(struct sway_container *con) {
-	if (con->view) {
-		return con;
-	}
-	struct sway_view *view = container_get_active_view(con);
-	return view ? view->container : NULL;
-}
-
 void container_set_fullscreen(struct sway_container *con,
 		enum sway_fullscreen_mode mode) {
 	if (mode != FULLSCREEN_NONE) {
-		con = container_get_fullscreen_target(con);
+		con = container_get_active_container(con);
 		if (!con) {
 			return;
 		}
@@ -1756,7 +1748,7 @@ void container_set_fullscreen(struct sway_container *con,
 // This is only called for fullscreen_move_focus true follow, so disable
 // src->fullscreen when needed
 void container_pass_fullscreen(struct sway_container *src, struct sway_container *dst) {
-	dst = container_get_fullscreen_target(dst);
+	dst = container_get_active_container(dst);
 	if (!dst || src->pending.fullscreen_mode == dst->pending.fullscreen_mode) {
 		return;
 	}
@@ -1799,7 +1791,7 @@ void container_set_fullscreen_container(struct sway_container *con,
 
 void container_set_fullscreen_application(struct sway_container *con,
 		enum sway_fullscreen_state mode) {
-	con = container_get_fullscreen_target(con);
+	con = container_get_active_container(con);
 	if (!con || con->pending.fullscreen_application == mode) {
 		return;
 	}
@@ -1817,7 +1809,7 @@ void container_set_fullscreen_application(struct sway_container *con,
 
 void container_set_fullscreen_layout(struct sway_container *con,
 		enum sway_fullscreen_state mode) {
-	con = container_get_fullscreen_target(con);
+	con = container_get_active_container(con);
 	if (!con) {
 		return;
 	}
@@ -2464,6 +2456,14 @@ struct sway_view *container_get_active_view(struct sway_container *container) {
 		active = container_get_focused_inactive_child(active);
 	}
 	return active ? active->view : NULL;
+}
+
+struct sway_container *container_get_active_container(struct sway_container *con) {
+	if (con->view) {
+		return con;
+	}
+	struct sway_view *view = container_get_active_view(con);
+	return view ? view->container : NULL;
 }
 
 struct sway_container *container_get_by_id(size_t id) {
