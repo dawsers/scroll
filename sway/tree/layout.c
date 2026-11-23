@@ -529,6 +529,7 @@ void layout_overview_workspaces(bool on) {
 			output_damage_whole(output);
 		}
 	}
+	ipc_event_workspace(NULL, NULL, "reload");
 }
 
 bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspace, double *lx, double *ly) {
