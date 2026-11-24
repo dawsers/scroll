@@ -21,31 +21,38 @@ static void *scene_node_get_workspace(struct wlr_scene_node *node);
 // A container that is being destroyed can still be in the scene graph so
 // its fade out renders, but it is not part of the graph for input.
 static bool scene_node_is_destroying(struct wlr_scene_node *node) {
-	while (true) {
+	// Container, view, and popup descriptors are only ever assigned to
+	// WLR_SCENE_NODE_TREE nodes, so skip addon lookups on leaf nodes.
+	struct wlr_scene_tree *tree = node->type == WLR_SCENE_NODE_TREE
+		? wlr_scene_tree_from_node(node)
+		: node->parent;
+	while (tree) {
+		struct wlr_scene_node *cur = &tree->node;
 		struct sway_container *con =
-			scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
+			scene_descriptor_try_get(cur, SWAY_SCENE_DESC_CONTAINER);
 		if (con && con->node.destroying) {
 			return true;
 		}
 		struct sway_view *view =
-			scene_descriptor_try_get(node, SWAY_SCENE_DESC_VIEW);
+			scene_descriptor_try_get(cur, SWAY_SCENE_DESC_VIEW);
 		if (!view) {
 			struct sway_popup_desc *popup =
-				scene_descriptor_try_get(node, SWAY_SCENE_DESC_POPUP);
+				scene_descriptor_try_get(cur, SWAY_SCENE_DESC_POPUP);
 			view = popup ? popup->view : NULL;
 		}
 		if (view && view->container && view->container->node.destroying) {
 			return true;
 		}
-		if (!node->parent) {
-			return false;
-		}
-		node = &node->parent->node;
+		tree = tree->node.parent;
 	}
+	return false;
 }
 
 static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 		struct wlr_scene_node_at_data *data) {
+	if (node->type == WLR_SCENE_NODE_SHADOW) {
+		return false;
+	}
 	struct wlr_output *wlr_output = wlr_scene_node_info_get_output(node);
 	if (wlr_output) {
 		struct sway_output *output = output_for_coords(data->lx, data->ly);
@@ -53,9 +60,11 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 			return false;
 		}
 	}
-	struct sway_workspace *workspace = scene_node_get_workspace(node);
-	if (workspace && data->data && workspace != data->data) {
-		return false;
+	if (data->data) {
+		struct sway_workspace *workspace = scene_node_get_workspace(node);
+		if (workspace && workspace != data->data) {
+			return false;
+		}
 	}
 	struct wlr_box *box = wlr_scene_node_info_get_output_box(node);
 	if (box) {
@@ -121,8 +130,6 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 				return false;
 			}
 		}
-	} else if (node->type == WLR_SCENE_NODE_SHADOW) {
-		return false;
 	}
 
 	data->rx = rx;
