@@ -45,37 +45,45 @@ struct sway_animation_curve {
 	struct curve_cache cache;
 };
 
-static uint32_t comb_n_i(uint32_t n, uint32_t i) {
-	if (i > n) {
-		return 0;
-	}
-	int comb = 1;
-	for (uint32_t j = n; j > i; --j) {
-		comb *= j;
-	}
-	for (uint32_t j = n - i; j > 1; --j) {
-		comb /= j;
-	}
-	return comb;
-}
-
-static double bernstein(uint32_t n, uint32_t i, double t) {
-	if (n == 0) {
-		return 1.0;
-	}
-	double B = comb_n_i(n, i) * pow(t, i) * pow(1.0 - t, n - i);
-	return B;
-}
-
 static void bezier(struct bezier_curve *curve, double t, double (*B)[NDIM]) {
-	for (uint32_t d = 0; d < NDIM; ++d) {
-		(*B)[d] = 0.0;
-	}
-	for (uint32_t i = 0; i <= curve->n; ++i) {
-		double b = bernstein(curve->n, i, t);
+	uint32_t n = curve->n;
+	if (n == 3) {
+		double u = 1.0 - t;
+		double u2 = u * u;
+		double t2 = t * t;
+		double b0 = u2 * u;
+		double b1 = 3.0 * u2 * t;
+		double b2 = 3.0 * u * t2;
+		double b3 = t2 * t;
 		for (uint32_t d = 0; d < NDIM; ++d) {
-			(*B)[d] += curve->b[d][i] * b;
+			const double *p = curve->b[d];
+			(*B)[d] = p[0] * b0 + p[1] * b1 + p[2] * b2 + p[3] * b3;
 		}
+		return;
+	}
+	if (n == 0) {
+		for (uint32_t d = 0; d < NDIM; ++d) {
+			(*B)[d] = curve->b[d][0];
+		}
+		return;
+	}
+	double u = 1.0 - t;
+	double res[NDIM];
+	for (uint32_t d = 0; d < NDIM; ++d) {
+		res[d] = curve->b[d][0];
+	}
+	double c = 1.0;
+	double t_pow = 1.0;
+	for (uint32_t i = 1; i <= n; ++i) {
+		c = c * (double)(n - i + 1) / (double)i;
+		t_pow *= t;
+		double ct = c * t_pow;
+		for (uint32_t d = 0; d < NDIM; ++d) {
+			res[d] = res[d] * u + curve->b[d][i] * ct;
+		}
+	}
+	for (uint32_t d = 0; d < NDIM; ++d) {
+		(*B)[d] = res[d];
 	}
 }
 
