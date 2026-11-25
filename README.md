@@ -1764,10 +1764,10 @@ The layout would travel its velocity (pixels per second) divided by this
 value. Try values between `3` and `10`. Works best with
 `animations gesture yes spring ...`.
 
-`gesture_scroll_sentitivity`: default is `1.0`. Increase if you want more
+`gesture_scroll_sensitivity`: default is `1.0`. Increase if you want more
 sensitivity for swiping devices.
 
-`gesture_scroll_sentitivityi_mouse`: default is `1.0`. Increase if you want more
+`gesture_scroll_sensitivity_mouse`: default is `1.0`. Increase if you want more
 sensitivity when scrolling the layout with the mouse.
 
 Negative sensitivities invert the swiping direction (natural vs. reverse).
