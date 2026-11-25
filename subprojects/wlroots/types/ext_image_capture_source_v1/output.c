@@ -43,6 +43,16 @@ struct wlr_ext_output_image_capture_source_v1_frame_event {
 	struct timespec when;
 };
 
+static const struct ext_output_image_capture_source_manager_v1_interface output_manager_impl;
+
+static struct wlr_ext_output_image_capture_source_manager_v1 *
+output_manager_from_resource(struct wl_resource *resource) {
+	assert(wl_resource_instance_of(resource,
+		&ext_output_image_capture_source_manager_v1_interface,
+		&output_manager_impl));
+	return wl_resource_get_user_data(resource);
+}
+
 static void output_source_start(struct wlr_ext_image_capture_source_v1 *base,
 		bool with_cursors) {
 	struct wlr_ext_output_image_capture_source_v1 *source = wl_container_of(base, source, base);
@@ -176,41 +186,57 @@ static const struct wlr_addon_interface output_addon_impl = {
 	.destroy = output_addon_destroy,
 };
 
+struct wlr_ext_image_capture_source_v1 *wlr_ext_image_capture_source_v1_create_with_raw_output(
+		struct wlr_output *output) {
+	struct wlr_ext_output_image_capture_source_v1 *source;
+	struct wlr_addon *addon = wlr_addon_find(&output->addons, NULL, &output_addon_impl);
+	if (addon != NULL) {
+		source = wl_container_of(addon, source, addon);
+		return &source->base;
+	}
+
+	source = calloc(1, sizeof(*source));
+	if (source == NULL) {
+		return NULL;
+	}
+
+	wlr_ext_image_capture_source_v1_init(&source->base, &output_source_impl);
+	wlr_addon_init(&source->addon, &output->addons, NULL, &output_addon_impl);
+	source->output = output;
+
+	source->output_commit.notify = source_handle_output_commit;
+	wl_signal_add(&output->events.commit, &source->output_commit);
+
+	source_update_buffer_constraints(source);
+
+	output_cursor_source_init(&source->cursor, output);
+
+	return &source->base;
+}
+
+bool wlr_ext_output_image_capture_source_manager_v1_request_accept(
+		struct wlr_ext_output_image_capture_source_manager_v1_request_event *request,
+		struct wlr_ext_image_capture_source_v1 *source) {
+	return wlr_ext_image_capture_source_v1_create_resource(source, request->client, request->new_id);
+}
+
 static void output_manager_handle_create_source(struct wl_client *client,
 		struct wl_resource *manager_resource, uint32_t new_id,
 		struct wl_resource *output_resource) {
+	struct wlr_ext_output_image_capture_source_manager_v1 *manager =
+		output_manager_from_resource(manager_resource);
 	struct wlr_output *output = wlr_output_from_resource(output_resource);
 	if (output == NULL) {
 		wlr_ext_image_capture_source_v1_create_resource(NULL, client, new_id);
 		return;
 	}
 
-	struct wlr_ext_output_image_capture_source_v1 *source;
-	struct wlr_addon *addon = wlr_addon_find(&output->addons, NULL, &output_addon_impl);
-	if (addon != NULL) {
-		source = wl_container_of(addon, source, addon);
-	} else {
-		source = calloc(1, sizeof(*source));
-		if (source == NULL) {
-			wl_resource_post_no_memory(manager_resource);
-			return;
-		}
-
-		wlr_ext_image_capture_source_v1_init(&source->base, &output_source_impl);
-		wlr_addon_init(&source->addon, &output->addons, NULL, &output_addon_impl);
-		source->output = output;
-
-		source->output_commit.notify = source_handle_output_commit;
-		wl_signal_add(&output->events.commit, &source->output_commit);
-
-		source_update_buffer_constraints(source);
-
-		output_cursor_source_init(&source->cursor, output);
-	}
-
-	if (!wlr_ext_image_capture_source_v1_create_resource(&source->base, client, new_id)) {
-		return;
-	}
+	struct wlr_ext_output_image_capture_source_manager_v1_request_event request = {
+		.output = output,
+		.client = client,
+		.new_id = new_id,
+	};
+	wl_signal_emit_mutable(&manager->events.capture_request, &request);
 }
 
 static void output_manager_handle_destroy(struct wl_client *client,
@@ -239,6 +265,12 @@ static void output_manager_bind(struct wl_client *client, void *data,
 static void output_manager_handle_display_destroy(struct wl_listener *listener, void *data) {
 	struct wlr_ext_output_image_capture_source_manager_v1 *manager =
 		wl_container_of(listener, manager, display_destroy);
+
+	wl_signal_emit_mutable(&manager->events.destroy, NULL);
+
+	assert(wl_list_empty(&manager->events.destroy.listener_list));
+	assert(wl_list_empty(&manager->events.capture_request.listener_list));
+
 	wl_list_remove(&manager->display_destroy.link);
 	wl_global_destroy(manager->global);
 	free(manager);
@@ -262,6 +294,9 @@ struct wlr_ext_output_image_capture_source_manager_v1 *wlr_ext_output_image_capt
 
 	manager->display_destroy.notify = output_manager_handle_display_destroy;
 	wl_display_add_destroy_listener(display, &manager->display_destroy);
+
+	wl_signal_init(&manager->events.destroy);
+	wl_signal_init(&manager->events.capture_request);
 
 	return manager;
 }
