@@ -43,7 +43,7 @@ static uint32_t parse_resize_axis(const char *axis) {
  */
 static struct cmd_results *resize_adjust_floating(uint32_t axis,
 		struct movement_amount *amount) {
-	struct sway_container *con = config->handler_context.container;
+	struct sway_container *con = container_get_active_container(config->handler_context.container);
 	int grow_width = 0, grow_height = 0;
 
 	if (axis & AXIS_HORIZONTAL) {
@@ -115,7 +115,7 @@ static struct cmd_results *resize_adjust_floating(uint32_t axis,
  */
 static struct cmd_results *resize_adjust_tiled(uint32_t axis,
 		struct movement_amount *amount) {
-	struct sway_container *current = config->handler_context.container;
+	struct sway_container *current = container_get_active_container(config->handler_context.container);
 	double min_width, max_width, min_height, max_height;
 	view_get_constraints(current->view, &min_width, &max_width, &min_height, &max_height);
 	min_width += 2.0 * current->pending.border_thickness;
@@ -568,7 +568,11 @@ static struct cmd_results *cmd_resize_adjust(int argc, char **argv,
 	first_amount.amount *= multiplier;
 	second_amount.amount *= multiplier;
 
-	struct sway_container *con = config->handler_context.container;
+	struct sway_container *con = container_get_active_container(config->handler_context.container);
+	if (!con) {
+		return cmd_results_new(CMD_INVALID,
+				"Can't find a container to resize");
+	}
 	if (container_is_floating(con)) {
 		// Floating containers can only resize in px. Choose an amount which
 		// uses px, with fallback to an amount that specified no unit.
