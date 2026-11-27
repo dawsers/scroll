@@ -45,37 +45,24 @@ struct sway_animation_curve {
 	struct curve_cache cache;
 };
 
-static uint32_t comb_n_i(uint32_t n, uint32_t i) {
-	if (i > n) {
-		return 0;
-	}
-	int comb = 1;
-	for (uint32_t j = n; j > i; --j) {
-		comb *= j;
-	}
-	for (uint32_t j = n - i; j > 1; --j) {
-		comb /= j;
-	}
-	return comb;
-}
-
-static double bernstein(uint32_t n, uint32_t i, double t) {
-	if (n == 0) {
-		return 1.0;
-	}
-	double B = comb_n_i(n, i) * pow(t, i) * pow(1.0 - t, n - i);
-	return B;
-}
-
+// Control points are stored multiplied by their binomial coefficients, so
+// we can compute using Horner's rule for the Bernstein form of the curve
+// B(t) = sum(b[i] * t^i * (1 - t)^(n - i))
 static void bezier(struct bezier_curve *curve, double t, double (*B)[NDIM]) {
+	const double u = 1.0 - t;
+	double res[NDIM];
 	for (uint32_t d = 0; d < NDIM; ++d) {
-		(*B)[d] = 0.0;
+		res[d] = curve->b[d][0];
 	}
-	for (uint32_t i = 0; i <= curve->n; ++i) {
-		double b = bernstein(curve->n, i, t);
+	double tn = 1.0;
+	for (uint32_t i = 1; i <= curve->n; ++i) {
+		tn *= t;
 		for (uint32_t d = 0; d < NDIM; ++d) {
-			(*B)[d] += curve->b[d][i] * b;
+			res[d] = res[d] * u + curve->b[d][i] * tn;
 		}
+	}
+	for (uint32_t d = 0; d < NDIM; ++d) {
+		(*B)[d] = res[d];
 	}
 }
 
@@ -176,16 +163,12 @@ void animation_path_add_curve(struct sway_animation_path *path,
 
 static void lookup_xy(struct bezier_curve *curve, double t, double *x, double *y) {
 	// Interpolate in the lookup table
-	double t0 = floor(t * NINTERVALS);
-	double t1 = ceil(t * NINTERVALS);
-	double u;
-	if (t0 != t1) {
-		double u0 = curve->u[(uint32_t) t0];
-		double u1 = curve->u[(uint32_t) t1];
-		double k = (t * NINTERVALS - t0) / (t1 - t0);
-		u = (1.0 - k) * u0 + k * u1;
-	} else {
-		u = curve->u[(uint32_t) t0];
+	const double pos = t * NINTERVALS;
+	const uint32_t i = (uint32_t) pos;
+	const double k = pos - i;
+	double u = curve->u[i];
+	if (k > 0.0) {
+		u = (1.0 - k) * u + k * curve->u[i + 1];
 	}
 	if (curve->simple) {
 		*x = t; *y = u;
@@ -365,10 +348,14 @@ static void create_bezier(struct bezier_curve *curve, uint32_t order, list_t *po
 			curve->b[d][0] = 0.0;
 		}
 
+		// For faster evaluation we store each control point multiplied
+		// by its binomial coefficient
+		double comb = 1.0;
 		for (uint32_t i = 1, idx = 0; i < curve->n; ++i) {
+			comb = comb * (curve->n - i + 1) / i;
 			for (int d = 0; d < NDIM; ++d) {
 				double *x = points->items[idx++];
-				curve->b[d][i] = *x;
+				curve->b[d][i] = comb * *x;
 			}
 		}
 		// Set end points
