@@ -89,7 +89,7 @@ int parse_into_modifiers(int argc, char **argv,
 			++success;
 		}
 
-        if (strcasecmp(argv[i], "focus") == 0) {
+		if (strcasecmp(argv[i], "focus") == 0) {
 			modifiers->focus = true;
 			modifiers->focus_set = true;
 			++success;
@@ -99,7 +99,7 @@ int parse_into_modifiers(int argc, char **argv,
 			++success;
 		}
 
-        if (strcasecmp(argv[i], "center_horiz") == 0) {
+		if (strcasecmp(argv[i], "center_horiz") == 0) {
 			modifiers->center_horizontal = true;
 			modifiers->center_horizontal_set = true;
 			++success;
@@ -108,7 +108,7 @@ int parse_into_modifiers(int argc, char **argv,
 			modifiers->center_horizontal_set = true;
 			++success;
 		}
-        if (strcasecmp(argv[i], "center_vert") == 0) {
+		if (strcasecmp(argv[i], "center_vert") == 0) {
 			modifiers->center_vertical = true;
 			modifiers->center_vertical_set = true;
 			++success;
@@ -118,7 +118,7 @@ int parse_into_modifiers(int argc, char **argv,
 			++success;
 		}
 
-        if (strcasecmp(argv[i], "reorder_auto") == 0) {
+		if (strcasecmp(argv[i], "reorder_auto") == 0) {
 			modifiers->reorder = REORDER_AUTO;
 			modifiers->reorder_set = true;
 			++success;
@@ -137,6 +137,16 @@ int parse_into_modifiers(int argc, char **argv,
 			modifiers->floating_set = true;
 			++success;
 		}
+
+		if (strcasecmp(argv[i], "infinite") == 0) {
+			modifiers->infinite = true;
+			modifiers->infinite_set = true;
+			++success;
+		} else if (strcasecmp(argv[i], "noinfinite") == 0) {
+			modifiers->infinite = false;
+			modifiers->infinite_set = true;
+			++success;
+		}
 	}
 	if (success > 0) {
 		// Modifiers had some fields set
@@ -148,7 +158,8 @@ int parse_into_modifiers(int argc, char **argv,
 static struct cmd_results *cmd_workspace_layout_default_mode(int argc, char **argv, int mode_location) {
 	const char expected[] = "Expected 'workspace <name> layout_default_mode "
 		"[<h|v> <after|before|end|beg> <focus|nofocus> <center_horiz|nocenter_horiz> "
-		"<center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating>]";
+		"<center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating> "
+		"<infinite|noinfinite>]";
 	if (mode_location == 0) {
 		return cmd_results_new(CMD_INVALID, "%s", expected);
 	}

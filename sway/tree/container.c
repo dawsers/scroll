@@ -568,8 +568,8 @@ static void container_dereference_from_layouts(struct sway_container *con) {
 		struct sway_output *output = root->outputs->items[i];
 		for (int j = 0; j < output->workspaces->length; ++j) {
 			struct sway_workspace *workspace = output->workspaces->items[j];
-			if (workspace->layout.fullscreen == con) {
-				workspace->layout.fullscreen = NULL;
+			if (workspace->layout.overview.fullscreen == con) {
+				workspace->layout.overview.fullscreen = NULL;
 			}
 			if (workspace->layout.pin.container == con) {
 				workspace->layout.pin.container = NULL;
@@ -937,6 +937,12 @@ static void floating_natural_resize(struct sway_container *con) {
 	}
 }
 
+static void floating_workspace_box(struct sway_container *con, struct wlr_fbox *box) {
+	struct sway_workspace *ws = con->pending.workspace;
+	*box = (struct wlr_fbox){ ws->x, ws->y, ws->width, ws->height };
+	layout_floating_box_from_global(con, box);
+}
+
 void container_floating_resize_and_center(struct sway_container *con) {
 	struct sway_workspace *ws = con->pending.workspace;
 	if (!ws) {
@@ -957,22 +963,25 @@ void container_floating_resize_and_center(struct sway_container *con) {
 	}
 
 	floating_natural_resize(con);
+	struct wlr_fbox vp, ovp = { ob.x, ob.y, ob.width, ob.height };
+	floating_workspace_box(con, &vp);
+	layout_floating_box_from_global(con, &ovp);
 	if (!con->view) {
-		if (con->pending.width > ws->width || con->pending.height > ws->height) {
-			con->pending.x = ob.x + (ob.width - con->pending.width) / 2;
-			con->pending.y = ob.y + (ob.height - con->pending.height) / 2;
+		if (con->pending.width > vp.width || con->pending.height > vp.height) {
+			con->pending.x = ovp.x + (ovp.width - con->pending.width) / 2;
+			con->pending.y = ovp.y + (ovp.height - con->pending.height) / 2;
 		} else {
-			con->pending.x = ws->x + (ws->width - con->pending.width) / 2;
-			con->pending.y = ws->y + (ws->height - con->pending.height) / 2;
+			con->pending.x = vp.x + (vp.width - con->pending.width) / 2;
+			con->pending.y = vp.y + (vp.height - con->pending.height) / 2;
 		}
 	} else {
-		if (con->pending.content_width > ws->width
-				|| con->pending.content_height > ws->height) {
-			con->pending.content_x = ob.x + (ob.width - con->pending.content_width) / 2;
-			con->pending.content_y = ob.y + (ob.height - con->pending.content_height) / 2;
+		if (con->pending.content_width > vp.width
+				|| con->pending.content_height > vp.height) {
+			con->pending.content_x = ovp.x + (ovp.width - con->pending.content_width) / 2;
+			con->pending.content_y = ovp.y + (ovp.height - con->pending.content_height) / 2;
 		} else {
-			con->pending.content_x = ws->x + (ws->width - con->pending.content_width) / 2;
-			con->pending.content_y = ws->y + (ws->height - con->pending.content_height) / 2;
+			con->pending.content_x = vp.x + (vp.width - con->pending.content_width) / 2;
+			con->pending.content_y = vp.y + (vp.height - con->pending.content_height) / 2;
 		}
 
 		// If the view's border is B_NONE then these properties are ignored.
@@ -1116,6 +1125,9 @@ void container_set_floating(struct sway_container *container, bool enable) {
 
 	container_end_mouse_operation(container);
 
+	// Update lock status with change to floating/tiled
+	layout_locked_refresh(container);
+
 	ipc_event_window(container, "floating");
 
 	layout_toggle_size_change_focus(&container->node, container, workspace);
@@ -1224,11 +1236,19 @@ static void container_snap(struct sway_container *floater,
 		}
 		return;
 	}
+
+	// The container may be in a different workspace with its own viewport.
+	// Convert from its global corrdinates to the layout coordinates of floater
+	struct wlr_fbox box;
+	layout_container_global_box(container, false, &box);
+	struct sway_layout_transform to;
+	layout_transform_container_get(floater, false, &to);
+	layout_transform_box_inv(&to, &box);
+
 	double d = x_amount;
 	if (snap(floater->pending.x, floater->pending.y,
 			 floater->pending.width, floater->pending.height,
-			 container->pending.x, container->pending.y,
-			 container->pending.width, container->pending.height,
+			 box.x, box.y, box.width, box.height,
 			 &d, config->snap_window_gap, snap_gaps(container))) {
 		*snap_x = true;
 		*dx = min_abs(d, *dx);
@@ -1236,8 +1256,7 @@ static void container_snap(struct sway_container *floater,
 	d = y_amount;
 	if (snap(floater->pending.y, floater->pending.x,
 			 floater->pending.height, floater->pending.width,
-			 container->pending.y, container->pending.x,
-			 container->pending.height, container->pending.width,
+			 box.y, box.x, box.height, box.width,
 			 &d, config->snap_window_gap, snap_gaps(container))) {
 		*snap_y = true;
 		*dy = min_abs(d, *dy);
@@ -1251,14 +1270,15 @@ static void container_floating_snap(struct sway_container *floater,
 	if (config->snap_workspace_gap > 0) {
 		struct sway_workspace *workspace = floater->pending.workspace;
 		if (workspace) {
-			const double wx = config->snap_respect_gaps_outer ?
-				workspace->x : workspace->x - workspace->gaps_outer.left;
-			const double ww = config->snap_respect_gaps_outer ?
-				workspace->width : workspace->width + workspace->gaps_outer.left + workspace->gaps_outer.right;
-			const double wy = config->snap_respect_gaps_outer ?
-				workspace->y : workspace->y - workspace->gaps_outer.top;
-			const double wh = config->snap_respect_gaps_outer ?
-				workspace->height : workspace->height + workspace->gaps_outer.top + workspace->gaps_outer.bottom;
+			struct wlr_fbox box;
+			floating_workspace_box(floater, &box);
+			if (!config->snap_respect_gaps_outer) {
+				box.x -= workspace->gaps_outer.left;
+				box.y -= workspace->gaps_outer.top;
+				box.width += workspace->gaps_outer.left + workspace->gaps_outer.right;
+				box.height += workspace->gaps_outer.top + workspace->gaps_outer.bottom;
+			}
+			const double wx = box.x, wy = box.y, ww = box.width, wh = box.height;
 			double d = *x_amount;
 			if (snap(floater->pending.x, floater->pending.y,
 					 floater->pending.width, floater->pending.height,
@@ -1333,13 +1353,12 @@ void container_floating_translate(struct sway_container *con,
  * center.
  */
 struct sway_output *container_floating_find_output(struct sway_container *con) {
-	struct wlr_fbox screen;
-	layout_container_screen_box(con, false, &screen);
-	double center_x = screen.x + screen.width / 2;
-	double center_y = screen.y + screen.height / 2;
-	if (layout_overview_workspaces_enabled()) {
-		layout_overview_workspaces_global_to_local(con->pending.workspace, &center_x, &center_y);
-	}
+	// Where its center is on screen
+	struct wlr_fbox box;
+	layout_container_global_box(con, false, &box);
+	double center_x = box.x + box.width / 2;
+	double center_y = box.y + box.height / 2;
+	layout_overview_workspaces_global_to_screen(con->pending.workspace, &center_x, &center_y);
 	struct sway_output *closest_output = NULL;
 	double closest_distance = DBL_MAX;
 	for (int i = 0; i < root->outputs->length; ++i) {
@@ -1368,11 +1387,13 @@ struct sway_output *container_floating_find_output(struct sway_container *con) {
  */
 static struct sway_workspace *container_floating_find_workspace(struct sway_output *output,
 		struct sway_container *con) {
-	double center_x = con->pending.x + con->pending.width / 2;
-	double center_y = con->pending.y + con->pending.height / 2;
-	if (layout_overview_workspaces_enabled()) {
-		layout_overview_workspaces_global_to_local(con->pending.workspace, &center_x, &center_y);
-	}
+	// Where its center is on screen The viewport of its workspace may be panned,
+	// and it may be in workspaces overview mode
+	struct wlr_fbox box;
+	layout_container_global_box(con, false, &box);
+	double center_x = box.x + box.width / 2;
+	double center_y = box.y + box.height / 2;
+	layout_overview_workspaces_global_to_screen(con->pending.workspace, &center_x, &center_y);
 	struct sway_workspace *closest_workspace = NULL;
 	double closest_distance = DBL_MAX;
 	double closest_x, closest_y;
@@ -1421,6 +1442,15 @@ static struct sway_workspace *container_floating_find_workspace(struct sway_outp
 	return closest_workspace;
 }
 
+// A point of the container in the layout coordinates of workspace `from`, to
+// the ones of workspace `to`, keeping its position on screen
+static void floating_rebase_point(struct sway_container *con,
+		struct sway_workspace *from, struct sway_workspace *to,
+		double *x, double *y) {
+	layout_container_layout_to_screen(con, from, false, x, y);
+	layout_container_screen_to_layout(con, to, false, x, y);
+}
+
 // Move the floating container from the layout coordinates of one workspace
 // to the other's, keeping its position on screen
 static void container_floating_rebase(struct sway_container *con,
@@ -1428,36 +1458,42 @@ static void container_floating_rebase(struct sway_container *con,
 	if (!from || !to || !from->output || !to->output) {
 		return;
 	}
-	struct sway_layout_transform t_from, t_to;
-	layout_transform_workspace_get(from, false, &t_from);
-	layout_transform_workspace_get(to, false, &t_to);
-	if (t_from.scale == t_to.scale && t_from.x == t_to.x && t_from.y == t_to.y) {
-		return;
-	}
 	// Keep the center, which decides the output of the container
 	const double hw = 0.5 * con->pending.width, hh = 0.5 * con->pending.height;
 	double x = con->pending.x + hw, y = con->pending.y + hh;
-	layout_transform_point(&t_from, &x, &y);
-	layout_transform_point_inv(&t_to, &x, &y);
+	floating_rebase_point(con, from, to, &x, &y);
 	container_floating_translate(con, x - hw - con->pending.x,
 		y - hh - con->pending.y, false);
 	// Also the current position, so the animation starts from the right place
 	const double chw = 0.5 * con->current.width, chh = 0.5 * con->current.height;
 	x = con->current.x + chw;
 	y = con->current.y + chh;
-	layout_transform_point(&t_from, &x, &y);
-	layout_transform_point_inv(&t_to, &x, &y);
+	floating_rebase_point(con, from, to, &x, &y);
 	con->current.x = x - chw;
 	con->current.y = y - chh;
 }
 
-void container_floating_move_to(struct sway_container *con,
-		double lx, double ly, bool snap) {
+void container_floating_keep_place(struct sway_container *con,
+		double pan_x, double pan_y) {
+	double x, y;
+	layout_container_pan_get(con, con->pending.workspace, &x, &y);
+	const double dx = pan_x - x, dy = pan_y - y;
+	if (con->pending.fullscreen_mode != FULLSCREEN_NONE) {
+		con->saved_x += dx;
+		con->saved_y += dy;
+	} else {
+		container_floating_translate(con, dx, dy, false);
+		// Update the current position, so the animation starts from the right place
+		con->current.x += dx;
+		con->current.y += dy;
+	}
+}
+
+void container_floating_update_workspace(struct sway_container *con) {
 	if (!sway_assert(container_is_floating(con),
 			"Expected a floating container")) {
 		return;
 	}
-	container_floating_translate(con, lx - con->pending.x, ly - con->pending.y, snap);
 	if (container_is_scratchpad_hidden(con)) {
 		return;
 	}
@@ -1477,21 +1513,8 @@ void container_floating_move_to(struct sway_container *con,
 		new_workspace =	output_get_active_workspace(new_output);
 	}
 	if (new_workspace && old_workspace != new_workspace) {
-		if (layout_overview_workspaces_enabled()) {
-			//  Modify container position relative to new closest workspace
-			double x = con->pending.x;
-			double y = con->pending.y;
-			layout_overview_workspaces_global_to_local(old_workspace, &x, &y);
-			layout_overview_workspaces_local_to_global(new_workspace, &x, &y);
-			container_floating_translate(con, x - con->pending.x, y - con->pending.y, snap);
-			// Modify container->current to be relative to the new workspace, so the
-			// animation starts from the right place
-			layout_overview_workspaces_global_to_local(old_workspace, &con->current.x, &con->current.y);
-			layout_overview_workspaces_local_to_global(new_workspace, &con->current.x, &con->current.y);
-		} else {
-			// If the workspace transforms are different, modify the position
-			container_floating_rebase(con, old_workspace, new_workspace);
-		}
+		// The workspace transforms are different, update the positions
+		container_floating_rebase(con, old_workspace, new_workspace);
 		container_detach(con);
 		workspace_add_floating(new_workspace, con);
 		arrange_workspace(old_workspace);
@@ -1503,49 +1526,54 @@ void container_floating_move_to(struct sway_container *con,
 			output_get_box(new_workspace->output, &output_box);
 			con->transform = output_box;
 		}
-		if (layout_overview_workspaces_enabled() ||
-				output_has_multiple_visible_virtual_outputs(new_output)) {
-			// Add the new workspace to the focus stack because for
-			// splits and overview workspaces it is not done automatically,
-			// as there is no change of output
-			struct sway_seat *seat = input_manager_current_seat();
+		// Add the new workspace to the focus stack because for
+		// splits and overview workspaces it is not done automatically,
+		// as there is no change of output.
+		struct sway_seat *seat = input_manager_current_seat();
+		struct sway_container *focus = seat_get_focused_container(seat);
+		if (focus && (focus == con || container_has_ancestor(focus, con))) {
 			seat_set_focus_workspace(seat, new_workspace);
-			seat_set_focus_container(seat, con);
+			seat_set_focus_container(seat, focus);
 		}
 		workspace_detect_urgent(old_workspace);
 		workspace_detect_urgent(new_workspace);
 		ipc_event_window(con, "move");
-	} else if (!root->jumping) {
-		// Always keep some part of the floating window inside the workspace
-		struct sway_output *output = new_workspace->output;
-		const double MARGIN = fmin(output->width * 0.025, output->height * 0.025);
-		const double dxmax = con->pending.x - (output->lx + output->width - MARGIN);
-		const double dymax = con->pending.y - (output->ly + output->height - MARGIN);
-		const double dxmin = con->pending.x + con->pending.width - (output->lx + MARGIN);
-		const double dymin = con->pending.y + con->pending.height - (output->ly + MARGIN);
-		if (dxmax > 0.0) {
-			con->pending.x -= dxmax;
-		}
-		if (dymax > 0.0) {
-			con->pending.y -= dymax;
-		}
-		if (dxmin < 0.0) {
-			con->pending.x -= dxmin;
-		}
-		if (dymin < 0.0) {
-			con->pending.y -= dymin;
-		}
 	}
 }
+
+void container_floating_move_to(struct sway_container *con,
+		double lx, double ly, bool snap) {
+	if (!sway_assert(container_is_floating(con),
+			"Expected a floating container")) {
+		return;
+	}
+	container_floating_translate(con, lx - con->pending.x, ly - con->pending.y, snap);
+	// The container can be anywhere in the unbounded canvas, only dragging it
+	// or a "move to workspace" command changes workspace.
+	if (con->dragging) {
+		container_floating_update_workspace(con);
+	}
+}
+
+void container_floating_set_dragging(struct sway_container *con, bool dragging) {
+	if (con->dragging == dragging) {
+		return;
+	}
+	con->dragging = dragging;
+	// Remove clip while dragging
+	node_set_dirty(&con->node);
+}
+
 
 void container_floating_move_to_center(struct sway_container *con) {
 	if (!sway_assert(container_is_floating(con),
 			"Expected a floating container")) {
 		return;
 	}
-	struct sway_workspace *ws = con->pending.workspace;
-	double new_lx = ws->x + (ws->width - con->pending.width) / 2;
-	double new_ly = ws->y + (ws->height - con->pending.height) / 2;
+	struct wlr_fbox vp;
+	floating_workspace_box(con, &vp);
+	double new_lx = vp.x + (vp.width - con->pending.width) / 2;
+	double new_ly = vp.y + (vp.height - con->pending.height) / 2;
 	container_floating_translate(con, new_lx - con->pending.x, new_ly - con->pending.y, false);
 }
 
@@ -1651,16 +1679,12 @@ void container_fullscreen_disable(struct sway_container *con) {
 	con->pending.width = con->saved_width;
 	con->pending.height = con->saved_height;
 
+	// The saved position of a floating container may come from a different workspace
+	const bool recenter = con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE &&
+		con->pending.workspace && container_is_floating(con);
 	if (con->pending.fullscreen_mode == FULLSCREEN_WORKSPACE) {
 		if (con->pending.workspace) {
 			con->pending.workspace->fullscreen = NULL;
-			if (container_is_floating(con)) {
-				struct sway_output *output =
-					container_floating_find_output(con);
-				if (con->pending.workspace->output != output) {
-					container_floating_move_to_center(con);
-				}
-			}
 		}
 	} else {
 		root->fullscreen_global = NULL;
@@ -1680,6 +1704,9 @@ void container_fullscreen_disable(struct sway_container *con) {
 	}
 
 	con->pending.fullscreen_mode = FULLSCREEN_NONE;
+	if (recenter && !workspace_container_visible(con->pending.workspace, con)) {
+		container_floating_move_to_center(con);
+	}
 	container_end_mouse_operation(con);
 	ipc_event_window(con, "fullscreen_mode");
 
@@ -2499,7 +2526,7 @@ bool container_axes_in_viewport(struct sway_container *container, uint32_t axes)
 		return false;
 	}
 	struct wlr_box box_c, box_o;
-	layout_container_screen_wlr_box(container, false, &box_c);
+	layout_container_global_wlr_box(container, false, &box_c);
 	bool floating = container_is_floating(container);
 	if (floating) {
 		root_get_box(root, &box_o);
@@ -2522,7 +2549,7 @@ bool container_in_viewport(struct sway_container *container) {
 void container_current_geometry(struct sway_container *con, struct wlr_fbox *geometry) {
 	struct sway_workspace *ws = con->pending.workspace ?
 		con->pending.workspace : con->current.workspace;
-	layout_container_screen_box(con, true, geometry);
+	layout_container_global_box(con, true, geometry);
 	// Add the y offset if in the middle of a workspace switch
 	if (ws && !container_is_sticky_or_child(con)) {
 		geometry->y += workspace_switch_offset(ws);

@@ -398,7 +398,7 @@ static void pretty_print_scroller(json_object *i) {
 	json_object_object_get_ex(i, "scroller", &s);
 
 	json_object *workspace, *overview, *scaled, *scale, *mode, *insert, *focus,
-		*center_horiz, *center_vert, *reorder, *floating;
+		*center_horiz, *center_vert, *reorder, *floating, *infinite;
 
 	json_object_object_get_ex(s, "workspace", &workspace);
 	json_object_object_get_ex(s, "overview", &overview);
@@ -411,6 +411,7 @@ static void pretty_print_scroller(json_object *i) {
 	json_object_object_get_ex(s, "center_vertical", &center_vert);
 	json_object_object_get_ex(s, "reorder", &reorder);
 	json_object_object_get_ex(s, "floating", &floating);
+	json_object_object_get_ex(s, "infinite", &infinite);
 
 	const char *fmt =
 		"Scroller:\n"
@@ -424,7 +425,8 @@ static void pretty_print_scroller(json_object *i) {
 		"  Center Horizontally: %s\n"
 		"  Center Vertically: %s\n"
 		"  Reorder: %s\n"
-		"  Floating: %s\n";
+		"  Floating: %s\n"
+		"  Infinite: %s\n";
 
 	printf(fmt, json_object_get_string(workspace),
 		json_object_get_boolean(overview) ? "true" : "false",
@@ -436,7 +438,8 @@ static void pretty_print_scroller(json_object *i) {
 		json_object_get_boolean(center_horiz) ? "true" : "false",
 		json_object_get_boolean(center_vert) ? "true" : "false",
 		json_object_get_string(reorder),
-		json_object_get_boolean(floating) ? "true" : "false");
+		json_object_get_boolean(floating) ? "true" : "false",
+		json_object_get_boolean(infinite) ? "true" : "false");
 
 	printf("\n");
 }

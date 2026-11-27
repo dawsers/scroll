@@ -106,6 +106,9 @@ void animation_clock_presented(struct sway_animation_clock *clock,
 // Call when beginning to build a frame. Returns the clock's frame time.
 int64_t animation_clock_begin_frame(struct sway_animation_clock *clock);
 
+// Returns the time at which the next frame will be displayed
+int64_t animation_clock_next_frame(const struct sway_animation_clock *clock);
+
 // Is there anything to animate for this clock?
 bool animation_clock_active(struct sway_animation_clock *clock);
 

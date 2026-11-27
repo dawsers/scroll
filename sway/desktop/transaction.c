@@ -360,11 +360,17 @@ static void disable_container(struct sway_container *con) {
 static void scene_arrange_container(struct sway_container *con,
 		bool title_bar, struct sway_workspace *workspace);
 
+static void container_clear_clip(struct sway_container *con) {
+	wlr_scene_node_info_set_output(&con->scene_tree->node, NULL);
+	wlr_scene_node_info_set_output_box(&con->scene_tree->node, NULL);
+}
+
 static void scene_arrange_children(struct sway_workspace *workspace,
 		list_t *children) {
 	const bool jumping = layout_overview_mode(workspace) == OVERVIEW_JUMP;
 	for (int i = 0; i < children->length; ++i) {
 		struct sway_container *child = children->items[i];
+		container_clear_clip(child);
 		if (jumping && child->current.filtered) {
 			continue;
 		}
@@ -561,12 +567,17 @@ static void animate_view(struct sway_container *con,
 			h / (h + 2 * size * scale) :
 			w / (w + 2 * size * scale);
 		// Coordinates relative to center
-		double x = 0.5 * root->width - con->animation.x.value;
-		double y = 0.5 * root->height - con->animation.y.value;
+		const bool pans = layout_container_pans(con);
+		const double cx = con->animation.x.value +
+			(pans ? workspace->animation.pan_x.value : 0.0);
+		const double cy = con->animation.y.value +
+			(pans ? workspace->animation.pan_y.value : 0.0);
+		double x = 0.5 * root->width - cx;
+		double y = 0.5 * root->height - cy;
 		double proj_x = 0.5 * root->width - x / ratio;
 		double proj_y = 0.5 * root->height - y / ratio;
-		sx = decoration->node.x + proj_x - con->animation.x.value;
-		sy = decoration->node.y + proj_y - con->animation.y.value;
+		sx = decoration->node.x + proj_x - cx;
+		sy = decoration->node.y + proj_y - cx;
 		sw = width / ratio;
 		sh = height / ratio;
 	} else {
@@ -635,7 +646,10 @@ static void animate_view(struct sway_container *con,
 		// The position on screen also changes when the workspace scale changes
 		struct wlr_xwayland_surface *xsurface = con->view->wlr_xwayland_surface;
 		const bool moved = xsurface && (pcx != xsurface->x || pcy != xsurface->y);
-		if (!container_animating(con) &&
+		const bool panning = workspace->animation.pan_x.animating ||
+			workspace->animation.pan_y.animating;
+		// The viewport moves every view, so wait until it stops
+		if (!container_animating(con) && !panning &&
 			(pcx != ocx || pcy != ocy || pcw != ocw || pch != och || moved)) {
 			view_configure(con->view, con->pending.content_x, con->pending.content_y,
 				con->pending.content_width, con->pending.content_height);
@@ -713,6 +727,7 @@ static void arrange_fullscreen(struct wlr_scene_tree *tree,
 		wlr_scene_node_set_enabled(&fs->shadow->node, false);
 	} else {
 		fs_node = &fs->scene_tree->node;
+		container_clear_clip(fs);
 		scene_arrange_container(fs, true, fs->current.workspace);
 	}
 
@@ -793,6 +808,32 @@ static double workspace_floating_pan(struct sway_workspace *ws,
 	return workspace_switch_offset(ws);
 }
 
+// Is the floating container clipped to the output of its workspace?
+static bool floating_clipped(struct sway_workspace *ws, struct sway_container *con) {
+	if (con->dragging) {
+		return false;
+	}
+	if (!layout_locked(ws)) {
+		return true;
+	}
+	return ws->pan.x != 0.0 || ws->pan.y != 0.0 ||
+		ws->animation.pan_x.value != 0.0 || ws->animation.pan_y.value != 0.0 ||
+		!workspace_container_visible(ws, con);
+}
+
+// In infinite canvas mode, floating containers can be anywhere on their workspace,
+// so they are clipped to its output and virtual output, like tiled containers are
+// through the layer of their workspace.
+static void floating_set_clip(struct sway_workspace *ws, struct sway_container *con) {
+	struct wlr_scene_node *node = &con->scene_tree->node;
+	struct sway_output *output = ws->output;
+	const bool clipped = output && floating_clipped(ws, con);
+	wlr_scene_node_info_set_output(node, clipped ||
+		(output && layout_overview_workspaces_enabled()) ? output->wlr_output : NULL);
+	wlr_scene_node_info_set_output_box(node,
+		clipped ? workspace_get_output_area(ws) : NULL);
+}
+
 // Place a floating container in the scene, at its animated position
 static void floating_set_position(struct sway_workspace *ws, struct sway_container *con) {
 	const double pan = workspace_floating_pan(ws, con);
@@ -848,6 +889,7 @@ static void arrange_workspace_floating(struct sway_workspace *ws) {
 		wlr_scene_node_set_enabled(&floater->decoration.tree->node, true);
 
 		scene_arrange_container(floater, true, ws);
+		floating_set_clip(ws, floater);
 		floating_set_position(ws, floater);
 	}
 }
@@ -862,13 +904,7 @@ static void animate_workspace_floating(struct sway_workspace *ws) {
 		if (child->current.fullscreen_mode != FULLSCREEN_NONE) {
 			continue;
 		}
-		// If the workspaces overview is enabled, make sure floating windows only
-		// show in the output corresponding to their workspace.
-		if (layout_overview_workspaces_enabled()) {
-			wlr_scene_node_info_set_output(&child->scene_tree->node, ws->output->wlr_output);
-		} else {
-			wlr_scene_node_info_set_output(&child->scene_tree->node, NULL);
-		}
+		floating_set_clip(ws, child);
 		animation_update_container(child);
 		floating_set_position(ws, child);
 		animate_container(child, child->animation.w.value, child->animation.h.value,
@@ -1033,6 +1069,9 @@ static void scene_arrange_output(struct sway_output *output) {
 
 		wlr_scene_node_reparent(&child->layers.tiling->node, output->layers.tiling);
 		wlr_scene_node_reparent(&child->layers.fullscreen->node, output->layers.fullscreen);
+		// Tiled containers are clipped to the virtual output of their workspace
+		wlr_scene_node_info_set_output_box(&child->layers.tiling->node,
+			workspace_get_output_area(child));
 
 		// Containers that are not enabled are all filtered: they don't need
 		// to be arranged, and they hide when they finish fading out.
@@ -1938,6 +1977,7 @@ static void overview_recompute_scales() {
 				if (mode != OVERVIEW_DISABLED) {
 					layout_overview_recompute_scale(child);
 					arrange_workspace(child);
+					layout_overview_recompute_camera(child);
 				}
 			}
 		}

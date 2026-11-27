@@ -84,6 +84,7 @@ static const struct cmd_handler handlers[] = {
 	{ "fullscreen_on_request", cmd_fullscreen_on_request },
 	{ "gaps", cmd_gaps },
 	{ "hide_edge_borders", cmd_hide_edge_borders },
+	{ "infinite_speed_scale", cmd_infinite_speed_scale },
 	{ "input", cmd_input },
 	{ "lua", cmd_lua },
 	{ "lua_eval", cmd_lua_eval },

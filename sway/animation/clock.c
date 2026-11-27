@@ -55,7 +55,7 @@ void animation_clock_presented(struct sway_animation_clock *clock,
 	clock->refresh = refresh > 0 ? refresh : 0;
 }
 
-int64_t animation_clock_begin_frame(struct sway_animation_clock *clock) {
+int64_t animation_clock_next_frame(const struct sway_animation_clock *clock) {
 	const int64_t now = animation_manager_now(clock->manager);
 	int64_t time;
 	if (clock->refresh == 0) {
@@ -74,8 +74,12 @@ int64_t animation_clock_begin_frame(struct sway_animation_clock *clock) {
 	if (time <= clock->frame_time) {
 		time = clock->frame_time + (clock->refresh > 0 ? clock->refresh : 1);
 	}
-	clock->frame_time = time;
 	return time;
+}
+
+int64_t animation_clock_begin_frame(struct sway_animation_clock *clock) {
+	clock->frame_time = animation_clock_next_frame(clock);
+	return clock->frame_time;
 }
 
 bool animation_clock_active(struct sway_animation_clock *clock) {

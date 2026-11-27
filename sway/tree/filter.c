@@ -86,8 +86,7 @@ static bool workspace_tiling_or_floating_enabled(struct sway_workspace *workspac
 			return false;
 		}
 	}
-	const enum sway_layout_overview mode = layout_overview_mode(workspace);
-	return mode != (floating ? OVERVIEW_TILING : OVERVIEW_FLOATING);
+	return true;
 }
 
 bool filter_workspace_tiling_enabled(struct sway_workspace *workspace) {
@@ -212,7 +211,7 @@ static bool filter_view(struct filter_workspace_data *data, struct sway_containe
 	case LAYOUT_FILTER_VISIBLE: {
 		// Only the views that are completely visible
 		struct wlr_fbox box;
-		layout_container_screen_box(con, false, &box);
+		layout_container_global_box(con, false, &box);
 		return box.x >= data->minx && box.x + box.width <= data->maxx &&
 			box.y >= data->miny && box.y + box.height <= data->maxy;
 	}

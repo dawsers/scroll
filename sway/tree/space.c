@@ -1,5 +1,6 @@
 #include "sway/tree/space.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/layout.h"
 #include "sway/tree/node.h"
 #include "sway/tree/arrange.h"
 #include "sway/output.h"
@@ -45,8 +46,11 @@ static void fill_container(struct sway_space *space, struct sway_workspace *work
 	container->pending.layout = container_layout(space, workspace, space_container);
 	if (container_is_floating(container) && workspace) {
 		struct sway_output *output = workspace->output;
-		container->pending.x = output->width * space_container->x + output->lx;
-		container->pending.y = output->height * space_container->y + output->ly;
+		const bool pans = layout_container_pans(container);
+		container->pending.x = output->width * space_container->x + output->lx -
+			(pans ? workspace->pan.x : 0.0);
+		container->pending.y = output->height * space_container->y + output->ly -
+			(pans ? workspace->pan.y : 0.0);
 		container->pending.width = space_container->width * output->width;
 		container->pending.height = space_container->height * output->height;
 	} else {
@@ -348,9 +352,13 @@ static struct sway_space_container *space_container_create(struct sway_container
 		space_container->view = NULL;
 	}
 	if (container_is_floating(container) && container->pending.workspace) {
-		struct sway_output *output = container->pending.workspace->output;
-		space_container->x = (container->pending.x - output->lx) / output->width;
-		space_container->y = (container->pending.y - output->ly) / output->height;
+		struct sway_workspace *workspace = container->pending.workspace;
+		struct sway_output *output = workspace->output;
+		const bool pans = layout_container_pans(container);
+		space_container->x = (container->pending.x +
+			(pans ? workspace->pan.x : 0.0) - output->lx) / output->width;
+		space_container->y = (container->pending.y +
+			(pans ? workspace->pan.y : 0.0) - output->ly) / output->height;
 		space_container->width = container->pending.width / output->width;
 		space_container->height = container->pending.height / output->height;
 	} else {

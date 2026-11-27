@@ -66,19 +66,16 @@ static void restore_workspaces(struct sway_output *output) {
 		// If the floater was made floating while on the NOOP output, its width
 		// and height will be zero and it should be reinitialized as a floating
 		// container to get the appropriate size and location. Additionally, if
-		// the floater is wider or taller than the output or is completely
-		// outside of the output's bounds, do the same as the output layout has
-		// likely changed and the maximum size needs to be checked and the
-		// floater re-centered
+		// the floater is wider or taller than the output, do the same as the
+		// output layout has likely changed and the maximum size needs to be
+		// checked and the floater re-centered.
+		// A floater can be anywhere on the canvas of its workspace, so being
+		// out of the output's bounds is not a reason to move it
 		for (int i = 0; i < ws->floating->length; i++) {
 			struct sway_container *floater = ws->floating->items[i];
 			if (floater->pending.width == 0 || floater->pending.height == 0 ||
 					floater->pending.width > output->width ||
-					floater->pending.height > output->height ||
-					floater->pending.x > output->lx + output->width ||
-					floater->pending.y > output->ly + output->height ||
-					floater->pending.x + floater->pending.width < output->lx ||
-					floater->pending.y + floater->pending.height < output->ly) {
+					floater->pending.height > output->height) {
 				container_floating_resize_and_center(floater);
 			}
 		}

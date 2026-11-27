@@ -360,6 +360,9 @@ void view_get_xwayland_position(struct sway_view *view, double lx, double ly,
 			}
 		}
 	}
+	// X11 positions are 16 bit. Limit infinite canvas coordinates for X11 views
+	lx = fmax(INT16_MIN, fmin(INT16_MAX, lx));
+	ly = fmax(INT16_MIN, fmin(INT16_MAX, ly));
 	*x = round(lx);
 	*y = round(ly);
 }

@@ -72,17 +72,14 @@ void output_virtual_outputs_destroy(struct sway_output *output) {
 	if (!output->virtual_outputs) {
 		return;
 	}
-	// Workspaces should have been detached already, but make sure no scene
-	// node keeps a pointer to any of the virtual outputs we are freeing
+	// Workspaces should have been detached already, but make sure none keeps
+	// a pointer to any of the virtual outputs we are freeing
 	for (int i = 0; i < output->virtual_outputs->length; ++i) {
 		struct sway_virtual_output *vo = output->virtual_outputs->items[i];
 		for (int j = 0; j < vo->workspaces->length; ++j) {
 			struct sway_workspace *ws = vo->workspaces->items[j];
 			if (ws->virtual_output == vo) {
 				ws->virtual_output = NULL;
-				if (ws->layers.tiling) {
-					wlr_scene_node_info_set_output_box(&ws->layers.tiling->node, NULL);
-				}
 			}
 		}
 		virtual_output_free(vo);
@@ -331,12 +328,6 @@ void virtual_output_attach_workspace(struct sway_virtual_output *vo,
 		vo->active_workspace = ws;
 	}
 	virtual_output_sort_workspaces(vo);
-	if (ws->layers.tiling) {
-		// Cover for the fallback output, which doesn't have geometry
-		wlr_scene_node_info_set_output_box(&ws->layers.tiling->node,
-			(vo->output_area.width > 0 && vo->output_area.height > 0) ?
-			&vo->output_area : NULL);
-	}
 }
 
 void virtual_output_detach_workspace(struct sway_workspace *ws) {
@@ -351,9 +342,6 @@ void virtual_output_detach_workspace(struct sway_workspace *ws) {
 	ws->virtual_output = NULL;
 	if (vo->active_workspace == ws) {
 		vo->active_workspace = vo->workspaces->length ? vo->workspaces->items[0] : NULL;
-	}
-	if (ws->layers.tiling) {
-		wlr_scene_node_info_set_output_box(&ws->layers.tiling->node, NULL);
 	}
 }
 
@@ -397,13 +385,7 @@ void output_virtual_outputs_arrange(struct sway_output *output) {
 	}
 	output_virtual_outputs_update_geometry(output);
 	for (int i = 0; i < output->workspaces->length; ++i) {
-		struct sway_workspace *ws = output->workspaces->items[i];
-		if (ws->virtual_output && ws->layers.tiling) {
-			struct wlr_box *area = &ws->virtual_output->output_area;
-			wlr_scene_node_info_set_output_box(&ws->layers.tiling->node,
-				(area->width > 0 && area->height > 0) ? area : NULL);
-		}
-		arrange_workspace(ws);
+		arrange_workspace(output->workspaces->items[i]);
 	}
 	node_set_dirty(&output->node);
 	layout_overview_workspaces_recompute_scale();
@@ -479,9 +461,6 @@ static void virtual_output_merge(struct sway_virtual_output *node,
 			int index = list_find(node->workspaces, ws);
 			list_del(node->workspaces, index);
 			ws->virtual_output = NULL;
-			if (ws->layers.tiling) {
-				wlr_scene_node_info_set_output_box(&ws->layers.tiling->node, NULL);
-			}
 		}
 	}
 	struct sway_virtual_output *first = node->children[0];

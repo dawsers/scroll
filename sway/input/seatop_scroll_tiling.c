@@ -55,8 +55,8 @@ static const struct sway_seatop_impl seatop_impl = {
 	.unref = handle_unref,
 };
 
-void seatop_begin_scroll_tiling(struct sway_seat *seat,
-		struct sway_container *con) {
+static void begin_scroll(struct sway_seat *seat, struct sway_container *con,
+		struct sway_workspace *workspace) {
 	if (seat->swipe_scrolling) {
 		return;
 	}
@@ -75,11 +75,21 @@ void seatop_begin_scroll_tiling(struct sway_seat *seat,
 	seat->seatop_impl = &seatop_impl;
 	seat->seatop_data = e;
 
-	if (layout_scroll_begin(seat) == false) {
+	if (layout_scroll_begin(seat, workspace) == false) {
 		seatop_begin_default(seat);
 		return;
 	}
 
 	cursor_set_image(cursor, "grab", NULL);
 	wlr_seat_pointer_notify_clear_focus(seat->wlr_seat);
+}
+
+void seatop_begin_scroll_tiling(struct sway_seat *seat,
+		struct sway_container *con) {
+	begin_scroll(seat, con, con->pending.workspace);
+}
+
+void seatop_begin_scroll_workspace(struct sway_seat *seat,
+		struct sway_workspace *workspace) {
+	begin_scroll(seat, NULL, workspace);
 }

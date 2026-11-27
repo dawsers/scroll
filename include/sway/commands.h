@@ -164,6 +164,7 @@ sway_cmd cmd_gesture_scroll_fingers;
 sway_cmd cmd_gesture_scroll_sensitivity;
 sway_cmd cmd_gesture_scroll_sensitivity_mouse;
 sway_cmd cmd_gesture_scroll_friction;
+sway_cmd cmd_infinite_speed_scale;
 sway_cmd cmd_hide_edge_borders;
 sway_cmd cmd_include;
 sway_cmd cmd_inhibit_idle;

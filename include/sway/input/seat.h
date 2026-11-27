@@ -60,6 +60,7 @@ struct sway_seatop_impl {
 	void (*end)(struct sway_seat *seat);
 	void (*unref)(struct sway_seat *seat, struct sway_container *con);
 	bool allow_set_cursor;
+	bool allow_edge_pan;
 };
 
 struct sway_seat_device {
@@ -110,6 +111,17 @@ struct sway_seat {
 	// The swipe in progress scrolls a workspace.
 	bool swipe_scrolling;
 	struct sway_input_device *swipe_device; // of that swipe, if known
+
+	// Infinite canvas. Dragging unlocks the viewport
+	bool dragging; // a seat operation is dragging a window
+	bool dnd; // drag and drop in progress
+	struct {
+		struct sway_workspace *workspace;
+		int64_t entered; // time the pointer entered the outer gaps
+		int64_t last; // time of last step
+		bool moving;
+		bool stepping; // pan is happening (avoid re-entrance)
+	} edge_pan;
 
 	struct wlr_layer_surface_v1 *focused_layer;
 	// If the exclusive layer is set, views cannot receive keyboard focus
@@ -296,6 +308,9 @@ void seatop_begin_move_tiling(struct sway_seat *seat,
 
 void seatop_begin_scroll_tiling(struct sway_seat *seat,
 		struct sway_container *con);
+
+void seatop_begin_scroll_workspace(struct sway_seat *seat,
+		struct sway_workspace *workspace);
 
 void seatop_begin_resize_floating(struct sway_seat *seat,
 		struct sway_container *con, enum wlr_edges edge);

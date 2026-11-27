@@ -103,7 +103,7 @@ enum wlr_scene_node_type {
 struct wlr_scene_node_info {
 	struct wlr_output *wlr_output;	// wlr_output the node belongs to (if tiled, otherwise NULL)
 	void *workspace;
-	struct wlr_box *output_box;
+	struct wlr_box output_box;  // if not empty, clips the node and its descendants
 	bool background;	// bakground layer shell, usually the wallpaper
 };
 
@@ -460,11 +460,11 @@ struct wlr_box *wlr_scene_node_info_get_output_box(struct wlr_scene_node *node);
 
 /**
  * Set the box this node and its descendants are clipped against. Use this function
- * instead of assigning the field directly, so it damages the region the node
- * used to cover and recomputes its visibility.
+ * instead of assigning the field directly, so it damages the region the node used
+ * to cover and recomputes its visibility. NULL or an empty box means no clipping.
  */
 void wlr_scene_node_info_set_output_box(struct wlr_scene_node *node,
-	struct wlr_box *box);
+	const struct wlr_box *box);
 
 /**
  * Return the workspace that owns this node.

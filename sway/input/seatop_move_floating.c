@@ -17,15 +17,9 @@ static void cursor_layout_coords(struct sway_seat *seat, struct sway_container *
 	*x = seat->cursor->cursor->x;
 	*y = seat->cursor->cursor->y;
 	struct sway_workspace *ws = con->pending.workspace;
-	if (!ws) {
-		return;
+	if (ws) {
+		layout_container_screen_to_layout(con, ws, true, x, y);
 	}
-	if (layout_overview_workspaces_enabled()) {
-		layout_overview_workspaces_local_to_global(ws, x, y);
-	}
-	struct sway_layout_transform transform;
-	layout_transform_container_get(con, true, &transform);
-	layout_transform_point_inv(&transform, x, y);
 }
 
 static void finalize_move(struct sway_seat *seat) {
@@ -64,11 +58,15 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	transaction_track_container(e->con);
 	transaction_set_animation(ANIMATION_DISABLED);
 	transaction_commit_dirty();
+	layout_edge_pan_update(seat);
 }
 
 static void handle_end(struct sway_seat *seat) {
 	struct seatop_move_floating_event *e = seat->seatop_data;
 	transaction_untrack_container(e->con);
+	// Viewports are not unlocked by this drag any more
+	container_floating_set_dragging(e->con, false);
+	layout_drag_set(seat, &seat->dragging, false);
 }
 
 static void handle_unref(struct sway_seat *seat, struct sway_container *con) {
@@ -84,6 +82,7 @@ static const struct sway_seatop_impl seatop_impl = {
 	.tablet_tool_tip = handle_tablet_tool_tip,
 	.end = handle_end,
 	.unref = handle_unref,
+	.allow_edge_pan = true,
 };
 
 void seatop_begin_move_floating(struct sway_seat *seat,
@@ -104,6 +103,11 @@ void seatop_begin_move_floating(struct sway_seat *seat,
 
 	seat->seatop_impl = &seatop_impl;
 	seat->seatop_data = e;
+
+	// Dragging a window unlocks the viewport of every workspace, and the
+	// window is not clipped to its output
+	container_floating_set_dragging(con, true);
+	layout_drag_set(seat, &seat->dragging, true);
 
 	container_raise_floating(con);
 	transaction_set_animation(ANIMATION_DISABLED);

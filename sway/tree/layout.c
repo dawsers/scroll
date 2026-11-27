@@ -87,8 +87,13 @@ static void fit_arrange_fractions_with_parent(struct sway_container *container);
 
 void layout_init(struct sway_workspace *workspace) {
 	layout_modifiers_init(workspace);
-	workspace->layout.overview = OVERVIEW_DISABLED;
-	workspace->layout.mem_scale = -1.0f;  // disabled
+	workspace->layout.overview.mode = OVERVIEW_DISABLED;
+	workspace->layout.overview.mem_scale = -1.0f;  // disabled
+	workspace->layout.overview.mem_pan_x = 0.0;
+	workspace->layout.overview.mem_pan_y = 0.0;
+	workspace->layout.overview.content = (struct wlr_fbox){0};
+	workspace->layout.overview.tiling_scale = 0.0;
+	workspace->layout.locked = true;
 	workspace->layout.align = ALIGN_NONE;
 	workspace->layout.align_axes = ALIGN_AXIS_NONE;
 	workspace->layout.align_container = NULL;
@@ -112,41 +117,6 @@ static void set_view_dirty(struct sway_container *container, void *data) {
 
 static void workspace_set_views_dirty(struct sway_workspace *workspace) {
 	workspace_for_each_container(workspace, set_view_dirty, NULL);
-}
-
-static void update_bounding_box(const struct sway_container *container, double *minx,
-		double *maxx, double *miny, double *maxy) {
-	if (container->pending.children) {
-		for (int i = 0; i < container->pending.children->length; ++i) {
-			const struct sway_container *con = container->pending.children->items[i];
-			update_bounding_box(con, minx, maxx, miny, maxy);
-		}
-	} else {
-		if (container->pending.x < *minx) {
-			*minx = container->pending.x;
-		}
-		if (container->pending.x + container->pending.width > *maxx) {
-			*maxx = container->pending.x + container->pending.width;
-		}
-		if (container->pending.y < *miny) {
-			*miny = container->pending.y;
-		}
-		if (container->pending.y + container->pending.height > *maxy) {
-			*maxy = container->pending.y + container->pending.height;
-		}
-	}
-}
-
-void layout_compute_bounding_box(list_t *children, double *minx, double *maxx,
-		double *miny, double *maxy) {
-	*minx = DBL_MAX;
-	*maxx = -DBL_MAX;
-	*miny = DBL_MAX;
-	*maxy = -DBL_MAX;
-	for (int i = 0; i < children->length; ++i) {
-		const struct sway_container *con = children->items[i];
-		update_bounding_box(con, minx, maxx, miny, maxy);
-	}
 }
 
 static void overview_jump_update_bounding_box(const struct sway_container *container, double *minx,
@@ -203,70 +173,190 @@ static void overview_jump_recompute_scale(struct sway_workspace *workspace) {
 
 static void organize_jump_windows(struct sway_workspace *workspace);
 
+// The bounding box of every window of the workspace that is on the canvas,
+// tiled ones with their gaps. Returns false if there are none
+static bool overview_content_box(struct sway_workspace *workspace,
+		struct wlr_fbox *box) {
+	double minx = DBL_MAX, maxx = -DBL_MAX, miny = DBL_MAX, maxy = -DBL_MAX;
+	for (int i = 0; i < workspace->floating->length; ++i) {
+		struct sway_container *con = workspace->floating->items[i];
+		// Sticky and scratchpad containers are not on the canvas
+		if (con->pending.filtered || !layout_container_pans(con)) {
+			continue;
+		}
+		overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy, 0.0);
+	}
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		struct sway_container *con = workspace->tiling->items[i];
+		if (con->pending.filtered) {
+			continue;
+		}
+		overview_jump_update_bounding_box(con, &minx, &maxx, &miny, &maxy,
+			workspace->gaps_inner);
+	}
+	if (maxx <= minx || maxy <= miny) {
+		return false;
+	}
+	*box = (struct wlr_fbox){
+		.x = minx, .y = miny, .width = maxx - minx, .height = maxy - miny,
+	};
+	return true;
+}
+
+static void transform_anchor(struct sway_workspace *workspace, double *ax, double *ay);
+
+static bool fbox_equal(const struct wlr_fbox *a, const struct wlr_fbox *b) {
+	const double epsilon = 0.01;
+	return fabs(a->x - b->x) < epsilon && fabs(a->y - b->y) < epsilon &&
+		fabs(a->width - b->width) < epsilon &&
+		fabs(a->height - b->height) < epsilon;
+}
+
+// Is `inner` inside of `outer`, with tolerance `margin`?
+static bool fbox_contains(const struct wlr_fbox *outer,
+		const struct wlr_fbox *inner, double margin) {
+	return inner->x >= outer->x - margin && inner->y >= outer->y - margin &&
+		inner->x + inner->width <= outer->x + outer->width + margin &&
+		inner->y + inner->height <= outer->y + outer->height + margin;
+}
+
+static void workspace_view_area(struct sway_workspace *workspace,
+		struct wlr_fbox *area) {
+	const struct wlr_box *usable = workspace_get_output_usable_area(workspace);
+	*area = (struct wlr_fbox){
+		.x = workspace->output->lx + usable->x,
+		.y = workspace->output->ly + usable->y,
+		.width = usable->width,
+		.height = usable->height,
+	};
+}
+
+// Computes the scale and pan that show every window of the workspace, tiled
+// or floating, wherever they are on the canvas.
+//
+// Tiling windows are arranged with no pan, using `tiling_scale`, which is the
+// scale that fits them in the viewport. That scale causes an arrangement for
+// every tiled window, and now we compute the camera's pan and scale from it.
+//
+// - If everything was already in view before the overview, nothing moves.
+// - If everything is in view using the tiling scale, we use that scale and
+//   zero pan.
+// - Otherwise compute the bounding box of every window, and center it in the
+//   viewport, scaled down to fit.
+//
+// The camera is only computed when content changes, so the viewport can be
+// panned in overview. An exception is dragging; the content would change
+// under the pointer but we only recompute when dragging ends
+void layout_overview_recompute_camera(struct sway_workspace *workspace) {
+	struct sway_scroller *layout = &workspace->layout;
+	const double tiling_scale = layout->overview.tiling_scale;
+	if (layout_overview_mode(workspace) != OVERVIEW_ALL || tiling_scale <= 0.0 ||
+			layout_dragging()) {
+		return;
+	}
+	struct wlr_fbox content = {0};
+	const bool empty = !overview_content_box(workspace, &content);
+	const double ww = workspace->width, wh = workspace->height;
+	if (ww <= 0.0 || wh <= 0.0) {
+		return;
+	}
+	// Tolerance for the sizes computed from layout fractions
+	const double margin = 1.0;
+	double ax, ay;
+	transform_anchor(workspace, &ax, &ay);
+	struct wlr_fbox area;
+	workspace_view_area(workspace, &area);
+	// Box of the tiling overview
+	const struct wlr_fbox home = {
+		.x = ax + (area.x - ax) / tiling_scale,
+		.y = ay + (area.y - ay) / tiling_scale,
+		.width = area.width / tiling_scale,
+		.height = area.height / tiling_scale,
+	};
+	// Box of the viewport before overview, if it was not scaled
+	const struct wlr_fbox seen = {
+		.x = area.x - layout->overview.mem_pan_x,
+		.y = area.y - layout->overview.mem_pan_y,
+		.width = area.width,
+		.height = area.height,
+	};
+	double scale, pan_x, pan_y;
+	if (tiling_scale >= 1.0 && (empty || fbox_contains(&seen, &content, margin))) {
+		// Everything was already in view
+		scale = 1.0;
+		pan_x = layout->overview.mem_pan_x;
+		pan_y = layout->overview.mem_pan_y;
+	} else if (empty || fbox_contains(&home, &content, margin)) {
+		// The tling overview covers everything
+		scale = tiling_scale;
+		pan_x = pan_y = 0.0;
+	} else {
+		scale = fmin(fmin(ww / content.width, wh / content.height), 1.0);
+		// Center of the content at the center of the workspace box:
+		// Wc = A + scale * (Bc + pan - A)
+		pan_x = (workspace->x + 0.5 * ww - ax) / scale -
+			(content.x + 0.5 * content.width) + ax;
+		pan_y = (workspace->y + 0.5 * wh - ay) / scale -
+			(content.y + 0.5 * content.height) + ay;
+	}
+	if (fbox_equal(&content, &layout->overview.content) &&
+			layout->overview.width == workspace->width &&
+			layout->overview.height == workspace->height &&
+			layout_scale_get(workspace) == scale) {
+		return;
+	}
+	layout->overview.content = content;
+	layout->overview.width = workspace->width;
+	layout->overview.height = workspace->height;
+
+	if (layout_scale_get(workspace) != scale) {
+		workspace->scale = scale;
+		node_set_dirty(&workspace->node);
+		workspace_set_views_dirty(workspace);
+	}
+	if (workspace->pan.x != pan_x || workspace->pan.y != pan_y) {
+		workspace->pan.x = pan_x;
+		workspace->pan.y = pan_y;
+		node_set_dirty(&workspace->node);
+	}
+}
+
 void layout_overview_recompute_scale(struct sway_workspace *workspace) {
-	enum sway_layout_overview mode = layout_overview_mode(workspace);
-	if (workspace->tiling->length == 0 && mode == OVERVIEW_TILING) {
+	if (workspace->tiling->length == 0 && workspace->floating->length == 0) {
 		return;
 	}
-	if (workspace->floating->length == 0 && mode == OVERVIEW_FLOATING) {
-		return;
-	}
-	if ((mode == OVERVIEW_ALL || mode == OVERVIEW_JUMP) &&
-		workspace->tiling->length == 0 && workspace->floating->length == 0) {
-		return;
-	}
-	const int gaps = workspace->gaps_inner;
-	if (mode == OVERVIEW_JUMP) {
+	if (layout_overview_mode(workspace) == OVERVIEW_JUMP) {
 		organize_jump_windows(workspace);
 		overview_jump_recompute_scale(workspace);
 		return;
 	}
-	double fw, fh;
-	const double ww = workspace->width;
-	const double wh = workspace->height;
-	if (mode == OVERVIEW_FLOATING) {
-		double minx, maxx, miny, maxy;
-		layout_compute_bounding_box(workspace->floating, &minx, &maxx, &miny, &maxy);
-		fw = maxx - minx;
-		fh = maxy - miny;
-	} else {
-		fw = ww, fh = wh;
+	if (layout_dragging()) {
+		// The overview does not follow the content while dragging
+		return;
 	}
+	const int gaps = workspace->gaps_inner;
 	double maxw = 0.0, maxh = 0.0;
-	if (mode == OVERVIEW_TILING || mode == OVERVIEW_ALL) {
-		for (int i = 0; i < workspace->tiling->length; ++i) {
-			const struct sway_container *con = workspace->tiling->items[i];
-			if (con->pending.layout == L_VERT) {
-				maxw += con->pending.width + 2 * gaps;
-				double h = 0.0;
-				for (int j = 0; j < con->pending.children->length; ++j) {
-					const struct sway_container *view = con->pending.children->items[j];
-					h += view->pending.height + 2 * gaps;
-				}
-				if (h > maxh) {
-					maxh = h;
-				}
-			} else {
-				maxh += con->pending.height + 2 * gaps;
-				double w = 0.0;
-				for (int j = 0; j < con->pending.children->length; ++j) {
-					const struct sway_container *view = con->pending.children->items[j];
-					w += view->pending.width + 2 * gaps;
-				}
-				if (w > maxw) {
-					maxw = w;
-				}
-			}
+	for (int i = 0; i < workspace->tiling->length; ++i) {
+		const struct sway_container *con = workspace->tiling->items[i];
+		const bool vert = con->pending.layout == L_VERT;
+		double size = 0.0;
+		for (int j = 0; j < con->pending.children->length; ++j) {
+			const struct sway_container *view = con->pending.children->items[j];
+			size += (vert ? view->pending.height : view->pending.width) + 2 * gaps;
+		}
+		if (vert) {
+			maxw += con->pending.width + 2 * gaps;
+			maxh = fmax(maxh, size);
+		} else {
+			maxh += con->pending.height + 2 * gaps;
+			maxw = fmax(maxw, size);
 		}
 	}
-	if (maxw < fw) {
-		maxw = fw;
-	}
-	if (maxh < fh) {
-		maxh = fh;
-	}
-	double scale = fmin(fmin(ww / maxw, wh / maxh), 1.0);
-	if (layout_scale_get(workspace) != scale) {
+	const double scale =
+		fmin(fmin(workspace->width / maxw, workspace->height / maxh), 1.0);
+	workspace->layout.overview.tiling_scale = scale;
+	if (!layout_scale_enabled(workspace)) {
+		// An overview is arranged as a scaled workspace
 		workspace->scale = scale;
 		node_set_dirty(&workspace->node);
 		workspace_set_views_dirty(workspace);
@@ -284,35 +374,19 @@ static void overview_pop_container_position(struct sway_container *container, vo
 	node_set_dirty(&container->node);
 }
 
-static void overview_push_positions(struct sway_workspace *workspace,
-		enum sway_layout_overview mode) {
+static void overview_push_positions(struct sway_workspace *workspace) {
 	for (int i = 0; i < workspace->tiling->length; ++i) {
 		struct sway_container *container = workspace->tiling->items[i];
 		overview_push_container_position(container, NULL);
 		container_for_each_child(container, overview_push_container_position, NULL);
 	}
-	if (mode == OVERVIEW_FLOATING) {
-		for (int i = 0; i < workspace->floating->length; ++i) {
-			struct sway_container *container = workspace->floating->items[i];
-			overview_push_container_position(container, NULL);
-			container_for_each_child(container, overview_push_container_position, NULL);
-		}
-	}
 }
 
-static void overview_pop_positions(struct sway_workspace *workspace,
-		enum sway_layout_overview mode) {
+static void overview_pop_positions(struct sway_workspace *workspace) {
 	for (int i = 0; i < workspace->tiling->length; ++i) {
 		struct sway_container *container = workspace->tiling->items[i];
 		overview_pop_container_position(container, NULL);
 		container_for_each_child(container, overview_pop_container_position, NULL);
-	}
-	if (mode == OVERVIEW_FLOATING) {
-		for (int i = 0; i < workspace->floating->length; ++i) {
-			struct sway_container *container = workspace->floating->items[i];
-			overview_pop_container_position(container, NULL);
-			container_for_each_child(container, overview_pop_container_position, NULL);
-		}
 	}
 }
 
@@ -322,10 +396,14 @@ void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_over
 		return;
 	}
 	if (cur != OVERVIEW_DISABLED) {
-		overview_pop_positions(workspace, cur);
-		// Disable and restore old scale value
-		workspace->layout.overview = OVERVIEW_DISABLED;
-		workspace->scale = workspace->layout.mem_scale;
+		overview_pop_positions(workspace);
+		// Disable and restore old scale value, and where the viewport was
+		workspace->layout.overview.mode = OVERVIEW_DISABLED;
+		workspace->scale = workspace->layout.overview.mem_scale;
+		// A locked workspace has zero pan
+		const bool locked = layout_locked(workspace);
+		workspace->pan.x = locked ? 0.0 : workspace->layout.overview.mem_pan_x;
+		workspace->pan.y = locked ? 0.0 : workspace->layout.overview.mem_pan_y;
 		node_set_dirty(&workspace->node);
 		workspace_set_views_dirty(workspace);
 		struct sway_seat *seat = input_manager_current_seat();
@@ -335,29 +413,39 @@ void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_over
 			output_layer_shell_enable(workspace->output, LAYER_SHELL_OVERLAY);
 		}
 		bool fs_focused = ws_focused && focus->fullscreen;
-		bool fs = workspace->layout.fullscreen || fs_focused;
+		bool fs = workspace->layout.overview.fullscreen || fs_focused;
 		if (ws_focused && fs) {
 			if (fs_focused) {
 				container_set_fullscreen(focus, FULLSCREEN_WORKSPACE);
 				arrange_root();
-			} else if (workspace->layout.fullscreen) {
+			} else if (workspace->layout.overview.fullscreen) {
 				if (config->fullscreen_movefocus == FULLSCREEN_MOVEFOCUS_FOLLOW) {
 					container_set_fullscreen(focus, FULLSCREEN_WORKSPACE);
 				} else {
-					container_set_fullscreen(workspace->layout.fullscreen, FULLSCREEN_NONE);
+					container_set_fullscreen(workspace->layout.overview.fullscreen, FULLSCREEN_NONE);
 				}
 				arrange_root();
 			}
-		} else if (workspace->layout.fullscreen) {
-			container_set_fullscreen(workspace->layout.fullscreen, FULLSCREEN_WORKSPACE);
+		} else if (workspace->layout.overview.fullscreen) {
+			container_set_fullscreen(workspace->layout.overview.fullscreen, FULLSCREEN_WORKSPACE);
 			arrange_root();
 		}
 	} else {
-		overview_push_positions(workspace, mode);
+		overview_push_positions(workspace);
 		output_layer_shell_enable(workspace->output, LAYER_SHELL_ALL);
-		workspace->layout.mem_scale = layout_scale_get(workspace);
-		workspace->layout.overview = mode;
-		workspace->layout.fullscreen = workspace->fullscreen;
+		workspace->layout.overview.mem_scale = layout_scale_get(workspace);
+		workspace->layout.overview.mem_pan_x = workspace->pan.x;
+		workspace->layout.overview.mem_pan_y = workspace->pan.y;
+		// The camera needs to be computed
+		workspace->layout.overview.content = (struct wlr_fbox){0};
+		workspace->layout.overview.tiling_scale = 0.0;
+		if (mode == OVERVIEW_JUMP) {
+			// Jump places every window around the center of the workspace
+			// box, as seen with no pan
+			workspace->pan.x = workspace->pan.y = 0.0;
+		}
+		workspace->layout.overview.mode = mode;
+		workspace->layout.overview.fullscreen = workspace->fullscreen;
 		node_set_dirty(&workspace->node);
 		if (workspace->fullscreen) {
 			container_fullscreen_disable(workspace->fullscreen);
@@ -365,6 +453,9 @@ void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_over
 		}
 	}
 	arrange_workspace(workspace);
+	if (cur == OVERVIEW_ALL) {
+		layout_show_focus(workspace);
+	}
 	if (!root->jumping) {
 		transaction_set_animation(ANIMATION_OVERVIEW);
 		ipc_event_scroller("overview", workspace);
@@ -372,7 +463,7 @@ void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_over
 }
 
 enum sway_layout_overview layout_overview_mode(struct sway_workspace *workspace) {
-	return workspace->layout.overview;
+	return workspace->layout.overview.mode;
 }
 
 bool layout_overview_workspaces_enabled() {
@@ -435,7 +526,7 @@ static void overview_virtual_output_recompute_scale(struct sway_virtual_output *
 			// Only save fullscreen state when entering overview, not on a
 			// recompute (it has already been disabled)
 			if (wlr_scene_node_info_get_workspace(&child->layers.tiling->node) != child) {
-				child->layout.fullscreen = child->fullscreen;
+				child->layout.overview.fullscreen = child->fullscreen;
 			}
 			child->jump.x = round(left + gapx + c * (scale * width + gapx));
 			child->jump.y = round(top + gapy + r * (scale * height + gapy));
@@ -514,8 +605,8 @@ void layout_overview_workspaces(bool on) {
 				wlr_scene_node_reparent(&child->jump.name_tree->node, root->staging);
 				wlr_scene_node_info_set_workspace(&child->layers.tiling->node, NULL);
 				node_set_dirty(&child->node);
-				if (child->layout.fullscreen) {
-					container_set_fullscreen(child->layout.fullscreen, FULLSCREEN_WORKSPACE);
+				if (child->layout.overview.fullscreen) {
+					container_set_fullscreen(child->layout.overview.fullscreen, FULLSCREEN_WORKSPACE);
 					arrange_root();
 				}
 				for (int f = 0; f < child->floating->length; ++f) {
@@ -532,6 +623,7 @@ void layout_overview_workspaces(bool on) {
 	ipc_event_workspace(NULL, NULL, "reload");
 }
 
+// Screen to global and finds and returns the workspace for the point
 bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspace, double *lx, double *ly) {
 	if (!layout_overview_workspaces_enabled()) {
 		return true;
@@ -547,7 +639,7 @@ bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspac
 			}
 			if (x >= child->jump.x && x < child->jump.x + child->jump.width &&
 				y >= child->jump.y && y < child->jump.y + child->jump.height) {
-				layout_overview_workspaces_local_to_global(child, lx, ly);
+				layout_overview_workspaces_screen_to_global(child, lx, ly);
 				*workspace = child;
 				return true;
 			}
@@ -556,10 +648,8 @@ bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspac
 	return false;
 }
 
-// Map a global point (for example cursor) to a point in the local coordinate system of
-// the workspace in overview mode
-void layout_overview_workspaces_global_to_local(struct sway_workspace *workspace, double *x, double *y) {
-	if (!workspace || !workspace->output) {
+void layout_overview_workspaces_global_to_screen(struct sway_workspace *workspace, double *x, double *y) {
+	if (!layout_overview_workspaces_enabled() || !workspace || !workspace->output) {
 		return;
 	}
 	struct sway_output *output = workspace->output;
@@ -575,10 +665,8 @@ void layout_overview_workspaces_global_to_local(struct sway_workspace *workspace
 	*y = ry + output->ly;
 }
 
-// Map a local point (for example container vertex or transformed cursor) to a point
-// in the global coordinate system of the workspace
-void layout_overview_workspaces_local_to_global(struct sway_workspace *workspace, double *x, double *y) {
-	if (!workspace || !workspace->output) {
+void layout_overview_workspaces_screen_to_global(struct sway_workspace *workspace, double *x, double *y) {
+	if (!layout_overview_workspaces_enabled() || !workspace || !workspace->output) {
 		return;
 	}
 	struct sway_output *output = workspace->output;
@@ -594,6 +682,11 @@ void layout_overview_workspaces_local_to_global(struct sway_workspace *workspace
 	*y = ry + area->y;
 }
 
+double layout_overview_workspaces_scale(struct sway_workspace *workspace) {
+	return layout_overview_workspaces_enabled() && workspace &&
+		workspace->jump.scale > 0.0 ? workspace->jump.scale : 1.0;
+}
+
 void layout_scale_set(struct sway_workspace *workspace, double scale) {
 	if (!workspace) {
 		return;
@@ -603,6 +696,8 @@ void layout_scale_set(struct sway_workspace *workspace, double scale) {
 		node_set_dirty(&workspace->node);
 		workspace_set_views_dirty(workspace);
 		arrange_workspace(workspace);
+		// When in Infinite mode, the focused window may have been left out of view
+		layout_show_focus(workspace);
 		ipc_event_scroller("scale", workspace);
 	}
 }
@@ -616,6 +711,7 @@ void layout_scale_reset(struct sway_workspace *workspace) {
 		node_set_dirty(&workspace->node);
 		workspace_set_views_dirty(workspace);
 		arrange_workspace(workspace);
+		layout_show_focus(workspace);
 		ipc_event_scroller("scale", workspace);
 	}
 }
@@ -656,6 +752,8 @@ void layout_default_modifiers_set_default(struct sway_scroller_modifiers *modifi
 		modifiers->center_vertical = false;
 		modifiers->floating_set = true;
 		modifiers->floating = false;
+		modifiers->infinite_set = true;
+		modifiers->infinite = false;
 	}
 }
 
@@ -703,6 +801,11 @@ static void modifiers_merge(struct sway_scroller_modifiers *dst, struct sway_scr
 		dst->floating_set = true;
 		dst->set = true;
 	}
+	if (src->infinite_set) {
+		dst->infinite = src->infinite;
+		dst->infinite_set = true;
+		dst->set = true;
+	}
 }
 
 void layout_modifiers_init(struct sway_workspace *workspace) {
@@ -730,6 +833,7 @@ void layout_modifiers_init(struct sway_workspace *workspace) {
 	layout->modifiers.center_horizontal = modifiers.center_horizontal;
 	layout->modifiers.center_vertical = modifiers.center_vertical;
 	layout->modifiers.floating = modifiers.floating;
+	layout->modifiers.infinite = modifiers.infinite;
 }
 
 void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_layout_reorder reorder) {
@@ -809,16 +913,35 @@ bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace) {
 	return workspace->layout.modifiers.center_vertical;
 }
 
+static void locked_changed(struct sway_workspace *workspace, bool was_locked);
+
 void layout_modifiers_set_floating(struct sway_workspace *workspace, bool floating) {
 	if (!workspace || workspace->layout.modifiers.floating == floating) {
 		return;
 	}
+	// floating mode overrides the viewport lock
+	const bool was_locked = layout_locked(workspace);
 	workspace->layout.modifiers.floating = floating;
+	locked_changed(workspace, was_locked);
 	ipc_event_scroller("floating", workspace);
 }
 
 bool layout_modifiers_get_floating(struct sway_workspace *workspace) {
 	return workspace ? workspace->layout.modifiers.floating : false;
+}
+
+void layout_modifiers_set_infinite(struct sway_workspace *workspace, bool infinite) {
+	if (!workspace || workspace->layout.modifiers.infinite == infinite) {
+		return;
+	}
+	const bool was_locked = layout_locked(workspace);
+	workspace->layout.modifiers.infinite = infinite;
+	locked_changed(workspace, was_locked);
+	ipc_event_scroller("infinite", workspace);
+}
+
+bool layout_modifiers_get_infinite(struct sway_workspace *workspace) {
+	return workspace ? workspace->layout.modifiers.infinite : false;
 }
 
 void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align) {
@@ -1082,7 +1205,7 @@ static void layout_workspace_add_view(struct sway_workspace *workspace, struct s
 	enum sway_container_layout mode = layout == L_HORIZ ? L_VERT : L_HORIZ;
 	struct sway_container *parent = layout_wrap_into_container(view, mode);
 	struct wlr_fbox viewport;
-	layout_vp_box(workspace, &viewport);
+	layout_workspace_box(workspace, &viewport);
 	// Set the container and view width/height
 	if (view->width_fraction <= 0.0) {
 		const double default_width = layout_get_default_width(workspace);
@@ -2289,12 +2412,9 @@ struct jump_data {
 	void (*jump_root_restore)(struct jump_data *data);
 	void (*jump_workspace_prepare)(struct jump_workspace_data *workspace_data);
 	void (*jump_workspace_restore)(struct jump_workspace_data *workspace_data);
-	enum sway_layout_overview overview;
 	// Previous state data
 	bool overview_workspaces;
 	list_t *workspace_data; // struct jump_workspace_data
-	// For jump scratchpad
-	struct sway_workspace *focused_workspace;
 };
 
 static void jump_add_windows(struct sway_container *view, void *data) {
@@ -2376,7 +2496,7 @@ static void jump_end(struct sway_container *view, void *data) {
 	view->jump.id = -1;
 }
 
-static void jump_begin_common_cb(struct jump_data *jump_data) {
+static void jump_overview_prepare_cb(struct jump_data *jump_data) {
 	jump_data->workspace_data = create_list();
 	for (int i = 0; i < root->outputs->length; ++i) {
 		struct sway_output *output = root->outputs->items[i];
@@ -2400,23 +2520,14 @@ static void jump_begin_common_cb(struct jump_data *jump_data) {
 			if (jump_data->jump_workspace_prepare) {
 				jump_data->jump_workspace_prepare(workspace_data);
 			}
-			if (jump_data->overview == OVERVIEW_JUMP) {
-				organize_jump_begin(workspace);
-			}
+			organize_jump_begin(workspace);
 			list_add(jump_data->workspace_data, workspace_data);
-			if (mode != jump_data->overview) {
-				if (mode != OVERVIEW_DISABLED) {
-					layout_overview_set(workspace, OVERVIEW_DISABLED);
-				}
-				layout_overview_set(workspace, jump_data->overview);
+			if (mode != OVERVIEW_JUMP) {
+				layout_overview_set(workspace, OVERVIEW_DISABLED);
+				layout_overview_set(workspace, OVERVIEW_JUMP);
 			}
 		}
 	}
-}
-
-static void jump_overview_prepare_all_cb(struct jump_data *jump_data) {
-	jump_data->overview = OVERVIEW_JUMP;
-	jump_begin_common_cb(jump_data);
 }
 
 static void jump_overview_restore_cb(struct jump_data *jump_data) {
@@ -2487,6 +2598,9 @@ static void jump_handle_keyboard_key_end(void *data) {
 	struct sway_seat *seat = input_manager_current_seat();
 	if (focused) {
 		seat_set_focus_container(seat, focused);
+		// If focus did not change, nothing panned the viewport, and infinite
+		// mode needs the focused window fully in view when jump ends.
+		layout_show_container(focused);
 		seat_consider_warp_to_focus(seat);
 	} else {
 		focused = seat_get_focused_container(seat);
@@ -2567,7 +2681,6 @@ static bool jump_handle_button(struct sway_seat *seat, uint32_t time_msec,
 
 static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 		struct criteria *criteria,
-		struct sway_workspace *focused_workspace,
 		void (*jump_overview_prepare)(struct jump_data *data),
 		void (*jump_overview_restore)(struct jump_data *data),
 		void (*jump_root_prepare)(struct jump_data *data),
@@ -2582,7 +2695,6 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 		return;
 	}
 	jump_data->keyboard_key_end = jump_handle_keyboard_key_end;
-	jump_data->focused_workspace = focused_workspace;
 	jump_data->criteria = criteria;
 	jump_data->jump_overview_prepare = jump_overview_prepare;
 	jump_data->jump_overview_restore = jump_overview_restore;
@@ -2645,37 +2757,37 @@ static void jump(bool overview_workspaces, enum sway_layout_filter filter,
 
 void layout_jump() {
 	bool all = layout_overview_workspaces_enabled();
-	jump(all, LAYOUT_FILTER_VISIBLE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	jump(all, LAYOUT_FILTER_VISIBLE, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 // Different `jump` implementations
 void layout_jump_tiling(bool all) {
-	jump(all, LAYOUT_FILTER_TILING, NULL, NULL, jump_overview_prepare_all_cb,
+	jump(all, LAYOUT_FILTER_TILING, NULL, jump_overview_prepare_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
 void layout_jump_floating(bool all) {
-	jump(all, LAYOUT_FILTER_FLOATING, NULL, NULL, jump_overview_prepare_all_cb,
+	jump(all, LAYOUT_FILTER_FLOATING, NULL, jump_overview_prepare_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
 void layout_jump_container(struct sway_container *container) {
-	jump(false, LAYOUT_FILTER_CONTAINER, NULL, NULL, jump_overview_prepare_all_cb,
+	jump(false, LAYOUT_FILTER_CONTAINER, NULL, jump_overview_prepare_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
 void layout_jump_trailmark(bool all) {
-	jump(all, LAYOUT_FILTER_TRAILMARK, NULL, NULL, jump_overview_prepare_all_cb,
+	jump(all, LAYOUT_FILTER_TRAILMARK, NULL, jump_overview_prepare_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
 void layout_jump_criteria(struct criteria *criteria) {
-	jump(true, LAYOUT_FILTER_ALL, criteria, NULL, jump_overview_prepare_all_cb,
+	jump(true, LAYOUT_FILTER_ALL, criteria, jump_overview_prepare_cb,
 		 jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
 void layout_jump_all(bool all) {
-	jump(all, LAYOUT_FILTER_ALL, NULL, NULL, jump_overview_prepare_all_cb,
+	jump(all, LAYOUT_FILTER_ALL, NULL, jump_overview_prepare_cb,
 		jump_overview_restore_cb, NULL, NULL, NULL, NULL);
 }
 
@@ -2687,16 +2799,18 @@ static void jump_root_prepare_scratchpad_cb(struct jump_data *jump_data) {
 }
 
 static void jump_root_restore_scratchpad_cb(struct jump_data *jump_data) {
-	struct sway_workspace *workspace = jump_data->focused_workspace;
-	for (int i = 0; i < workspace->current.floating->length; ++i) {
-		struct sway_container *con = workspace->current.floating->items[i];
-		if (con->scratchpad) {
-			root_scratchpad_hide(con);
-		}
+	// Hide the scratchpad containers the jump showed, wherever they are now:
+	// the workspace it began in may be gone. Hiding one moves it to the end
+	// of root->scratchpad, so walk a copy
+	list_t *scratchpad = create_list();
+	list_cat(scratchpad, root->scratchpad);
+	for (int i = 0; i < scratchpad->length; ++i) {
+		root_scratchpad_hide(scratchpad->items[i]);
 	}
+	list_free(scratchpad);
 	if (jump_data->focus) {
 		struct sway_container *new_focus = container_get_by_id(jump_data->new_focus_id);
-		if (new_focus) {
+		if (new_focus && container_is_scratchpad_hidden_or_child(new_focus)) {
 			root_scratchpad_show(new_focus);
 		}
 	} else if (jump_data->old_focus) {
@@ -2707,8 +2821,8 @@ static void jump_root_restore_scratchpad_cb(struct jump_data *jump_data) {
 	}
 }
 
-void layout_jump_scratchpad(struct sway_workspace *workspace) {
-	jump(false, LAYOUT_FILTER_SCRATCHPAD, NULL, workspace, jump_overview_prepare_all_cb,
+void layout_jump_scratchpad(void) {
+	jump(false, LAYOUT_FILTER_SCRATCHPAD, NULL, jump_overview_prepare_cb,
 		jump_overview_restore_cb, jump_root_prepare_scratchpad_cb,
 		jump_root_restore_scratchpad_cb, NULL, NULL);
 }
@@ -2859,19 +2973,30 @@ void layout_jump_workspaces() {
 
 // Scroll gesture
 //
-// The gesture pans the viewport of the workspace, and the tiled containers
-// are drawn displaced by the pan. The layout is the same as before the
-// gesture until it ends. Then, the gesture selects the window to focus.
-// When applying the transaction, the pan resets, passing its value to the
-// containers. A cancelled gesture simply resets the pan.
+// The gesture pans the workspace's viewport, and every container, tiled or
+// floating, is rendered displaced by the pan. The layout is the same as before
+// the gesture until it ends. A cancelled gesture goes back to the pan it
+// started with.
+//
+// If the workspace is locked, the gesture scrolls the tiling along one axis.
+// When it ends, it selects the window to focus, and when applying the
+// transaction, the pan resets, passing its value to the tiling containers.
+// Floating containers keep their layout coordinates, so they go back to
+// where they were.
 //
 // Pinned and columns move rigidly with the pan, but they recover their
 // correct positions when the transaction rearranges the layout.
+//
+// If the workspace is not locked (infinite canvas), the gesture pans freely
+// along both axes, the viewport stays where the gesture leaves it, and
+// nothing else changes. Focus does not follow the mouse until clicking a
+// window. The workspace doesn't need to be focused either.
 
 // The top level container under the pointer, the active one if there is none
 static struct sway_container *scroll_pointer_container(struct sway_seat *seat,
 		struct sway_workspace *workspace) {
-	double x = seat->cursor->cursor->x, y = seat->cursor->cursor->y;
+	double x, y;
+	cursor_get_global_position(seat->cursor, workspace, &x, &y);
 	struct sway_layout_transform transform;
 	layout_transform_workspace_get(workspace, false, &transform);
 	layout_transform_point_inv(&transform, &x, &y);
@@ -2900,7 +3025,7 @@ static struct sway_container *scroll_pick(struct sway_workspace *workspace,
 	// The pan may come from a gesture before this one
 	const double moved = horizontal ? workspace->pan.dx : workspace->pan.dy;
 	struct wlr_fbox vp;
-	layout_vp_box(workspace, &vp);
+	layout_workspace_box(workspace, &vp);
 	const int active_idx = max(list_find(children, active), 0);
 	if (moved < 0.0) {
 		for (int i = children->length - 1; i > active_idx; i--) {
@@ -2980,55 +3105,70 @@ void layout_scroll_cancel(struct sway_seat *seat) {
 		return;
 	}
 	seat->scroll_workspace = NULL;
-	workspace->pan.x = workspace->pan.y = 0.0;
+	workspace->pan.x = workspace->pan.start_x;
+	workspace->pan.y = workspace->pan.start_y;
 	scroll_untrack(workspace);
-	// The layout did not change, so there is nothing to arrange or commit:
-	// only the viewport resets
+	// The layout did not change, so there is nothing to arrange or commit;
+	// only the viewport goes back to where it was
 	const struct sway_animation_options options = {
 		.spec = animation_get_spec(ANIMATION_GESTURE),
 		.clock = output_animation_clock(workspace->output),
 	};
-	animated_variable_set(&workspace->animation.pan_x, 0.0, &options);
-	animated_variable_set(&workspace->animation.pan_y, 0.0, &options);
+	animated_variable_set(&workspace->animation.pan_x, workspace->pan.x, &options);
+	animated_variable_set(&workspace->animation.pan_y, workspace->pan.y, &options);
 	animation_manager_damage(server.animation_manager, options.clock);
 }
 
 // The scrolling workspace, NULL if none
 static struct sway_workspace *seat_scroll_workspace(struct sway_seat *seat) {
-	if (seat->scroll_workspace != seat->workspace) {
+	struct sway_workspace *workspace = seat->scroll_workspace;
+	// Panning a viewport that is not locked does not need focus, only a
+	// workspace that is on screen
+	if (workspace && workspace != seat->workspace &&
+			(layout_locked(workspace) || !workspace_is_visible(workspace))) {
 		// The seat left the workspace in the middle of the gesture
 		layout_scroll_cancel(seat);
 	}
 	return seat->scroll_workspace;
 }
 
-bool layout_scroll_begin(struct sway_seat *seat) {
+bool layout_scroll_begin(struct sway_seat *seat, struct sway_workspace *workspace) {
 	// A gesture that did not end is replaced by this one
 	layout_scroll_cancel(seat);
-	struct sway_workspace *workspace = seat->workspace;
 	if (!workspace) {
 		return false;
 	}
-	// Check if we can scroll
-	double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
-	double total_width = 0.0, max_height = 0.0;
-	const int gap = workspace->gaps_inner;
-	for (int i = 0; i < workspace->tiling->length; ++i) {
-		struct sway_container *con = workspace->tiling->items[i];
-		total_width += scale * (con->pending.width + 2.0 * gap);
-		double total_height = 0.0;
-		for (int j = 0; j < con->pending.children->length; ++j) {
-			struct sway_container *child = con->pending.children->items[j];
-			total_height += scale * (child->pending.height + 2.0 * gap);
-		}
-		if (total_height > max_height) {
-			max_height = total_height;
-		}
-	}
-	if (total_width <= workspace->width && max_height <= workspace->height) {
+	if (workspace->pan.edge_panning > 0) {
+		// A pointer is already panning the viewport
 		return false;
 	}
+	// Check if we can scroll. An infinite canvas always can
+	if (layout_locked(workspace)) {
+		double scale = layout_scale_enabled(workspace) ? layout_scale_get(workspace) : 1.0;
+		double total_width = 0.0, max_height = 0.0;
+		const int gap = workspace->gaps_inner;
+		for (int i = 0; i < workspace->tiling->length; ++i) {
+			struct sway_container *con = workspace->tiling->items[i];
+			total_width += scale * (con->pending.width + 2.0 * gap);
+			double total_height = 0.0;
+			for (int j = 0; j < con->pending.children->length; ++j) {
+				struct sway_container *child = con->pending.children->items[j];
+				total_height += scale * (child->pending.height + 2.0 * gap);
+			}
+			if (total_height > max_height) {
+				max_height = total_height;
+			}
+		}
+		if (total_width <= workspace->width && max_height <= workspace->height) {
+			return false;
+		}
+	}
 	seat->scroll_workspace = workspace;
+	// Reset position if the gesture is cancelled, and also the reference to know
+	// the gesture pan amount
+	workspace->pan.start_x = workspace->pan.x;
+	workspace->pan.start_y = workspace->pan.y;
+	// Continue from what is on screen
 	workspace->pan.x = workspace->animation.pan_x.value;
 	workspace->pan.y = workspace->animation.pan_y.value;
 	workspace->pan.dx = workspace->pan.dy = 0.0;
@@ -3043,7 +3183,19 @@ bool layout_scroll_begin(struct sway_seat *seat) {
 
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity) {
 	struct sway_workspace *workspace = seat_scroll_workspace(seat);
-	if (!workspace || workspace->tiling->length == 0) {
+	if (!workspace) {
+		return;
+	}
+	if (!layout_locked(workspace)) {
+		// Free panning when unlocked
+		workspace->pan.x += sensitivity * dx;
+		workspace->pan.dx += sensitivity * dx;
+		workspace->pan.y += sensitivity * dy;
+		workspace->pan.dy += sensitivity * dy;
+		scroll_track(workspace);
+		return;
+	}
+	if (workspace->tiling->length == 0) {
 		return;
 	}
 	if (workspace->pan.axis == SCROLL_AXIS_NONE) {
@@ -3087,18 +3239,20 @@ static void scroll_project(struct sway_workspace *workspace) {
 	}
 }
 
-// Transfer the workspace pan to the tiling containers before committing the
-// transaction
+// Transfer what the gesture panned to the tiling containers before committing
+// the transaction
 static void scroll_update_containers(struct sway_workspace *workspace,
 		struct sway_container *column) {
 	const bool horizontal = layout_get_type(workspace) == L_HORIZ;
+	const double pan_x = workspace->pan.x - workspace->pan.start_x;
+	const double pan_y = workspace->pan.y - workspace->pan.start_y;
 	for (int i = 0; i < workspace->tiling->length; ++i) {
 		struct sway_container *con = workspace->tiling->items[i];
 		if (!layout_container_pans(con)) {
 			continue;
 		}
-		const double x = horizontal || con == column ? workspace->pan.x : 0.0;
-		const double y = !horizontal || con == column ? workspace->pan.y : 0.0;
+		const double x = horizontal || con == column ? pan_x : 0.0;
+		const double y = !horizontal || con == column ? pan_y : 0.0;
 		if (horizontal) {
 			con->pending.x += x;
 		} else {
@@ -3123,19 +3277,27 @@ static void scroll_end(struct sway_seat *seat, struct sway_workspace *workspace)
 	scroll_project(workspace);
 	scroll_untrack(workspace);
 
-	struct sway_container *focus = scroll_selection(seat, workspace);
-	struct sway_container *column = focus ? focus :
-		seat_get_focus_inactive_tiling(seat, workspace);
-	while (column && column->pending.parent) {
-		column = column->pending.parent;
-	}
-	scroll_update_containers(workspace, column);
-	// Reset viewport
-	workspace->pan.x = workspace->pan.y = 0.0;
+	if (layout_locked(workspace)) {
+		struct sway_container *focus = scroll_selection(seat, workspace);
+		struct sway_container *column = focus ? focus :
+			seat_get_focus_inactive_tiling(seat, workspace);
+		while (column && column->pending.parent) {
+			column = column->pending.parent;
+		}
+		scroll_update_containers(workspace, column);
+		// The viewport goes back where it was after adding the pan to the
+		// tiling containers' positions
+		workspace->pan.x = workspace->pan.start_x;
+		workspace->pan.y = workspace->pan.start_y;
 
-	transaction_set_animation(ANIMATION_GESTURE);
-	if (focus) {
-		seat_set_focus_container(seat, focus);
+		transaction_set_animation(ANIMATION_GESTURE);
+		if (focus) {
+			seat_set_focus_container(seat, focus);
+		}
+	} else if (workspace->pan.dx != 0.0 || workspace->pan.dy != 0.0) {
+		// In infinite mode, the viewport stays where the gesture left it,
+		// and the focus it had
+		workspace->pan.hold_focus = true;
 	}
 	arrange_workspace(workspace);
 	transaction_set_animation(ANIMATION_GESTURE);
@@ -3150,6 +3312,16 @@ bool layout_scroll_end(struct sway_seat *seat) {
 	seat->scroll_workspace = NULL;
 	scroll_end(seat, workspace);
 	return true;
+}
+
+bool layout_scroll_holds_focus(struct sway_workspace *workspace) {
+	return workspace && workspace->pan.hold_focus;
+}
+
+void layout_scroll_release_focus(struct sway_workspace *workspace) {
+	if (workspace) {
+		workspace->pan.hold_focus = false;
+	}
 }
 
 bool layout_pin_enabled(struct sway_workspace *workspace) {
@@ -3317,9 +3489,9 @@ static void selection_move_floating(struct sway_container *container,
 		return;
 	}
 	struct wlr_fbox old_vp, vp;
-	layout_vp_box(old_workspace, &old_vp);
-	layout_vp_box(workspace, &vp);
+	layout_viewport_box(container, &old_vp);
 	workspace_add_floating(workspace, container);
+	layout_viewport_box(container, &vp);
 	floating_fix_coordinates(container, &old_vp, &vp);
 	if (container->scratchpad && workspace->output) {
 		output_get_box(workspace->output, &container->transform);
@@ -4264,7 +4436,7 @@ static void get_visible_from_active(enum sway_container_layout layout,
 	struct sway_container *active = children->items[active_idx];
 	struct sway_workspace *workspace = active->pending.workspace;
 	struct wlr_fbox vp;
-	layout_vp_box(workspace, &vp);
+	layout_workspace_box(workspace, &vp);
 	if (layout == L_HORIZ) {
 		double offset = active->pending.x;
 		for (int i = active_idx; i < children->length; ++i) {
@@ -4309,7 +4481,7 @@ static void get_visible_to_active(enum sway_container_layout layout,
 	struct sway_container *active = children->items[active_idx];
 	struct sway_workspace *workspace = active->pending.workspace;
 	struct wlr_fbox vp;
-	layout_vp_box(workspace, &vp);
+	layout_workspace_box(workspace, &vp);
 	if (layout == L_HORIZ) {
 		double offset = active->pending.x - 2.0 * workspace->gaps_inner;
 		for (int i = active_idx - 1; i >= 0; i--) {
@@ -4361,7 +4533,7 @@ static void get_visible(enum sway_container_layout layout, list_t *children, int
 void set_from_position(struct sway_workspace *workspace, enum sway_container_layout layout,
 		list_t *children, int from, int active_idx, int gap) {
 	struct wlr_fbox vp;
-	layout_vp_box(workspace, &vp);
+	layout_workspace_box(workspace, &vp);
 	if (layout == L_HORIZ) {
 		double offset = vp.x + gap;
 		if (from <= active_idx) {
@@ -4719,7 +4891,7 @@ static void fit_arrange_fractions_with_parent(struct sway_container *container) 
 
 // Layout Coordinate Transforms
 
-// The screen point A to use as camera anchor: center of the output area
+// The camera anchor is the center of the output
 static void transform_anchor(struct sway_workspace *workspace, double *ax, double *ay) {
 	struct wlr_box *area = workspace_get_output_area(workspace);
 	if (area) {
@@ -4740,7 +4912,7 @@ double layout_transform_workspace_scale(struct sway_workspace *workspace,
 	return scale > 0.0 ? scale : 1.0;
 }
 
-// Full screen containers are placed directly on screen
+// Full screen containers are placed directly in global coordinates
 static bool container_transformed(struct sway_container *container) {
 	struct sway_workspace *workspace = container->pending.workspace;
 	return workspace && workspace->output &&
@@ -4755,23 +4927,46 @@ double layout_transform_container_scale(struct sway_container *container,
 	return layout_transform_workspace_scale(container->pending.workspace, animated);
 }
 
+// The workspace transform scales around the anchor.The viewport pan is not
+// part of it Tiling windows are always arranged with no pan, with the pan
+// translating the full layer at render time
 void layout_transform_workspace_get(struct sway_workspace *workspace,
 		bool animated, struct sway_layout_transform *transform) {
 	const double scale = layout_transform_workspace_scale(workspace, animated);
 	double ax, ay;
 	transform_anchor(workspace, &ax, &ay);
-	// The camera center C: the layout point shown at the anchor. Panning
-	// offsets it from the anchor
+	// The camera center C is the layout point shown at the anchor
 	const double cx = ax, cy = ay;
-	// screen = A + scale * (layout - C)
+	// global = A + scale * (layout - C)
 	transform->scale = scale;
 	transform->x = ax - scale * cx;
 	transform->y = ay - scale * cy;
 }
 
+// Sticky and scratchpad containers are stuck to the screen, each one with its own pan
+static bool container_stuck_to_screen(struct sway_container *container) {
+	return container_is_sticky_or_child(container) ||
+		container_toplevel_ancestor(container)->scratchpad;
+}
+
 bool layout_container_pans(struct sway_container *container) {
 	return container->pending.workspace && container_transformed(container) &&
-		!container_is_floating_or_child(container);
+		!container_stuck_to_screen(container);
+}
+
+// The transform the container would have in `workspace`
+static void layout_transform_container_in_workspace(struct sway_container *container,
+		struct sway_workspace *workspace, bool animated,
+		struct sway_layout_transform *transform) {
+	layout_transform_workspace_get(workspace, animated, transform);
+	if (!container_stuck_to_screen(container)) {
+		// Translate by the viewport pan, which is in layout units:
+		//     global = A + scale * (layout + pan - C)
+		transform->x += transform->scale * (animated ?
+			workspace->animation.pan_x.value : workspace->pan.x);
+		transform->y += transform->scale * (animated ?
+			workspace->animation.pan_y.value : workspace->pan.y);
+	}
 }
 
 void layout_transform_container_get(struct sway_container *container,
@@ -4780,29 +4975,81 @@ void layout_transform_container_get(struct sway_container *container,
 		*transform = (struct sway_layout_transform){ .scale = 1.0 };
 		return;
 	}
-	struct sway_workspace *workspace = container->pending.workspace;
-	layout_transform_workspace_get(workspace, animated, transform);
-	if (animated && layout_container_pans(container)) {
-		// What is on screen is panned: the camera center is A - pan. See
-		// layout_scroll_begin()
-		transform->x += transform->scale * workspace->animation.pan_x.value;
-		transform->y += transform->scale * workspace->animation.pan_y.value;
-	}
+	layout_transform_container_in_workspace(container,
+		container->pending.workspace, animated, transform);
 }
 
-void layout_vp_box(struct sway_workspace *workspace, struct wlr_fbox *box) {
+void layout_container_layout_to_screen(struct sway_container *container,
+		struct sway_workspace *workspace, bool animated, double *x, double *y) {
 	struct sway_layout_transform transform;
-	layout_transform_workspace_get(workspace, false, &transform);
+	layout_transform_container_in_workspace(container, workspace, animated, &transform);
+	layout_transform_point(&transform, x, y);
+	layout_overview_workspaces_global_to_screen(workspace, x, y);
+}
+
+void layout_container_screen_to_layout(struct sway_container *container,
+		struct sway_workspace *workspace, bool animated, double *x, double *y) {
+	layout_overview_workspaces_screen_to_global(workspace, x, y);
+	struct sway_layout_transform transform;
+	layout_transform_container_in_workspace(container, workspace, animated, &transform);
+	layout_transform_point_inv(&transform, x, y);
+}
+
+static void workspace_global_box(struct sway_workspace *workspace,
+		struct wlr_fbox *box) {
 	*box = (struct wlr_fbox){
 		.x = workspace->x,
 		.y = workspace->y,
 		.width = workspace->width,
 		.height = workspace->height,
 	};
+}
+
+void layout_workspace_box(struct sway_workspace *workspace, struct wlr_fbox *box) {
+	struct sway_layout_transform transform;
+	layout_transform_workspace_get(workspace, false, &transform);
+	const double tiling_scale = workspace->layout.overview.tiling_scale;
+	if (layout_overview_mode(workspace) == OVERVIEW_ALL && tiling_scale > 0.0) {
+		// When in overview mode, the transform scale has already been computed,
+		// and it is tiling_scale, the scale at which tiling containers were arranged
+		double ax, ay;
+		transform_anchor(workspace, &ax, &ay);
+		transform.scale = tiling_scale;
+		transform.x = ax - tiling_scale * ax;
+		transform.y = ay - tiling_scale * ay;
+	}
+	workspace_global_box(workspace, box);
 	layout_transform_box_inv(&transform, box);
 }
 
-void layout_container_screen_box(struct sway_container *container, bool animated,
+void layout_container_pan_get(struct sway_container *container,
+		struct sway_workspace *workspace, double *x, double *y) {
+	const bool pans = workspace && !container_stuck_to_screen(container);
+	*x = pans ? workspace->pan.x : 0.0;
+	*y = pans ? workspace->pan.y : 0.0;
+}
+
+void layout_floating_box_from_global(struct sway_container *container, struct wlr_fbox *box) {
+	double pan_x, pan_y;
+	layout_container_pan_get(container, container->pending.workspace, &pan_x, &pan_y);
+	box->x -= pan_x;
+	box->y -= pan_y;
+}
+
+void layout_viewport_box(struct sway_container *container,
+		struct wlr_fbox *box) {
+	struct sway_workspace *workspace = container->pending.workspace;
+	if (!workspace) {
+		*box = (struct wlr_fbox){0};
+		return;
+	}
+	struct sway_layout_transform transform;
+	layout_transform_container_in_workspace(container, workspace, false, &transform);
+	workspace_global_box(workspace, box);
+	layout_transform_box_inv(&transform, box);
+}
+
+void layout_container_global_box(struct sway_container *container, bool animated,
 		struct wlr_fbox *box) {
 	if (!animated) {
 		box->x = container->pending.x;
@@ -4824,13 +5071,459 @@ void layout_container_screen_box(struct sway_container *container, bool animated
 	layout_transform_box(&transform, box);
 }
 
-void layout_container_screen_wlr_box(struct sway_container *container,
+void layout_container_global_wlr_box(struct sway_container *container,
 		bool animated, struct wlr_box *box) {
-	struct wlr_fbox screen;
-	layout_container_screen_box(container, animated, &screen);
+	struct wlr_fbox global;
+	layout_container_global_box(container, animated, &global);
 	// Round so adjacent boxes stay adjacent
-	box->x = round(screen.x);
-	box->y = round(screen.y);
-	box->width = round(screen.x + screen.width) - box->x;
-	box->height = round(screen.y + screen.height) - box->y;
+	box->x = round(global.x);
+	box->y = round(global.y);
+	box->width = round(global.x + global.width) - box->x;
+	box->height = round(global.y + global.height) - box->y;
+}
+
+// Infinite canvas
+//
+// See layout.h. The viewport of a workspace is its camera over the canvas:
+// workspace->pan, which displaces what the workspace draws (see the
+// transforms above). Nothing here moves a container or changes the layout:
+// the viewport is what changes.
+
+bool layout_dragging(void) {
+	if (!server.input) {
+		return false;
+	}
+	struct sway_seat *seat;
+	wl_list_for_each(seat, &server.input->seats, link) {
+		if (seat->dragging || seat->dnd) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool layout_locked(struct sway_workspace *workspace) {
+	if (!workspace) {
+		return true;
+	}
+	const struct sway_scroller *layout = &workspace->layout;
+	return layout->locked && !layout->modifiers.infinite &&
+		!layout->modifiers.floating && !layout_dragging();
+}
+
+// A locked workspace has its viewport at home: there is no pan, and layout
+// coordinates are global coordinates if it is not scaled, as they were before
+// the infinite canvas. What the workspace draws depends on the lock either
+// way.
+static void locked_apply(struct sway_workspace *workspace) {
+	node_set_dirty(&workspace->node);
+	if (!layout_locked(workspace)) {
+		return;
+	}
+	workspace->pan.hold_focus = false;
+	// A scrolling gesture that began while it was not locked
+	if (server.input) {
+		struct sway_seat *seat;
+		wl_list_for_each(seat, &server.input->seats, link) {
+			if (seat->scroll_workspace == workspace) {
+				layout_scroll_cancel(seat);
+			}
+		}
+	}
+	if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		// The overview has its own viewport. This is the one it goes back to
+		workspace->layout.overview.mem_pan_x = 0.0;
+		workspace->layout.overview.mem_pan_y = 0.0;
+	} else {
+		workspace->pan.x = workspace->pan.y = 0.0;
+	}
+}
+
+// The lock of the workspace may have changed
+static void locked_changed(struct sway_workspace *workspace, bool was_locked) {
+	if (layout_locked(workspace) != was_locked) {
+		// The layout does not depend on the lock: only the viewport may move
+		locked_apply(workspace);
+		ipc_event_scroller("locked", workspace);
+	}
+}
+
+void layout_locked_update(struct sway_workspace *workspace,
+		struct sway_container *focus) {
+	if (!workspace || !focus) {
+		return;
+	}
+	if (container_stuck_to_screen(focus)) {
+		// Sticky and scratchpad containers are floating, but they are not
+		// on the canvas: the lock stays as it was
+		return;
+	}
+	const bool locked = !container_is_floating_or_child(focus);
+	if (workspace->layout.locked == locked) {
+		return;
+	}
+	// The caller arranges the workspace
+	const bool was_locked = layout_locked(workspace);
+	workspace->layout.locked = locked;
+	locked_changed(workspace, was_locked);
+}
+
+void layout_locked_refresh(struct sway_container *container) {
+	struct sway_container *focus =
+		seat_get_focused_container(input_manager_current_seat());
+	if (focus && (focus == container || container_has_ancestor(focus, container))) {
+		layout_locked_update(container->pending.workspace, focus);
+	}
+}
+
+// The viewport is at home when it has no pan: make sure rounding errors do
+// not keep it away
+#define PAN_HOME_EPSILON 0.001
+
+// Pan the viewport of the workspace by (dx, dy) in layout units. Positive
+// values move its content right and down on screen.
+static void layout_pan(struct sway_workspace *workspace, double dx, double dy) {
+	if (dx == 0.0 && dy == 0.0) {
+		return;
+	}
+	workspace->pan.x += dx;
+	workspace->pan.y += dy;
+	if (fabs(workspace->pan.x) < PAN_HOME_EPSILON) {
+		workspace->pan.x = 0.0;
+	}
+	if (fabs(workspace->pan.y) < PAN_HOME_EPSILON) {
+		workspace->pan.y = 0.0;
+	}
+	// The transaction animates the viewport to its new position
+	node_set_dirty(&workspace->node);
+}
+
+// How much to pan so [pos, pos + size] is inside [vp, vp + vp_size]
+static double show_axis(double vp, double vp_size, double pos, double size) {
+	// Sizes come from layout fractions: one pixel is not worth a pan
+	const double margin = 1.0;
+	const bool before = pos < vp - margin;
+	const bool after = pos + size > vp + vp_size + margin;
+	if (before && after) {
+		// It covers the viewport: there is no better position
+		return 0.0;
+	}
+	if (size > vp_size) {
+		// It does not fit. Show its beginning if it is not in view
+		return before || pos > vp + margin ? vp - pos : 0.0;
+	}
+	if (before) {
+		return vp - pos;
+	}
+	if (after) {
+		return vp + vp_size - (pos + size);
+	}
+	return 0.0;
+}
+
+void layout_show_container(struct sway_container *container) {
+	struct sway_workspace *workspace = container ? container->pending.workspace : NULL;
+	if (!workspace || !workspace->output || layout_locked(workspace)) {
+		return;
+	}
+	if (layout_overview_mode(workspace) != OVERVIEW_DISABLED) {
+		// The overview decides what it shows
+		return;
+	}
+	if (workspace->pan.edge_panning > 0) {
+		// The pointer is moving the viewport
+		return;
+	}
+	if (!container_is_floating_or_child(container)) {
+		// Tiled containers are arranged with no pan, the active one in the
+		// viewport: that is the pan that shows it, and the rest of the
+		// tiling, the way they were arranged
+		layout_pan(workspace, -workspace->pan.x, -workspace->pan.y);
+		return;
+	}
+	if (!layout_container_pans(container) ||
+			container_toplevel_ancestor(container)->dragging) {
+		// Panning does not move it (full screen, sticky, scratchpad), or it
+		// follows the pointer
+		return;
+	}
+	// A floating container is in view anywhere in the usable area of the
+	// output: it does not know about gaps, but a bar would be over it in the
+	// area it reserves. Pan the minimum to have it there
+	struct wlr_fbox vp;
+	workspace_view_area(workspace, &vp);
+	struct sway_layout_transform transform;
+	layout_transform_container_get(container, false, &transform);
+	layout_transform_box_inv(&transform, &vp);
+	layout_pan(workspace,
+		show_axis(vp.x, vp.width, container->pending.x, container->pending.width),
+		show_axis(vp.y, vp.height, container->pending.y, container->pending.height));
+}
+
+void layout_show_focus(struct sway_workspace *workspace) {
+	if (!workspace) {
+		return;
+	}
+	struct sway_seat *seat = input_manager_current_seat();
+	struct sway_node *focus = seat_get_focus_inactive(seat, &workspace->node);
+	if (focus && focus->type == N_CONTAINER) {
+		layout_show_container(focus->sway_container);
+	}
+}
+
+// Dragging
+
+static void drag_ended_iterator(struct sway_workspace *workspace, void *data) {
+	if (workspace->node.destroying || !workspace->output) {
+		return;
+	}
+	// The overview did not follow the content while dragging
+	workspace->layout.overview.content = (struct wlr_fbox){0};
+	// The viewport of the workspaces that are locked again goes back home
+	locked_apply(workspace);
+}
+
+void layout_drag_set(struct sway_seat *seat, bool *flag, bool dragging) {
+	if (*flag == dragging) {
+		return;
+	}
+	*flag = dragging;
+	if (!layout_dragging()) {
+		// Every workspace was unlocked while dragging
+		root_for_each_workspace(drag_ended_iterator, NULL);
+		transaction_commit_dirty();
+	}
+	// The pointer may be in the outer gaps of a workspace that was locked
+	layout_edge_pan_update(seat);
+}
+
+// Edge panning
+//
+// While the pointer is in the outer gaps of a workspace that is not locked,
+// the viewport of that workspace pans toward the pointer. The pan advances
+// when its output is about to render a frame, so it moves the same distance
+// every frame it shows.
+//
+// The band where the pointer pans is what is left between the usable area of
+// the (virtual) output and the workspace box. It is at least one pixel wide,
+// so a workspace with no outer gaps pans with the pointer at its edge. Areas
+// reserved by layer shell surfaces are outside of the usable area.
+
+// Speed with the pointer at the outer edge of the band, in screen pixels per
+// second. config->infinite_speed_scale multiplies it.
+#define EDGE_PAN_SPEED 1200.0
+// Fraction of that speed at the inner edge of the band
+#define EDGE_PAN_MIN_SPEED 0.25
+// The pointer crosses the band to reach other outputs and layer shell
+// surfaces: wait before panning, and then get up to speed
+#define EDGE_PAN_DELAY_NSEC 150000000LL
+#define EDGE_PAN_RAMP_NSEC 250000000LL
+// Longest step: frames may stop for a while
+#define EDGE_PAN_MAX_STEP_NSEC 100000000LL
+
+// Speed and direction for a pointer at `p` along one axis, in [-1, 1].
+// Positive pans the content toward the end: the pointer is at the beginning.
+// `min_band` is the width of the band when there are no gaps.
+static double edge_pan_axis(double p, double usable, double usable_size,
+		double box, double box_size, double min_band) {
+	const double usable_end = usable + usable_size;
+	const double beg = fmax(box, usable + min_band);
+	const double end = fmin(box + box_size, usable_end - min_band);
+	double depth;
+	if (p < beg) {
+		depth = (beg - p + min_band) / (beg - usable);
+	} else if (p >= end) {
+		depth = (p - end + min_band) / (usable_end - end);
+	} else {
+		return 0.0;
+	}
+	const double speed = EDGE_PAN_MIN_SPEED +
+		(1.0 - EDGE_PAN_MIN_SPEED) * fmin(fmax(depth, 0.0), 1.0);
+	return p < beg ? speed : -speed;
+}
+
+// The workspace the pointer of the seat pans, NULL if none. (vx, vy) is the
+// speed of the pan in layout units of the workspace, for EDGE_PAN_SPEED 1.
+static struct sway_workspace *edge_pan_target(struct sway_seat *seat,
+		double *vx, double *vy) {
+	*vx = *vy = 0.0;
+	if (!seat->cursor || !seat->seatop_impl || !seat->seatop_impl->allow_edge_pan) {
+		return NULL;
+	}
+	if (config->infinite_speed_scale <= 0.0 || root->fullscreen_global ||
+			root->jumping) {
+		return NULL;
+	}
+	double x = seat->cursor->cursor->x, y = seat->cursor->cursor->y;
+	struct sway_workspace *workspace = NULL;
+	// Size of a pixel of the screen in global coordinates
+	double pixel = 1.0;
+	if (layout_overview_workspaces_enabled()) {
+		// The pointer is over the miniature of a workspace: get the point of
+		// the workspace that is there
+		if (!layout_overview_workspaces_map_coordinates(&workspace, &x, &y) ||
+				!workspace || workspace->jump.scale <= 0.0) {
+			return NULL;
+		}
+		pixel = 1.0 / workspace->jump.scale;
+	} else {
+		struct sway_output *output = output_for_coords(x, y);
+		if (!output || !output->enabled) {
+			return NULL;
+		}
+		struct sway_virtual_output *vo = output_virtual_output_at_coords(output, x, y);
+		if (vo && !wlr_box_contains_point(&vo->output_area, x, y)) {
+			// Between virtual outputs
+			return NULL;
+		}
+		workspace = vo ? virtual_output_get_active_workspace(vo) :
+			output_get_active_workspace(output);
+	}
+	if (!workspace || !workspace->output || workspace->node.destroying ||
+			workspace->fullscreen || layout_locked(workspace)) {
+		return NULL;
+	}
+	if (seat->scroll_workspace == workspace) {
+		// A gesture is panning it
+		return NULL;
+	}
+	struct wlr_fbox usable;
+	workspace_view_area(workspace, &usable);
+	if (x < usable.x || x >= usable.x + usable.width ||
+			y < usable.y || y >= usable.y + usable.height) {
+		// Reserved for layer shell surfaces
+		return NULL;
+	}
+	const double dx = edge_pan_axis(x, usable.x, usable.width,
+		workspace->x, workspace->width, pixel);
+	const double dy = edge_pan_axis(y, usable.y, usable.height,
+		workspace->y, workspace->height, pixel);
+	if (dx == 0.0 && dy == 0.0) {
+		return NULL;
+	}
+	// The speed is in pixels of the screen: the same for any scale
+	const double units = pixel / layout_transform_workspace_scale(workspace, false);
+	*vx = dx * units;
+	*vy = dy * units;
+	return workspace;
+}
+
+static void edge_pan_request_frame(struct sway_workspace *workspace) {
+	if (workspace->output) {
+		animation_manager_damage(server.animation_manager,
+			output_animation_clock(workspace->output));
+	}
+}
+
+void layout_edge_pan_cancel(struct sway_seat *seat) {
+	struct sway_workspace *workspace = seat->edge_pan.workspace;
+	if (!workspace) {
+		return;
+	}
+	seat->edge_pan.workspace = NULL;
+	if (--workspace->pan.edge_panning > 0) {
+		// Another seat is still panning it
+		return;
+	}
+	// The viewport rests where it is
+	animation_manager_untrack(server.animation_manager, &workspace->pan);
+	// Show its final state: views that need their position get it now
+	edge_pan_request_frame(workspace);
+}
+
+bool layout_edge_pan_active(struct sway_seat *seat) {
+	return seat->edge_pan.workspace != NULL;
+}
+
+void layout_edge_pan_update(struct sway_seat *seat) {
+	if (seat->edge_pan.stepping) {
+		// The pointer did not move, the viewport did
+		return;
+	}
+	double vx, vy;
+	struct sway_workspace *workspace = edge_pan_target(seat, &vx, &vy);
+	if (workspace == seat->edge_pan.workspace) {
+		if (workspace) {
+			// Make sure frames keep coming
+			edge_pan_request_frame(workspace);
+		}
+		return;
+	}
+	layout_edge_pan_cancel(seat);
+	if (!workspace) {
+		return;
+	}
+	seat->edge_pan.workspace = workspace;
+	seat->edge_pan.moving = false;
+	++workspace->pan.edge_panning;
+	seat->edge_pan.entered = animation_manager_now(server.animation_manager);
+	seat->edge_pan.last = seat->edge_pan.entered;
+	// The pan advances with the frames of the output
+	edge_pan_request_frame(workspace);
+}
+
+static void edge_pan_step(struct sway_seat *seat, struct sway_output *output) {
+	struct sway_workspace *workspace = seat->edge_pan.workspace;
+	double vx, vy;
+	if (edge_pan_target(seat, &vx, &vy) != workspace) {
+		// The workspace locked, a seat operation began...
+		layout_edge_pan_update(seat);
+		return;
+	}
+	struct sway_animation_clock *clock = output_animation_clock(output);
+	// Advance to the time this frame is presented, so every frame shows the
+	// same step
+	const int64_t now = clock ? animation_clock_next_frame(clock) :
+		animation_manager_now(server.animation_manager);
+	int64_t step = now - seat->edge_pan.last;
+	seat->edge_pan.last = now;
+	if (step > EDGE_PAN_MAX_STEP_NSEC) {
+		step = EDGE_PAN_MAX_STEP_NSEC;
+	}
+	const int64_t elapsed = now - seat->edge_pan.entered - EDGE_PAN_DELAY_NSEC;
+	if (step <= 0 || elapsed <= 0) {
+		// Waiting to start
+		edge_pan_request_frame(workspace);
+		return;
+	}
+	if (!seat->edge_pan.moving) {
+		// An animation may be moving the viewport (it was showing a window
+		// that got focus, for example): continue from what is on screen
+		seat->edge_pan.moving = true;
+		if (workspace->pan.edge_panning == 1) {
+			workspace->pan.x = workspace->animation.pan_x.value;
+			workspace->pan.y = workspace->animation.pan_y.value;
+		}
+	}
+	const double ramp = fmin((double)elapsed / EDGE_PAN_RAMP_NSEC, 1.0);
+	const double distance = config->infinite_speed_scale * EDGE_PAN_SPEED *
+		ramp * (step / 1000000000.0);
+	workspace->pan.x += vx * distance;
+	workspace->pan.y += vy * distance;
+	// The viewport follows with no animation, and asks for the next frame.
+	// The pan has its own owner: the scrolling gesture tracks with the
+	// workspace.
+	animated_variable_track(&workspace->animation.pan_x, workspace->pan.x,
+		clock, &workspace->pan);
+	animated_variable_track(&workspace->animation.pan_y, workspace->pan.y,
+		clock, &workspace->pan);
+
+	// The pointer is now over a different point of the canvas: a dragged
+	// window follows it, and what is under the pointer may have changed
+	seat->edge_pan.stepping = true;
+	cursor_moved(seat->cursor);
+	seat->edge_pan.stepping = false;
+}
+
+void layout_edge_pan_frame(struct sway_output *output) {
+	if (!server.input) {
+		return;
+	}
+	struct sway_seat *seat;
+	wl_list_for_each(seat, &server.input->seats, link) {
+		struct sway_workspace *workspace = seat->edge_pan.workspace;
+		if (workspace && workspace->output == output) {
+			edge_pan_step(seat, output);
+		}
+	}
 }

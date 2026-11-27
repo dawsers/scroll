@@ -310,6 +310,11 @@ The following commands may only be used in the configuration file.
 	*wordexp*(3) for details). The same include file can only be included once;
 	subsequent attempts will be ignored.
 
+*infinite_speed_scale* <number>
+	Default is _1.0_. Multiplier for the speed of the viewport when it pans
+	following the pointer in the outer gaps of a workspace in infinite canvas
+	mode (see *set_mode*). _0_ disables panning with the pointer.
+
 *jump_labels_background* <color>
 	Default is _#00000000_ (transparent). Color of the background of the jump
 	labels.
@@ -364,7 +369,7 @@ The following commands may only be used in the configuration file.
 	arguments and meaning.
 
 	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
-	_nofloating_
+	_nofloating_ _noinfinite_
 	and the mode will be given by the type of layout assigned to the output,
 	or its landscape/portrait configuration if none was assigned.
 
@@ -991,7 +996,7 @@ set|plus|minus|toggle <amount>
 *set_mode* [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction>
 <focus|nofocus>
 <center_horiz|nocenter_horiz> <center_vert|nocenter_vert>
-<reorder_auto|noreorder_auto> <floating|nofloating>]
+<reorder_auto|noreorder_auto> <floating|nofloating> <infinite|noinfinite>]
 	Modes and mode modifiers are per workspace.
 	At window creation time, scroll can apply several modifiers to the current
 	working mode (h/v). It supports extra arguments:
@@ -1028,13 +1033,32 @@ set|plus|minus|toggle <amount>
 	_center_vert/nocenter_vert_: It will keep the active window centered
 	(or not) in its column.
 
-	_floating_/nofloating_: floating windows mode, nofloating (default) or
+	_floating/nofloating_: floating windows mode, nofloating (default) or
 	floating. When floating is set, any window that gets mapped in this
 	workspace will be placed as a floating window instead of being tiled.
 	It only affects new windows, existing ones are left where they are, and
 	you can send any window back to the tiling layout with *floating disable*.
 	_for_window_ criteria are applied after this modifier, so they can still
-	send the window to tiling mode in a floating workspace.
+	send the window to tiling mode in a floating workspace. It also unlocks the
+	viewport of the workspace, like _infinite_ does.
+
+	_infinite/noinfinite_: infinite canvas mode, noinfinite (default) or
+	infinite. The viewport of a workspace is either locked or not. When it is
+	locked, scroll works as usual. When it is not, the workspace is an infinite
+	canvas. In infinite canvas mode, a pointer in the outer gaps of a workspace
+	pans the viewport (see *infinite_speed_scale*). Floating windows can be
+	placed anywhere in that infinite canvas, and focusing one of them will pan
+	the	viewport to show it. Floating windows are clipped to their (virtual)
+	output expect while being dragged, so you can move them to another workspace
+
+	Scrolling gestures are also affected when the viewport is not locked. Focus
+	doesn't change (not even if *focus_follows_mouse* is true) until clicking
+	a window. In unlocked mode, scrolling with the floating modifier and mouse
+	middle button works like a swipe.
+
+	The viewport is unlocked when in _infinite_ or _floating_ mode, while
+	dragging a window or some application's content, or while a floating window
+	has focus. Otherwise, it is locked, and scroll works as usual.
 
 	You can skip any number of parameters when calling the command, and
 	their order doesn't matter.
@@ -1931,7 +1955,7 @@ The default colors are:
 	affects that ourput's workspaces.
 
 	Default is _reorder_auto_ _after_ _focus_ _nocenter_horiz_ _nocenter_vert_
-	_nofloating_
+	_nofloating_ _noinfinite_
 	and the mode will be given by the type of layout assigned to the output,
 	or its landscape/portrait configuration if none was assigned.
 
@@ -2511,6 +2535,8 @@ local process_data = scroll.exec_process("kitty")
 
 	_floating_: true|false
 
+	_infinite_: true|false
+
 *workspace_set_mode(workspace, modifiers)*
 	Sets the mode _modifiers_ for _workspace_. The _modifiers_ table can
 	override any number of modifiers. The keys and values that table can include
@@ -2529,6 +2555,8 @@ local process_data = scroll.exec_process("kitty")
 	_center_vertical_: true|false
 
 	_floating_: true|false
+
+	_infinite_: true|false
 
 *workspace_get_layout_type(workspace)*
 	Returns the layout type, _"horizontal"_ or _"vertical"_.

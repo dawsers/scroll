@@ -90,6 +90,13 @@ struct sway_node *node_at_coords(
 		struct sway_seat *seat, double lx, double ly,
 		struct wlr_surface **surface, double *sx, double *sy);
 
+/**
+ * Returns the position of the cursor in global coordinates of the workspace.
+ * Unchanged when not in workspaces overview mode.
+ */
+void cursor_get_global_position(struct sway_cursor *cursor,
+		struct sway_workspace *workspace, double *x, double *y);
+
 void sway_cursor_destroy(struct sway_cursor *cursor);
 struct sway_cursor *sway_cursor_create(struct sway_seat *seat);
 
@@ -100,6 +107,12 @@ struct sway_cursor *sway_cursor_create(struct sway_seat *seat);
  */
 void cursor_rebase(struct sway_cursor *cursor);
 void cursor_rebase_all(void);
+
+/*
+ * Called when the cursor is over a different point with no motion event
+ * (command or viewport movement)
+ */
+void cursor_moved(struct sway_cursor *cursor);
 void cursor_update_image(struct sway_cursor *cursor, struct sway_node *node);
 
 void cursor_handle_activity_from_idle_source(struct sway_cursor *cursor,

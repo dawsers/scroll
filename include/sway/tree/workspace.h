@@ -72,9 +72,15 @@ struct sway_workspace {
 	} jump;
 
 	struct {
-		double x, y, dx, dy; // in layout coordinates (position and displacement)
+		double x, y; // in layout coordinates
+		double dx, dy; // displacement of the scrolling gesture
+		double start_x, start_y; // pan when the scrolling gesture began
 		double raw_x, raw_y; // movement before choosing an axis in scrolling gestures
 		enum sway_scroll_axis axis; // axis chosen to pan a scrolling gesture
+		int edge_panning; // seats panning with the pointer in the outer gaps
+		// Disable focusing until clicking when a scrolling gesture pans the
+		// unlocked viewport
+		bool hold_focus;
 	} pan;
 
 	struct {

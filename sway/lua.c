@@ -1067,10 +1067,11 @@ static int scroll_container_get_geometry(lua_State *L) {
 		lua_pushnil(L);
 		return 1;
 	}
-	lua_createtable(L, 0, 4);
-	lua_pushnumber(L, container->pending.x);
+	struct sway_layout_transform transform;
+	layout_transform_container_get(container, false, &transform);
+	lua_pushnumber(L, layout_transform_x(&transform, container->pending.x));
 	lua_setfield(L, -2, "x");
-	lua_pushnumber(L, container->pending.y);
+	lua_pushnumber(L, layout_transform_y(&transform, container->pending.y));
 	lua_setfield(L, -2, "y");
 	lua_pushnumber(L, container->pending.width);
 	lua_setfield(L, -2, "width");
@@ -1492,6 +1493,9 @@ static int scroll_workspace_get_mode(lua_State *L) {
 	lua_pushboolean(L, layout_modifiers_get_floating(workspace) ? 1 : 0);
 	lua_setfield(L, -2, "floating");
 
+	lua_pushboolean(L, layout_modifiers_get_infinite(workspace) ? 1 : 0);
+	lua_setfield(L, -2, "infinite");
+
 	return 1;
 }
 
@@ -1567,6 +1571,11 @@ static int scroll_workspace_set_mode(lua_State *L) {
 
 	if (lua_getfield(L, 2, "floating") == LUA_TBOOLEAN) {
 		layout_modifiers_set_floating(workspace, lua_toboolean(L, 3));
+	}
+	lua_pop(L, 1);
+
+	if (lua_getfield(L, 2, "infinite") == LUA_TBOOLEAN) {
+		layout_modifiers_set_infinite(workspace, lua_toboolean(L, 3));
 	}
 	lua_pop(L, 1);
 

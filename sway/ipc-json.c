@@ -596,8 +596,12 @@ static void get_deco_rect(struct sway_container *c, struct wlr_box *deco_rect) {
 		deco_rect->x = c->pending.x - c->pending.parent->pending.x;
 		deco_rect->y = c->pending.y - c->pending.parent->pending.y;
 	} else {
-		deco_rect->x = c->pending.x - c->pending.workspace->x;
-		deco_rect->y = c->pending.y - c->pending.workspace->y;
+		struct sway_layout_transform transform;
+		layout_transform_container_get(c, false, &transform);
+		deco_rect->x = round(layout_transform_x(&transform, c->pending.x)) -
+			c->pending.workspace->x;
+		deco_rect->y = round(layout_transform_y(&transform, c->pending.y)) -
+			c->pending.workspace->y;
 	}
 	deco_rect->width = c->pending.width;
 	deco_rect->height = container_titlebar_height();
@@ -1631,6 +1635,10 @@ json_object *ipc_json_describe_scroller(struct sway_workspace *workspace) {
 		json_object_new_string(reorder == REORDER_AUTO ? "auto" : "lazy"));
 	bool floating = layout_modifiers_get_floating(workspace);
 	json_object_object_add(object, "floating", json_object_new_boolean(floating));
+	json_object_object_add(object, "locked",
+		json_object_new_boolean(layout_locked(workspace)));
+	json_object_object_add(object, "pan_x", json_object_new_double(workspace->pan.x));
+	json_object_object_add(object, "pan_y", json_object_new_double(workspace->pan.y));
 
 	return object;
 }

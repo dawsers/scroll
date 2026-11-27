@@ -109,6 +109,7 @@ layout_heights [0.33333333 0.5 0.666666667 1.0]
 # snap_respect_gaps_outer false
 # snap_border_overlap false
 # gesture_scroll_friction 0
+# infinite_speed_scale 1.0
 
 # Animations
 animations {
@@ -431,6 +432,8 @@ mode "modifiers" {
     bindsym Ctrl+w set_mode nofit; mode default
     bindsym f set_mode floating; mode default
     bindsym Shift+f set_mode nofloating; mode default
+    bindsym i set_mode infinite; mode default
+    bindsym Shift+i set_mode noinfinite; mode default
 
     # Return to default mode
     bindsym Escape mode "default"

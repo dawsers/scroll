@@ -36,6 +36,12 @@ supports some added features:
 * Lua scripting: scroll provides a lua API to script the window manager, and
   a Lua REPL to use the API in real-time (`scrollmsg --lua_repl`).
 
+* An [infinite canvas](#infinite-canvas) where you can pan the workspace to place
+  floating windows wherever you want.
+
+* `fitfraction` and `fitsplit` modes where tiled windows are constrained to the
+  viewport, working in a similar way to classic tiled window managers.
+
 * Several full screen modes: `workspace`, `global`, `application` and `layout`.
 
 * Trails and trailmarks: you can define sets of anonymous marks and jump to any
@@ -670,6 +676,8 @@ mode "modifiers" {
     bindsym Ctrl+w set_mode nofit; mode default
     bindsym f set_mode floating; mode default
     bindsym Shift+f set_mode nofloating; mode default
+    bindsym i set_mode infinite; mode default
+    bindsym Shift+i set_mode noinfinite; mode default
 
     # Return to default mode
     bindsym Escape mode "default"
@@ -805,7 +813,7 @@ At window creation time, *scroll* can apply several modifiers to the
 current working mode (*h/v*). `set_mode` supports extra arguments:
 
 ``` config
-set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating>]
+set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating> <infinite|noinfinite>]
 ```
 
 1. `<h|v|t>`: set horizontal, vertical, or toggle the current mode.
@@ -839,6 +847,9 @@ the normal *scroll* behavior, where new windows are tiled. `floating` makes
 any window mapped in this workspace open as a floating window. Only new
 windows are affected, and `for_window` can still override it, so you can use
 `floating disable` as a rule to bring a window back to the tiling layout.
+9. `infinite/noinfinite`: infinite canvas mode. `noinfinite` (default) is the
+normal *scroll* behavior. `infinite` turns the workspace into an
+[infinite canvas](#infinite-canvas) until you set `noinfinite` again.
 
 You can skip any number of parameters when calling the command, and their
 order doesn't matter.
@@ -847,6 +858,39 @@ You can set config-time defaults by using the `layout_default_mode` commands.
 There is a global one, another affects only workspaces local to a named output,
 and the last one only affects a named workspace. Search `man 5 scroll` and
 `man 5 scroll-output` for the `layout_default_mode` commands.
+
+### Infinite Canvas
+
+A workspace can work as an infinite canvas where its viewport is just a window
+over such canvas, and floating windows can be anywhere.
+
+The viewport of a workspace is either *locked* or not. When it is locked,
+*scroll* works as usual. When it is not, it enables the infinite canvas.
+When the canvas is unlocked, moving the pointer to the outer gaps of the
+workspace, pans the viewport in that direction. `infinite_speed_scale <number>`
+sets a multiplier for the speed of the pan (default is 1.0, 0 disables it).
+
+The viewport is not locked:
+
+* While the focused window is floating. Focusing a tiled window locks it
+  again. Scratchpad and sticky windows do not count, focusing one of them leaves
+  the viewport as it was, locked or not.
+* While the workspace is in `floating` mode (`set_mode floating`).
+* While the workspace is in `infinite` mode (`set_mode infinite`), regardless
+  of the window that has focus.
+* While you drag a window, or something from an application (drag and drop),
+  so you can pan to where you want to drop it.
+* Scrolling gestures unlock the canvas. Focus does not change until you click
+  a window. Scrolling with the mouse (`floating_modifier` and the middle button)
+  works like a swipe and also unlocks the canvas.
+
+Floating windows can be anywhere on the canvas. So to move them to another
+workspace, you need to use `move container to workspace`, or drag them with the
+pointing device. `move absolute position` and `move position cursor` place the
+window on screen, so they work too.
+
+Scratchpad and sticky windows are not on the canvas. They stay where they are
+on screen while the viewport pans.
 
 ### Focus
 

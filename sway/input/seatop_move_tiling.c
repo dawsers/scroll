@@ -10,6 +10,7 @@
 #include "sway/tree/node.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/layout.h"
 #include "sway/desktop/animate.h"
 
 // Thickness of the dropzone when dragging to the edge of a layout container
@@ -31,6 +32,7 @@ static void handle_end(struct sway_seat *seat) {
 	wl_list_remove(&e->target_node_destroy.link);
 	wlr_scene_node_destroy(&e->indicator_rect->node);
 	e->indicator_rect = NULL;
+	layout_drag_set(seat, &seat->dragging, false);
 }
 
 // Update target_node and its destruction listener
@@ -74,6 +76,8 @@ static void handle_motion_prethreshold(struct sway_seat *seat) {
 		wlr_scene_node_set_enabled(&e->indicator_rect->node, true);
 		e->threshold_reached = true;
 		cursor_set_image(seat->cursor, "grab", NULL);
+		// Dragging a window unlocks the viewport of every workspace
+		layout_drag_set(seat, &seat->dragging, true);
 	}
 }
 
@@ -133,7 +137,7 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	struct sway_workspace *workspace = con->pending.workspace;
 	enum sway_container_layout layout = layout_get_type(workspace);
 	struct wlr_box node_box;
-	layout_container_screen_wlr_box(con, true, &node_box);
+	layout_container_global_wlr_box(con, true, &node_box);
 	node_box.x -= workspace->x;
 	node_box.y -= workspace->y;
 	int drop_layout_border = DROP_LAYOUT_BORDER *
@@ -172,11 +176,8 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	int thresh_left = node_box.x + drop_layout_border;
 	int thresh_right = node_box.x + node_box.width - drop_layout_border;
 	// Map transformed cursor to real workspace
-	double cx = cursor->cursor->x;
-	double cy = cursor->cursor->y;
-	if (layout_overview_workspaces_enabled()) {
-		layout_overview_workspaces_local_to_global(workspace, &cx, &cy);
-	}
+	double cx, cy;
+	cursor_get_global_position(cursor, workspace, &cx, &cy);
 	if (cy < thresh_top) {
 		edge = WLR_EDGE_TOP;
 		if (thresh_top < box.y) thresh_top = box.y;
@@ -208,7 +209,7 @@ static void handle_motion_postthreshold(struct sway_seat *seat) {
 	if (layout_overview_workspaces_enabled()) {
 		double x = box.x;
 		double y = box.y;
-		layout_overview_workspaces_global_to_local(workspace, &x, &y);
+		layout_overview_workspaces_global_to_screen(workspace, &x, &y);
 		box.x = round(x);
 		box.y = round(y);
 		box.height *= workspace->jump.scale;
@@ -230,6 +231,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	}
 	transaction_set_animation(ANIMATION_DISABLED);
 	transaction_commit_dirty();
+	layout_edge_pan_update(seat);
 }
 
 static void finalize_move(struct sway_seat *seat) {
@@ -292,6 +294,7 @@ static const struct sway_seatop_impl seatop_impl = {
 	.tablet_tool_tip = handle_tablet_tool_tip,
 	.unref = handle_unref,
 	.end = handle_end,
+	.allow_edge_pan = true,
 };
 
 void seatop_begin_move_tiling_threshold(struct sway_seat *seat,
@@ -339,5 +342,6 @@ void seatop_begin_move_tiling(struct sway_seat *seat,
 	if (e) {
 		e->threshold_reached = true;
 		cursor_set_image(seat->cursor, "grab", NULL);
+		layout_drag_set(seat, &seat->dragging, true);
 	}
 }

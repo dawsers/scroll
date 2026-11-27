@@ -1382,7 +1382,7 @@ bool view_is_fully_visible(struct sway_view *view) {
 		return false;
 	}
 	struct wlr_box box_c, box_o;
-	layout_container_screen_wlr_box(view->container, false, &box_c);
+	layout_container_global_wlr_box(view->container, false, &box_c);
 	bool floating = container_is_floating(view->container);
 	if (floating) {
 		root_get_box(root, &box_o);
@@ -1403,7 +1403,7 @@ bool view_is_fully_visible(struct sway_view *view) {
 		struct sway_container *con = workspace->floating->items[i];
 		if (i > idx) {
 			struct wlr_box box;
-			layout_container_screen_wlr_box(con, false, &box);
+			layout_container_global_wlr_box(con, false, &box);
 			if (wlr_box_intersects(&box_c, &box)) {
 				return false;
 			}

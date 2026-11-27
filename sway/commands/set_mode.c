@@ -47,7 +47,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 				update_container = true;
 			}
 		}
-        if (strcasecmp(argv[i], "after") == 0) {
+		if (strcasecmp(argv[i], "after") == 0) {
 			layout_modifiers_set_insert(current, INSERT_AFTER);
 			success = true;
 			update_container = true;
@@ -79,7 +79,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 			arrange = true;
 		}
 
-        if (strcasecmp(argv[i], "focus") == 0) {
+		if (strcasecmp(argv[i], "focus") == 0) {
 			layout_modifiers_set_focus(current, true);
 			success = true;
 		} else if (strcasecmp(argv[i], "nofocus") == 0) {
@@ -87,7 +87,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 			success = true;
 		}
 
-        if (strcasecmp(argv[i], "center_horiz") == 0) {
+		if (strcasecmp(argv[i], "center_horiz") == 0) {
 			layout_modifiers_set_center_horizontal(current, true);
 			success = true;
 			arrange = true;
@@ -96,7 +96,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 			success = true;
 			arrange = true;
 		}
-        if (strcasecmp(argv[i], "center_vert") == 0) {
+		if (strcasecmp(argv[i], "center_vert") == 0) {
 			layout_modifiers_set_center_vertical(current, true);
 			success = true;
 			arrange = true;
@@ -106,7 +106,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 			arrange = true;
 		}
 
-        if (strcasecmp(argv[i], "reorder_auto") == 0) {
+		if (strcasecmp(argv[i], "reorder_auto") == 0) {
 			layout_modifiers_set_reorder(current, REORDER_AUTO);
 			success = true;
 		} else if (strcasecmp(argv[i], "noreorder_auto") == 0) {
@@ -114,11 +114,19 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 			success = true;
 		}
 
-        if (strcasecmp(argv[i], "floating") == 0) {
+		if (strcasecmp(argv[i], "floating") == 0) {
 			layout_modifiers_set_floating(current, true);
 			success = true;
 		} else if (strcasecmp(argv[i], "nofloating") == 0) {
 			layout_modifiers_set_floating(current, false);
+			success = true;
+		}
+
+		if (strcasecmp(argv[i], "infinite") == 0) {
+			layout_modifiers_set_infinite(current, true);
+			success = true;
+		} else if (strcasecmp(argv[i], "noinfinite") == 0) {
+			layout_modifiers_set_infinite(current, false);
 			success = true;
 		}
 	}
@@ -133,7 +141,7 @@ struct cmd_results *cmd_set_mode(int argc, char **argv) {
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
 
-	const char usage[] = "Expected 'set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating>]'";
+	const char usage[] = "Expected 'set_mode [<h|v|t> <after|before|end|beg> <nofit|fitsplit|fitfraction> <focus|nofocus> <center_horiz|nocenter_horiz> <center_vert|nocenter_vert> <reorder_auto|noreorder_auto> <floating|nofloating> <infinite|noinfinite>]'";
 
 	return cmd_results_new(CMD_INVALID, "%s", usage);
 }

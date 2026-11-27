@@ -61,8 +61,6 @@ enum sway_layout_pin {
 
 enum sway_layout_overview {
 	OVERVIEW_DISABLED,
-	OVERVIEW_TILING,
-	OVERVIEW_FLOATING,
 	OVERVIEW_ALL,
 	OVERVIEW_JUMP
 };
@@ -107,11 +105,20 @@ struct sway_scroller {
 		bool center_horizontal;
 		bool center_vertical;
 		bool floating;
+		bool infinite;
 	} modifiers;
 
-	enum sway_layout_overview overview;
-	double mem_scale; // Stores the current workspace scale when calling overview, so it can be restored later
-	struct sway_container *fullscreen;  // stores the full screen container when calling overview, so it can be restored later
+	bool locked; // locked status of the infinite canvas. Use layout_locked() to read it
+
+	struct {
+		enum sway_layout_overview mode;
+		double mem_scale; // stores the current workspace scale when calling overview, so it can be restored later
+		double mem_pan_x, mem_pan_y; // the same, for the workspace pan
+		double tiling_scale;
+		struct wlr_fbox content; // empty if it needs a recompute
+		int width, height; // size of the workspace
+		struct sway_container *fullscreen;  // stores the full screen container when calling overview, so it can be restored later
+	} overview;
 
 	struct {
 		struct sway_container *container;
@@ -147,6 +154,8 @@ struct sway_scroller_modifiers {
 	bool center_vertical;
 	bool floating_set;
 	bool floating;
+	bool infinite_set;
+	bool infinite;
 };
 
 struct sway_scroller_output_options {
@@ -160,8 +169,6 @@ struct sway_scroller_output_options {
 
 // Global functions
 enum wlr_direction layout_to_wlr_direction(enum sway_layout_direction dir);
-void layout_compute_bounding_box(list_t *children, double *minx, double *maxx,
-		double *miny, double *maxy);
 
 double layout_get_default_width(struct sway_workspace *workspace);
 double layout_get_default_height(struct sway_workspace *workspace);
@@ -179,14 +186,25 @@ void layout_overview_set(struct sway_workspace *workspace, enum sway_layout_over
 // This can be called by the layout to recalculate the overview scale every
 // transaction that re-arranges the workspace. It will set it too
 void layout_overview_recompute_scale(struct sway_workspace *workspace);
+// After arranging the workspace, compute the scale and pan that fit every window
+void layout_overview_recompute_camera(struct sway_workspace *workspace);
 // Return current overview mode
 enum sway_layout_overview layout_overview_mode(struct sway_workspace *workspace);
 
 bool layout_overview_workspaces_enabled();
 void layout_overview_workspaces(bool on);
-bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspace, double *lx, double *ly);
-void layout_overview_workspaces_global_to_local(struct sway_workspace *workspace, double *lx, double *ly);
-void layout_overview_workspaces_local_to_global(struct sway_workspace *workspace, double *lx, double *ly);
+
+// Global and screen coordinates are only different in workspaces overview mode.
+// Global includes the workspaces overview transform, screen is just the position
+// on the screen, untransformed.
+
+// Screen to global when the workspace is not known. It finds the workspace under
+// the cursor when in workspaces overview mode, false if there is none
+bool layout_overview_workspaces_map_coordinates(struct sway_workspace **workspace, double *x, double *y);
+void layout_overview_workspaces_global_to_screen(struct sway_workspace *workspace, double *x, double *y);
+void layout_overview_workspaces_screen_to_global(struct sway_workspace *workspace, double *x, double *y);
+// The scale of workspace in the workspaces overview transform (1.0 when not enabled)
+double layout_overview_workspaces_scale(struct sway_workspace *workspace);
 void layout_overview_workspaces_recompute_scale();
 
 void layout_scale_set(struct sway_workspace *workspace, double scale);
@@ -204,6 +222,7 @@ void layout_modifiers_set_center_horizontal(struct sway_workspace *workspace, bo
 void layout_modifiers_set_center_vertical(struct sway_workspace *workspace, bool center);
 void layout_modifiers_set_reorder(struct sway_workspace *workspace, enum sway_layout_reorder reorder);
 void layout_modifiers_set_floating(struct sway_workspace *workspace, bool floating);
+void layout_modifiers_set_infinite(struct sway_workspace *workspace, bool infinite);
 
 enum sway_container_layout layout_modifiers_get_mode(struct sway_workspace *workspace);
 enum sway_layout_insert layout_modifiers_get_insert(struct sway_workspace *workspace);
@@ -213,6 +232,7 @@ bool layout_modifiers_get_center_horizontal(struct sway_workspace *workspace);
 bool layout_modifiers_get_center_vertical(struct sway_workspace *workspace);
 enum sway_layout_reorder layout_modifiers_get_reorder(struct sway_workspace *workspace);
 bool layout_modifiers_get_floating(struct sway_workspace *workspace);
+bool layout_modifiers_get_infinite(struct sway_workspace *workspace);
 
 void layout_workspace_set_align(struct sway_workspace *workspace, enum sway_layout_align align);
 enum sway_layout_align layout_workspace_get_align(struct sway_workspace *workspace);
@@ -239,7 +259,7 @@ void layout_jump_workspaces();
 void layout_jump_container(struct sway_container *container);
 void layout_jump_tiling(bool all);
 void layout_jump_floating(bool all);
-void layout_jump_scratchpad(struct sway_workspace *workspace);
+void layout_jump_scratchpad(void);
 void layout_jump_trailmark(bool all);
 void layout_jump_all(bool all);
 struct criteria;
@@ -253,15 +273,67 @@ void layout_filter(enum sway_layout_filter filter, enum sway_layout_filter_apply
 // Gestures
 // Begin scrolling swipe gesture. Return true if scrolling, false if there are
 // no conditions to scroll (total width of windows is smaller than viewport).
-// The gesture scrolls the workspace of the seat until layout_scroll_end() or
+// The gesture scrolls the workspace until layout_scroll_end() or
 // layout_scroll_cancel().
-bool layout_scroll_begin(struct sway_seat *seat);
+bool layout_scroll_begin(struct sway_seat *seat, struct sway_workspace *workspace);
 // Update scrolling swipe gesture
 void layout_scroll_update(struct sway_seat *seat, double dx, double dy, float sensitivity);
 // Finish scrolling swipe and return true if scrolling, else false
 bool layout_scroll_end(struct sway_seat *seat);
 // Interrupt scrolling and reset viewport. Does nothing if the seat is not scrolling
 void layout_scroll_cancel(struct sway_seat *seat);
+// In infintie canvas mode, a gesture that scrolls an unlocked viewport, only
+// pans it. Nothing takes focus, even if focus_follows_mouse is on, because it
+// would move the viewport to the window it hovers. So a window needs to be
+// clicked, or get focus some other way, to release it.
+bool layout_scroll_holds_focus(struct sway_workspace *workspace);
+void layout_scroll_release_focus(struct sway_workspace *workspace);
+
+// Infinite canvas
+//
+// The workspace is a camera over an infinite plane. Containers keep their
+// layout coordinates and the camera moves.
+//
+// Tiled containers are always arranged and focused with no pan. Floating
+// containers can be anywhere on the canvas (which pans to focus them.
+//
+// While a workspace is locked, the viewport has zero pan (except during a
+// scrolling gesture). While it is unlocked, the viewport pans to follow the
+// pointer in the outer gaps and to show the container that gets focus.
+
+// Is the viewport of the workspace locked? Use this function instead of the
+// flag, because it verifies the overrides (infinite and floating modes, dragging).
+bool layout_locked(struct sway_workspace *workspace);
+// Set the lock flag of the workspace for a container that gets focus.
+void layout_locked_update(struct sway_workspace *workspace,
+		struct sway_container *focus);
+// The container changed in a way the lock depends on (floating or tiled,
+// sticky, scratchpad). If is is focused, set the lock flag again.
+void layout_locked_refresh(struct sway_container *container);
+// If the workspace is not locked, pan its viewport to show the container.
+void layout_show_container(struct sway_container *container);
+// The same for the focused container in `workspace`
+void layout_show_focus(struct sway_workspace *workspace);
+
+// Returns true is a dragging operation is happening: dragging a window, or 
+// something from a client (drag and drop). Unlocks every workspace until
+// it ends.
+bool layout_dragging(void);
+// Set the dragging flag to mark the beginning of a drag operation
+void layout_drag_set(struct sway_seat *seat, bool *flag, bool dragging);
+
+// Edge panning
+// While the pointer is in the outer gaps of a workspace that is not locked,
+// its viewport pans to follow it.
+//
+// Call when the pointer moves, to start or stop panning
+void layout_edge_pan_update(struct sway_seat *seat);
+// Stop panning for the seat
+void layout_edge_pan_cancel(struct sway_seat *seat);
+// Is the seat panning a workspace?
+bool layout_edge_pan_active(struct sway_seat *seat);
+// Call before rendering a frame for output to advance the pan
+void layout_edge_pan_frame(struct sway_output *output);
 
 // Pin
 
@@ -348,15 +420,36 @@ void layout_fit_set_fraction(struct sway_container *container,
 
 // Layout Coordinate Transforms.
 //
-// Container positions and sizes are stored in unscaled layout coordinates,
-// which are the same as screen coordinates when the workspace is not scaled.
-// Consider A to be the screen anchor (center of the workspace's output area),
-// and C the layout point. If the workspace scale is s, the transform is:
+// There are three coordinate systems:
 //
-//           screen = A + s * (layout - C)
+// * layout: coordinate system for unscaled positions and sizes of containers
+//   (canvas of the workspace). A transform function with no coordinate
+//   system in its name operates in layout coordinates.
+// * global: output layout coordinates. The scene is arranged in this coordinate
+//   system.
+// * screen: real position on the outputs (cursor coordinate system). The same
+//   as global, except in workspaces overview.
+//
+// Layout to global. Consider A to be the global anchor (center of the
+// workspace's output area), and C the layout point. If the workspace scale
+// is s, the transform is:
+//
+//           global = A + s * (layout - C)
 //
 // We keep A and C separate instead of simplifying, so we can easily do
-// viewport panning (scrolling gestures, etc.)
+// viewport panning (scrolling gestures, infinite canvas...)
+//
+// The transform of a workspace has no pan: C = A. Tiling containers are
+// arranged with zero pan. The pan of a workspace changes what is drawn, so
+// it is part of the transform of each container: C = A - pan. This means
+// layout coordinates are not global coordinates even when the workspace is
+// not scaled. Use the following functions to convert.
+//
+// Global to screen: layout_overview_workspaces_global_to_screen() and
+// layout_overview_workspaces_screen_to_global().
+//
+// Layout to screen: layout_container_layout_to_screen() and
+// layout_container_screen_to_layout().
 struct sway_layout_transform {
 	double scale;
 	double x, y;
@@ -369,17 +462,28 @@ double layout_transform_workspace_scale(struct sway_workspace *workspace,
 double layout_transform_container_scale(struct sway_container *container,
 		bool animated);
 
+// The workspace transform without any pan. It is the viewport where tiling
+// layout arrangement happens.
 void layout_transform_workspace_get(struct sway_workspace *workspace,
 		bool animated, struct sway_layout_transform *transform);
 
-// Does the pan of a scroll gesture move the container? Only tiled ones move
+// Does the pan of the workspace move the container? Full screen, sticky and
+// scratchpad containers stay where they are on screen
 bool layout_container_pans(struct sway_container *container);
 
 // Identity if it is full screen or it has no workspace/output. Includes
-// workspace pan
+// workspace pan if needed
 void layout_transform_container_get(struct sway_container *container,
 		bool animated, struct sway_layout_transform *transform);
 
+// A point in the layout coordinates of the container, as if it was in
+// `workspace`, to where it is on screen.
+void layout_container_layout_to_screen(struct sway_container *container,
+		struct sway_workspace *workspace, bool animated, double *x, double *y);
+void layout_container_screen_to_layout(struct sway_container *container,
+		struct sway_workspace *workspace, bool animated, double *x, double *y);
+
+// Apply a transform: layout to global, and `_inv` for global to layout
 static inline double layout_transform_x(const struct sway_layout_transform *t, double x) {
 	return t->scale * x + t->x;
 }
@@ -388,14 +492,14 @@ static inline double layout_transform_y(const struct sway_layout_transform *t, d
 	return t->scale * y + t->y;
 }
 
-// Layout to screen
+// Layout to global
 static inline void layout_transform_point(const struct sway_layout_transform *t,
 		double *x, double *y) {
 	*x = t->scale * *x + t->x;
 	*y = t->scale * *y + t->y;
 }
 
-// Screen to layout
+// Global to layout
 static inline void layout_transform_point_inv(const struct sway_layout_transform *t,
 		double *x, double *y) {
 	*x = (*x - t->x) / t->scale;
@@ -417,14 +521,28 @@ static inline void layout_transform_box_inv(const struct sway_layout_transform *
 }
 
 // The workspace box (usable area minus outer gaps) in layout coordinates
-void layout_vp_box(struct sway_workspace *workspace, struct wlr_fbox *box);
+// without any pan. The tiling layout is arranged there
+void layout_workspace_box(struct sway_workspace *workspace, struct wlr_fbox *box);
 
-// Animated bounding box for the container
-void layout_container_screen_box(struct sway_container *container, bool animated,
+// The workspace box in layout coordinates, panned unless the container does
+// not pan (sticky, scratchpad)
+void layout_viewport_box(struct sway_container *container,
+		struct wlr_fbox *box);
+
+// Workspace pan as it applies to `container` (nothing if the container does
+// not pan (sticky, scratchpad))
+void layout_container_pan_get(struct sway_container *container,
+		struct sway_workspace *workspace, double *x, double *y);
+
+// Translates `box in global coordinates by the pan of the container's workspace
+void layout_floating_box_from_global(struct sway_container *container, struct wlr_fbox *box);
+
+// The box of the container in global coordinates with or without animation
+void layout_container_global_box(struct sway_container *container, bool animated,
 		struct wlr_fbox *box);
 
 // The same, rounded to integer coordinates
-void layout_container_screen_wlr_box(struct sway_container *container,
+void layout_container_global_wlr_box(struct sway_container *container,
 		bool animated, struct wlr_box *box);
 
 #endif // _SWAY_LAYOUT_H

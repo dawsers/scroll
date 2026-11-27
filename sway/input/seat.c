@@ -85,6 +85,12 @@ static void handle_seat_destroy(struct wl_listener *listener, void *data) {
 	if (config != NULL && seat == config->handler_context.seat) {
 		config->handler_context.seat = input_manager_get_default_seat();
 	}
+
+	// Make sure to cancel any drags before destroying the cursor
+	layout_drag_set(seat, &seat->dragging, false);
+	layout_drag_set(seat, &seat->dnd, false);
+	layout_edge_pan_cancel(seat);
+
 	struct sway_seat_device *seat_device, *next;
 	wl_list_for_each_safe(seat_device, next, &seat->devices, link) {
 		seat_device_destroy(seat_device);
@@ -256,6 +262,9 @@ static void handle_seat_node_destroy(struct wl_listener *listener, void *data) {
 		if (seat->scroll_workspace == node->sway_workspace) {
 			layout_scroll_cancel(seat);
 		}
+		if (seat->edge_pan.workspace == node->sway_workspace) {
+			layout_edge_pan_cancel(seat);
+		}
 		// If an unmanaged or layer surface is focused when an output gets
 		// disabled and an empty workspace on the output was focused by the
 		// seat, the seat needs to refocus its focus inactive to update the
@@ -424,6 +433,9 @@ static void drag_handle_destroy(struct wl_listener *listener, void *data) {
 	drag->wlr_drag->data = NULL;
 	wl_list_remove(&drag->destroy.link);
 	free(drag);
+
+	// The drag kept the viewport of every workspace unlocked
+	layout_drag_set(seat, &seat->dnd, false);
 }
 
 static void handle_request_start_drag(struct wl_listener *listener,
@@ -467,6 +479,10 @@ static void handle_start_drag(struct wl_listener *listener, void *data) {
 
 	drag->destroy.notify = drag_handle_destroy;
 	wl_signal_add(&wlr_drag->events.destroy, &drag->destroy);
+
+	// Dragging from a client unlocks the viewport of every workspace until
+	// the drag ends, so the pointer can pan it to reach the place to drop
+	layout_drag_set(seat, &seat->dnd, true);
 
 	struct wlr_drag_icon *wlr_drag_icon = wlr_drag->icon;
 	if (wlr_drag_icon != NULL) {
@@ -1277,8 +1293,13 @@ static void seat_set_workspace_focus(struct sway_seat *seat, struct sway_node *n
 		seat_set_raw_focus(seat, &container->node);
 		seat_send_focus(&container->node, seat);
 		if (new_workspace) {
+			// Focusing a floating/tiling container unlocks/locks the viewport
+			layout_locked_update(new_workspace, container);
+			// and focus can follow the mouse again after a gesture
+			layout_scroll_release_focus(new_workspace);
 			// Arrange now that the container has focus
 			arrange_workspace(new_workspace);
+			layout_show_container(container);
 		}
 	}
 

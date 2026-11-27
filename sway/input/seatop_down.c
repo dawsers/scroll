@@ -183,8 +183,8 @@ static void handle_tablet_tool_motion(struct sway_seat *seat,
 	if (seat_is_input_allowed(seat, e->surface)) {
 		double moved_x = seat->cursor->cursor->x - e->ref_lx;
 		double moved_y = seat->cursor->cursor->y - e->ref_ly;
-		double sx = e->ref_con_lx + moved_x;
-		double sy = e->ref_con_ly + moved_y;
+		double sx = e->ref_con_lx + moved_x / e->scale;
+		double sy = e->ref_con_ly + moved_y / e->scale;
 		wlr_tablet_v2_tablet_tool_notify_motion(tool->tablet_v2_tool, sx, sy);
 	}
 }
@@ -233,6 +233,8 @@ void seatop_begin_down(struct sway_seat *seat, struct sway_container *con,
 	struct sway_workspace *ws = con->pending.workspace;
 	if (ws) {
 		scale *= layout_scale_enabled(ws) ? layout_scale_get(ws) : 1.0f;
+		// The pointer moves in screen pixels
+		scale *= layout_overview_workspaces_scale(ws);
 	}
 	e->scale = scale;
 

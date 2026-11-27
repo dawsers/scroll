@@ -147,3 +147,19 @@ struct cmd_results *cmd_snap_border_overlap(int argc, char **argv) {
 	config->snap_border_overlap = parse_boolean(argv[0], config->snap_border_overlap);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
+
+struct cmd_results *cmd_infinite_speed_scale(int argc, char **argv) {
+	struct cmd_results *error =
+		checkarg(argc, "infinite_speed_scale", EXPECTED_EQUAL_TO, 1);
+	if (error) {
+		return error;
+	}
+	char *end;
+	const double scale = strtod(argv[0], &end);
+	if (end == argv[0] || *end || scale < 0.0) {
+		return cmd_results_new(CMD_INVALID,
+			"Expected 'infinite_speed_scale <number>', 0 or higher");
+	}
+	config->infinite_speed_scale = scale;
+	return cmd_results_new(CMD_SUCCESS, NULL);
+}

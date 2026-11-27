@@ -13,9 +13,9 @@
 #include "sway/layers.h"
 #include "sway/output.h"
 #include "sway/server.h"
-#include "sway/scene_descriptor.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
+#include "sway/tree/layout.h"
 #include "sway/tree/virtual_output.h"
 #include "sway/log.h"
 #include "util.h"
@@ -47,14 +47,11 @@ static enum wlr_edges find_edge(struct sway_container *cont,
 		return WLR_EDGE_NONE;
 	}
 
-	double cx = cursor->cursor->x;
-	double cy = cursor->cursor->y;
-	if (layout_overview_workspaces_enabled()) {
-		layout_overview_workspaces_local_to_global(cont->pending.workspace, &cx, &cy);
-	}
+	double cx, cy;
+	cursor_get_global_position(cursor, cont->pending.workspace, &cx, &cy);
 	const double scale = layout_transform_container_scale(cont, true);
 	struct wlr_fbox box;
-	layout_container_screen_box(cont, true, &box);
+	layout_container_global_box(cont, true, &box);
 	const double x = box.x, y = box.y, width = box.width, height = box.height;
 	const double yb = y + (cont->pending.border == B_NORMAL ?
 		scale * container_titlebar_height() : 0.0);
@@ -299,6 +296,16 @@ static bool trigger_pointer_button_binding(struct sway_seat *seat,
 	return false;
 }
 
+static struct sway_workspace *node_workspace(struct sway_node *node) {
+	if (node && node->type == N_WORKSPACE) {
+		return node->sway_workspace;
+	}
+	if (node && node->type == N_CONTAINER) {
+		return node->sway_container->pending.workspace;
+	}
+	return NULL;
+}
+
 static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		struct wlr_input_device *device, uint32_t button,
 		enum wl_pointer_button_state state) {
@@ -346,6 +353,15 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		return;
 	}
 
+	// In infinite canvas mode, if the viewport of the workspace under the
+	// pointer is not locked, scrolling with the middle button pressed pans
+	// it like a swipe gesture
+	if (state == WL_POINTER_BUTTON_STATE_PRESSED && mod_scroll_btn_pressed &&
+			!is_fullscreen_or_child && !layout_locked(node_workspace(node))) {
+		seatop_begin_scroll_workspace(seat, node_workspace(node));
+		return;
+	}
+
 	// Handle clicking an empty workspace
 	if (node && node->type == N_WORKSPACE && surface == NULL) {
 		if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
@@ -370,6 +386,12 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 		return;
 	}
 
+	if (cont && state == WL_POINTER_BUTTON_STATE_PRESSED) {
+		// When clicking a window, focus can follow the mouse again after a
+		// gesture panned the viewport
+		layout_scroll_release_focus(cont->pending.workspace);
+	}
+
 	// Handle tiling resize via border
 	if (cont && resize_edge && button == BTN_LEFT &&
 			state == WL_POINTER_BUTTON_STATE_PRESSED && !is_floating) {
@@ -384,11 +406,11 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 			state == WL_POINTER_BUTTON_STATE_PRESSED) {
 		edge = 0;
 		struct wlr_fbox box;
-		layout_container_screen_box(cont, true, &box);
-		edge |= cursor->cursor->x > box.x + box.width / 2 ?
-			WLR_EDGE_RIGHT : WLR_EDGE_LEFT;
-		edge |= cursor->cursor->y > box.y + box.height / 2 ?
-			WLR_EDGE_BOTTOM : WLR_EDGE_TOP;
+		layout_container_global_box(cont, true, &box);
+		double cx, cy;
+		cursor_get_global_position(cursor, cont->pending.workspace, &cx, &cy);
+		edge |= cx > box.x + box.width / 2 ? WLR_EDGE_RIGHT : WLR_EDGE_LEFT;
+		edge |= cy > box.y + box.height / 2 ? WLR_EDGE_BOTTOM : WLR_EDGE_TOP;
 
 		const char *image = NULL;
 		if (edge == (WLR_EDGE_LEFT | WLR_EDGE_TOP)) {
@@ -449,11 +471,11 @@ static void handle_button(struct sway_seat *seat, uint32_t time_msec,
 			struct sway_container *floater = container_toplevel_ancestor(cont);
 			edge = 0;
 			struct wlr_fbox box;
-			layout_container_screen_box(floater, true, &box);
-			edge |= cursor->cursor->x > box.x + box.width / 2 ?
-				WLR_EDGE_RIGHT : WLR_EDGE_LEFT;
-			edge |= cursor->cursor->y > box.y + box.height / 2 ?
-				WLR_EDGE_BOTTOM : WLR_EDGE_TOP;
+			layout_container_global_box(floater, true, &box);
+			double cx, cy;
+			cursor_get_global_position(cursor, floater->pending.workspace, &cx, &cy);
+			edge |= cx > box.x + box.width / 2 ? WLR_EDGE_RIGHT : WLR_EDGE_LEFT;
+			edge |= cy > box.y + box.height / 2 ? WLR_EDGE_BOTTOM : WLR_EDGE_TOP;
 			seat_set_focus_container(seat, floater);
 			seatop_begin_resize_floating(seat, floater, edge);
 			return;
@@ -535,6 +557,13 @@ static void container_viewport_geometry(struct sway_workspace *workspace,
 
 static void check_focus_follows_mouse(struct sway_seat *seat,
 		struct seatop_default_event *e, struct sway_node *hovered_node) {
+	// In infinite canvas mode, focus doesn't change while the viewport is
+	// panning until clicking a window
+	if (layout_edge_pan_active(seat) ||
+			layout_scroll_holds_focus(node_workspace(hovered_node))) {
+		return;
+	}
+
 	struct sway_node *focus = seat_get_focus(seat);
 
 	// This is the case if a layer-shell surface is hovered.
@@ -709,6 +738,7 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	struct sway_node *node = node_at_coords(seat,
 			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
 
+	layout_edge_pan_update(seat);
 	if (config->focus_follows_mouse != FOLLOWS_NO) {
 		check_focus_follows_mouse(seat, e, node);
 	}
@@ -753,6 +783,7 @@ static void handle_tablet_tool_motion(struct sway_seat *seat,
 	struct sway_node *node = node_at_coords(seat,
 			cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy);
 
+	layout_edge_pan_update(seat);
 	if (config->focus_follows_mouse != FOLLOWS_NO) {
 		check_focus_follows_mouse(seat, e, node);
 	}
@@ -838,8 +869,16 @@ static void handle_pointer_axis(struct sway_seat *seat,
 	enum wlr_edges edge = cont ? find_edge(cont, surface, cursor) : WLR_EDGE_NONE;
 	bool on_border = edge != WLR_EDGE_NONE;
 	bool on_titlebar = cont && !on_border && !surface;
-	bool on_titlebar_border = cont && on_border &&
-		cursor->cursor->y < cont->pending.content_y;
+	bool on_titlebar_border = false;
+	if (cont && on_border) {
+		// Content and cursor in global coordinates
+		struct sway_layout_transform transform;
+		layout_transform_container_get(cont, true, &transform);
+		double cx, cy;
+		cursor_get_global_position(cursor, cont->pending.workspace, &cx, &cy);
+		on_titlebar_border = cy <
+			layout_transform_y(&transform, cont->pending.content_y);
+	}
 	bool on_contents = cont && !on_border && surface;
 	bool on_workspace = node && node->type == N_WORKSPACE;
 	float scroll_factor =
@@ -1131,6 +1170,20 @@ static void handle_pinch_end(struct sway_seat *seat,
 	}
 }
 
+// Returns the workspace scrolled by a swipe, either the one that has focus, or
+// if in infinite mode, the one under the pointer.
+static struct sway_workspace *swipe_scroll_workspace(struct sway_seat *seat) {
+	struct sway_cursor *cursor = seat->cursor;
+	struct wlr_surface *surface = NULL;
+	double sx, sy;
+	struct sway_workspace *workspace = node_workspace(node_at_coords(seat,
+		cursor->cursor->x, cursor->cursor->y, &surface, &sx, &sy));
+	if (workspace && !layout_locked(workspace) && workspace_is_visible(workspace)) {
+		return workspace;
+	}
+	return seat->workspace;
+}
+
 static void handle_swipe_begin(struct sway_seat *seat,
 		struct wlr_pointer_swipe_begin_event *event) {
 	// Start tracking gesture if there is a matching binding ...
@@ -1142,7 +1195,7 @@ static void handle_swipe_begin(struct sway_seat *seat,
 		gesture_tracker_begin(&seatop->gestures, GESTURE_TYPE_SWIPE, event->fingers);
 	} else {
 		if (config->gesture_scroll_enable && event->fingers == config->gesture_scroll_fingers) {
-			if (layout_scroll_begin(seat)) {
+			if (layout_scroll_begin(seat, swipe_scroll_workspace(seat))) {
 				// We own the swipe until it ends
 				seat->swipe_scrolling = true;
 				seat->swipe_device = device;
@@ -1245,6 +1298,7 @@ static const struct sway_seatop_impl seatop_impl = {
 	.touch_down = handle_touch_down,
 	.rebase = handle_rebase,
 	.allow_set_cursor = true,
+	.allow_edge_pan = true,
 };
 
 void seatop_begin_default(struct sway_seat *seat) {

@@ -649,7 +649,7 @@ static void arrange_children_positions(struct sway_workspace *workspace,
 	// Positions are in layout coordinates: the workspace scale is applied when
 	// the containers are placed in the scene.
 	struct wlr_fbox viewport;
-	layout_vp_box(workspace, &viewport);
+	layout_workspace_box(workspace, &viewport);
 
 	struct sway_container *pin = layout_pin_enabled(workspace) ?
 		layout_pin_get_container(workspace) : NULL;
@@ -897,7 +897,7 @@ void arrange_workspace(struct sway_workspace *workspace) {
 
 	bool first_arrange = workspace->width == 0 && workspace->height == 0;
 	struct wlr_fbox prev_vp;
-	layout_vp_box(workspace, &prev_vp);
+	layout_workspace_box(workspace, &prev_vp);
 
 	double prev_x = workspace->x - workspace->current_gaps.left;
 	double prev_y = workspace->y - workspace->current_gaps.top;
@@ -910,10 +910,15 @@ void arrange_workspace(struct sway_workspace *workspace) {
 	double diff_x = workspace->x - prev_x;
 	double diff_y = workspace->y - prev_y;
 	if (!first_arrange && (diff_x != 0 || diff_y != 0)) {
+		struct wlr_fbox vp;
+		layout_workspace_box(workspace, &vp);
+		if (!wlr_fbox_empty(&prev_vp)) {
+			// Map the pan, so the viewport shows the same containers
+			workspace->pan.x *= vp.width / prev_vp.width;
+			workspace->pan.y *= vp.height / prev_vp.height;
+		}
 		for (int i = 0; i < workspace->floating->length; ++i) {
 			struct sway_container *floater = workspace->floating->items[i];
-			struct wlr_fbox vp;
-			layout_vp_box(workspace, &vp);
 			floating_fix_coordinates(floater, &prev_vp, &vp);
 			// Set transformation for scratchpad windows.
 			if (floater->scratchpad) {

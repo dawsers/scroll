@@ -63,7 +63,7 @@ static struct cmd_results *scratchpad_jump() {
 	if (root->scratchpad->length == 1) {
 		root_scratchpad_show(root->scratchpad->items[0]);
 	} else {
-		layout_jump_scratchpad(ws);
+		layout_jump_scratchpad();
 	}
 
 	return cmd_results_new(CMD_SUCCESS, NULL);

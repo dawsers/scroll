@@ -1539,6 +1539,15 @@ An object called "scroller", containing the following properties:
 |- floating
 :  boolean
 :  Open new windows as floating windows?
+|- infinite
+:  boolean
+:  Is the workspace in infinite mode?
+|- pan\_x
+:  double
+:  Horizontal position of the viewport in layout units
+|- pan\_y
+:  double
+:  Vertical position of the viewport in layout units
 
 
 *Example Reply:*
@@ -1556,7 +1565,10 @@ An object called "scroller", containing the following properties:
 		"center_horizontal": false,
 		"center_vertical": false,
 		"reorder": "auto",
-		"floating": false
+		"floating": false,
+		"infinite": false,
+		"pan_x": 0.0,
+		"pan_y": 0.0
 	}
 }
 ```
@@ -2449,6 +2461,8 @@ The following change types are currently available:
 :  Changed mode for center vertically
 |- floating
 :  Changed the workspace floating windows mode
+|- infinite
+:  Changed the workspace to infinite canvas mode
 
 For a description of the properties, see _GET_SCROLLER_
 

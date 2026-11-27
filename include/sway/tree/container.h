@@ -201,6 +201,9 @@ struct sway_container {
 	// Unused for non-scratchpad windows.
 	struct wlr_box transform;
 
+	// A seat operation is dragging this floating container
+	bool dragging;
+
 	list_t *marks; // char *
 
 	bool fullscreen; // container needs to recover fs mode when refocused
@@ -314,16 +317,33 @@ void container_floating_translate(struct sway_container *con,
 struct sway_output *container_floating_find_output(struct sway_container *con);
 
 /**
- * Move a floating container to a new layout-local position., optionally
+ * Move a floating container to a new layout-local position, optionally
  * applying the snapping options.
  */
 void container_floating_move_to(struct sway_container *con,
 		double lx, double ly, bool snap);
 
 /**
- * Move a floating container to the center of the workspace.
+ * Move the floating container to the workspace where its center lies, keeping
+ * its position on screen.
+ */
+void container_floating_update_workspace(struct sway_container *con);
+
+/**
+ * Move a floating container to the center of the workspace's viewport.
  */
 void container_floating_move_to_center(struct sway_container *con);
+
+/**
+ * Undo the pan for a container that needs to stay in place (sticky, etc.)
+ */
+void container_floating_keep_place(struct sway_container *con,
+		double pan_x, double pan_y);
+
+/**
+ * Update the dragging flag of the container. Used by seat operations.
+ */
+void container_floating_set_dragging(struct sway_container *con, bool dragging);
 
 bool container_has_urgent_child(struct sway_container *container);
 

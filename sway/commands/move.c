@@ -125,26 +125,31 @@ static void container_move_to_workspace(struct sway_container *container,
 		root_scratchpad_remove_container(container);
 	}
 	if (container->pending.workspace == workspace) {
+		layout_locked_refresh(container);
 		return;
 	}
 	struct sway_workspace *old_workspace = container->pending.workspace;
 	if (container_is_floating(container)) {
 		struct sway_output *old_output = container->pending.workspace->output;
+		struct wlr_fbox vp, old_vp;
+		layout_viewport_box(container, &old_vp);
+		double old_pan_x, old_pan_y;
+		layout_container_pan_get(container, old_workspace, &old_pan_x, &old_pan_y);
 		container_detach(container);
 		workspace_add_floating(workspace, container);
 		container_handle_fullscreen_reparent(container);
-		// If changing output, adjust the coordinates of the window.
-		if (old_output != workspace->output && !container->pending.fullscreen_mode) {
-			// What each workspace shows, in its layout coordinates
-			struct wlr_fbox vp, old_vp;
-			layout_vp_box(workspace, &vp);
-			layout_vp_box(old_workspace, &old_vp);
+		layout_viewport_box(container, &vp);
+		if (container->pending.fullscreen_mode) {
+		} else if (old_output != workspace->output) {
+			// If changing output, adjust the coordinates of the window.
 			floating_fix_coordinates(container, &old_vp, &vp);
 			if (container->scratchpad && workspace->output) {
 				struct wlr_box workspace_box;
 				workspace_get_box(workspace, &workspace_box);
 				container->transform = workspace_box;
 			}
+		} else {
+			container_floating_keep_place(container, old_pan_x, old_pan_y);
 		}
 	} else {
 		layout_move_container_to_workspace(container, workspace);
@@ -321,8 +326,11 @@ static struct cmd_results *cmd_move_container(bool no_auto_back_and_forth,
 			}
 		}
 		if (!destination) {
+			// The reference is where the container is in global coordinates
+			struct wlr_fbox box;
+			layout_container_global_box(container, false, &box);
 			struct sway_output *new_output = output_in_direction(argv[1],
-					old_output, container->pending.x, container->pending.y);
+					old_output, box.x, box.y);
 			if (!new_output || !new_output->current.active_workspace) {
 				return cmd_results_new(CMD_FAILURE,
 					"Can't find output with name/direction '%s'", argv[1]);
@@ -589,6 +597,17 @@ static struct cmd_results *cmd_move_in_direction(
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }
 
+// Move the floating container to a position in global coordinates. It
+// changes workspace if its center ends up over a different one.
+static void floating_move_to_global(struct sway_container *container,
+		double x, double y) {
+	struct sway_layout_transform transform;
+	layout_transform_container_get(container, false, &transform);
+	layout_transform_point_inv(&transform, &x, &y);
+	container_floating_move_to(container, x, y, false);
+	container_floating_update_workspace(container);
+}
+
 static struct cmd_results *cmd_move_to_position_pointer(
 		struct sway_container *container) {
 	struct sway_seat *seat = config->handler_context.seat;
@@ -596,9 +615,13 @@ static struct cmd_results *cmd_move_to_position_pointer(
 		return cmd_results_new(CMD_FAILURE, "No cursor device");
 	}
 	struct wlr_cursor *cursor = seat->cursor->cursor;
-	/* Determine where to put the window. */
-	double lx = cursor->x - container->pending.width / 2;
-	double ly = cursor->y - container->pending.height / 2;
+	/* Determine where to put the window: its size on screen. */
+	const double scale = layout_transform_container_scale(container, false) *
+		layout_overview_workspaces_scale(container->pending.workspace);
+	const double width = scale * container->pending.width;
+	const double height = scale * container->pending.height;
+	double lx = cursor->x - width / 2;
+	double ly = cursor->y - height / 2;
 
 	/* Correct target coordinates to be in bounds (on screen). */
 	struct wlr_output *output = wlr_output_layout_output_at(
@@ -608,18 +631,35 @@ static struct cmd_results *cmd_move_to_position_pointer(
 		wlr_output_layout_get_box(root->output_layout, output, &box);
 		lx = fmax(lx, box.x);
 		ly = fmax(ly, box.y);
-		if (lx + container->pending.width > box.x + box.width) {
-			lx = box.x + box.width - container->pending.width;
+		if (lx + width > box.x + box.width) {
+			lx = box.x + box.width - width;
 		}
-		if (ly + container->pending.height > box.y + box.height) {
-			ly = box.y + box.height - container->pending.height;
+		if (ly + height > box.y + box.height) {
+			ly = box.y + box.height - height;
 		}
 	}
 
-	/* Actually move the container. */
-	container_floating_move_to(container, lx, ly, false);
+	/* Actually move the container. The cursor is a point of the screen. */
+	layout_overview_workspaces_screen_to_global(container->pending.workspace, &lx, &ly);
+	floating_move_to_global(container, lx, ly);
 	transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
+}
+
+// The floating container's viewport's box. Used for non-absolute positions
+static void floating_position_vp(struct sway_container *container,
+		struct wlr_fbox *vp) {
+	struct sway_workspace *ws = container->pending.workspace;
+	if (!ws) {
+		struct sway_seat *seat = config->handler_context.seat;
+		ws = seat_get_focused_workspace(seat);
+	}
+	if (!ws) {
+		*vp = (struct wlr_fbox){0};
+		return;
+	}
+	*vp = (struct wlr_fbox){ ws->x, ws->y, ws->width, ws->height };
+	layout_floating_box_from_global(container, vp);
 }
 
 static const char expected_position_syntax[] =
@@ -665,20 +705,20 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 		}
 		return cmd_move_to_position_pointer(container);
 	} else if (strcmp(argv[0], "center") == 0) {
-		double lx, ly;
 		if (absolute) {
-			lx = root->x + (root->width - container->pending.width) / 2;
-			ly = root->y + (root->height - container->pending.height) / 2;
+			// Center of the output layout, in global coordinates
+			const double scale = layout_transform_container_scale(container, false);
+			floating_move_to_global(container,
+				root->x + (root->width - scale * container->pending.width) / 2,
+				root->y + (root->height - scale * container->pending.height) / 2);
 		} else {
-			struct sway_workspace *ws = container->pending.workspace;
-			if (!ws) {
-				struct sway_seat *seat = config->handler_context.seat;
-				ws = seat_get_focused_workspace(seat);
-			}
-			lx = ws->x + (ws->width - container->pending.width) / 2;
-			ly = ws->y + (ws->height - container->pending.height) / 2;
+			// Center of the workspace's viewport
+			struct wlr_fbox vp;
+			floating_position_vp(container, &vp);
+			container_floating_move_to(container,
+				vp.x + (vp.width - container->pending.width) / 2,
+				vp.y + (vp.height - container->pending.height) / 2, false);
 		}
-		container_floating_move_to(container, lx, ly, false);
 		transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 		return cmd_results_new(CMD_SUCCESS, NULL);
 	}
@@ -712,11 +752,9 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 		return cmd_results_new(CMD_INVALID, "Invalid y position specified");
 	}
 
-	struct sway_workspace *ws = container->pending.workspace;
-	if (!ws) {
-		struct sway_seat *seat = config->handler_context.seat;
-		ws = seat_get_focused_workspace(seat);
-	}
+	// Positions are relative to the current viewport
+	struct wlr_fbox vp;
+	floating_position_vp(container, &vp);
 
 	switch (lx.unit) {
 	case MOVEMENT_UNIT_PPT:
@@ -729,7 +767,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 					"Cannot move to absolute positions by ppt");
 		}
 		// Convert to px
-		lx.amount = ws->width * lx.amount / 100;
+		lx.amount = vp.width * lx.amount / 100;
 		lx.unit = MOVEMENT_UNIT_PX;
 		// Falls through
 	case MOVEMENT_UNIT_PX:
@@ -751,7 +789,7 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 					"Cannot move to absolute positions by ppt");
 		}
 		// Convert to px
-		ly.amount = ws->height * ly.amount / 100;
+		ly.amount = vp.height * ly.amount / 100;
 		ly.unit = MOVEMENT_UNIT_PX;
 		// Falls through
 	case MOVEMENT_UNIT_PX:
@@ -761,11 +799,13 @@ static struct cmd_results *cmd_move_to_position(int argc, char **argv) {
 		sway_assert(false, "invalid y unit");
 		break;
 	}
-	if (!absolute) {
-		lx.amount += ws->x;
-		ly.amount += ws->y;
+	if (absolute) {
+		// A position in global coordinates
+		floating_move_to_global(container, lx.amount, ly.amount);
+	} else {
+		container_floating_move_to(container, vp.x + lx.amount,
+			vp.y + ly.amount, false);
 	}
-	container_floating_move_to(container, lx.amount, ly.amount, false);
 	transaction_set_animation(ANIMATION_WINDOW_MOVE_FLOAT);
 	return cmd_results_new(CMD_SUCCESS, NULL);
 }

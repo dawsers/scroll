@@ -23,10 +23,18 @@ struct cmd_results *cmd_sticky(int argc, char **argv) {
 		return cmd_results_new(CMD_FAILURE, "No current container");
 	};
 
+	struct sway_container *floater = container_toplevel_ancestor(container);
+	double pan_x, pan_y;
+	layout_container_pan_get(floater, floater->pending.workspace, &pan_x, &pan_y);
+
 	bool is_sticky = container->is_sticky;
 	container->is_sticky = parse_boolean(argv[0], container->is_sticky);
 	if (is_sticky != container->is_sticky) {
 		node_set_dirty(&container->node);
+		if (container_is_floating(floater) && floater->pending.workspace) {
+			container_floating_keep_place(floater, pan_x, pan_y);
+			layout_locked_refresh(floater);
+		}
 	}
 
 	if (container_is_sticky_or_child(container) &&

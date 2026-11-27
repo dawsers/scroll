@@ -103,7 +103,7 @@ struct cmd_results *cmd_align(int argc, char **argv) {
 	enum sway_container_layout mode = layout_modifiers_get_mode(workspace);
 	struct sway_container *parent = container->pending.parent ? container->pending.parent : container;
 	struct wlr_fbox vp;
-	layout_vp_box(workspace, &vp);
+	layout_workspace_box(workspace, &vp);
 	layout_workspace_set_align(workspace, config->align_reset_auto ? ALIGN_AUTO : ALIGN_ALWAYS);
 	int gap = workspace->gaps_inner;
 

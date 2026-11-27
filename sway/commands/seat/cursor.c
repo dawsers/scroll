@@ -23,7 +23,7 @@ static struct cmd_results *handle_command(struct sway_cursor *cursor,
 		int delta_x = strtol(argv[1], NULL, 10);
 		int delta_y = strtol(argv[2], NULL, 10);
 		wlr_cursor_move(cursor->cursor, NULL, delta_x, delta_y);
-		cursor_rebase(cursor);
+		cursor_moved(cursor);
 		wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 	} else if (strcasecmp(argv[0], "set") == 0) {
 		if (argc < 3) {
@@ -33,7 +33,7 @@ static struct cmd_results *handle_command(struct sway_cursor *cursor,
 		float x = strtof(argv[1], NULL) / root->width;
 		float y = strtof(argv[2], NULL) / root->height;
 		wlr_cursor_warp_absolute(cursor->cursor, NULL, x, y);
-		cursor_rebase(cursor);
+		cursor_moved(cursor);
 		wlr_seat_pointer_notify_frame(cursor->seat->wlr_seat);
 	} else {
 		if (argc < 2) {

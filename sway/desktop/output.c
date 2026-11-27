@@ -30,6 +30,7 @@
 #include "sway/scene_descriptor.h"
 #include "sway/server.h"
 #include "sway/tree/arrange.h"
+#include "sway/tree/layout.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
 #include "sway/tree/view.h"
@@ -290,6 +291,8 @@ static int output_repaint_timer_handler(void *data) {
 	if (!output->wlr_output->enabled) {
 		return 0;
 	}
+
+	layout_edge_pan_frame(output);
 
 	output_configure_scene(output, &root->root_scene->tree.node, 1.0f);
 

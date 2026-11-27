@@ -35,6 +35,13 @@
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 #include "sway/desktop/transaction.h"
 
+void cursor_get_global_position(struct sway_cursor *cursor,
+		struct sway_workspace *workspace, double *x, double *y) {
+	*x = cursor->cursor->x;
+	*y = cursor->cursor->y;
+	layout_overview_workspaces_screen_to_global(workspace, x, y);
+}
+
 /**
  * Returns the node at the cursor's position. If there is a surface at that
  * location, it is stored in **surface (it may not be a view).
@@ -168,6 +175,18 @@ struct sway_node *node_at_coords(
 void cursor_rebase(struct sway_cursor *cursor) {
 	uint32_t time_msec = get_current_time_in_msec();
 	seatop_rebase(cursor->seat, time_msec);
+}
+
+void cursor_moved(struct sway_cursor *cursor) {
+	struct sway_seat *seat = cursor->seat;
+	if (seat->seatop_impl && !seat->seatop_impl->rebase) {
+		seatop_pointer_motion(seat, get_current_time_in_msec());
+	} else {
+		cursor_rebase(cursor);
+		// he pointer may be in the outer gaps of a workspace, where it pans
+		// the viewport in infinite canvas mode
+		layout_edge_pan_update(seat);
+	}
 }
 
 void cursor_rebase_all(void) {
@@ -838,6 +857,28 @@ static void handle_tool_button(struct wl_listener *listener, void *data) {
 	}
 }
 
+// Convert between a point on the screen (like the cursor) and the surface
+// coordinates of a view
+static void view_screen_to_surface(struct sway_view *view, double *x, double *y) {
+	struct sway_container *con = view->container;
+	layout_overview_workspaces_screen_to_global(con->pending.workspace, x, y);
+	struct sway_layout_transform transform;
+	layout_transform_container_get(con, false, &transform);
+	layout_transform_point_inv(&transform, x, y);
+	*x += view->geometry.x - con->pending.content_x;
+	*y += view->geometry.y - con->pending.content_y;
+}
+
+static void view_surface_to_screen(struct sway_view *view, double *x, double *y) {
+	struct sway_container *con = view->container;
+	struct sway_layout_transform transform;
+	layout_transform_container_get(con, false, &transform);
+	*x += con->pending.content_x - view->geometry.x;
+	*y += con->pending.content_y - view->geometry.y;
+	layout_transform_point(&transform, x, y);
+	layout_overview_workspaces_global_to_screen(con->pending.workspace, x, y);
+}
+
 static void check_constraint_region(struct sway_cursor *cursor) {
 	struct wlr_pointer_constraint_v1 *constraint = cursor->active_constraint;
 	pixman_region32_t *region = &constraint->region;
@@ -845,22 +886,20 @@ static void check_constraint_region(struct sway_cursor *cursor) {
 	if (cursor->active_confine_requires_warp && view) {
 		cursor->active_confine_requires_warp = false;
 
-		struct sway_container *con = view->container;
-
-		double sx = cursor->cursor->x - con->pending.content_x + view->geometry.x;
-		double sy = cursor->cursor->y - con->pending.content_y + view->geometry.y;
+		double sx = cursor->cursor->x;
+		double sy = cursor->cursor->y;
+		view_screen_to_surface(view, &sx, &sy);
 
 		if (!pixman_region32_contains_point(region,
 				floor(sx), floor(sy), NULL)) {
 			int nboxes;
 			pixman_box32_t *boxes = pixman_region32_rectangles(region, &nboxes);
 			if (nboxes > 0) {
-				double sx = (boxes[0].x1 + boxes[0].x2) / 2.;
-				double sy = (boxes[0].y1 + boxes[0].y2) / 2.;
+				double lx = (boxes[0].x1 + boxes[0].x2) / 2.;
+				double ly = (boxes[0].y1 + boxes[0].y2) / 2.;
+				view_surface_to_screen(view, &lx, &ly);
 
-				wlr_cursor_warp_closest(cursor->cursor, NULL,
-					sx + con->pending.content_x - view->geometry.x,
-					sy + con->pending.content_y - view->geometry.y);
+				wlr_cursor_warp_closest(cursor->cursor, NULL, lx, ly);
 
 				cursor_rebase(cursor);
 			}
@@ -1195,14 +1234,18 @@ void cursor_warp_to_container(struct sway_cursor *cursor,
 		return;
 	}
 
+	struct sway_workspace *workspace = container->pending.workspace;
 	struct wlr_box box;
-	layout_container_screen_wlr_box(container, false, &box);
-	if (!force && wlr_box_contains_point(&box, cursor->cursor->x, cursor->cursor->y)) {
+	layout_container_global_wlr_box(container, false, &box);
+	double x, y;
+	cursor_get_global_position(cursor, workspace, &x, &y);
+	if (!force && wlr_box_contains_point(&box, x, y)) {
 		return;
 	}
 
-	const double x = box.x + 0.5 * box.width;
-	const double y = box.y + 0.5 * box.height;
+	x = box.x + 0.5 * box.width;
+	y = box.y + 0.5 * box.height;
+	layout_overview_workspaces_global_to_screen(workspace, &x, &y);
 
 	wlr_cursor_warp(cursor->cursor, NULL, x, y);
 	cursor_unhide(cursor);
@@ -1220,6 +1263,7 @@ void cursor_warp_to_workspace(struct sway_cursor *cursor,
 
 	double x = workspace->x + workspace->width / 2.0;
 	double y = workspace->y + workspace->height / 2.0;
+	layout_overview_workspaces_global_to_screen(workspace, &x, &y);
 
 	wlr_cursor_warp(cursor->cursor, NULL, x, y);
 	cursor_unhide(cursor);
@@ -1307,10 +1351,8 @@ static void warp_to_constraint_cursor_hint(struct sway_cursor *cursor) {
 			return;
 		}
 
-		struct sway_container *con = view->container;
-
-		double lx = sx + con->pending.content_x - view->geometry.x;
-		double ly = sy + con->pending.content_y - view->geometry.y;
+		double lx = sx, ly = sy;
+		view_surface_to_screen(view, &lx, &ly);
 
 		wlr_cursor_warp(cursor->cursor, NULL, lx, ly);
 

@@ -826,7 +826,7 @@ bool workspace_container_visible(struct sway_workspace *workspace,
 	const double max_x = min_x + (area ? area->width : output->width);
 	const double max_y = min_y + (area ? area->height : output->height);
 	struct wlr_fbox box;
-	layout_container_screen_box(container, false, &box);
+	layout_container_global_box(container, false, &box);
 	return box.x < max_x && box.x + box.width > min_x &&
 		box.y < max_y && box.y + box.height > min_y;
 }
@@ -851,7 +851,7 @@ static void workspace_visible_extent(struct sway_workspace *workspace,
 			const double gap = layout_transform_workspace_scale(workspace, false) *
 				workspace->gaps_inner;
 			struct wlr_fbox box;
-			layout_container_screen_box(con, false, &box);
+			layout_container_global_box(con, false, &box);
 			const double miny = box.y - gap;
 			const double maxy = box.y + box.height + gap;
 			if (miny < *min_y) {

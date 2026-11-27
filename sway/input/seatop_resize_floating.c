@@ -48,7 +48,8 @@ static void handle_pointer_motion(struct sway_seat *seat, uint32_t time_msec) {
 	if (con->pending.workspace) {
 		// The pointer moves in screen pixels, the container in layout units
 		const double scale =
-			layout_transform_workspace_scale(con->pending.workspace, true);
+			layout_transform_workspace_scale(con->pending.workspace, true) *
+			layout_overview_workspaces_scale(con->pending.workspace);
 		mouse_move_x /= scale;
 		mouse_move_y /= scale;
 	}

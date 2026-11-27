@@ -275,7 +275,7 @@ static void scene_node_init(struct wlr_scene_node *node,
 		.info = {
 			.wlr_output = NULL,
 			.workspace = NULL,
-			.output_box = NULL,
+			.output_box = {0},
 			.background = false
 		},
 	};
@@ -882,8 +882,8 @@ struct wlr_box *wlr_scene_node_info_get_output_box(struct wlr_scene_node *node) 
 	}
 
 	while (tree != NULL) {
-		if (tree->node.info.output_box != NULL) {
-			return tree->node.info.output_box;
+		if (!wlr_box_empty(&tree->node.info.output_box)) {
+			return &tree->node.info.output_box;
 		}
 		tree = tree->node.parent;
 	}
@@ -1139,15 +1139,16 @@ void wlr_scene_node_info_set_output(struct wlr_scene_node *node,
 }
 
 static void apply_info_output_box(struct wlr_scene_node *node, void *data) {
-	node->info.output_box = data;
+	const struct wlr_box *box = data;
+	node->info.output_box = box ? *box : (struct wlr_box){0};
 }
 
 void wlr_scene_node_info_set_output_box(struct wlr_scene_node *node,
-		struct wlr_box *box) {
-	if (node->info.output_box == box) {
+		const struct wlr_box *box) {
+	if (wlr_box_equal(&node->info.output_box, box)) {
 		return;
 	}
-	scene_node_update_info(node, apply_info_output_box, box);
+	scene_node_update_info(node, apply_info_output_box, (void *)box);
 }
 
 struct wlr_scene_rect *wlr_scene_rect_create(struct wlr_scene_tree *parent,

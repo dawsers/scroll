@@ -151,12 +151,17 @@ void root_scratchpad_add_container(struct sway_container *con, struct sway_works
 		container_floating_move_to_center(con);
 	}
 
+	double pan_x, pan_y;
+	layout_container_pan_get(con, workspace, &pan_x, &pan_y);
+
 	container_detach(con);
 	if (parent && parent->pending.children->length == 0) {
 		container_reap_empty(parent);
 		parent = NULL;
 	}
 	con->scratchpad = true;
+	// A scratchpad container doesn't pan with the viewport
+	container_floating_keep_place(con, pan_x, pan_y);
 	list_add(root->scratchpad, con);
 	if (ws) {
 		workspace_add_floating(ws, con);
@@ -188,6 +193,10 @@ void root_scratchpad_remove_container(struct sway_container *con) {
 		return;
 	}
 	con->scratchpad = false;
+	if (con->pending.workspace) {
+		// Back on the canvas, stay at its current location
+		container_floating_keep_place(con, 0.0, 0.0);
+	}
 	int index = list_find(root->scratchpad, con);
 	if (index != -1) {
 		list_del(root->scratchpad, index);
