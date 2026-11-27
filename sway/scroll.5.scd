@@ -1049,7 +1049,7 @@ set|plus|minus|toggle <amount>
 	pans the viewport (see *infinite_speed_scale*). Floating windows can be
 	placed anywhere in that infinite canvas, and focusing one of them will pan
 	the	viewport to show it. Floating windows are clipped to their (virtual)
-	output expect while being dragged, so you can move them to another workspace
+	output except while being dragged, so you can move them to another workspace
 
 	Scrolling gestures are also affected when the viewport is not locked. Focus
 	doesn't change (not even if *focus_follows_mouse* is true) until clicking
