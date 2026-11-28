@@ -74,6 +74,11 @@ static bool default_overview_workspaces_enabled(void) {
 	return false;
 }
 
+static bool default_node_at_tree(struct wlr_scene_tree *tree,
+		double lx, double ly, struct wlr_scene_node_at_data *data) {
+	return wlr_scene_node_at_children(tree, lx, ly, data);
+}
+
 static bool default_node_at(struct wlr_scene_node *node, double lx, double ly,
 		struct wlr_scene_node_at_data *data) {
 	double rx = data->lx - lx;
@@ -132,6 +137,7 @@ static bool default_output_needs_frame(struct wlr_output *output) {
 struct wlr_scene_callbacks scene_cbs = {
 	.fullscreen_global_enabled = default_fullscreen_global_enabled,
 	.overview_workspaces_enabled = default_overview_workspaces_enabled,
+	.node_at_tree = default_node_at_tree,
 	.node_at = default_node_at,
 	.workspace_data = default_workspace_data,
 	.view_data = default_view_data,
@@ -1990,27 +1996,85 @@ void wlr_scene_node_for_each_buffer(struct wlr_scene_node *node,
 	scene_node_for_each_scene_buffer(node, 0, 0, user_iterator, user_data);
 }
 
-static bool scene_node_at_iterator(struct wlr_scene_node *node,
-		double lx, double ly, void *data) {
-	return scene_cbs.node_at(node, lx, ly, data);
+static const struct wlr_fbox *scene_tree_get_bounding_box(
+		struct wlr_scene_tree *tree) {
+	if (!tree->bounding_box_valid) {
+		// Most times, the box is cached by the tree
+		struct wlr_fbox box;
+		scene_node_get_bounding_box(&tree->node, &box);
+	}
+	return &tree->bounding_box;
+}
+
+static bool scene_fbox_contains_pixel(const struct wlr_fbox *box,
+		double lx, double ly, int px, int py) {
+	if (box->width <= 0 || box->height <= 0) {
+		return false;
+	}
+	const double x = box->x + lx;
+	const double y = box->y + ly;
+	return x < px + 1.0 && x + box->width > px &&
+		y < py + 1.0 && y + box->height > py;
+}
+
+static bool scene_node_at_pixel(struct wlr_scene_node *node, int px, int py,
+		struct wlr_scene_node_at_data *data, double lx, double ly) {
+	if (!node->enabled) {
+		return false;
+	}
+
+	if (node->type != WLR_SCENE_NODE_TREE) {
+		double width, height;
+		scene_node_get_size(node, &width, &height);
+		struct wlr_box node_box = {
+			.x = round(lx),
+			.y = round(ly),
+			.width = round(lx + width) - round(lx),
+			.height = round(ly + height) - round(ly)
+		};
+		return px >= node_box.x && px < node_box.x + node_box.width &&
+			py >= node_box.y && py < node_box.y + node_box.height &&
+			scene_cbs.node_at(node, lx, ly, data);
+	}
+
+	// Skip the whole subtree if the pixel is not in its bounding box.
+	struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
+	if (!scene_fbox_contains_pixel(scene_tree_get_bounding_box(scene_tree),
+			lx, ly, px, py)) {
+		return false;
+	}
+
+	// The compositor may decide to leave parts of the tree out of the search
+	return scene_cbs.node_at_tree(scene_tree, lx, ly, data);
+}
+
+bool wlr_scene_node_at_children(struct wlr_scene_tree *tree,
+		double lx, double ly, struct wlr_scene_node_at_data *data) {
+	const int px = floor(data->lx);
+	const int py = floor(data->ly);
+
+	struct wlr_scene_node *child;
+	wl_list_for_each_reverse(child, &tree->children, link) {
+		if (scene_node_at_pixel(child, px, py, data,
+				lx + child->x, ly + child->y)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
 		double lx, double ly, double *nx, double *ny, void *data) {
-	struct wlr_box box = {
-		.x = floor(lx),
-		.y = floor(ly),
-		.width = 1,
-		.height = 1
-	};
-
 	struct wlr_scene_node_at_data node_data = {
 		.lx = lx,
 		.ly = ly,
 		.data = data,
 	};
 
-	if (scene_nodes_in_box(node, &box, scene_node_at_iterator, &node_data)) {
+	double x, y;
+	wlr_scene_node_coords(node, &x, &y);
+
+	if (scene_node_at_pixel(node, floor(lx), floor(ly), &node_data, x, y)) {
 		if (nx) {
 			*nx = node_data.rx;
 		}

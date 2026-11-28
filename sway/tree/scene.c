@@ -1,5 +1,6 @@
 #include "wlr/types/wlr_scene.h"
 #include "sway/tree/root.h"
+#include "sway/tree/scene.h"
 #include "sway/tree/layout.h"
 #include "sway/output.h"
 #include "sway/tree/virtual_output.h"
@@ -16,56 +17,78 @@ static bool scene_overview_workspaces_enabled() {
 	return layout_overview_workspaces_enabled();
 }
 
-static void *scene_node_get_workspace(struct wlr_scene_node *node);
-
-// A container that is being destroyed can still be in the scene graph so
-// its fade out renders, but it is not part of the graph for input.
-static bool scene_node_is_destroying(struct wlr_scene_node *node) {
-	while (true) {
-		struct sway_container *con =
-			scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
-		if (con && con->node.destroying) {
-			return true;
-		}
-		struct sway_view *view =
-			scene_descriptor_try_get(node, SWAY_SCENE_DESC_VIEW);
-		if (!view) {
-			struct sway_popup_desc *popup =
-				scene_descriptor_try_get(node, SWAY_SCENE_DESC_POPUP);
-			view = popup ? popup->view : NULL;
-		}
-		if (view && view->container && view->container->node.destroying) {
-			return true;
-		}
-		if (!node->parent) {
-			return false;
-		}
-		node = &node->parent->node;
+// We optimize scene graph traversal using data gathered from the nodes above
+// the current one. This is used to skip whole trees and avoid having to recurse
+// upwards to gather data for the current node
+static bool scene_node_at_tree(struct wlr_scene_tree *tree,
+		double lx, double ly, struct wlr_scene_node_at_data *data) {
+	struct wlr_scene_node *node = &tree->node;
+	if (scene_descriptor_try_get(node, SWAY_SCENE_DESC_NON_INTERACTIVE)) {
+		return false;
 	}
+	// A container that is being destroyed can still be in the scene graph so
+	// its fade out renders, but it is not part of the graph for input.
+	struct sway_container *con =
+		scene_descriptor_try_get(node, SWAY_SCENE_DESC_CONTAINER);
+	if (con && con->node.destroying) {
+		return false;
+	}
+	struct sway_view *view =
+		scene_descriptor_try_get(node, SWAY_SCENE_DESC_VIEW);
+	if (!view) {
+		struct sway_popup_desc *popup =
+			scene_descriptor_try_get(node, SWAY_SCENE_DESC_POPUP);
+		view = popup ? popup->view : NULL;
+	}
+	if (view && view->container && view->container->node.destroying) {
+		return false;
+	}
+
+	// Propagate the current node's info down
+	struct sway_scene_node_at_query *query = data->data;
+	const struct sway_scene_node_at_inherited inherited = query->inherited;
+	const struct wlr_scene_node_info *info = &node->info;
+	if (info->wlr_output) {
+		query->inherited.output = info->wlr_output;
+	}
+	if (info->workspace) {
+		query->inherited.workspace = info->workspace;
+	}
+	if (info->output_box.width > 0 && info->output_box.height > 0) {
+		query->inherited.output_box = &info->output_box;
+	}
+	if (wlr_scene_node_at_children(tree, lx, ly, data)) {
+		return true;
+	}
+	query->inherited = inherited;
+	return false;
 }
 
 static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 		struct wlr_scene_node_at_data *data) {
-	struct wlr_output *wlr_output = wlr_scene_node_info_get_output(node);
-	if (wlr_output) {
-		struct sway_output *output = output_for_coords(data->lx, data->ly);
-		if (output && wlr_output != output->wlr_output) {
+	if (node->type == WLR_SCENE_NODE_SHADOW) {
+		return false;
+	}
+	const struct sway_scene_node_at_query *query = data->data;
+	if (query->inherited.output && query->wlr_output &&
+			query->inherited.output != query->wlr_output) {
+		return false;
+	}
+	if (query->workspace) {
+		void *workspace = wlr_scene_node_info_get_workspace(node);
+		if (!workspace) {
+			workspace = query->inherited.workspace;
+		}
+		if (workspace && workspace != query->workspace) {
 			return false;
 		}
 	}
-	struct sway_workspace *workspace = scene_node_get_workspace(node);
-	if (workspace && data->data && workspace != data->data) {
-		return false;
-	}
-	struct wlr_box *box = wlr_scene_node_info_get_output_box(node);
+	const struct wlr_box *box = query->inherited.output_box;
 	if (box) {
 		if (data->lx < box->x || data->lx >= box->x + box->width ||
 			data->ly < box->y || data->ly >= box->y + box->height) {
 			return false;
 		}
-	}
-	if (scene_node_is_destroying(node)) {
-		return false;
 	}
 
 	double rx = data->lx - lx;
@@ -121,8 +144,6 @@ static bool scene_node_at(struct wlr_scene_node *node, double lx, double ly,
 				return false;
 			}
 		}
-	} else if (node->type == WLR_SCENE_NODE_SHADOW) {
-		return false;
 	}
 
 	data->rx = rx;
@@ -282,6 +303,7 @@ static bool output_needs_frame(struct wlr_output *output) {
 const struct wlr_scene_callbacks scroll_scene_cbs = {
 	.fullscreen_global_enabled = scene_fullscreen_global_enabled,
 	.overview_workspaces_enabled = scene_overview_workspaces_enabled,
+	.node_at_tree = scene_node_at_tree,
 	.node_at = scene_node_at,
 	.workspace_data = scene_workspace_data,
 	.view_data = scene_view_data,

@@ -29,6 +29,7 @@
 #include "sway/server.h"
 #include "sway/tree/container.h"
 #include "sway/tree/root.h"
+#include "sway/tree/scene.h"
 #include "sway/tree/view.h"
 #include "sway/tree/workspace.h"
 #include "sway/tree/virtual_output.h"
@@ -56,23 +57,14 @@ struct sway_node *node_at_coords(
 		}
 	}
 
-	struct wlr_scene_node *scene_node = NULL;
+	struct sway_output *output = output_for_coords(lx, ly);
+	struct sway_scene_node_at_query query = {
+		.workspace = workspace,
+		.wlr_output = output ? output->wlr_output : NULL,
+	};
 
-	struct wlr_scene_node *node;
-	wl_list_for_each_reverse(node, &root->layer_tree->children, link) {
-		struct wlr_scene_tree *layer = wlr_scene_tree_from_node(node);
-
-		bool non_interactive = scene_descriptor_try_get(&layer->node,
-			SWAY_SCENE_DESC_NON_INTERACTIVE);
-		if (non_interactive) {
-			continue;
-		}
-
-		scene_node = wlr_scene_node_at(&layer->node, lx, ly, sx, sy, workspace);
-		if (scene_node) {
-			break;
-		}
-	}
+	struct wlr_scene_node *scene_node = wlr_scene_node_at(&root->layer_tree->node,
+		lx, ly, sx, sy, &query);
 
 	if (scene_node) {
 		// determine what wlr_surface we clicked on
@@ -133,19 +125,12 @@ struct sway_node *node_at_coords(
 		}
 	}
 
+	if (!output) {
+		// there is no output, or it is being destroyed or enabled
+		return NULL;
+	}
+
 	// if we aren't on a container, determine what workspace we are on
-	struct wlr_output *wlr_output = wlr_output_layout_output_at(
-			root->output_layout, lx, ly);
-	if (wlr_output == NULL) {
-		return NULL;
-	}
-
-	struct sway_output *output = wlr_output->data;
-	if (!output || !output->enabled) {
-		// output is being destroyed or is being enabled
-		return NULL;
-	}
-
 	struct sway_workspace *ws = NULL;
 	if (layout_overview_workspaces_enabled()) {
 		const double x = lx - output->lx;

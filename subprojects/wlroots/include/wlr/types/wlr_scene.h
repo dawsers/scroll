@@ -37,6 +37,7 @@ struct wlr_drag_icon;
 struct wlr_surface;
 
 struct wlr_scene_node;
+struct wlr_scene_tree;
 struct wlr_scene_buffer;
 struct wlr_scene_output_layout;
 
@@ -81,6 +82,8 @@ struct wlr_scene_layer_surface_data {
 struct wlr_scene_callbacks {
 	bool (*fullscreen_global_enabled)(void);
 	bool (*overview_workspaces_enabled)(void);
+	bool (*node_at_tree)(struct wlr_scene_tree *tree, double lx, double ly,
+			struct wlr_scene_node_at_data *data);
 	bool (*node_at)(struct wlr_scene_node *node, double lx, double ly,
 			struct wlr_scene_node_at_data *data);
 	bool (*workspace_data)(struct wlr_scene_node *node, struct wlr_scene_workspace_data *data);
@@ -439,6 +442,12 @@ void wlr_scene_node_for_each_buffer(struct wlr_scene_node *node,
  */
 struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
 	double lx, double ly, double *nx, double *ny, void *data);
+/**
+ * This function is only meant to be called from the node_at_tree callback.
+ * Returns true if one of the descendants of the tree is the node at the point.
+ */
+bool wlr_scene_node_at_children(struct wlr_scene_tree *tree,
+	double lx, double ly, struct wlr_scene_node_at_data *data);
 
 /**
  * Return the output that owns this node (if tiled, otherwise NULL)
