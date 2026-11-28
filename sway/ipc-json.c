@@ -1635,10 +1635,8 @@ json_object *ipc_json_describe_scroller(struct sway_workspace *workspace) {
 		json_object_new_string(reorder == REORDER_AUTO ? "auto" : "lazy"));
 	bool floating = layout_modifiers_get_floating(workspace);
 	json_object_object_add(object, "floating", json_object_new_boolean(floating));
-	json_object_object_add(object, "locked",
-		json_object_new_boolean(layout_locked(workspace)));
-	json_object_object_add(object, "pan_x", json_object_new_double(workspace->pan.x));
-	json_object_object_add(object, "pan_y", json_object_new_double(workspace->pan.y));
+	bool infinite = layout_modifiers_get_infinite(workspace);
+	json_object_object_add(object, "infinite", json_object_new_boolean(infinite));
 
 	return object;
 }
